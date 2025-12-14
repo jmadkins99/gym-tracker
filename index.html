@@ -524,9 +524,9 @@
             'hanging-leg-raises': 'Body Weight'
         };
 
-        // Strength standards for 150 lb bodyweight (based on typical strength standards)
+        // Strength standards for 150 lb bodyweight - General Population
         // Percentiles: 50th, 75th, 90th, 95th, 99th
-        const STRENGTH_STANDARDS = {
+        const STRENGTH_STANDARDS_GENERAL = {
             'chest-flies': [80, 110, 140, 160, 190],
             'flat-chest-press': [95, 125, 155, 180, 220],
             'shoulder-press': [70, 95, 120, 140, 170],
@@ -543,22 +543,55 @@
             'hip-adduction': [80, 110, 140, 165, 200],
             'calf-raise': [120, 160, 200, 235, 285],
             'cable-wrist-curls': [50, 70, 90, 105, 130],
-            'ab-crunch': [85, 120, 155, 180, 220]
+            'ab-crunch': [85, 120, 155, 180, 220],
+            'assault-bike': [4, 7, 10, 13, 20] // rounds for 30/30 protocol
+        };
+
+        // Strength standards for 150 lb bodyweight - Bodybuilders
+        // Percentiles: 50th, 75th, 90th, 95th, 99th
+        const STRENGTH_STANDARDS_BODYBUILDER = {
+            'chest-flies': [140, 170, 200, 230, 280],
+            'flat-chest-press': [155, 190, 225, 260, 320],
+            'shoulder-press': [120, 150, 180, 210, 260],
+            'preacher-curls': [65, 85, 105, 120, 150],
+            'tricep-pushdown': [45, 60, 75, 90, 115],
+            'lateral-raises': [30, 40, 50, 60, 75],
+            'overhead-tricep': [40, 55, 70, 85, 110],
+            'upper-back-row': [185, 230, 275, 320, 390],
+            'kelso-shrugs': [210, 260, 310, 360, 440],
+            'frontal-pulldowns': [170, 210, 250, 290, 355],
+            'hammer-row': [140, 175, 210, 245, 300],
+            'leg-extensions': [240, 300, 360, 420, 520],
+            'leg-curls': [160, 200, 240, 280, 350],
+            'hip-adduction': [140, 175, 210, 245, 300],
+            'calf-raise': [200, 250, 300, 350, 430],
+            'cable-wrist-curls': [90, 115, 140, 165, 205],
+            'ab-crunch': [155, 195, 235, 275, 340],
+            'assault-bike': [10, 13, 16, 19, 25] // rounds for 30/30 protocol
         };
 
         // Calculate percentile based on weight and user's bodyweight
-        function getPercentile(exerciseId, liftWeight, userBodyweight) {
-            if (!STRENGTH_STANDARDS[exerciseId]) return null;
-            const baseStandards = STRENGTH_STANDARDS[exerciseId];
+        function getPercentile(exerciseId, liftWeight, userBodyweight, isBodybuilder = false) {
+            const baseStandards = isBodybuilder
+                ? STRENGTH_STANDARDS_BODYBUILDER[exerciseId]
+                : STRENGTH_STANDARDS_GENERAL[exerciseId];
+            if (!baseStandards) return null;
+
             const w = parseFloat(liftWeight);
             if (isNaN(w) || w === 0) return null;
 
             const baseBodyweight = 150;
             const userBW = parseFloat(userBodyweight) || baseBodyweight;
 
-            // Adjust standards based on bodyweight (using 0.7 power for realistic scaling)
-            const adjustmentFactor = Math.pow(userBW / baseBodyweight, 0.7);
-            const standards = baseStandards.map(std => std * adjustmentFactor);
+            // Skip bodyweight adjustment for cardio exercises (assault bike)
+            let standards;
+            if (exerciseId === 'assault-bike') {
+                standards = baseStandards;
+            } else {
+                // Adjust standards based on bodyweight (using 0.7 power for realistic scaling)
+                const adjustmentFactor = Math.pow(userBW / baseBodyweight, 0.7);
+                standards = baseStandards.map(std => std * adjustmentFactor);
+            }
 
             if (w < standards[0]) return 'Top 40%';
             if (w < standards[1]) return 'Top 25%';
@@ -598,7 +631,7 @@
 
         // Calculate which day it should be based on the date
         function getTodayDay() {
-            const referenceDate = new Date('2025-12-14'); // Day 1
+            const referenceDate = new Date('2025-12-14'); // Day 1 (today)
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             referenceDate.setHours(0, 0, 0, 0);
@@ -606,25 +639,27 @@
             const diffTime = today - referenceDate;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+            // Alternates each day: Dec 14 = Day 1, Dec 15 = Day 2, Dec 16 = Day 1, etc.
             return (diffDays % 2 === 0) ? 1 : 2;
         }
 
-        // Calculate current week number (weeks start on Monday)
+        // ISO week number (weeks start on Monday)
+        function getISOWeek(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        // Calculate current week number (ISO weeks start on Monday)
         function getCurrentWeek() {
-            const today = new Date();
-            const startOfYear = new Date(today.getFullYear(), 0, 1);
-            const dayOfYear = Math.floor((today - startOfYear) / (1000 * 60 * 60 * 24));
-            const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-            return weekNumber;
+            return getISOWeek(new Date());
         }
 
         // Get week number for a specific date
         function getWeekNumber(date) {
-            const d = new Date(date);
-            const startOfYear = new Date(d.getFullYear(), 0, 1);
-            const dayOfYear = Math.floor((d - startOfYear) / (1000 * 60 * 60 * 24));
-            const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-            return weekNumber;
+            return getISOWeek(date);
         }
 
         // Parse MM:SS to total seconds
@@ -683,9 +718,11 @@
                             { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard', weight: '190', reps: '7' },
                             { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard', weight: '190', reps: '7' },
                             { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard', weight: '175', reps: '8' },
+                            { id: 'hammer-row', name: 'Hammer Strength Row Machine', category: 'Upper', type: 'standard', weight: '115', reps: '8' },
                             { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', weight: '240', reps: '7' },
                             { id: 'leg-curls', name: 'Seated Leg Curls', category: 'Lower', type: 'standard', weight: '150', reps: '7' },
                             { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', weight: '115', reps: '8' },
+                            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', weight: '180', reps: '6' },
                             { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', weight: '82.5', reps: '10' },
                             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', weight: '135', reps: '8' },
                             { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', weight: 'Body Weight', reps: '8' },
@@ -738,11 +775,16 @@
                     }
                 }));
 
-                // Trigger celebration for standard exercises when reps >= 8
+                // Trigger celebration for standard exercises when reps >= 6
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
-                if (exercise?.type === 'standard' && field === 'reps' && parseInt(value) >= 8) {
-                    setCelebration(exerciseId);
-                    setTimeout(() => setCelebration(null), 1000);
+                if (exercise?.type === 'standard' && field === 'reps' && parseInt(value) >= 6) {
+                    const previous = getPreviousWorkout(exerciseId);
+                    const previousReps = previous ? parseInt(previous.reps) : 0;
+                    // Celebrate if hitting 8+ reps OR hitting more reps than last time (for 6-7 rep range)
+                    if (parseInt(value) >= 8 || (parseInt(value) >= 6 && parseInt(value) > previousReps)) {
+                        setCelebration(exerciseId);
+                        setTimeout(() => setCelebration(null), 1000);
+                    }
                 }
                 // Trigger celebration for assault bike when rounds > previous
                 else if (exercise?.type === 'assault-bike' && field === 'rounds') {
@@ -1183,12 +1225,22 @@
                     const isCurrentlyPRAttempt = isPROpportunity && data.rounds &&
                         parseInt(data.rounds) > parseInt(previous.rounds);
 
+                    const percentileGeneral = previous ? getPercentile(exercise.id, previous.rounds, userBodyweight, false) : null;
+                    const percentileBB = previous ? getPercentile(exercise.id, previous.rounds, userBodyweight, true) : null;
+
                     return (
                         <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
-                                <div className="exercise-name">
-                                    {exercise.name}
-                                    {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                                <div>
+                                    <div className="exercise-name">
+                                        {exercise.name}
+                                        {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                                    </div>
+                                    {percentileGeneral && percentileBB && (
+                                        <div className="percentile-text">
+                                            {percentileGeneral} USA | {percentileBB} Bodybuilders
+                                        </div>
+                                    )}
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
@@ -1344,14 +1396,18 @@
                 }
 
                 // Standard exercise
-                const isPROpportunity = previous && parseInt(previous.reps) >= 8;
+                const previousReps = previous ? parseInt(previous.reps) : 0;
+                const isPROpportunity = previous && previousReps >= 8;
+                const isRepPROpportunity = previous && (previousReps === 6 || previousReps === 7);
                 const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
+                const suggestedReps = isRepPROpportunity ? (previousReps + 1).toString() : null;
                 const isCurrentlyPRAttempt = isPROpportunity && data.weight &&
                     parseFloat(data.weight) >= parseFloat(suggestedWeight);
 
                 const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
 
-                const percentile = previous ? getPercentile(exercise.id, previous.weight, userBodyweight) : null;
+                const percentileGeneral = previous ? getPercentile(exercise.id, previous.weight, userBodyweight, false) : null;
+                const percentileBB = previous ? getPercentile(exercise.id, previous.weight, userBodyweight, true) : null;
 
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1359,11 +1415,11 @@
                             <div>
                                 <div className="exercise-name">
                                     {exercise.name}
-                                    {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                                    {(isPROpportunity || isRepPROpportunity) && <span className="pr-badge">PR READY</span>}
                                 </div>
-                                {percentile && userBodyweight && (
+                                {percentileGeneral && percentileBB && userBodyweight && (
                                     <div className="percentile-text">
-                                        {percentile} at {userBodyweight} lbs bodyweight
+                                        {percentileGeneral} USA | {percentileBB} Bodybuilders at {userBodyweight} lbs
                                     </div>
                                 )}
                             </div>
@@ -1376,6 +1432,11 @@
                         {isPROpportunity && (
                             <div className="pr-suggestion">
                                 Try {suggestedWeight}lbs for a new PR!
+                            </div>
+                        )}
+                        {isRepPROpportunity && !isPROpportunity && (
+                            <div className="pr-suggestion">
+                                Try {suggestedReps} reps for a new PR!
                             </div>
                         )}
                         <div className="input-row">
