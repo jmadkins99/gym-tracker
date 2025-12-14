@@ -1,25 +1,27 @@
 # Gym Tracker App
 
-A gamified workout tracking web app optimized for iPhone 15 Pro. Track your progress, celebrate PRs, and never lose your data.
+A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your progress, celebrate PRs, and never lose your data. Features a dark theme that's easy on the eyes.
 
 ## Features
 
 ### Workout Tracking
 - **Two-Day Routine**: Alternates automatically between Day 1 (Full Body) and Day 2 (Accessories + Core)
 - **Auto Day Detection**: App knows what day it is based on the calendar (Dec 14, 2025 = Day 1, then alternates forever)
-- **Weekly Tracker**: Displays current week number (Week 1 starts Dec 14, 2025)
-- **Individual LOG Buttons**: Save each exercise as you complete it - no need to finish the whole workout
+- **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
+- **Sequential Day Counter**: Weekly view shows Day 1, Day 2, Day 3, etc. - total workouts completed
+- **Individual LOG Buttons**: Save each exercise as you complete it - timestamps each LOG
 - **Previous Workout Data**: See your last weight/reps for each exercise
-- **Visual Feedback**: Logged exercises turn darker green with checkmark
+- **Visual Feedback**: Logged exercises have subtle visual changes
 - **Week 1 Defaults**: Pre-filled starting weights for your first week
+- **Smart Placeholders**: When weight increases, reps default to 6 (realistic for heavier weight)
 
 ### Gamification & PRs
-- **Professional PR Glow**: Hit 8+ reps and get a subtle golden glow around your screen
-- **PR Ready Badge**: Golden badge appears when you're ready for a personal record
-- **PR Suggestions**: Auto-suggests +1.25 lbs when you hit 8+ reps last time
-- **Golden Input Fields**: PR attempt inputs glow gold during your set
-- **Assault Bike PRs**: Suggests +1 round when you're ready
-- **StairMaster PRs**: Suggests +15 seconds when you're ready
+- **Subtle PR Glow**: Hit 8+ reps and get a subtle golden glow around your screen
+- **Weight Suggestions**: Shows "+1.25 lbs" when you hit 8+ reps last time
+- **Smart Rep Defaults**: Reps default to 6 when increasing weight
+- **Assault Bike**: Suggests +1 round when ready (default: 5 rounds)
+- **StairMaster**: Suggests +15 seconds when ready
+- **Minimal Noise**: Clean interface with only essential feedback
 
 ### Data Safety
 - **Monthly Backup Reminders**: App reminds you every 30 days to download a backup
@@ -30,9 +32,11 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 
 ### Progress Tracking
 - **Weekly View**: Navigate through your workout history week by week
+- **Sequential Day Numbers**: See Day 1, Day 2, Day 3, etc. (total workouts completed)
 - **Progress Charts**: Visual graphs showing weight progression over time
 - **Date-Based Charts**: X-axis shows dates, Y-axis shows weight/rounds/time
 - **Per-Exercise Tracking**: Select any exercise to see its progression graph
+- **Clean History**: Shows date only (no finish times)
 
 ## Your Routine
 
@@ -57,7 +61,7 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 - Seated Calf Raise Machine (180 lbs starting)
 
 **Cardio (1 exercise)**
-- Assault Bike (30/30 intensity, tracked by rounds, PR = +1 round)
+- Assault Bike (30/30 intensity, tracked by rounds, default: 5 rounds, PR = +1 round)
 
 ### Day 2 - Accessories & Core
 **Accessories (3 exercises)**
@@ -123,12 +127,15 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 
 ## Tips
 
-- Don't skip LOG buttons - they save as you go in case something crashes
+- Don't skip LOG buttons - they timestamp as you go in case something crashes
 - Week 1 defaults are pre-filled to help you get started quickly
-- The app suggests PR weights when you hit 8+ reps - go for it!
-- Professional golden glow celebrates your PRs without being distracting
+- The app suggests "+1.25 lbs" when you hit 8+ reps - go for it!
+- When weight increases, reps default to 6 (a realistic target for heavier weight)
+- Subtle golden glow celebrates when you hit 8+ reps
 - You can switch between Day 1 and Day 2 manually if needed
-- Weekly view helps you see patterns in your training
+- Weekly view shows sequential day numbers (Day 1, Day 2, Day 3...)
 - Export your data before major iOS updates or Safari changes
 - The monthly reminder helps prevent data loss
 - StairMaster time format: enter as MM:SS (e.g., "12:45" for 12 minutes 45 seconds)
+- Assault Bike defaults to 5 rounds placeholder
+- Dark theme is easy on the eyes during early morning or late night workouts
