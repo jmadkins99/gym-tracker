@@ -152,6 +152,12 @@
             font-weight: 600;
         }
 
+        .percentile-text {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+        }
+
         .previous-data {
             font-size: 12px;
             color: #888;
@@ -517,6 +523,43 @@
             'ab-crunch': '140',
             'hanging-leg-raises': 'Body Weight'
         };
+
+        // Strength standards for 150 lb bodyweight (based on typical strength standards)
+        // Percentiles: 50th, 75th, 90th, 95th, 99th
+        const STRENGTH_STANDARDS = {
+            'chest-flies': [80, 110, 140, 160, 190],
+            'flat-chest-press': [95, 125, 155, 180, 220],
+            'shoulder-press': [70, 95, 120, 140, 170],
+            'preacher-curls': [35, 50, 65, 75, 95],
+            'tricep-pushdown': [25, 35, 45, 55, 70],
+            'lateral-raises': [15, 22, 30, 35, 45],
+            'overhead-tricep': [20, 30, 40, 50, 65],
+            'upper-back-row': [110, 150, 185, 215, 260],
+            'kelso-shrugs': [130, 170, 210, 240, 290],
+            'frontal-pulldowns': [100, 135, 170, 195, 235],
+            'hammer-row': [80, 110, 140, 165, 200],
+            'leg-extensions': [140, 190, 240, 280, 340],
+            'leg-curls': [90, 125, 160, 185, 230],
+            'hip-adduction': [80, 110, 140, 165, 200],
+            'calf-raise': [120, 160, 200, 235, 285],
+            'cable-wrist-curls': [50, 70, 90, 105, 130],
+            'ab-crunch': [85, 120, 155, 180, 220]
+        };
+
+        // Calculate percentile based on weight
+        function getPercentile(exerciseId, weight) {
+            if (!STRENGTH_STANDARDS[exerciseId]) return null;
+            const standards = STRENGTH_STANDARDS[exerciseId];
+            const w = parseFloat(weight);
+            if (isNaN(w) || w === 0) return null;
+
+            if (w < standards[0]) return 'Top 40%';
+            if (w < standards[1]) return 'Top 25%';
+            if (w < standards[2]) return 'Top 10%';
+            if (w < standards[3]) return 'Top 5%';
+            if (w >= standards[4]) return 'Top 1%';
+            return 'Top 2%';
+        }
 
         const DAY_1_EXERCISES = [
             // Upper
@@ -1165,12 +1208,21 @@
 
                 const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
 
+                const percentile = previous ? getPercentile(exercise.id, previous.weight) : null;
+
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                         <div className="exercise-header">
-                            <div className="exercise-name">
-                                {exercise.name}
-                                {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                            <div>
+                                <div className="exercise-name">
+                                    {exercise.name}
+                                    {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                                </div>
+                                {percentile && (
+                                    <div className="percentile-text">
+                                        {percentile} at 150 lbs bodyweight
+                                    </div>
+                                )}
                             </div>
                             {previous && (
                                 <div className="previous-data">
