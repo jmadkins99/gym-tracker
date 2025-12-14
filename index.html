@@ -43,11 +43,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
         }
 
         .header h1 {
             font-size: 24px;
+        }
+
+        .week-indicator {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 15px;
         }
 
         .settings-btn {
@@ -130,8 +136,8 @@
         }
 
         .exercise-card.logged {
-            border-color: #34c759;
-            background: rgba(52, 199, 89, 0.05);
+            border-color: #248a3d;
+            background: rgba(36, 138, 61, 0.05);
         }
 
         .exercise-header {
@@ -191,7 +197,7 @@
         .log-btn {
             width: 100%;
             padding: 12px;
-            background: #34c759;
+            background: #248a3d;
             border: none;
             border-radius: 8px;
             color: #fff;
@@ -206,7 +212,7 @@
 
         .log-btn.logged {
             background: #2a2a2a;
-            color: #34c759;
+            color: #248a3d;
         }
 
         .save-btn {
@@ -229,6 +235,36 @@
         .save-btn:disabled {
             background: #2a2a2a;
             color: #666;
+        }
+
+        .week-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .week-nav-btn {
+            padding: 8px 16px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .week-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .week-title {
+            flex: 1;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
         }
 
         .history-item {
@@ -295,7 +331,7 @@
             top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: #34c759;
+            background: #248a3d;
             color: #fff;
             padding: 12px 24px;
             border-radius: 8px;
@@ -330,7 +366,7 @@
             max-height: 250px;
         }
 
-        .celebration-overlay {
+        .pr-glow {
             position: fixed;
             top: 0;
             left: 0;
@@ -338,25 +374,19 @@
             bottom: 0;
             pointer-events: none;
             z-index: 9999;
-            overflow: hidden;
+            box-shadow: inset 0 0 80px 20px rgba(255, 215, 0, 0.6);
+            animation: pr-pulse 1s ease-in-out;
         }
 
-        .confetti {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background: #FFD700;
-            animation: confetti-fall 3s ease-out forwards;
-        }
-
-        @keyframes confetti-fall {
+        @keyframes pr-pulse {
             0% {
-                transform: translateY(-100vh) rotate(0deg);
-                opacity: 1;
+                box-shadow: inset 0 0 0px 0px rgba(255, 215, 0, 0);
+            }
+            50% {
+                box-shadow: inset 0 0 80px 20px rgba(255, 215, 0, 0.8);
             }
             100% {
-                transform: translateY(100vh) rotate(720deg);
-                opacity: 0;
+                box-shadow: inset 0 0 0px 0px rgba(255, 215, 0, 0);
             }
         }
 
@@ -394,34 +424,6 @@
             background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
         }
 
-        .trophy-celebration {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 120px;
-            z-index: 10000;
-            animation: trophy-bounce 1s ease-out;
-            pointer-events: none;
-        }
-
-        @keyframes trophy-bounce {
-            0% {
-                transform: translate(-50%, -50%) scale(0) rotate(-180deg);
-                opacity: 0;
-            }
-            50% {
-                transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
-                opacity: 1;
-            }
-            70% {
-                transform: translate(-50%, -50%) scale(0.9) rotate(-10deg);
-            }
-            100% {
-                transform: translate(-50%, -50%) scale(0) rotate(0deg);
-                opacity: 0;
-            }
-        }
 
         .modal-overlay {
             position: fixed;
@@ -492,7 +494,29 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
+
+        // Week 1 default weights
+        const WEEK_1_DEFAULTS = {
+            'chest-flies': '165',
+            'flat-chest-press': '135',
+            'shoulder-press': '126.25',
+            'preacher-curls': '56.25',
+            'tricep-pushdown': '36.25',
+            'lateral-raises': '27.5',
+            'overhead-tricep': '27.5',
+            'upper-back-row': '190',
+            'kelso-shrugs': '190',
+            'frontal-pulldowns': '180',
+            'hammer-row': '117.5',
+            'leg-extensions': '240',
+            'leg-curls': '150',
+            'hip-adduction': '120',
+            'calf-raise': '180',
+            'cable-wrist-curls': '87.5',
+            'ab-crunch': '140',
+            'hanging-leg-raises': 'Body Weight'
+        };
 
         const DAY_1_EXERCISES = [
             // Upper
@@ -518,14 +542,11 @@
         const DAY_2_EXERCISES = [
             { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard' },
             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard' },
-            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'standard' },
-            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'standard' },
+            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight' },
+            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster' },
         ];
 
         // Calculate which day it should be based on the date
-        // December 14, 2025 is Day 1 (full body)
-        // December 15, 2025 is Day 2 (accessories)
-        // And so on alternating forever
         function getTodayDay() {
             const referenceDate = new Date('2025-12-14'); // Day 1
             const today = new Date();
@@ -535,9 +556,37 @@
             const diffTime = today - referenceDate;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            // If diffDays is even (0, 2, 4...), it's Day 1
-            // If diffDays is odd (1, 3, 5...), it's Day 2
             return (diffDays % 2 === 0) ? 1 : 2;
+        }
+
+        // Calculate current week number (starting from Dec 14, 2025 as Week 1)
+        function getCurrentWeek() {
+            const startDate = new Date('2025-12-14');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            startDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today - startDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            return Math.floor(diffDays / 7) + 1;
+        }
+
+        // Parse MM:SS to total seconds
+        function parseTimeToSeconds(timeStr) {
+            if (!timeStr) return 0;
+            const parts = timeStr.split(':');
+            if (parts.length !== 2) return 0;
+            const minutes = parseInt(parts[0]) || 0;
+            const seconds = parseInt(parts[1]) || 0;
+            return minutes * 60 + seconds;
+        }
+
+        // Format seconds to MM:SS
+        function formatSecondsToTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
 
         function App() {
@@ -552,6 +601,8 @@
             const [celebration, setCelebration] = useState(null);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
+            const [viewingWeek, setViewingWeek] = useState(getCurrentWeek());
+            const currentWeek = getCurrentWeek();
 
             useEffect(() => {
                 const saved = localStorage.getItem('gymWorkoutHistory');
@@ -607,6 +658,18 @@
                         setTimeout(() => setCelebration(null), 1000);
                     }
                 }
+                // Trigger celebration for stairmaster when time > previous
+                else if (exercise?.type === 'stairmaster' && field === 'time') {
+                    const previous = getPreviousWorkout(exerciseId);
+                    if (previous && previous.time) {
+                        const currentSeconds = parseTimeToSeconds(value);
+                        const previousSeconds = parseTimeToSeconds(previous.time);
+                        if (currentSeconds > previousSeconds) {
+                            setCelebration(exerciseId);
+                            setTimeout(() => setCelebration(null), 1000);
+                        }
+                    }
+                }
             };
 
             const logExercise = (exerciseId) => {
@@ -617,6 +680,10 @@
 
                 if (exercise.type === 'assault-bike') {
                     if (!data.rounds) return;
+                } else if (exercise.type === 'stairmaster') {
+                    if (!data.time) return;
+                } else if (exercise.type === 'bodyweight') {
+                    if (!data.reps) return;
                 } else {
                     if (!data.weight && !data.reps) return;
                 }
@@ -645,6 +712,24 @@
                             intensity: '30/30',
                             rounds: data.rounds || ''
                         };
+                    } else if (ex.type === 'stairmaster') {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            level: 'Level 7',
+                            time: data.time || ''
+                        };
+                    } else if (ex.type === 'bodyweight') {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            weight: 'Body Weight',
+                            reps: data.reps || ''
+                        };
                     } else {
                         return {
                             id: ex.id,
@@ -655,7 +740,7 @@
                             reps: data.reps || ''
                         };
                     }
-                }).filter(ex => ex && (ex.weight || ex.reps || ex.rounds));
+                }).filter(ex => ex && (ex.weight || ex.reps || ex.rounds || ex.time));
 
                 if (exercises.length === 0) {
                     alert('Please log at least one exercise');
@@ -665,6 +750,7 @@
                 const newWorkout = {
                     date: new Date().toISOString(),
                     day: currentDay,
+                    week: currentWeek,
                     exercises
                 };
 
@@ -712,6 +798,22 @@
                 reader.readAsText(file);
             };
 
+            const resetData = () => {
+                if (confirm('ARE YOU VERY SURE? This will delete ALL your workout data permanently. This cannot be undone!')) {
+                    if (confirm('FINAL WARNING: All your progress will be lost forever. Continue?')) {
+                        localStorage.removeItem('gymWorkoutHistory');
+                        localStorage.removeItem('lastBackupReminder');
+                        setWorkoutHistory([]);
+                        setWorkoutData({});
+                        setLoggedExercises({});
+                        setShowSettings(false);
+                        setSuccessMessage('All data has been reset');
+                        setShowSuccess(true);
+                        setTimeout(() => setShowSuccess(false), 3000);
+                    }
+                }
+            };
+
             const dismissBackupReminder = () => {
                 localStorage.setItem('lastBackupReminder', new Date().getTime().toString());
                 setShowBackupReminder(false);
@@ -734,6 +836,7 @@
                             onClose={() => setShowSettings(false)}
                             onExport={exportData}
                             onImport={importData}
+                            onReset={resetData}
                         />
                     )}
 
@@ -742,6 +845,7 @@
                             <h1>Gym Tracker</h1>
                             <button className="settings-btn" onClick={() => setShowSettings(true)}>⚙️</button>
                         </div>
+                        <div className="week-indicator">Week {currentWeek}</div>
                         <div className="nav">
                             <button
                                 className={`nav-btn ${currentView === 'workout' ? 'active' : ''}`}
@@ -750,10 +854,10 @@
                                 Workout
                             </button>
                             <button
-                                className={`nav-btn ${currentView === 'history' ? 'active' : ''}`}
-                                onClick={() => setCurrentView('history')}
+                                className={`nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
+                                onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); }}
                             >
-                                History
+                                Weekly
                             </button>
                             <button
                                 className={`nav-btn ${currentView === 'progress' ? 'active' : ''}`}
@@ -776,8 +880,14 @@
                             completeDay={completeDay}
                             celebration={celebration}
                             getCurrentExercises={getCurrentExercises}
+                            currentWeek={currentWeek}
                         />}
-                        {currentView === 'history' && <HistoryView workoutHistory={workoutHistory} />}
+                        {currentView === 'weekly' && <WeeklyView
+                            workoutHistory={workoutHistory}
+                            viewingWeek={viewingWeek}
+                            setViewingWeek={setViewingWeek}
+                            currentWeek={currentWeek}
+                        />}
                         {currentView === 'progress' && <ProgressView
                             workoutHistory={workoutHistory}
                             selectedExercise={selectedExercise}
@@ -807,8 +917,8 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport }) {
-            const fileInputRef = React.useRef();
+        function SettingsModal({ onClose, onExport, onImport, onReset }) {
+            const fileInputRef = useRef();
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
@@ -819,6 +929,9 @@
                         </button>
                         <button className="modal-btn" onClick={() => fileInputRef.current.click()}>
                             📤 Import Data
+                        </button>
+                        <button className="modal-btn danger" onClick={onReset}>
+                            🗑️ Reset All Data
                         </button>
                         <input
                             ref={fileInputRef}
@@ -835,7 +948,7 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, celebration, getCurrentExercises }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, celebration, getCurrentExercises, currentWeek }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
@@ -847,6 +960,9 @@
                 const previous = getPreviousWorkout(exercise.id);
                 const isLogged = loggedExercises[exercise.id];
                 const data = workoutData[exercise.id] || {};
+
+                // Get default weight for Week 1
+                const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
                 if (exercise.type === 'assault-bike') {
                     const isPROpportunity = previous && previous.rounds;
@@ -906,11 +1022,121 @@
                     );
                 }
 
+                if (exercise.type === 'stairmaster') {
+                    const isPROpportunity = previous && previous.time;
+                    let suggestedTime = null;
+                    if (isPROpportunity) {
+                        const prevSeconds = parseTimeToSeconds(previous.time);
+                        const newSeconds = prevSeconds + 15;
+                        suggestedTime = formatSecondsToTime(newSeconds);
+                    }
+                    const isCurrentlyPRAttempt = isPROpportunity && data.time &&
+                        parseTimeToSeconds(data.time) > parseTimeToSeconds(previous.time);
+
+                    return (
+                        <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                            <div className="exercise-header">
+                                <div className="exercise-name">
+                                    {exercise.name}
+                                    {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                                </div>
+                                {previous && (
+                                    <div className="previous-data">
+                                        Last: {previous.time}
+                                    </div>
+                                )}
+                            </div>
+                            {isPROpportunity && (
+                                <div className="pr-suggestion">
+                                    Try {suggestedTime} for a new PR!
+                                </div>
+                            )}
+                            <div className="input-row">
+                                <div className="input-group">
+                                    <label className="input-label">Level</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value="Level 7"
+                                        disabled
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label className="input-label">Time (MM:SS)</label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
+                                        value={data.time || ''}
+                                        onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
+                                        placeholder={suggestedTime || previous?.time || 'MM:SS'}
+                                        disabled={isLogged}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                className={`log-btn ${isLogged ? 'logged' : ''}`}
+                                onClick={() => logExercise(exercise.id)}
+                                disabled={isLogged}
+                            >
+                                {isLogged ? '✓ Logged' : 'LOG'}
+                            </button>
+                        </div>
+                    );
+                }
+
+                if (exercise.type === 'bodyweight') {
+                    return (
+                        <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                            <div className="exercise-header">
+                                <div className="exercise-name">{exercise.name}</div>
+                                {previous && (
+                                    <div className="previous-data">
+                                        Last: {previous.reps} reps
+                                    </div>
+                                )}
+                            </div>
+                            <div className="input-row">
+                                <div className="input-group">
+                                    <label className="input-label">Weight</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value="Body Weight"
+                                        disabled
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label className="input-label">Reps</label>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        className="input-field"
+                                        value={data.reps || ''}
+                                        onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
+                                        placeholder={previous?.reps || '0'}
+                                        disabled={isLogged}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                className={`log-btn ${isLogged ? 'logged' : ''}`}
+                                onClick={() => logExercise(exercise.id)}
+                                disabled={isLogged}
+                            >
+                                {isLogged ? '✓ Logged' : 'LOG'}
+                            </button>
+                        </div>
+                    );
+                }
+
                 // Standard exercise
                 const isPROpportunity = previous && parseInt(previous.reps) >= 8;
                 const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
                 const isCurrentlyPRAttempt = isPROpportunity && data.weight &&
                     parseFloat(data.weight) >= parseFloat(suggestedWeight);
+
+                const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
 
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -939,7 +1165,7 @@
                                     className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
                                     value={data.weight || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
-                                    placeholder={suggestedWeight || previous?.weight || '0'}
+                                    placeholder={placeholderWeight}
                                     disabled={isLogged}
                                 />
                             </div>
@@ -1013,77 +1239,81 @@
         }
 
         function Celebration() {
-            const colors = ['#FFD700', '#FFA500', '#FF6347', '#32CD32', '#1E90FF', '#FF1493'];
-
-            return (
-                <>
-                    <div className="trophy-celebration">🏆</div>
-                    <div className="celebration-overlay">
-                        {[...Array(50)].map((_, i) => (
-                            <div
-                                key={i}
-                                className="confetti"
-                                style={{
-                                    left: `${Math.random() * 100}%`,
-                                    background: colors[Math.floor(Math.random() * colors.length)],
-                                    animationDelay: `${Math.random() * 0.5}s`,
-                                    width: `${Math.random() * 10 + 5}px`,
-                                    height: `${Math.random() * 10 + 5}px`,
-                                }}
-                            />
-                        ))}
-                    </div>
-                </>
-            );
+            return <div className="pr-glow" />;
         }
 
-        function HistoryView({ workoutHistory }) {
-            if (workoutHistory.length === 0) {
-                return (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">📊</div>
-                        <div>No workouts recorded yet</div>
-                    </div>
-                );
-            }
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek }) {
+            const weekWorkouts = workoutHistory.filter(w => w.week === viewingWeek);
 
             return (
                 <>
-                    {workoutHistory.map((workout, idx) => {
-                        const date = new Date(workout.date);
-                        const formattedDate = date.toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        });
-                        const formattedTime = date.toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit'
-                        });
+                    <div className="week-nav">
+                        <button
+                            className="week-nav-btn"
+                            onClick={() => setViewingWeek(viewingWeek - 1)}
+                            disabled={viewingWeek <= 1}
+                        >
+                            ← Prev
+                        </button>
+                        <div className="week-title">
+                            Week {viewingWeek}
+                            {viewingWeek === currentWeek && ' (Current)'}
+                        </div>
+                        <button
+                            className="week-nav-btn"
+                            onClick={() => setViewingWeek(viewingWeek + 1)}
+                            disabled={viewingWeek >= currentWeek}
+                        >
+                            Next →
+                        </button>
+                    </div>
 
-                        return (
-                            <div key={idx} className="history-item">
-                                <div className="history-date">
-                                    Day {workout.day} - {formattedDate}
-                                    <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                                        {formattedTime}
-                                    </div>
-                                </div>
-                                {workout.exercises.map((exercise, exIdx) => (
-                                    <div key={exIdx} className="history-exercise">
-                                        <div className="history-exercise-name">{exercise.name}</div>
-                                        <div className="history-exercise-data">
-                                            {exercise.type === 'assault-bike'
-                                                ? `${exercise.rounds} rounds`
-                                                : `${exercise.weight}lbs × ${exercise.reps}`
-                                            }
+                    {weekWorkouts.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📊</div>
+                            <div>No workouts in Week {viewingWeek}</div>
+                        </div>
+                    ) : (
+                        <>
+                            {weekWorkouts.map((workout, idx) => {
+                                const date = new Date(workout.date);
+                                const formattedDate = date.toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                });
+                                const formattedTime = date.toLocaleTimeString('en-US', {
+                                    hour: 'numeric',
+                                    minute: '2-digit'
+                                });
+
+                                return (
+                                    <div key={idx} className="history-item">
+                                        <div className="history-date">
+                                            Day {workout.day} - {formattedDate}
+                                            <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                                                {formattedTime}
+                                            </div>
                                         </div>
+                                        {workout.exercises.map((exercise, exIdx) => (
+                                            <div key={exIdx} className="history-exercise">
+                                                <div className="history-exercise-name">{exercise.name}</div>
+                                                <div className="history-exercise-data">
+                                                    {exercise.type === 'assault-bike'
+                                                        ? `${exercise.rounds} rounds`
+                                                        : exercise.type === 'stairmaster'
+                                                        ? `${exercise.time}`
+                                                        : `${exercise.weight}${exercise.weight === 'Body Weight' ? '' : 'lbs'} × ${exercise.reps}`
+                                                    }
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
+                        </>
+                    )}
                 </>
             );
         }
@@ -1130,11 +1360,21 @@
                             scales: {
                                 x: {
                                     ticks: { color: '#888' },
-                                    grid: { color: '#2a2a2a' }
+                                    grid: { color: '#2a2a2a' },
+                                    title: {
+                                        display: true,
+                                        text: 'Date',
+                                        color: '#888'
+                                    }
                                 },
                                 y: {
                                     ticks: { color: '#888' },
-                                    grid: { color: '#2a2a2a' }
+                                    grid: { color: '#2a2a2a' },
+                                    title: {
+                                        display: true,
+                                        text: 'Rounds',
+                                        color: '#888'
+                                    }
                                 }
                             }
                         }
@@ -1142,6 +1382,58 @@
                     return () => chart.destroy();
                 }
 
+                if (exercise?.type === 'stairmaster') {
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: exerciseData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                            datasets: [
+                                {
+                                    label: 'Time (seconds)',
+                                    data: exerciseData.map(d => parseTimeToSeconds(d.exercise.time)),
+                                    borderColor: '#0a84ff',
+                                    backgroundColor: 'rgba(10, 132, 255, 0.1)',
+                                    tension: 0.3
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: { labels: { color: '#fff' } }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { color: '#888' },
+                                    grid: { color: '#2a2a2a' },
+                                    title: {
+                                        display: true,
+                                        text: 'Date',
+                                        color: '#888'
+                                    }
+                                },
+                                y: {
+                                    ticks: {
+                                        color: '#888',
+                                        callback: function(value) {
+                                            return formatSecondsToTime(value);
+                                        }
+                                    },
+                                    grid: { color: '#2a2a2a' },
+                                    title: {
+                                        display: true,
+                                        text: 'Time',
+                                        color: '#888'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    return () => chart.destroy();
+                }
+
+                // Standard exercise - show only weight
                 const chart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1149,61 +1441,39 @@
                         datasets: [
                             {
                                 label: 'Weight (lbs)',
-                                data: exerciseData.map(d => parseFloat(d.exercise.weight) || 0),
+                                data: exerciseData.map(d => {
+                                    if (d.exercise.weight === 'Body Weight') return 0;
+                                    return parseFloat(d.exercise.weight) || 0;
+                                }),
                                 borderColor: '#0a84ff',
                                 backgroundColor: 'rgba(10, 132, 255, 0.1)',
-                                tension: 0.3,
-                                yAxisID: 'y'
-                            },
-                            {
-                                label: 'Reps',
-                                data: exerciseData.map(d => parseInt(d.exercise.reps) || 0),
-                                borderColor: '#34c759',
-                                backgroundColor: 'rgba(52, 199, 89, 0.1)',
-                                tension: 0.3,
-                                yAxisID: 'y1'
+                                tension: 0.3
                             }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
                         plugins: {
-                            legend: {
-                                labels: {
-                                    color: '#fff'
-                                }
-                            }
+                            legend: { labels: { color: '#fff' } }
                         },
                         scales: {
                             x: {
                                 ticks: { color: '#888' },
-                                grid: { color: '#2a2a2a' }
+                                grid: { color: '#2a2a2a' },
+                                title: {
+                                    display: true,
+                                    text: 'Date',
+                                    color: '#888'
+                                }
                             },
                             y: {
-                                type: 'linear',
-                                position: 'left',
-                                ticks: { color: '#0a84ff' },
+                                ticks: { color: '#888' },
                                 grid: { color: '#2a2a2a' },
                                 title: {
                                     display: true,
                                     text: 'Weight (lbs)',
-                                    color: '#0a84ff'
-                                }
-                            },
-                            y1: {
-                                type: 'linear',
-                                position: 'right',
-                                ticks: { color: '#34c759' },
-                                grid: { display: false },
-                                title: {
-                                    display: true,
-                                    text: 'Reps',
-                                    color: '#34c759'
+                                    color: '#888'
                                 }
                             }
                         }
