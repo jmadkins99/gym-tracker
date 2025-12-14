@@ -631,8 +631,11 @@
 
         // Calculate which day it should be based on the date
         function getTodayDay() {
-            const referenceDate = new Date('2025-12-14'); // Day 1 (today)
+            // Reference: Dec 14, 2025 is Day 1
             const today = new Date();
+            const referenceDate = new Date(2025, 11, 14); // Month is 0-indexed, so 11 = December
+
+            // Reset to midnight
             today.setHours(0, 0, 0, 0);
             referenceDate.setHours(0, 0, 0, 0);
 
@@ -702,11 +705,11 @@
                     const history = JSON.parse(saved);
                     setWorkoutHistory(history);
                 } else {
-                    // Hardcode retroactive workout from Dec 11, 2025
+                    // Hardcode retroactive workout from Dec 12, 2025 (Friday) - ended at 7:34 AM
                     const retroactiveWorkout = {
-                        date: '2025-12-11T18:00:00.000Z',
+                        date: '2025-12-12T07:34:00.000Z',
                         day: 1,
-                        week: getWeekNumber(new Date('2025-12-11')),
+                        week: getWeekNumber(new Date('2025-12-12')),
                         exercises: [
                             { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', weight: '162.5', reps: '8' },
                             { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard', weight: '131.25', reps: '9' },
@@ -816,10 +819,34 @@
 
                 if (exercise.type === 'assault-bike') {
                     if (!data.rounds) return;
+                    // Set timestamp for this exercise
+                    setWorkoutData(prev => ({
+                        ...prev,
+                        [exerciseId]: {
+                            ...prev[exerciseId],
+                            timestamp: new Date().toISOString()
+                        }
+                    }));
                 } else if (exercise.type === 'stairmaster') {
                     if (!data.time) return;
+                    // Set timestamp for this exercise
+                    setWorkoutData(prev => ({
+                        ...prev,
+                        [exerciseId]: {
+                            ...prev[exerciseId],
+                            timestamp: new Date().toISOString()
+                        }
+                    }));
                 } else if (exercise.type === 'bodyweight') {
                     if (!data.reps) return;
+                    // Set timestamp for this exercise
+                    setWorkoutData(prev => ({
+                        ...prev,
+                        [exerciseId]: {
+                            ...prev[exerciseId],
+                            timestamp: new Date().toISOString()
+                        }
+                    }));
                 } else {
                     // Auto-fill weight if blank
                     if (!data.weight && data.reps) {
@@ -834,7 +861,17 @@
                             ...prev,
                             [exerciseId]: {
                                 ...prev[exerciseId],
-                                weight: autoWeight
+                                weight: autoWeight,
+                                timestamp: new Date().toISOString()
+                            }
+                        }));
+                    } else {
+                        // Set timestamp for this exercise
+                        setWorkoutData(prev => ({
+                            ...prev,
+                            [exerciseId]: {
+                                ...prev[exerciseId],
+                                timestamp: new Date().toISOString()
                             }
                         }));
                     }
@@ -910,10 +947,18 @@
                     return;
                 }
 
+                // Find the latest timestamp from all logged exercises
+                const timestamps = Object.values(workoutData)
+                    .map(d => d.timestamp)
+                    .filter(t => t);
+                const latestTimestamp = timestamps.length > 0
+                    ? timestamps.reduce((latest, current) => current > latest ? current : latest)
+                    : new Date().toISOString();
+
                 const newWorkout = {
-                    date: new Date().toISOString(),
+                    date: latestTimestamp,
                     day: currentDay,
-                    week: getWeekNumber(new Date()),
+                    week: getWeekNumber(new Date(latestTimestamp)),
                     exercises
                 };
 
@@ -1225,8 +1270,7 @@
                     const isCurrentlyPRAttempt = isPROpportunity && data.rounds &&
                         parseInt(data.rounds) > parseInt(previous.rounds);
 
-                    const percentileGeneral = previous ? getPercentile(exercise.id, previous.rounds, userBodyweight, false) : null;
-                    const percentileBB = previous ? getPercentile(exercise.id, previous.rounds, userBodyweight, true) : null;
+                    const percentile = previous ? getPercentile(exercise.id, previous.rounds, userBodyweight, false) : null;
 
                     return (
                         <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1234,11 +1278,10 @@
                                 <div>
                                     <div className="exercise-name">
                                         {exercise.name}
-                                        {isPROpportunity && <span className="pr-badge">PR READY</span>}
                                     </div>
-                                    {percentileGeneral && percentileBB && (
+                                    {percentile && (
                                         <div className="percentile-text">
-                                            {percentileGeneral} USA | {percentileBB} Bodybuilders
+                                            {percentile}
                                         </div>
                                     )}
                                 </div>
@@ -1250,7 +1293,7 @@
                             </div>
                             {isPROpportunity && (
                                 <div className="pr-suggestion">
-                                    Try {suggestedRounds} rounds for a new PR!
+                                    Try {suggestedRounds} rounds for a new PR
                                 </div>
                             )}
                             <div className="input-row">
@@ -1303,7 +1346,6 @@
                             <div className="exercise-header">
                                 <div className="exercise-name">
                                     {exercise.name}
-                                    {isPROpportunity && <span className="pr-badge">PR READY</span>}
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
@@ -1313,7 +1355,7 @@
                             </div>
                             {isPROpportunity && (
                                 <div className="pr-suggestion">
-                                    Try {suggestedTime} for a new PR!
+                                    Try {suggestedTime} for a new PR
                                 </div>
                             )}
                             <div className="input-row">
@@ -1406,8 +1448,7 @@
 
                 const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
 
-                const percentileGeneral = previous ? getPercentile(exercise.id, previous.weight, userBodyweight, false) : null;
-                const percentileBB = previous ? getPercentile(exercise.id, previous.weight, userBodyweight, true) : null;
+                const percentile = previous ? getPercentile(exercise.id, previous.weight, userBodyweight, false) : null;
 
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1415,11 +1456,10 @@
                             <div>
                                 <div className="exercise-name">
                                     {exercise.name}
-                                    {(isPROpportunity || isRepPROpportunity) && <span className="pr-badge">PR READY</span>}
                                 </div>
-                                {percentileGeneral && percentileBB && userBodyweight && (
+                                {percentile && userBodyweight && (
                                     <div className="percentile-text">
-                                        {percentileGeneral} USA | {percentileBB} Bodybuilders at {userBodyweight} lbs
+                                        {percentile} at {userBodyweight} lbs bodyweight
                                     </div>
                                 )}
                             </div>
@@ -1431,12 +1471,12 @@
                         </div>
                         {isPROpportunity && (
                             <div className="pr-suggestion">
-                                Try {suggestedWeight}lbs for a new PR!
+                                Try {suggestedWeight}lbs
                             </div>
                         )}
                         {isRepPROpportunity && !isPROpportunity && (
                             <div className="pr-suggestion">
-                                Try {suggestedReps} reps for a new PR!
+                                Try for {suggestedReps} reps
                             </div>
                         )}
                         <div className="input-row">
