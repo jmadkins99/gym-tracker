@@ -9,13 +9,17 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - **Auto Day Detection**: App knows what day it is based on the calendar (Dec 14, 2025 = Day 1, then alternates forever)
 - **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
 - **Sequential Day Counter**: Weekly view shows Day 1, Day 2, Day 3, etc. - total workouts completed
-- **Individual LOG Buttons**: Save each exercise as you complete it - timestamps each LOG
+- **Instant Save**: LOG button immediately saves to Weekly tab - no page refresh needed
+- **Smart Initialization**: First LOG creates the day entry with all exercises marked as NA
+- **Live Updates**: Each LOG updates that specific exercise in the Weekly view
 - **Previous Workout Data**: See your last weight/reps for each exercise
-- **Visual Feedback**: Logged exercises have subtle visual changes
+- **Visual Feedback**: Logged exercises show ✓ Logged and persist across page refreshes
 - **Week 1 Defaults**: Pre-filled starting weights for your first week
 - **Smart Placeholders**: When weight increases, reps default to 6 (realistic for heavier weight)
 
 ### Gamification & PRs
+- **Day Breakdown**: "View Day Breakdown" button shows completed exercises count and all PRs hit
+- **PR Tracking**: Automatically detects and highlights personal records for weight, reps, rounds, and time
 - **Subtle PR Glow**: Hit 8+ reps and get a subtle golden glow around your screen
 - **Weight Suggestions**: Shows "+1.25 lbs" when you hit 8+ reps last time
 - **Smart Rep Defaults**: Reps default to 6 when increasing weight
@@ -95,11 +99,12 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 
 1. **Start Workout**: App automatically shows today's routine (Day 1 or Day 2) and current week
 2. **Enter Data**: Fill in weight and reps for each exercise
-3. **LOG Exercise**: Tap the darker green LOG button after each exercise to save it
-4. **Complete Day**: When done, tap "Complete Day" at the bottom
-5. **View Progress**: Check Weekly tab to see past workouts by week
-6. **Track PRs**: Use Progress tab to see weight/time progression graphs
-7. **Backup Data**: Tap the ⚙️ gear icon and export your data monthly
+3. **LOG Exercise**: Tap LOG button after each exercise - saves immediately to Weekly tab
+4. **Check Weekly Tab**: Your workout appears instantly with logged exercises and NA for remaining
+5. **Continue Logging**: Return to Workout tab and log more exercises - each updates the Weekly entry
+6. **View Breakdown**: When done, tap "View Day Breakdown" to see completed count and PRs hit
+7. **Track Progress**: Use Progress tab to see weight/time progression graphs
+8. **Backup Data**: Tap the ⚙️ gear icon and export your data monthly
 
 ## Important Data Safety Notes
 
@@ -127,11 +132,14 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 
 ## Tips
 
-- Don't skip LOG buttons - they timestamp as you go in case something crashes
+- LOG button saves immediately - your data is safe even if the page refreshes
+- First LOG of the day creates the workout entry with all exercises (logged ones have data, rest show NA)
+- Page refreshes won't lose your progress - logged exercises stay marked as ✓ Logged
 - Week 1 defaults are pre-filled to help you get started quickly
 - The app suggests "+1.25 lbs" when you hit 8+ reps - go for it!
 - When weight increases, reps default to 6 (a realistic target for heavier weight)
 - Subtle golden glow celebrates when you hit 8+ reps
+- "View Day Breakdown" shows your PRs and completion progress
 - You can switch between Day 1 and Day 2 manually if needed
 - Weekly view shows sequential day numbers (Day 1, Day 2, Day 3...)
 - Export your data before major iOS updates or Safari changes
