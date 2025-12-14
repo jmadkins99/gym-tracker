@@ -7,60 +7,66 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 ### Workout Tracking
 - **Two-Day Routine**: Alternates automatically between Day 1 (Full Body) and Day 2 (Accessories + Core)
 - **Auto Day Detection**: App knows what day it is based on the calendar (Dec 14, 2025 = Day 1, then alternates forever)
+- **Weekly Tracker**: Displays current week number (Week 1 starts Dec 14, 2025)
 - **Individual LOG Buttons**: Save each exercise as you complete it - no need to finish the whole workout
 - **Previous Workout Data**: See your last weight/reps for each exercise
-- **Visual Feedback**: Logged exercises turn green with checkmark
+- **Visual Feedback**: Logged exercises turn darker green with checkmark
+- **Week 1 Defaults**: Pre-filled starting weights for your first week
 
 ### Gamification & PRs
-- **Trophy Celebration**: Hit 8+ reps and get confetti + trophy animation
+- **Professional PR Glow**: Hit 8+ reps and get a subtle golden glow around your screen
 - **PR Ready Badge**: Golden badge appears when you're ready for a personal record
 - **PR Suggestions**: Auto-suggests +1.25 lbs when you hit 8+ reps last time
-- **Golden Glow**: PR attempt inputs glow gold to hype you up
+- **Golden Input Fields**: PR attempt inputs glow gold during your set
+- **Assault Bike PRs**: Suggests +1 round when you're ready
+- **StairMaster PRs**: Suggests +15 seconds when you're ready
 
 ### Data Safety
 - **Monthly Backup Reminders**: App reminds you every 30 days to download a backup
 - **Export Data**: Download JSON backup file to your phone via Settings gear icon
 - **Import Data**: Restore from backup if you switch devices or clear browser data
+- **Reset Data**: Nuclear option in Settings with double confirmation to wipe everything
 - **Local Storage**: All data stays on your device - completely private
 
 ### Progress Tracking
-- **History View**: See every workout with date, time, and all exercises logged
-- **Progress Charts**: Visual graphs showing weight and rep progression over time
-- **Dual-Axis Charts**: See both weight and reps on the same chart
+- **Weekly View**: Navigate through your workout history week by week
+- **Progress Charts**: Visual graphs showing weight progression over time
+- **Date-Based Charts**: X-axis shows dates, Y-axis shows weight/rounds/time
+- **Per-Exercise Tracking**: Select any exercise to see its progression graph
 
 ## Your Routine
 
 ### Day 1 - Full Body
 **Upper Body (11 exercises)**
-- Chest Flies
-- Flat Chest Press Machine
-- Shoulder Press Machine
-- Preacher Curls
-- Cuffed Tricep Pushdown
-- Cuffed Cable Lateral Raises
-- Cuffed Overhead Tricep Extension
-- Upper Back Row Machine
-- Machine Kelso Shrugs
-- Frontal Plane Pulldowns
-- Hammer Strength Row Machine
+- Chest Flies (165 lbs starting)
+- Flat Chest Press Machine (135 lbs starting)
+- Shoulder Press Machine (126.25 lbs starting)
+- Preacher Curls (56.25 lbs starting)
+- Cuffed Tricep Pushdown (36.25 lbs starting)
+- Cuffed Cable Lateral Raises (27.5 lbs starting)
+- Cuffed Overhead Tricep Extension (27.5 lbs starting)
+- Upper Back Row Machine (190 lbs starting)
+- Machine Kelso Shrugs (190 lbs starting)
+- Frontal Plane Pulldowns (180 lbs starting)
+- Hammer Strength Row Machine (117.5 lbs starting)
 
 **Lower Body (4 exercises)**
-- Leg Extensions
-- Seated Leg Curls
-- Hip Adduction Machine
-- Seated Calf Raise Machine
+- Leg Extensions (240 lbs starting)
+- Seated Leg Curls (150 lbs starting)
+- Hip Adduction Machine (120 lbs starting)
+- Seated Calf Raise Machine (180 lbs starting)
 
 **Cardio (1 exercise)**
-- Assault Bike (30/30 intensity, tracked by rounds)
+- Assault Bike (30/30 intensity, tracked by rounds, PR = +1 round)
 
 ### Day 2 - Accessories & Core
 **Accessories (3 exercises)**
-- Cable Wrist Curls
-- Ab Crunch Machine
-- Hanging Leg Raises
+- Cable Wrist Curls (87.5 lbs starting)
+- Ab Crunch Machine (140 lbs starting)
+- Hanging Leg Raises (Body Weight)
 
 **Cardio (1 exercise)**
-- StairMaster
+- StairMaster (Level 7, tracked by time in MM:SS format, PR = +15 seconds)
 
 ## How to Use
 
@@ -83,11 +89,13 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 
 ### Using the App
 
-1. **Start Workout**: App automatically shows today's routine (Day 1 or Day 2)
+1. **Start Workout**: App automatically shows today's routine (Day 1 or Day 2) and current week
 2. **Enter Data**: Fill in weight and reps for each exercise
-3. **LOG Exercise**: Tap the green LOG button after each exercise to save it
+3. **LOG Exercise**: Tap the darker green LOG button after each exercise to save it
 4. **Complete Day**: When done, tap "Complete Day" at the bottom
-5. **Backup Data**: Tap the ⚙️ gear icon and export your data monthly
+5. **View Progress**: Check Weekly tab to see past workouts by week
+6. **Track PRs**: Use Progress tab to see weight/time progression graphs
+7. **Backup Data**: Tap the ⚙️ gear icon and export your data monthly
 
 ## Important Data Safety Notes
 
@@ -104,6 +112,7 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 - Download monthly backups using the Settings gear icon
 - Save the JSON file to your iCloud Drive or Files app
 - If you lose data, use Import to restore from backup
+- NEVER use Reset Data unless you want to start completely fresh
 
 ## Tech Stack
 
@@ -115,7 +124,11 @@ A gamified workout tracking web app optimized for iPhone 15 Pro. Track your prog
 ## Tips
 
 - Don't skip LOG buttons - they save as you go in case something crashes
+- Week 1 defaults are pre-filled to help you get started quickly
 - The app suggests PR weights when you hit 8+ reps - go for it!
+- Professional golden glow celebrates your PRs without being distracting
 - You can switch between Day 1 and Day 2 manually if needed
+- Weekly view helps you see patterns in your training
 - Export your data before major iOS updates or Safari changes
 - The monthly reminder helps prevent data loss
+- StairMaster time format: enter as MM:SS (e.g., "12:45" for 12 minutes 45 seconds)
