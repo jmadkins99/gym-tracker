@@ -542,33 +542,33 @@
             'hanging-leg-raises': 'Body Weight'
         };
 
-        const DAY_1_EXERCISES = [
+        const DEFAULT_DAY_1_EXERCISES = [
             // Upper
-            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard' },
-            { id: 'incline-chest-press', name: 'Incline Chest Press Machine', category: 'Upper', type: 'standard' },
-            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard' },
-            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper', type: 'standard' },
-            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper', type: 'standard' },
-            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper', type: 'standard' },
-            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper', type: 'standard' },
-            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper', type: 'standard' },
-            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard' },
-            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard' },
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard' },
-            { id: 'hammer-row', name: 'Hammer Strength Row Machine', category: 'Upper', type: 'standard' },
+            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', order: 0 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press Machine', category: 'Upper', type: 'standard', order: 1 },
+            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard', order: 2 },
+            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper', type: 'standard', order: 3 },
+            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper', type: 'standard', order: 4 },
+            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper', type: 'standard', order: 5 },
+            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper', type: 'standard', order: 6 },
+            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper', type: 'standard', order: 7 },
+            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard', order: 8 },
+            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard', order: 9 },
+            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard', order: 10 },
+            { id: 'hammer-row', name: 'Seated Row Machine', category: 'Upper', type: 'standard', order: 11 },
             // Lower
-            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard' },
-            { id: 'leg-curls', name: 'Seated Leg Curls', category: 'Lower', type: 'standard' },
-            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard' },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard' },
-            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike' },
+            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', order: 12 },
+            { id: 'leg-curls', name: 'Prone Leg Curls', category: 'Lower', type: 'standard', order: 13 },
+            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', order: 14 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', order: 15 },
+            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 16 },
         ];
 
-        const DAY_2_EXERCISES = [
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard' },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard' },
-            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight' },
-            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster' },
+        const DEFAULT_DAY_2_EXERCISES = [
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', order: 0 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', order: 1 },
+            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', order: 2 },
+            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', order: 3 },
         ];
 
         // Calculate which day it should be based on the date
@@ -632,7 +632,9 @@
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
             const [successMessage, setSuccessMessage] = useState('');
-            const [selectedExercise, setSelectedExercise] = useState(DAY_1_EXERCISES[0].id);
+            const [day1Exercises, setDay1Exercises] = useState(DEFAULT_DAY_1_EXERCISES);
+            const [day2Exercises, setDay2Exercises] = useState(DEFAULT_DAY_2_EXERCISES);
+            const [selectedExercise, setSelectedExercise] = useState(DEFAULT_DAY_1_EXERCISES[0].id);
             const [celebration, setCelebration] = useState(null);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
@@ -641,10 +643,23 @@
             const currentWeek = getCurrentWeek();
 
             useEffect(() => {
+                // Load workout history
                 const saved = localStorage.getItem('gymWorkoutHistory');
                 if (saved) {
                     const history = JSON.parse(saved);
                     setWorkoutHistory(history);
+                }
+
+                // Load custom exercise configurations
+                const savedExercises = localStorage.getItem('gymExerciseConfig');
+                if (savedExercises) {
+                    const config = JSON.parse(savedExercises);
+                    if (config.day1) {
+                        setDay1Exercises(config.day1.sort((a, b) => a.order - b.order));
+                    }
+                    if (config.day2) {
+                        setDay2Exercises(config.day2.sort((a, b) => a.order - b.order));
+                    }
                 }
 
                 // Check last backup reminder
@@ -703,7 +718,64 @@
             }, [workoutHistory, currentDay]);
 
             const getCurrentExercises = () => {
-                return currentDay === 1 ? DAY_1_EXERCISES : DAY_2_EXERCISES;
+                return currentDay === 1 ? day1Exercises : day2Exercises;
+            };
+
+            const saveExerciseConfig = () => {
+                const config = {
+                    day1: day1Exercises,
+                    day2: day2Exercises
+                };
+                localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+            };
+
+            const updateExerciseName = (day, exerciseId, newName) => {
+                if (day === 1) {
+                    setDay1Exercises(prev => {
+                        const updated = prev.map(ex =>
+                            ex.id === exerciseId ? { ...ex, name: newName } : ex
+                        );
+                        // Save immediately
+                        const config = { day1: updated, day2: day2Exercises };
+                        localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                        return updated;
+                    });
+                } else {
+                    setDay2Exercises(prev => {
+                        const updated = prev.map(ex =>
+                            ex.id === exerciseId ? { ...ex, name: newName } : ex
+                        );
+                        // Save immediately
+                        const config = { day1: day1Exercises, day2: updated };
+                        localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                        return updated;
+                    });
+                }
+            };
+
+            const moveExercise = (day, exerciseId, direction) => {
+                const exercises = day === 1 ? day1Exercises : day2Exercises;
+                const currentIndex = exercises.findIndex(ex => ex.id === exerciseId);
+
+                if (direction === 'up' && currentIndex === 0) return;
+                if (direction === 'down' && currentIndex === exercises.length - 1) return;
+
+                const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+                const reordered = [...exercises];
+                [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
+
+                // Update order values
+                const updated = reordered.map((ex, idx) => ({ ...ex, order: idx }));
+
+                if (day === 1) {
+                    setDay1Exercises(updated);
+                    const config = { day1: updated, day2: day2Exercises };
+                    localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                } else {
+                    setDay2Exercises(updated);
+                    const config = { day1: day1Exercises, day2: updated };
+                    localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                }
             };
 
             const getPreviousWorkout = (exerciseId) => {
@@ -948,7 +1020,15 @@
             };
 
             const exportData = () => {
-                const dataStr = JSON.stringify(workoutHistory, null, 2);
+                const exportObj = {
+                    workoutHistory,
+                    exerciseConfig: {
+                        day1: day1Exercises,
+                        day2: day2Exercises
+                    },
+                    exportDate: new Date().toISOString()
+                };
+                const dataStr = JSON.stringify(exportObj, null, 2);
                 const dataBlob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(dataBlob);
                 const link = document.createElement('a');
@@ -966,8 +1046,29 @@
                 reader.onload = (e) => {
                     try {
                         const imported = JSON.parse(e.target.result);
-                        setWorkoutHistory(imported);
-                        localStorage.setItem('gymWorkoutHistory', JSON.stringify(imported));
+
+                        // Handle old format (just workout history array) or new format (object with configs)
+                        if (Array.isArray(imported)) {
+                            // Old format
+                            setWorkoutHistory(imported);
+                            localStorage.setItem('gymWorkoutHistory', JSON.stringify(imported));
+                        } else {
+                            // New format
+                            if (imported.workoutHistory) {
+                                setWorkoutHistory(imported.workoutHistory);
+                                localStorage.setItem('gymWorkoutHistory', JSON.stringify(imported.workoutHistory));
+                            }
+                            if (imported.exerciseConfig) {
+                                if (imported.exerciseConfig.day1) {
+                                    setDay1Exercises(imported.exerciseConfig.day1.sort((a, b) => a.order - b.order));
+                                }
+                                if (imported.exerciseConfig.day2) {
+                                    setDay2Exercises(imported.exerciseConfig.day2.sort((a, b) => a.order - b.order));
+                                }
+                                localStorage.setItem('gymExerciseConfig', JSON.stringify(imported.exerciseConfig));
+                            }
+                        }
+
                         setSuccessMessage('Data imported successfully!');
                         setShowSuccess(true);
                         setTimeout(() => setShowSuccess(false), 3000);
@@ -980,13 +1081,16 @@
             };
 
             const resetData = () => {
-                if (confirm('ARE YOU VERY SURE? This will delete ALL your workout data permanently. This cannot be undone!')) {
-                    if (confirm('FINAL WARNING: All your progress will be lost forever. Continue?')) {
+                if (confirm('ARE YOU VERY SURE? This will delete ALL your workout data AND exercise customizations permanently. This cannot be undone!')) {
+                    if (confirm('FINAL WARNING: All your progress and custom exercise names/order will be lost forever. Continue?')) {
                         localStorage.removeItem('gymWorkoutHistory');
+                        localStorage.removeItem('gymExerciseConfig');
                         localStorage.removeItem('lastBackupReminder');
                         setWorkoutHistory([]);
                         setWorkoutData({});
                         setLoggedExercises({});
+                        setDay1Exercises(DEFAULT_DAY_1_EXERCISES);
+                        setDay2Exercises(DEFAULT_DAY_2_EXERCISES);
                         setShowSettings(false);
                         setSuccessMessage('All data has been reset');
                         setShowSuccess(true);
@@ -1018,6 +1122,10 @@
                             onExport={exportData}
                             onImport={importData}
                             onReset={resetData}
+                            day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
+                            updateExerciseName={updateExerciseName}
+                            moveExercise={moveExercise}
                         />
                     )}
 
@@ -1078,11 +1186,15 @@
                             viewingWeek={viewingWeek}
                             setViewingWeek={setViewingWeek}
                             currentWeek={currentWeek}
+                            day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
                         />}
                         {currentView === 'progress' && <ProgressView
                             workoutHistory={workoutHistory}
                             selectedExercise={selectedExercise}
                             setSelectedExercise={setSelectedExercise}
+                            day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
                         />}
                     </div>
                 </div>
@@ -1108,13 +1220,169 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, day2Exercises, updateExerciseName, moveExercise }) {
             const fileInputRef = useRef();
+            const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises-day1', 'exercises-day2'
+            const [editingExercise, setEditingExercise] = useState(null);
+            const [tempName, setTempName] = useState('');
+
+            const handleStartEdit = (exercise) => {
+                setEditingExercise(exercise.id);
+                setTempName(exercise.name);
+            };
+
+            const handleSaveEdit = (day, exerciseId) => {
+                if (tempName.trim()) {
+                    updateExerciseName(day, exerciseId, tempName.trim());
+                }
+                setEditingExercise(null);
+                setTempName('');
+            };
+
+            const handleCancelEdit = () => {
+                setEditingExercise(null);
+                setTempName('');
+            };
+
+            if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
+                const day = settingsView === 'exercises-day1' ? 1 : 2;
+                const exercises = day === 1 ? day1Exercises : day2Exercises;
+
+                return (
+                    <div className="modal-overlay" onClick={onClose}>
+                        <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
+                            <div className="modal-title">Day {day} Exercises</div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                {exercises.map((exercise, idx) => (
+                                    <div key={exercise.id} style={{
+                                        background: '#1a1a2a',
+                                        borderRadius: '8px',
+                                        padding: '12px',
+                                        marginBottom: '8px',
+                                        border: '1px solid #2a2a3a'
+                                    }}>
+                                        {editingExercise === exercise.id ? (
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    value={tempName}
+                                                    onChange={(e) => setTempName(e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px',
+                                                        background: '#0d0d1a',
+                                                        border: '1px solid #3a2a5a',
+                                                        borderRadius: '4px',
+                                                        color: '#b8b8d0',
+                                                        marginBottom: '8px'
+                                                    }}
+                                                    autoFocus
+                                                />
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        onClick={() => handleSaveEdit(day, exercise.id)}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '6px',
+                                                            background: '#3a2a5a',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            color: '#b8b8d0',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Save
+                                                    </button>
+                                                    <button
+                                                        onClick={handleCancelEdit}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '6px',
+                                                            background: '#1a1a2a',
+                                                            border: '1px solid #2a2a3a',
+                                                            borderRadius: '4px',
+                                                            color: '#8a8aa0',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ flex: 1, fontWeight: '600' }}>
+                                                    {exercise.name}
+                                                </div>
+                                                <button
+                                                    onClick={() => moveExercise(day, exercise.id, 'up')}
+                                                    disabled={idx === 0}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        background: idx === 0 ? '#0d0d1a' : '#1a1a2a',
+                                                        border: '1px solid #2a2a3a',
+                                                        borderRadius: '4px',
+                                                        color: idx === 0 ? '#555' : '#8a8aa0',
+                                                        cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                                                    }}
+                                                >
+                                                    ↑
+                                                    </button>
+                                                <button
+                                                    onClick={() => moveExercise(day, exercise.id, 'down')}
+                                                    disabled={idx === exercises.length - 1}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        background: idx === exercises.length - 1 ? '#0d0d1a' : '#1a1a2a',
+                                                        border: '1px solid #2a2a3a',
+                                                        borderRadius: '4px',
+                                                        color: idx === exercises.length - 1 ? '#555' : '#8a8aa0',
+                                                        cursor: idx === exercises.length - 1 ? 'not-allowed' : 'pointer'
+                                                    }}
+                                                >
+                                                    ↓
+                                                </button>
+                                                <button
+                                                    onClick={() => handleStartEdit(exercise)}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        background: '#1a1a2a',
+                                                        border: '1px solid #2a2a3a',
+                                                        borderRadius: '4px',
+                                                        color: '#8a8aa0',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    ✏️
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button className="modal-btn" onClick={() => setSettingsView('main')}>
+                                ← Back to Settings
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Settings</div>
+
+                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
+                            ✏️ Manage Day 1 Exercises
+                        </button>
+                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
+                            ✏️ Manage Day 2 Exercises
+                        </button>
+
+                        <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
 
                         <button className="modal-btn" onClick={onExport}>
                             📥 Export Data
@@ -1604,7 +1872,7 @@
             return <div className="pr-glow" />;
         }
 
-        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek }) {
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises }) {
             const weekWorkouts = workoutHistory.filter(w => w.week === viewingWeek);
 
             return (
@@ -1651,7 +1919,7 @@
                                 });
 
                                 // Get all exercises for this day
-                                const allExercises = workout.day === 1 ? DAY_1_EXERCISES : DAY_2_EXERCISES;
+                                const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
                                 // Calculate sequential day number (total workouts completed)
@@ -1693,8 +1961,8 @@
             );
         }
 
-        function ProgressView({ workoutHistory, selectedExercise, setSelectedExercise }) {
-            const allExercises = [...DAY_1_EXERCISES, ...DAY_2_EXERCISES];
+        function ProgressView({ workoutHistory, selectedExercise, setSelectedExercise, day1Exercises, day2Exercises }) {
+            const allExercises = [...day1Exercises, ...day2Exercises];
 
             useEffect(() => {
                 if (workoutHistory.length === 0) return;
@@ -1875,27 +2143,27 @@
                         onChange={(e) => setSelectedExercise(e.target.value)}
                     >
                         <optgroup label="Day 1 - Upper Body">
-                            {DAY_1_EXERCISES.filter(e => e.category === 'Upper').map(ex => (
+                            {day1Exercises.filter(e => e.category === 'Upper').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
                         <optgroup label="Day 1 - Lower Body">
-                            {DAY_1_EXERCISES.filter(e => e.category === 'Lower').map(ex => (
+                            {day1Exercises.filter(e => e.category === 'Lower').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
                         <optgroup label="Day 1 - Cardio">
-                            {DAY_1_EXERCISES.filter(e => e.category === 'Cardio').map(ex => (
+                            {day1Exercises.filter(e => e.category === 'Cardio').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
                         <optgroup label="Day 2 - Accessories">
-                            {DAY_2_EXERCISES.filter(e => e.category === 'Accessories').map(ex => (
+                            {day2Exercises.filter(e => e.category === 'Accessories').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
                         <optgroup label="Day 2 - Cardio">
-                            {DAY_2_EXERCISES.filter(e => e.category === 'Cardio').map(ex => (
+                            {day2Exercises.filter(e => e.category === 'Cardio').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
