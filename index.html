@@ -1362,6 +1362,7 @@
                     parseFloat(data.weight) >= parseFloat(suggestedWeight);
 
                 const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
+                const placeholderReps = isPROpportunity ? '6' : (previous?.reps || '0');
 
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1404,7 +1405,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={previous?.reps || '0'}
+                                    placeholder={placeholderReps}
                                     disabled={isLogged}
                                 />
                             </div>
