@@ -39,9 +39,24 @@
             border-bottom: 1px solid #333;
         }
 
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
         .header h1 {
             font-size: 24px;
-            margin-bottom: 15px;
+        }
+
+        .settings-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
         }
 
         .nav {
@@ -74,6 +89,29 @@
             padding: 20px;
         }
 
+        .day-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .day-btn {
+            flex: 1;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .day-btn.active {
+            background: #0a84ff;
+            border-color: #0a84ff;
+        }
+
         .section-title {
             font-size: 14px;
             color: #888;
@@ -89,6 +127,11 @@
             padding: 16px;
             margin-bottom: 12px;
             border: 1px solid #2a2a2a;
+        }
+
+        .exercise-card.logged {
+            border-color: #34c759;
+            background: rgba(52, 199, 89, 0.05);
         }
 
         .exercise-header {
@@ -111,6 +154,7 @@
         .input-row {
             display: flex;
             gap: 10px;
+            margin-bottom: 10px;
         }
 
         .input-group {
@@ -138,6 +182,31 @@
         .input-field:focus {
             outline: none;
             border-color: #0a84ff;
+        }
+
+        .input-field:disabled {
+            opacity: 0.5;
+        }
+
+        .log-btn {
+            width: 100%;
+            padding: 12px;
+            background: #34c759;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .log-btn:active {
+            transform: scale(0.98);
+        }
+
+        .log-btn.logged {
+            background: #2a2a2a;
+            color: #34c759;
         }
 
         .save-btn {
@@ -353,6 +422,70 @@
                 opacity: 0;
             }
         }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #333;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .modal-btn:active {
+            transform: scale(0.98);
+        }
+
+        .modal-btn.primary {
+            background: #0a84ff;
+            border-color: #0a84ff;
+        }
+
+        .modal-btn.danger {
+            background: #ff3b30;
+            border-color: #ff3b30;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .backup-reminder {
+            background: #ff9500;
+        }
     </style>
 </head>
 <body>
@@ -361,45 +494,94 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const EXERCISES = [
+        const DAY_1_EXERCISES = [
             // Upper
-            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper' },
-            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper' },
-            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper' },
-            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper' },
-            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper' },
-            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper' },
-            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper' },
-            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper' },
-            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper' },
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper' },
-            { id: 'hammer-row', name: 'Hammer Strength Row Machine', category: 'Upper' },
+            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard' },
+            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard' },
+            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper', type: 'standard' },
+            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper', type: 'standard' },
+            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper', type: 'standard' },
+            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper', type: 'standard' },
+            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper', type: 'standard' },
+            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard' },
+            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard' },
+            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard' },
+            { id: 'hammer-row', name: 'Hammer Strength Row Machine', category: 'Upper', type: 'standard' },
             // Lower
-            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower' },
-            { id: 'leg-curls', name: 'Seated Leg Curls', category: 'Lower' },
-            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower' },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower' },
+            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard' },
+            { id: 'leg-curls', name: 'Seated Leg Curls', category: 'Lower', type: 'standard' },
+            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard' },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard' },
+            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike' },
         ];
+
+        const DAY_2_EXERCISES = [
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard' },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard' },
+            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'standard' },
+            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'standard' },
+        ];
+
+        // Calculate which day it should be based on the date
+        // December 14, 2025 is Day 1 (full body)
+        // December 15, 2025 is Day 2 (accessories)
+        // And so on alternating forever
+        function getTodayDay() {
+            const referenceDate = new Date('2025-12-14'); // Day 1
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            referenceDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today - referenceDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            // If diffDays is even (0, 2, 4...), it's Day 1
+            // If diffDays is odd (1, 3, 5...), it's Day 2
+            return (diffDays % 2 === 0) ? 1 : 2;
+        }
 
         function App() {
             const [currentView, setCurrentView] = useState('workout');
+            const [currentDay, setCurrentDay] = useState(getTodayDay());
             const [workoutData, setWorkoutData] = useState({});
+            const [loggedExercises, setLoggedExercises] = useState({});
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
-            const [selectedExercise, setSelectedExercise] = useState(EXERCISES[0].id);
+            const [successMessage, setSuccessMessage] = useState('');
+            const [selectedExercise, setSelectedExercise] = useState(DAY_1_EXERCISES[0].id);
             const [celebration, setCelebration] = useState(null);
+            const [showSettings, setShowSettings] = useState(false);
+            const [showBackupReminder, setShowBackupReminder] = useState(false);
 
             useEffect(() => {
                 const saved = localStorage.getItem('gymWorkoutHistory');
                 if (saved) {
                     setWorkoutHistory(JSON.parse(saved));
                 }
+
+                // Check last backup reminder
+                const lastReminder = localStorage.getItem('lastBackupReminder');
+                const now = new Date().getTime();
+                const oneMonth = 30 * 24 * 60 * 60 * 1000;
+
+                if (!lastReminder || (now - parseInt(lastReminder)) > oneMonth) {
+                    setShowBackupReminder(true);
+                }
             }, []);
+
+            const getCurrentExercises = () => {
+                return currentDay === 1 ? DAY_1_EXERCISES : DAY_2_EXERCISES;
+            };
 
             const getPreviousWorkout = (exerciseId) => {
                 if (workoutHistory.length === 0) return null;
-                const lastWorkout = workoutHistory[0];
-                return lastWorkout.exercises.find(e => e.id === exerciseId);
+
+                // Find most recent workout with this exercise
+                for (let workout of workoutHistory) {
+                    const exercise = workout.exercises.find(e => e.id === exerciseId);
+                    if (exercise) return exercise;
+                }
+                return null;
             };
 
             const handleInputChange = (exerciseId, field, value) => {
@@ -411,29 +593,78 @@
                     }
                 }));
 
-                // Trigger celebration when reps >= 8
-                if (field === 'reps' && parseInt(value) >= 8) {
+                // Trigger celebration for standard exercises when reps >= 8
+                const exercise = getCurrentExercises().find(e => e.id === exerciseId);
+                if (exercise?.type === 'standard' && field === 'reps' && parseInt(value) >= 8) {
                     setCelebration(exerciseId);
                     setTimeout(() => setCelebration(null), 1000);
                 }
+                // Trigger celebration for assault bike when rounds > previous
+                else if (exercise?.type === 'assault-bike' && field === 'rounds') {
+                    const previous = getPreviousWorkout(exerciseId);
+                    if (previous && parseInt(value) > parseInt(previous.rounds || 0)) {
+                        setCelebration(exerciseId);
+                        setTimeout(() => setCelebration(null), 1000);
+                    }
+                }
             };
 
-            const saveWorkout = () => {
-                const exercises = EXERCISES.map(ex => ({
-                    id: ex.id,
-                    name: ex.name,
-                    category: ex.category,
-                    weight: workoutData[ex.id]?.weight || '',
-                    reps: workoutData[ex.id]?.reps || ''
-                })).filter(ex => ex.weight || ex.reps);
+            const logExercise = (exerciseId) => {
+                const exercise = getCurrentExercises().find(e => e.id === exerciseId);
+                const data = workoutData[exerciseId];
+
+                if (!data) return;
+
+                if (exercise.type === 'assault-bike') {
+                    if (!data.rounds) return;
+                } else {
+                    if (!data.weight && !data.reps) return;
+                }
+
+                setLoggedExercises(prev => ({
+                    ...prev,
+                    [exerciseId]: true
+                }));
+
+                setSuccessMessage('Exercise logged!');
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 2000);
+            };
+
+            const completeDay = () => {
+                const exercises = getCurrentExercises().map(ex => {
+                    const data = workoutData[ex.id];
+                    if (!data) return null;
+
+                    if (ex.type === 'assault-bike') {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            intensity: '30/30',
+                            rounds: data.rounds || ''
+                        };
+                    } else {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            weight: data.weight || '',
+                            reps: data.reps || ''
+                        };
+                    }
+                }).filter(ex => ex && (ex.weight || ex.reps || ex.rounds));
 
                 if (exercises.length === 0) {
-                    alert('Please enter at least one exercise');
+                    alert('Please log at least one exercise');
                     return;
                 }
 
                 const newWorkout = {
                     date: new Date().toISOString(),
+                    day: currentDay,
                     exercises
                 };
 
@@ -442,18 +673,75 @@
                 localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
                 setWorkoutData({});
+                setLoggedExercises({});
+                setSuccessMessage('Day completed!');
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 3000);
                 window.scrollTo(0, 0);
             };
 
+            const exportData = () => {
+                const dataStr = JSON.stringify(workoutHistory, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const importData = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        setWorkoutHistory(imported);
+                        localStorage.setItem('gymWorkoutHistory', JSON.stringify(imported));
+                        setSuccessMessage('Data imported successfully!');
+                        setShowSuccess(true);
+                        setTimeout(() => setShowSuccess(false), 3000);
+                        setShowSettings(false);
+                    } catch (error) {
+                        alert('Invalid backup file');
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            const dismissBackupReminder = () => {
+                localStorage.setItem('lastBackupReminder', new Date().getTime().toString());
+                setShowBackupReminder(false);
+            };
+
             return (
                 <div className="app">
-                    {showSuccess && <div className="success-message">Workout Saved!</div>}
+                    {showSuccess && <div className={`success-message ${showBackupReminder ? 'backup-reminder' : ''}`}>{successMessage}</div>}
                     {celebration && <Celebration />}
 
+                    {showBackupReminder && (
+                        <BackupReminderModal
+                            onExport={() => { exportData(); dismissBackupReminder(); }}
+                            onDismiss={dismissBackupReminder}
+                        />
+                    )}
+
+                    {showSettings && (
+                        <SettingsModal
+                            onClose={() => setShowSettings(false)}
+                            onExport={exportData}
+                            onImport={importData}
+                        />
+                    )}
+
                     <div className="header">
-                        <h1>Gym Tracker</h1>
+                        <div className="header-top">
+                            <h1>Gym Tracker</h1>
+                            <button className="settings-btn" onClick={() => setShowSettings(true)}>⚙️</button>
+                        </div>
                         <div className="nav">
                             <button
                                 className={`nav-btn ${currentView === 'workout' ? 'active' : ''}`}
@@ -478,11 +766,16 @@
 
                     <div className="content">
                         {currentView === 'workout' && <WorkoutView
+                            currentDay={currentDay}
+                            setCurrentDay={setCurrentDay}
                             workoutData={workoutData}
+                            loggedExercises={loggedExercises}
                             handleInputChange={handleInputChange}
                             getPreviousWorkout={getPreviousWorkout}
-                            saveWorkout={saveWorkout}
+                            logExercise={logExercise}
+                            completeDay={completeDay}
                             celebration={celebration}
+                            getCurrentExercises={getCurrentExercises}
                         />}
                         {currentView === 'history' && <HistoryView workoutHistory={workoutHistory} />}
                         {currentView === 'progress' && <ProgressView
@@ -495,19 +788,132 @@
             );
         }
 
-        function WorkoutView({ workoutData, handleInputChange, getPreviousWorkout, saveWorkout, celebration }) {
-            const upperExercises = EXERCISES.filter(e => e.category === 'Upper');
-            const lowerExercises = EXERCISES.filter(e => e.category === 'Lower');
+        function BackupReminderModal({ onExport, onDismiss }) {
+            return (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <div className="modal-title">💾 Backup Reminder</div>
+                        <p style={{ color: '#888', marginBottom: '20px', fontSize: '14px' }}>
+                            It's been a month! Back up your workout data to keep it safe.
+                        </p>
+                        <button className="modal-btn primary" onClick={onExport}>
+                            Download Backup
+                        </button>
+                        <button className="modal-btn" onClick={onDismiss}>
+                            Remind Me Later
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function SettingsModal({ onClose, onExport, onImport }) {
+            const fileInputRef = React.useRef();
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-title">Settings</div>
+                        <button className="modal-btn" onClick={onExport}>
+                            📥 Export Data
+                        </button>
+                        <button className="modal-btn" onClick={() => fileInputRef.current.click()}>
+                            📤 Import Data
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".json"
+                            className="file-input"
+                            onChange={onImport}
+                        />
+                        <button className="modal-btn" onClick={onClose}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, celebration, getCurrentExercises }) {
+            const exercises = getCurrentExercises();
+            const upperExercises = exercises.filter(e => e.category === 'Upper');
+            const lowerExercises = exercises.filter(e => e.category === 'Lower');
+            const accessoryExercises = exercises.filter(e => e.category === 'Accessories');
+            const cardioExercises = exercises.filter(e => e.category === 'Cardio');
+            const todayDay = getTodayDay();
 
             const renderExercise = (exercise) => {
                 const previous = getPreviousWorkout(exercise.id);
+                const isLogged = loggedExercises[exercise.id];
+                const data = workoutData[exercise.id] || {};
+
+                if (exercise.type === 'assault-bike') {
+                    const isPROpportunity = previous && previous.rounds;
+                    const suggestedRounds = isPROpportunity ? (parseInt(previous.rounds) + 1).toString() : null;
+                    const isCurrentlyPRAttempt = isPROpportunity && data.rounds &&
+                        parseInt(data.rounds) > parseInt(previous.rounds);
+
+                    return (
+                        <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                            <div className="exercise-header">
+                                <div className="exercise-name">
+                                    {exercise.name}
+                                    {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                                </div>
+                                {previous && (
+                                    <div className="previous-data">
+                                        Last: {previous.rounds} rounds
+                                    </div>
+                                )}
+                            </div>
+                            {isPROpportunity && (
+                                <div className="pr-suggestion">
+                                    Try {suggestedRounds} rounds for a new PR!
+                                </div>
+                            )}
+                            <div className="input-row">
+                                <div className="input-group">
+                                    <label className="input-label">Intensity</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        value="30/30"
+                                        disabled
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label className="input-label">Rounds</label>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
+                                        className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
+                                        value={data.rounds || ''}
+                                        onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
+                                        placeholder={suggestedRounds || previous?.rounds || '0'}
+                                        disabled={isLogged}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                className={`log-btn ${isLogged ? 'logged' : ''}`}
+                                onClick={() => logExercise(exercise.id)}
+                                disabled={isLogged}
+                            >
+                                {isLogged ? '✓ Logged' : 'LOG'}
+                            </button>
+                        </div>
+                    );
+                }
+
+                // Standard exercise
                 const isPROpportunity = previous && parseInt(previous.reps) >= 8;
                 const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
-                const isCurrentlyPRAttempt = isPROpportunity && workoutData[exercise.id]?.weight &&
-                    parseFloat(workoutData[exercise.id].weight) >= parseFloat(suggestedWeight);
+                const isCurrentlyPRAttempt = isPROpportunity && data.weight &&
+                    parseFloat(data.weight) >= parseFloat(suggestedWeight);
 
                 return (
-                    <div key={exercise.id} className="exercise-card">
+                    <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                         <div className="exercise-header">
                             <div className="exercise-name">
                                 {exercise.name}
@@ -531,9 +937,10 @@
                                     type="number"
                                     inputMode="decimal"
                                     className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
-                                    value={workoutData[exercise.id]?.weight || ''}
+                                    value={data.weight || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
                                     placeholder={suggestedWeight || previous?.weight || '0'}
+                                    disabled={isLogged}
                                 />
                             </div>
                             <div className="input-group">
@@ -542,26 +949,64 @@
                                     type="number"
                                     inputMode="numeric"
                                     className="input-field"
-                                    value={workoutData[exercise.id]?.reps || ''}
+                                    value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
                                     placeholder={previous?.reps || '0'}
+                                    disabled={isLogged}
                                 />
                             </div>
                         </div>
+                        <button
+                            className={`log-btn ${isLogged ? 'logged' : ''}`}
+                            onClick={() => logExercise(exercise.id)}
+                            disabled={isLogged}
+                        >
+                            {isLogged ? '✓ Logged' : 'LOG'}
+                        </button>
                     </div>
                 );
             };
 
             return (
                 <>
-                    <div className="section-title">Upper Body</div>
-                    {upperExercises.map(renderExercise)}
+                    <div className="day-selector">
+                        <button
+                            className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
+                            onClick={() => setCurrentDay(1)}
+                        >
+                            Day 1{todayDay === 1 ? ' (Today)' : ''}
+                        </button>
+                        <button
+                            className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
+                            onClick={() => setCurrentDay(2)}
+                        >
+                            Day 2{todayDay === 2 ? ' (Today)' : ''}
+                        </button>
+                    </div>
 
-                    <div className="section-title">Lower Body</div>
-                    {lowerExercises.map(renderExercise)}
+                    {currentDay === 1 ? (
+                        <>
+                            <div className="section-title">Upper Body</div>
+                            {upperExercises.map(renderExercise)}
 
-                    <button className="save-btn" onClick={saveWorkout}>
-                        Save Workout
+                            <div className="section-title">Lower Body</div>
+                            {lowerExercises.map(renderExercise)}
+
+                            <div className="section-title">Cardio</div>
+                            {cardioExercises.map(renderExercise)}
+                        </>
+                    ) : (
+                        <>
+                            <div className="section-title">Accessories</div>
+                            {accessoryExercises.map(renderExercise)}
+
+                            <div className="section-title">Cardio</div>
+                            {cardioExercises.map(renderExercise)}
+                        </>
+                    )}
+
+                    <button className="save-btn" onClick={completeDay}>
+                        Complete Day
                     </button>
                 </>
             );
@@ -620,7 +1065,7 @@
                         return (
                             <div key={idx} className="history-item">
                                 <div className="history-date">
-                                    {formattedDate}
+                                    Day {workout.day} - {formattedDate}
                                     <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
                                         {formattedTime}
                                     </div>
@@ -629,7 +1074,10 @@
                                     <div key={exIdx} className="history-exercise">
                                         <div className="history-exercise-name">{exercise.name}</div>
                                         <div className="history-exercise-data">
-                                            {exercise.weight}lbs × {exercise.reps}
+                                            {exercise.type === 'assault-bike'
+                                                ? `${exercise.rounds} rounds`
+                                                : `${exercise.weight}lbs × ${exercise.reps}`
+                                            }
                                         </div>
                                     </div>
                                 ))}
@@ -641,12 +1089,15 @@
         }
 
         function ProgressView({ workoutHistory, selectedExercise, setSelectedExercise }) {
+            const allExercises = [...DAY_1_EXERCISES, ...DAY_2_EXERCISES];
+
             useEffect(() => {
                 if (workoutHistory.length === 0) return;
 
                 const ctx = document.getElementById('progressChart');
                 if (!ctx) return;
 
+                const exercise = allExercises.find(e => e.id === selectedExercise);
                 const exerciseData = workoutHistory
                     .map(w => ({
                         date: new Date(w.date),
@@ -654,6 +1105,42 @@
                     }))
                     .filter(d => d.exercise)
                     .reverse();
+
+                if (exercise?.type === 'assault-bike') {
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: exerciseData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                            datasets: [
+                                {
+                                    label: 'Rounds',
+                                    data: exerciseData.map(d => parseInt(d.exercise.rounds) || 0),
+                                    borderColor: '#0a84ff',
+                                    backgroundColor: 'rgba(10, 132, 255, 0.1)',
+                                    tension: 0.3
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: { labels: { color: '#fff' } }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { color: '#888' },
+                                    grid: { color: '#2a2a2a' }
+                                },
+                                y: {
+                                    ticks: { color: '#888' },
+                                    grid: { color: '#2a2a2a' }
+                                }
+                            }
+                        }
+                    });
+                    return () => chart.destroy();
+                }
 
                 const chart = new Chart(ctx, {
                     type: 'line',
@@ -742,20 +1229,35 @@
                         value={selectedExercise}
                         onChange={(e) => setSelectedExercise(e.target.value)}
                     >
-                        <optgroup label="Upper Body">
-                            {EXERCISES.filter(e => e.category === 'Upper').map(ex => (
+                        <optgroup label="Day 1 - Upper Body">
+                            {DAY_1_EXERCISES.filter(e => e.category === 'Upper').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
-                        <optgroup label="Lower Body">
-                            {EXERCISES.filter(e => e.category === 'Lower').map(ex => (
+                        <optgroup label="Day 1 - Lower Body">
+                            {DAY_1_EXERCISES.filter(e => e.category === 'Lower').map(ex => (
+                                <option key={ex.id} value={ex.id}>{ex.name}</option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Day 1 - Cardio">
+                            {DAY_1_EXERCISES.filter(e => e.category === 'Cardio').map(ex => (
+                                <option key={ex.id} value={ex.id}>{ex.name}</option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Day 2 - Accessories">
+                            {DAY_2_EXERCISES.filter(e => e.category === 'Accessories').map(ex => (
+                                <option key={ex.id} value={ex.id}>{ex.name}</option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Day 2 - Cardio">
+                            {DAY_2_EXERCISES.filter(e => e.category === 'Cardio').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
                     </select>
                     <div className="chart-container">
                         <div className="chart-title">
-                            {EXERCISES.find(e => e.id === selectedExercise)?.name}
+                            {allExercises.find(e => e.id === selectedExercise)?.name}
                         </div>
                         <canvas id="progressChart"></canvas>
                     </div>
