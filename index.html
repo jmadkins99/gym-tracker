@@ -260,6 +260,99 @@
         canvas {
             max-height: 250px;
         }
+
+        .celebration-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 9999;
+            overflow: hidden;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #FFD700;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .pr-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .pr-suggestion {
+            font-size: 11px;
+            color: #FFD700;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .input-field.pr-attempt {
+            border: 2px solid #FFD700;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
+        }
+
+        .trophy-celebration {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            z-index: 10000;
+            animation: trophy-bounce 1s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes trophy-bounce {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
+                opacity: 1;
+            }
+            70% {
+                transform: translate(-50%, -50%) scale(0.9) rotate(-10deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0) rotate(0deg);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -294,6 +387,7 @@
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
             const [selectedExercise, setSelectedExercise] = useState(EXERCISES[0].id);
+            const [celebration, setCelebration] = useState(null);
 
             useEffect(() => {
                 const saved = localStorage.getItem('gymWorkoutHistory');
@@ -316,6 +410,12 @@
                         [field]: value
                     }
                 }));
+
+                // Trigger celebration when reps >= 8
+                if (field === 'reps' && parseInt(value) >= 8) {
+                    setCelebration(exerciseId);
+                    setTimeout(() => setCelebration(null), 1000);
+                }
             };
 
             const saveWorkout = () => {
@@ -350,6 +450,7 @@
             return (
                 <div className="app">
                     {showSuccess && <div className="success-message">Workout Saved!</div>}
+                    {celebration && <Celebration />}
 
                     <div className="header">
                         <h1>Gym Tracker</h1>
@@ -381,6 +482,7 @@
                             handleInputChange={handleInputChange}
                             getPreviousWorkout={getPreviousWorkout}
                             saveWorkout={saveWorkout}
+                            celebration={celebration}
                         />}
                         {currentView === 'history' && <HistoryView workoutHistory={workoutHistory} />}
                         {currentView === 'progress' && <ProgressView
@@ -393,97 +495,99 @@
             );
         }
 
-        function WorkoutView({ workoutData, handleInputChange, getPreviousWorkout, saveWorkout }) {
+        function WorkoutView({ workoutData, handleInputChange, getPreviousWorkout, saveWorkout, celebration }) {
             const upperExercises = EXERCISES.filter(e => e.category === 'Upper');
             const lowerExercises = EXERCISES.filter(e => e.category === 'Lower');
+
+            const renderExercise = (exercise) => {
+                const previous = getPreviousWorkout(exercise.id);
+                const isPROpportunity = previous && parseInt(previous.reps) >= 8;
+                const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
+                const isCurrentlyPRAttempt = isPROpportunity && workoutData[exercise.id]?.weight &&
+                    parseFloat(workoutData[exercise.id].weight) >= parseFloat(suggestedWeight);
+
+                return (
+                    <div key={exercise.id} className="exercise-card">
+                        <div className="exercise-header">
+                            <div className="exercise-name">
+                                {exercise.name}
+                                {isPROpportunity && <span className="pr-badge">PR READY</span>}
+                            </div>
+                            {previous && (
+                                <div className="previous-data">
+                                    Last: {previous.weight}lbs × {previous.reps}
+                                </div>
+                            )}
+                        </div>
+                        {isPROpportunity && (
+                            <div className="pr-suggestion">
+                                Try {suggestedWeight}lbs for a new PR!
+                            </div>
+                        )}
+                        <div className="input-row">
+                            <div className="input-group">
+                                <label className="input-label">Weight (lbs)</label>
+                                <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
+                                    value={workoutData[exercise.id]?.weight || ''}
+                                    onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
+                                    placeholder={suggestedWeight || previous?.weight || '0'}
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label className="input-label">Reps</label>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    className="input-field"
+                                    value={workoutData[exercise.id]?.reps || ''}
+                                    onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
+                                    placeholder={previous?.reps || '0'}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
 
             return (
                 <>
                     <div className="section-title">Upper Body</div>
-                    {upperExercises.map(exercise => {
-                        const previous = getPreviousWorkout(exercise.id);
-                        return (
-                            <div key={exercise.id} className="exercise-card">
-                                <div className="exercise-header">
-                                    <div className="exercise-name">{exercise.name}</div>
-                                    {previous && (
-                                        <div className="previous-data">
-                                            Last: {previous.weight}lbs × {previous.reps}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="input-row">
-                                    <div className="input-group">
-                                        <label className="input-label">Weight (lbs)</label>
-                                        <input
-                                            type="number"
-                                            inputMode="decimal"
-                                            className="input-field"
-                                            value={workoutData[exercise.id]?.weight || ''}
-                                            onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
-                                            placeholder={previous?.weight || '0'}
-                                        />
-                                    </div>
-                                    <div className="input-group">
-                                        <label className="input-label">Reps</label>
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            className="input-field"
-                                            value={workoutData[exercise.id]?.reps || ''}
-                                            onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                            placeholder={previous?.reps || '0'}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {upperExercises.map(renderExercise)}
 
                     <div className="section-title">Lower Body</div>
-                    {lowerExercises.map(exercise => {
-                        const previous = getPreviousWorkout(exercise.id);
-                        return (
-                            <div key={exercise.id} className="exercise-card">
-                                <div className="exercise-header">
-                                    <div className="exercise-name">{exercise.name}</div>
-                                    {previous && (
-                                        <div className="previous-data">
-                                            Last: {previous.weight}lbs × {previous.reps}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="input-row">
-                                    <div className="input-group">
-                                        <label className="input-label">Weight (lbs)</label>
-                                        <input
-                                            type="number"
-                                            inputMode="decimal"
-                                            className="input-field"
-                                            value={workoutData[exercise.id]?.weight || ''}
-                                            onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
-                                            placeholder={previous?.weight || '0'}
-                                        />
-                                    </div>
-                                    <div className="input-group">
-                                        <label className="input-label">Reps</label>
-                                        <input
-                                            type="number"
-                                            inputMode="numeric"
-                                            className="input-field"
-                                            value={workoutData[exercise.id]?.reps || ''}
-                                            onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                            placeholder={previous?.reps || '0'}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {lowerExercises.map(renderExercise)}
 
                     <button className="save-btn" onClick={saveWorkout}>
                         Save Workout
                     </button>
+                </>
+            );
+        }
+
+        function Celebration() {
+            const colors = ['#FFD700', '#FFA500', '#FF6347', '#32CD32', '#1E90FF', '#FF1493'];
+
+            return (
+                <>
+                    <div className="trophy-celebration">🏆</div>
+                    <div className="celebration-overlay">
+                        {[...Array(50)].map((_, i) => (
+                            <div
+                                key={i}
+                                className="confetti"
+                                style={{
+                                    left: `${Math.random() * 100}%`,
+                                    background: colors[Math.floor(Math.random() * colors.length)],
+                                    animationDelay: `${Math.random() * 0.5}s`,
+                                    width: `${Math.random() * 10 + 5}px`,
+                                    height: `${Math.random() * 10 + 5}px`,
+                                }}
+                            />
+                        ))}
+                    </div>
                 </>
             );
         }
