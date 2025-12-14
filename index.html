@@ -19,8 +19,8 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #000;
-            color: #fff;
+            background: #0a0a1a;
+            color: #e0e0ff;
             padding-bottom: 80px;
             -webkit-font-smoothing: antialiased;
         }
@@ -31,12 +31,13 @@
         }
 
         .header {
-            background: #1a1a1a;
+            background: #1a1a2e;
             padding: 20px;
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid #333;
+            border-bottom: 2px solid #7b2cbf;
+            box-shadow: 0 4px 20px rgba(123, 44, 191, 0.3);
         }
 
         .header-top {
@@ -52,17 +53,19 @@
 
         .week-indicator {
             font-size: 14px;
-            color: #888;
+            color: #9d4edd;
             margin-bottom: 15px;
+            text-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
         }
 
         .settings-btn {
             background: none;
             border: none;
-            color: #fff;
+            color: #9d4edd;
             font-size: 24px;
             cursor: pointer;
             padding: 4px;
+            text-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
         }
 
         .nav {
@@ -73,18 +76,20 @@
         .nav-btn {
             flex: 1;
             padding: 12px;
-            background: #2a2a2a;
-            border: none;
-            color: #fff;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
+            color: #c4c4ff;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.3s;
         }
 
         .nav-btn.active {
-            background: #0a84ff;
+            background: linear-gradient(135deg, #7b2cbf, #3a86ff);
+            border-color: #9d4edd;
+            box-shadow: 0 0 20px rgba(123, 44, 191, 0.5);
         }
 
         .nav-btn:active {
@@ -104,40 +109,45 @@
         .day-btn {
             flex: 1;
             padding: 12px;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            color: #fff;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
+            color: #c4c4ff;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s;
         }
 
         .day-btn.active {
-            background: #0a84ff;
-            border-color: #0a84ff;
+            background: linear-gradient(135deg, #7b2cbf, #3a86ff);
+            border-color: #9d4edd;
+            box-shadow: 0 0 20px rgba(123, 44, 191, 0.5);
         }
 
         .section-title {
             font-size: 14px;
-            color: #888;
+            color: #9d4edd;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin: 20px 0 10px 0;
             font-weight: 600;
+            text-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
         }
 
         .exercise-card {
-            background: #1a1a1a;
+            background: #1a1a2e;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 12px;
-            border: 1px solid #2a2a2a;
+            border: 1px solid #2a2a4a;
+            box-shadow: 0 2px 10px rgba(123, 44, 191, 0.1);
         }
 
         .exercise-card.logged {
-            border-color: #248a3d;
-            background: rgba(36, 138, 61, 0.05);
+            border-color: #3a86ff;
+            background: rgba(58, 134, 255, 0.1);
+            box-shadow: 0 0 20px rgba(58, 134, 255, 0.3);
         }
 
         .exercise-header {
@@ -183,17 +193,19 @@
         .input-field {
             width: 100%;
             padding: 12px;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
             border-radius: 8px;
-            color: #fff;
+            color: #e0e0ff;
             font-size: 16px;
             -webkit-appearance: none;
+            transition: all 0.3s;
         }
 
         .input-field:focus {
             outline: none;
-            border-color: #0a84ff;
+            border-color: #7b2cbf;
+            box-shadow: 0 0 15px rgba(123, 44, 191, 0.4);
         }
 
         .input-field:disabled {
@@ -203,13 +215,15 @@
         .log-btn {
             width: 100%;
             padding: 12px;
-            background: #248a3d;
+            background: linear-gradient(135deg, #7b2cbf, #9d4edd);
             border: none;
             border-radius: 8px;
             color: #fff;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
+            box-shadow: 0 4px 15px rgba(123, 44, 191, 0.3);
+            transition: all 0.3s;
         }
 
         .log-btn:active {
@@ -217,14 +231,15 @@
         }
 
         .log-btn.logged {
-            background: #2a2a2a;
-            color: #248a3d;
+            background: #2a2a4a;
+            color: #3a86ff;
+            box-shadow: 0 0 15px rgba(58, 134, 255, 0.3);
         }
 
         .save-btn {
             width: 100%;
             padding: 16px;
-            background: #0a84ff;
+            background: linear-gradient(135deg, #3a86ff, #4361ee);
             border: none;
             border-radius: 12px;
             color: #fff;
@@ -232,6 +247,8 @@
             font-weight: 600;
             cursor: pointer;
             margin-top: 20px;
+            box-shadow: 0 4px 20px rgba(58, 134, 255, 0.4);
+            transition: all 0.3s;
         }
 
         .save-btn:active {
@@ -239,8 +256,9 @@
         }
 
         .save-btn:disabled {
-            background: #2a2a2a;
+            background: #2a2a4a;
             color: #666;
+            box-shadow: none;
         }
 
         .week-nav {
@@ -252,13 +270,14 @@
 
         .week-nav-btn {
             padding: 8px 16px;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            color: #fff;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
+            color: #c4c4ff;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s;
         }
 
         .week-nav-btn:disabled {
@@ -274,11 +293,12 @@
         }
 
         .history-item {
-            background: #1a1a1a;
+            background: #1a1a2e;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 12px;
-            border: 1px solid #2a2a2a;
+            border: 1px solid #2a2a4a;
+            box-shadow: 0 2px 10px rgba(123, 44, 191, 0.1);
         }
 
         .history-date {
@@ -291,7 +311,7 @@
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
-            border-bottom: 1px solid #2a2a2a;
+            border-bottom: 1px solid #2a2a4a;
             font-size: 14px;
         }
 
@@ -300,7 +320,7 @@
         }
 
         .history-exercise-name {
-            color: #888;
+            color: #9d4edd;
         }
 
         .history-exercise-data {
@@ -308,11 +328,12 @@
         }
 
         .chart-container {
-            background: #1a1a1a;
+            background: #1a1a2e;
             border-radius: 12px;
             padding: 16px;
             margin-bottom: 20px;
-            border: 1px solid #2a2a2a;
+            border: 1px solid #2a2a4a;
+            box-shadow: 0 2px 10px rgba(123, 44, 191, 0.1);
         }
 
         .chart-title {
@@ -337,13 +358,14 @@
             top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: #248a3d;
+            background: linear-gradient(135deg, #7b2cbf, #9d4edd);
             color: #fff;
             padding: 12px 24px;
             border-radius: 8px;
             font-weight: 600;
             z-index: 1000;
             animation: slideDown 0.3s ease;
+            box-shadow: 0 4px 20px rgba(123, 44, 191, 0.5);
         }
 
         @keyframes slideDown {
@@ -360,12 +382,17 @@
         .exercise-select {
             width: 100%;
             padding: 12px;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
             border-radius: 8px;
-            color: #fff;
+            color: #e0e0ff;
             font-size: 16px;
             margin-bottom: 20px;
+        }
+
+        .exercise-select option {
+            background: #1a1a2e;
+            color: #e0e0ff;
         }
 
         canvas {
@@ -437,21 +464,23 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(10, 10, 26, 0.9);
             z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            backdrop-filter: blur(10px);
         }
 
         .modal {
-            background: #1a1a1a;
+            background: #1a1a2e;
             border-radius: 12px;
             padding: 24px;
             max-width: 400px;
             width: 100%;
-            border: 1px solid #333;
+            border: 2px solid #7b2cbf;
+            box-shadow: 0 10px 40px rgba(123, 44, 191, 0.5);
         }
 
         .modal-title {
@@ -463,14 +492,15 @@
         .modal-btn {
             width: 100%;
             padding: 12px;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            color: #fff;
+            background: #2a2a4a;
+            border: 1px solid #3a3a5a;
+            color: #c4c4ff;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             margin-bottom: 10px;
+            transition: all 0.3s;
         }
 
         .modal-btn:active {
@@ -478,13 +508,17 @@
         }
 
         .modal-btn.primary {
-            background: #0a84ff;
-            border-color: #0a84ff;
+            background: linear-gradient(135deg, #3a86ff, #4361ee);
+            border-color: #3a86ff;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(58, 134, 255, 0.3);
         }
 
         .modal-btn.danger {
-            background: #ff3b30;
+            background: linear-gradient(135deg, #ff3b30, #e63946);
             border-color: #ff3b30;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
         }
 
         .file-input {
@@ -1457,12 +1491,12 @@
                         </div>
                         <div className="input-row">
                             <div className="input-group">
-                                <label className="input-label">Weight (lbs)</label>
                                 {isPROpportunity && (
-                                    <div className="pr-suggestion" style={{ marginTop: '4px' }}>
+                                    <div className="pr-suggestion" style={{ marginBottom: '4px' }}>
                                         +1.25 lbs
                                     </div>
                                 )}
+                                <label className="input-label">Weight (lbs)</label>
                                 <input
                                     type="number"
                                     inputMode="decimal"
@@ -1474,12 +1508,12 @@
                                 />
                             </div>
                             <div className="input-group">
-                                <label className="input-label">Reps</label>
                                 {isRepPROpportunity && !isPROpportunity && (
-                                    <div className="pr-suggestion" style={{ marginTop: '4px' }}>
+                                    <div className="pr-suggestion" style={{ marginBottom: '4px' }}>
                                         +1 Rep
                                     </div>
                                 )}
+                                <label className="input-label">Reps</label>
                                 <input
                                     type="number"
                                     inputMode="numeric"
@@ -1601,10 +1635,14 @@
                                 const allExercises = workout.day === 1 ? DAY_1_EXERCISES : DAY_2_EXERCISES;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
+                                // Calculate sequential day number (total workouts completed)
+                                const workoutIndex = workoutHistory.indexOf(workout);
+                                const dayNumber = workoutHistory.length - workoutIndex;
+
                                 return (
                                     <div key={idx} className="history-item">
                                         <div className="history-date">
-                                            Day {workout.day} - {formattedDate}
+                                            Day {dayNumber} - {formattedDate}
                                         </div>
                                         {allExercises.map((expectedExercise) => {
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
