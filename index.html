@@ -636,6 +636,7 @@
             const [celebration, setCelebration] = useState(null);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
+            const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [viewingWeek, setViewingWeek] = useState(getCurrentWeek());
             const currentWeek = getCurrentWeek();
 
@@ -644,37 +645,6 @@
                 if (saved) {
                     const history = JSON.parse(saved);
                     setWorkoutHistory(history);
-                } else {
-                    // Hardcode retroactive workout from Dec 12, 2025 (Friday) - ended at 7:34 AM MST
-                    const retroactiveWorkout = {
-                        date: '2025-12-12T14:34:00.000Z', // 7:34 AM MST = 14:34 UTC
-                        day: 1,
-                        week: getWeekNumber(new Date('2025-12-12')),
-                        exercises: [
-                            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', weight: '162.5', reps: '8' },
-                            { id: 'incline-chest-press', name: 'Incline Chest Press Machine', category: 'Upper', type: 'standard', weight: '110', reps: '6' },
-                            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard', weight: '131.25', reps: '9' },
-                            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper', type: 'standard', weight: '126.25', reps: '7' },
-                            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper', type: 'standard', weight: '55', reps: '8' },
-                            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper', type: 'standard', weight: '36.25', reps: '7' },
-                            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper', type: 'standard', weight: '26.25', reps: '8' },
-                            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper', type: 'standard', weight: '26.25', reps: '8' },
-                            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard', weight: '190', reps: '7' },
-                            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard', weight: '190', reps: '7' },
-                            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard', weight: '175', reps: '8' },
-                            { id: 'hammer-row', name: 'Hammer Strength Row Machine', category: 'Upper', type: 'standard', weight: '115', reps: '8' },
-                            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', weight: '240', reps: '7' },
-                            { id: 'leg-curls', name: 'Seated Leg Curls', category: 'Lower', type: 'standard', weight: '150', reps: '7' },
-                            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', weight: '115', reps: '8' },
-                            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', weight: '180', reps: '6' },
-                            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', weight: '82.5', reps: '10' },
-                            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', weight: '135', reps: '8' },
-                            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', weight: 'Body Weight', reps: '8' },
-                            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', level: 'Level 7', time: '12:30' }
-                        ]
-                    };
-                    setWorkoutHistory([retroactiveWorkout]);
-                    localStorage.setItem('gymWorkoutHistory', JSON.stringify([retroactiveWorkout]));
                 }
 
                 // Check last backup reminder
@@ -686,6 +656,51 @@
                     setShowBackupReminder(true);
                 }
             }, []);
+
+            // Restore logged state and workout data from today's workout
+            useEffect(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const todayWorkout = workoutHistory.find(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    const isSameDay = workoutDate.getTime() === today.getTime();
+                    const isSameWorkoutDay = w.day === currentDay;
+                    return isSameDay && isSameWorkoutDay;
+                });
+
+                if (todayWorkout) {
+                    const newLoggedExercises = {};
+                    const newWorkoutData = {};
+
+                    todayWorkout.exercises.forEach(exercise => {
+                        if (exercise.weight || exercise.reps || exercise.rounds || exercise.time) {
+                            newLoggedExercises[exercise.id] = true;
+
+                            if (exercise.type === 'assault-bike') {
+                                newWorkoutData[exercise.id] = { rounds: exercise.rounds };
+                            } else if (exercise.type === 'stairmaster') {
+                                newWorkoutData[exercise.id] = { time: exercise.time };
+                            } else if (exercise.type === 'bodyweight') {
+                                newWorkoutData[exercise.id] = { reps: exercise.reps };
+                            } else {
+                                newWorkoutData[exercise.id] = {
+                                    weight: exercise.weight,
+                                    reps: exercise.reps
+                                };
+                            }
+                        }
+                    });
+
+                    setLoggedExercises(newLoggedExercises);
+                    setWorkoutData(newWorkoutData);
+                } else {
+                    // Clear logged state if switching to a day with no workout
+                    setLoggedExercises({});
+                    setWorkoutData({});
+                }
+            }, [workoutHistory, currentDay]);
 
             const getCurrentExercises = () => {
                 return currentDay === 1 ? DAY_1_EXERCISES : DAY_2_EXERCISES;
@@ -745,66 +760,157 @@
 
                 if (!data) return;
 
-                if (exercise.type === 'assault-bike') {
-                    if (!data.rounds) return;
-                    // Set timestamp for this exercise
-                    setWorkoutData(prev => ({
-                        ...prev,
-                        [exerciseId]: {
-                            ...prev[exerciseId],
-                            timestamp: new Date().toISOString()
-                        }
-                    }));
-                } else if (exercise.type === 'stairmaster') {
-                    if (!data.time) return;
-                    // Set timestamp for this exercise
-                    setWorkoutData(prev => ({
-                        ...prev,
-                        [exerciseId]: {
-                            ...prev[exerciseId],
-                            timestamp: new Date().toISOString()
-                        }
-                    }));
-                } else if (exercise.type === 'bodyweight') {
-                    if (!data.reps) return;
-                    // Set timestamp for this exercise
-                    setWorkoutData(prev => ({
-                        ...prev,
-                        [exerciseId]: {
-                            ...prev[exerciseId],
-                            timestamp: new Date().toISOString()
-                        }
-                    }));
-                } else {
-                    // Auto-fill weight if blank
-                    if (!data.weight && data.reps) {
-                        const previous = getPreviousWorkout(exerciseId);
-                        const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exerciseId] : null;
-                        const isPROpportunity = previous && parseInt(previous.reps) >= 8;
-                        const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
-                        const autoWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
+                // Validate data based on exercise type
+                if (exercise.type === 'assault-bike' && !data.rounds) return;
+                if (exercise.type === 'stairmaster' && !data.time) return;
+                if (exercise.type === 'bodyweight' && !data.reps) return;
+                if (exercise.type === 'standard' && !data.weight && !data.reps) return;
 
-                        // Update workoutData with auto-filled weight
-                        setWorkoutData(prev => ({
-                            ...prev,
-                            [exerciseId]: {
-                                ...prev[exerciseId],
-                                weight: autoWeight,
-                                timestamp: new Date().toISOString()
-                            }
-                        }));
-                    } else {
-                        // Set timestamp for this exercise
-                        setWorkoutData(prev => ({
-                            ...prev,
-                            [exerciseId]: {
-                                ...prev[exerciseId],
-                                timestamp: new Date().toISOString()
-                            }
-                        }));
-                    }
-                    if (!data.weight && !data.reps) return;
+                // Auto-fill weight for standard exercises if blank
+                let finalData = { ...data };
+                if (exercise.type === 'standard' && !data.weight && data.reps) {
+                    const previous = getPreviousWorkout(exerciseId);
+                    const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exerciseId] : null;
+                    const isPROpportunity = previous && parseInt(previous.reps) >= 8;
+                    const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
+                    finalData.weight = suggestedWeight || previous?.weight || defaultWeight || '0';
                 }
+
+                const timestamp = new Date().toISOString();
+                finalData.timestamp = timestamp;
+
+                // Update workoutData with final data
+                setWorkoutData(prev => ({
+                    ...prev,
+                    [exerciseId]: finalData
+                }));
+
+                // Find if there's already a workout for today
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayWeek = getWeekNumber(today);
+
+                let existingWorkoutIndex = workoutHistory.findIndex(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    const isSameDay = workoutDate.getTime() === today.getTime();
+                    const isSameWorkoutDay = w.day === currentDay;
+                    return isSameDay && isSameWorkoutDay;
+                });
+
+                // Create exercise object to save
+                let exerciseToSave;
+                if (exercise.type === 'assault-bike') {
+                    exerciseToSave = {
+                        id: exercise.id,
+                        name: exercise.name,
+                        category: exercise.category,
+                        type: exercise.type,
+                        intensity: '30/30',
+                        rounds: finalData.rounds || ''
+                    };
+                } else if (exercise.type === 'stairmaster') {
+                    exerciseToSave = {
+                        id: exercise.id,
+                        name: exercise.name,
+                        category: exercise.category,
+                        type: exercise.type,
+                        level: 'Level 7',
+                        time: finalData.time || ''
+                    };
+                } else if (exercise.type === 'bodyweight') {
+                    exerciseToSave = {
+                        id: exercise.id,
+                        name: exercise.name,
+                        category: exercise.category,
+                        type: exercise.type,
+                        weight: 'Body Weight',
+                        reps: finalData.reps || ''
+                    };
+                } else {
+                    exerciseToSave = {
+                        id: exercise.id,
+                        name: exercise.name,
+                        category: exercise.category,
+                        type: exercise.type,
+                        weight: finalData.weight || '',
+                        reps: finalData.reps || ''
+                    };
+                }
+
+                let updatedHistory;
+                if (existingWorkoutIndex !== -1) {
+                    // Update existing workout
+                    updatedHistory = [...workoutHistory];
+                    const workout = updatedHistory[existingWorkoutIndex];
+                    const exerciseIndex = workout.exercises.findIndex(e => e.id === exerciseId);
+
+                    if (exerciseIndex !== -1) {
+                        workout.exercises[exerciseIndex] = exerciseToSave;
+                    } else {
+                        workout.exercises.push(exerciseToSave);
+                    }
+
+                    workout.date = timestamp; // Update to latest timestamp
+                } else {
+                    // Create new workout with all exercises initialized to NA
+                    const allExercises = getCurrentExercises().map(ex => {
+                        if (ex.id === exerciseId) {
+                            return exerciseToSave;
+                        } else {
+                            // Initialize as NA
+                            if (ex.type === 'assault-bike') {
+                                return {
+                                    id: ex.id,
+                                    name: ex.name,
+                                    category: ex.category,
+                                    type: ex.type,
+                                    intensity: '30/30',
+                                    rounds: ''
+                                };
+                            } else if (ex.type === 'stairmaster') {
+                                return {
+                                    id: ex.id,
+                                    name: ex.name,
+                                    category: ex.category,
+                                    type: ex.type,
+                                    level: 'Level 7',
+                                    time: ''
+                                };
+                            } else if (ex.type === 'bodyweight') {
+                                return {
+                                    id: ex.id,
+                                    name: ex.name,
+                                    category: ex.category,
+                                    type: ex.type,
+                                    weight: 'Body Weight',
+                                    reps: ''
+                                };
+                            } else {
+                                return {
+                                    id: ex.id,
+                                    name: ex.name,
+                                    category: ex.category,
+                                    type: ex.type,
+                                    weight: '',
+                                    reps: ''
+                                };
+                            }
+                        }
+                    });
+
+                    const newWorkout = {
+                        date: timestamp,
+                        day: currentDay,
+                        week: todayWeek,
+                        exercises: allExercises
+                    };
+
+                    updatedHistory = [newWorkout, ...workoutHistory];
+                }
+
+                setWorkoutHistory(updatedHistory);
+                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
                 setLoggedExercises(prev => ({
                     ...prev,
@@ -817,89 +923,24 @@
             };
 
             const completeDay = () => {
-                const exercises = getCurrentExercises().map(ex => {
-                    const data = workoutData[ex.id];
-                    if (!data) return null;
+                // Find today's workout
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
 
-                    if (ex.type === 'assault-bike') {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            intensity: '30/30',
-                            rounds: data.rounds || ''
-                        };
-                    } else if (ex.type === 'stairmaster') {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            level: 'Level 7',
-                            time: data.time || ''
-                        };
-                    } else if (ex.type === 'bodyweight') {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            weight: 'Body Weight',
-                            reps: data.reps || ''
-                        };
-                    } else {
-                        // Auto-fill weight if blank but reps are provided
-                        let finalWeight = data.weight;
-                        if (!finalWeight && data.reps) {
-                            const previous = getPreviousWorkout(ex.id);
-                            const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[ex.id] : null;
-                            const isPROpportunity = previous && parseInt(previous.reps) >= 8;
-                            const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
-                            finalWeight = suggestedWeight || previous?.weight || defaultWeight || '';
-                        }
+                const todayWorkout = workoutHistory.find(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    const isSameDay = workoutDate.getTime() === today.getTime();
+                    const isSameWorkoutDay = w.day === currentDay;
+                    return isSameDay && isSameWorkoutDay;
+                });
 
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            weight: finalWeight || '',
-                            reps: data.reps || ''
-                        };
-                    }
-                }).filter(ex => ex && (ex.weight || ex.reps || ex.rounds || ex.time));
-
-                if (exercises.length === 0) {
-                    alert('Please log at least one exercise');
+                if (!todayWorkout) {
+                    alert('Please log at least one exercise first!');
                     return;
                 }
 
-                // Find the latest timestamp from all logged exercises
-                const timestamps = Object.values(workoutData)
-                    .map(d => d.timestamp)
-                    .filter(t => t);
-                const latestTimestamp = timestamps.length > 0
-                    ? timestamps.reduce((latest, current) => current > latest ? current : latest)
-                    : new Date().toISOString();
-
-                const newWorkout = {
-                    date: latestTimestamp,
-                    day: currentDay,
-                    week: getWeekNumber(new Date(latestTimestamp)),
-                    exercises
-                };
-
-                const updatedHistory = [newWorkout, ...workoutHistory];
-                setWorkoutHistory(updatedHistory);
-                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
-
-                setWorkoutData({});
-                setLoggedExercises({});
-                setSuccessMessage('Day completed!');
-                setShowSuccess(true);
-                setTimeout(() => setShowSuccess(false), 3000);
-                window.scrollTo(0, 0);
+                setShowDayBreakdown(true);
             };
 
             const exportData = () => {
@@ -973,6 +1014,16 @@
                             onExport={exportData}
                             onImport={importData}
                             onReset={resetData}
+                        />
+                    )}
+
+                    {showDayBreakdown && (
+                        <DayBreakdownModal
+                            onClose={() => setShowDayBreakdown(false)}
+                            workoutHistory={workoutHistory}
+                            currentDay={currentDay}
+                            getCurrentExercises={getCurrentExercises}
+                            getPreviousWorkout={getPreviousWorkout}
                         />
                     )}
 
@@ -1078,6 +1129,167 @@
                             onChange={onImport}
                         />
                         <button className="modal-btn" onClick={onClose}>
+                            Close
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function DayBreakdownModal({ onClose, workoutHistory, currentDay, getCurrentExercises, getPreviousWorkout }) {
+            // Find today's workout
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const todayWorkout = workoutHistory.find(w => {
+                const workoutDate = new Date(w.date);
+                workoutDate.setHours(0, 0, 0, 0);
+                const isSameDay = workoutDate.getTime() === today.getTime();
+                const isSameWorkoutDay = w.day === currentDay;
+                return isSameDay && isSameWorkoutDay;
+            });
+
+            if (!todayWorkout) {
+                return null;
+            }
+
+            // Function to get previous workout excluding today
+            const getPreviousWorkoutExcludingToday = (exerciseId) => {
+                for (let workout of workoutHistory) {
+                    // Skip today's workout
+                    const workoutDate = new Date(workout.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (workoutDate.getTime() === today.getTime() && workout.day === currentDay) {
+                        continue;
+                    }
+
+                    const exercise = workout.exercises.find(e => e.id === exerciseId);
+                    if (exercise && (exercise.weight || exercise.reps || exercise.rounds || exercise.time)) {
+                        return exercise;
+                    }
+                }
+                return null;
+            };
+
+            // Calculate PRs
+            const prs = [];
+            todayWorkout.exercises.forEach(exercise => {
+                if (!exercise.weight && !exercise.reps && !exercise.rounds && !exercise.time) {
+                    return; // Skip NA exercises
+                }
+
+                const previous = getPreviousWorkoutExcludingToday(exercise.id);
+                if (!previous) {
+                    return; // Skip if no previous workout
+                }
+
+                let isPR = false;
+                let prType = '';
+
+                if (exercise.type === 'assault-bike') {
+                    if (parseInt(exercise.rounds) > parseInt(previous.rounds || 0)) {
+                        isPR = true;
+                        prType = `${exercise.rounds} rounds (prev: ${previous.rounds})`;
+                    }
+                } else if (exercise.type === 'stairmaster') {
+                    const currentSeconds = parseTimeToSeconds(exercise.time);
+                    const previousSeconds = parseTimeToSeconds(previous.time);
+                    if (currentSeconds > previousSeconds) {
+                        isPR = true;
+                        prType = `${exercise.time} (prev: ${previous.time})`;
+                    }
+                } else if (exercise.type === 'bodyweight') {
+                    if (parseInt(exercise.reps) > parseInt(previous.reps || 0)) {
+                        isPR = true;
+                        prType = `${exercise.reps} reps (prev: ${previous.reps})`;
+                    }
+                } else {
+                    // Standard exercise - PR if weight increased or same weight with more reps
+                    const currentWeight = parseFloat(exercise.weight);
+                    const previousWeight = parseFloat(previous.weight);
+                    const currentReps = parseInt(exercise.reps);
+                    const previousReps = parseInt(previous.reps);
+
+                    if (currentWeight > previousWeight) {
+                        isPR = true;
+                        prType = `${exercise.weight}lbs × ${exercise.reps} (prev: ${previous.weight}lbs × ${previous.reps})`;
+                    } else if (currentWeight === previousWeight && currentReps > previousReps) {
+                        isPR = true;
+                        prType = `${exercise.weight}lbs × ${exercise.reps} (prev: ${previous.weight}lbs × ${previous.reps})`;
+                    }
+                }
+
+                if (isPR) {
+                    prs.push({
+                        name: exercise.name,
+                        description: prType
+                    });
+                }
+            });
+
+            // Count completed exercises
+            const completedCount = todayWorkout.exercises.filter(e =>
+                e.weight || e.reps || e.rounds || e.time
+            ).length;
+            const totalCount = getCurrentExercises().length;
+
+            const date = new Date(todayWorkout.date);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                        <div className="modal-title">Day {currentDay} Breakdown</div>
+
+                        <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
+                            {formattedDate}
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
+                                Exercises Completed
+                            </div>
+                            <div style={{ fontSize: '32px', fontWeight: '700', color: '#3a2a5a' }}>
+                                {completedCount} / {totalCount}
+                            </div>
+                        </div>
+
+                        {prs.length > 0 && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
+                                    Personal Records
+                                </div>
+                                {prs.map((pr, idx) => (
+                                    <div key={idx} style={{
+                                        background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1))',
+                                        border: '1px solid #FFD700',
+                                        borderRadius: '8px',
+                                        padding: '12px',
+                                        marginBottom: '8px'
+                                    }}>
+                                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                            {pr.name}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#888' }}>
+                                            {pr.description}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {prs.length === 0 && (
+                            <div style={{ marginBottom: '20px', color: '#666', textAlign: 'center', padding: '20px' }}>
+                                No PRs this session. Keep pushing!
+                            </div>
+                        )}
+
+                        <button className="modal-btn primary" onClick={onClose}>
                             Close
                         </button>
                     </div>
@@ -1374,7 +1586,7 @@
                     )}
 
                     <button className="save-btn" onClick={completeDay}>
-                        Complete Day
+                        View Day Breakdown
                     </button>
                 </>
             );
