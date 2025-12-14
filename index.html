@@ -791,16 +791,11 @@
                     }
                 }));
 
-                // Trigger celebration for standard exercises when reps >= 6
+                // Trigger celebration for standard exercises when reps >= 8
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
-                if (exercise?.type === 'standard' && field === 'reps' && parseInt(value) >= 6) {
-                    const previous = getPreviousWorkout(exerciseId);
-                    const previousReps = previous ? parseInt(previous.reps) : 0;
-                    // Celebrate if hitting 8+ reps OR hitting more reps than last time (for 6-7 rep range)
-                    if (parseInt(value) >= 8 || (parseInt(value) >= 6 && parseInt(value) > previousReps)) {
-                        setCelebration(exerciseId);
-                        setTimeout(() => setCelebration(null), 1000);
-                    }
+                if (exercise?.type === 'standard' && field === 'reps' && parseInt(value) >= 8) {
+                    setCelebration(exerciseId);
+                    setTimeout(() => setCelebration(null), 1000);
                 }
                 // Trigger celebration for assault bike when rounds > previous
                 else if (exercise?.type === 'assault-bike' && field === 'rounds') {
@@ -1355,9 +1350,7 @@
                 // Standard exercise
                 const previousReps = previous ? parseInt(previous.reps) : 0;
                 const isPROpportunity = previous && previousReps >= 8;
-                const isRepPROpportunity = previous && (previousReps === 6 || previousReps === 7);
                 const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
-                const suggestedReps = isRepPROpportunity ? (previousReps + 1).toString() : null;
                 const isCurrentlyPRAttempt = isPROpportunity && data.weight &&
                     parseFloat(data.weight) >= parseFloat(suggestedWeight);
 
@@ -1395,8 +1388,7 @@
                                 />
                             </div>
                             <div className="input-group">
-                                <div className={`pr-suggestion ${!(isRepPROpportunity && !isPROpportunity) ? 'hidden' : ''}`}>
-                                    +1 Rep
+                                <div className="pr-suggestion hidden">
                                 </div>
                                 <label className="input-label">Reps</label>
                                 <input
