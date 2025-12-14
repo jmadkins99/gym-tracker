@@ -1275,7 +1275,9 @@
                     parseFloat(data.weight) >= parseFloat(suggestedWeight);
 
                 const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
-                const placeholderReps = isPROpportunity ? '6' : (previous?.reps || '0');
+                // If it's a PR opportunity (adding 1.25 lbs), keep reps at 6
+                // Otherwise, aim for one rep higher than last week
+                const placeholderReps = isPROpportunity ? '6' : (previous ? (previousReps + 1).toString() : '0');
 
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1284,12 +1286,12 @@
                                 <div className="exercise-name">
                                     {exercise.name}
                                 </div>
+                                {previous && (
+                                    <div className="previous-data" style={{ marginTop: '4px' }}>
+                                        Last: {previous.weight}lbs × {previous.reps}
+                                    </div>
+                                )}
                             </div>
-                            {previous && (
-                                <div className="previous-data">
-                                    Last: {previous.weight}lbs × {previous.reps}
-                                </div>
-                            )}
                         </div>
                         <div className="input-row">
                             <div className="input-group">
