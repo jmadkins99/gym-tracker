@@ -674,7 +674,7 @@
 
             const logExercise = (exerciseId) => {
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
-                const data = workoutData[exerciseId];
+                let data = workoutData[exerciseId];
 
                 if (!data) return;
 
@@ -685,6 +685,23 @@
                 } else if (exercise.type === 'bodyweight') {
                     if (!data.reps) return;
                 } else {
+                    // Auto-fill weight if blank
+                    if (!data.weight && data.reps) {
+                        const previous = getPreviousWorkout(exerciseId);
+                        const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exerciseId] : null;
+                        const isPROpportunity = previous && parseInt(previous.reps) >= 8;
+                        const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
+                        const autoWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
+
+                        // Update workoutData with auto-filled weight
+                        setWorkoutData(prev => ({
+                            ...prev,
+                            [exerciseId]: {
+                                ...prev[exerciseId],
+                                weight: autoWeight
+                            }
+                        }));
+                    }
                     if (!data.weight && !data.reps) return;
                 }
 
@@ -731,12 +748,22 @@
                             reps: data.reps || ''
                         };
                     } else {
+                        // Auto-fill weight if blank but reps are provided
+                        let finalWeight = data.weight;
+                        if (!finalWeight && data.reps) {
+                            const previous = getPreviousWorkout(ex.id);
+                            const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[ex.id] : null;
+                            const isPROpportunity = previous && parseInt(previous.reps) >= 8;
+                            const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
+                            finalWeight = suggestedWeight || previous?.weight || defaultWeight || '';
+                        }
+
                         return {
                             id: ex.id,
                             name: ex.name,
                             category: ex.category,
                             type: ex.type,
-                            weight: data.weight || '',
+                            weight: finalWeight || '',
                             reps: data.reps || ''
                         };
                     }
