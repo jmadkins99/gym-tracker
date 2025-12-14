@@ -639,6 +639,8 @@
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
+            const [showEditWorkout, setShowEditWorkout] = useState(false);
+            const [editingWorkout, setEditingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(getCurrentWeek());
             const currentWeek = getCurrentWeek();
 
@@ -685,7 +687,8 @@
                     return isSameDay && isSameWorkoutDay;
                 });
 
-                if (todayWorkout) {
+                if (todayWorkout && !todayWorkout.submitted) {
+                    // Only restore state if workout hasn't been submitted yet
                     const newLoggedExercises = {};
                     const newWorkoutData = {};
 
@@ -711,7 +714,7 @@
                     setLoggedExercises(newLoggedExercises);
                     setWorkoutData(newWorkoutData);
                 } else {
-                    // Clear logged state if switching to a day with no workout
+                    // Clear logged state if switching to a day with no workout or if workout is submitted
                     setLoggedExercises({});
                     setWorkoutData({});
                 }
@@ -719,6 +722,23 @@
 
             const getCurrentExercises = () => {
                 return currentDay === 1 ? day1Exercises : day2Exercises;
+            };
+
+            const getTodayWorkout = () => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return workoutHistory.find(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    const isSameDay = workoutDate.getTime() === today.getTime();
+                    const isSameWorkoutDay = w.day === currentDay;
+                    return isSameDay && isSameWorkoutDay;
+                });
+            };
+
+            const isWorkoutSubmitted = () => {
+                const todayWorkout = getTodayWorkout();
+                return todayWorkout && todayWorkout.submitted;
             };
 
             const saveExerciseConfig = () => {
@@ -827,6 +847,12 @@
             };
 
             const logExercise = (exerciseId) => {
+                // Check if workout is already submitted
+                if (isWorkoutSubmitted()) {
+                    alert('This workout has been submitted and is locked. Use the pencil icon in the Weekly tab to edit.');
+                    return;
+                }
+
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
                 let data = workoutData[exerciseId];
 
@@ -975,7 +1001,8 @@
                         date: timestamp,
                         day: currentDay,
                         week: todayWeek,
-                        exercises: allExercises
+                        exercises: allExercises,
+                        submitted: false
                     };
 
                     updatedHistory = [newWorkout, ...workoutHistory];
@@ -996,27 +1023,44 @@
 
             const completeDay = () => {
                 // Find today's workout
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                const todayWorkout = workoutHistory.find(w => {
-                    const workoutDate = new Date(w.date);
-                    workoutDate.setHours(0, 0, 0, 0);
-                    const isSameDay = workoutDate.getTime() === today.getTime();
-                    const isSameWorkoutDay = w.day === currentDay;
-                    return isSameDay && isSameWorkoutDay;
-                });
+                const todayWorkout = getTodayWorkout();
 
                 if (!todayWorkout) {
                     alert('Please log at least one exercise first!');
                     return;
                 }
 
+                // Mark workout as submitted (immutable)
+                const updatedHistory = workoutHistory.map(w => {
+                    if (w === todayWorkout) {
+                        return { ...w, submitted: true };
+                    }
+                    return w;
+                });
+
+                setWorkoutHistory(updatedHistory);
+                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+
                 // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
                 setWorkoutData({});
 
                 setShowDayBreakdown(true);
+            };
+
+            const updateWorkout = (workoutDate, updatedExercises) => {
+                const updatedHistory = workoutHistory.map(w => {
+                    if (w.date === workoutDate) {
+                        return { ...w, exercises: updatedExercises };
+                    }
+                    return w;
+                });
+
+                setWorkoutHistory(updatedHistory);
+                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                setSuccessMessage('Workout updated!');
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 2000);
             };
 
             const exportData = () => {
@@ -1139,6 +1183,19 @@
                         />
                     )}
 
+                    {showEditWorkout && editingWorkout && (
+                        <EditWorkoutModal
+                            workout={editingWorkout}
+                            onClose={() => {
+                                setShowEditWorkout(false);
+                                setEditingWorkout(null);
+                            }}
+                            onSave={updateWorkout}
+                            day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
+                        />
+                    )}
+
                     <div className="header">
                         <div className="header-top">
                             <h1>Gym Tracker</h1>
@@ -1188,6 +1245,10 @@
                             currentWeek={currentWeek}
                             day1Exercises={day1Exercises}
                             day2Exercises={day2Exercises}
+                            onEditWorkout={(workout) => {
+                                setEditingWorkout(workout);
+                                setShowEditWorkout(true);
+                            }}
                         />}
                         {currentView === 'progress' && <ProgressView
                             workoutHistory={workoutHistory}
@@ -1403,6 +1464,198 @@
                         <button className="modal-btn" onClick={onClose}>
                             Close
                         </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises, day2Exercises }) {
+            const [editedExercises, setEditedExercises] = useState(workout.exercises);
+            const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
+
+            const handleExerciseChange = (exerciseId, field, value) => {
+                setEditedExercises(prev => {
+                    const updated = [...prev];
+                    const exerciseIndex = updated.findIndex(e => e.id === exerciseId);
+                    if (exerciseIndex !== -1) {
+                        updated[exerciseIndex] = {
+                            ...updated[exerciseIndex],
+                            [field]: value
+                        };
+                    }
+                    return updated;
+                });
+            };
+
+            const handleSave = () => {
+                onSave(workout.date, editedExercises);
+                onClose();
+            };
+
+            const date = new Date(workout.date);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
+                        <div className="modal-title">Edit Workout - Day {workout.day}</div>
+                        <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
+                            {formattedDate}
+                        </div>
+
+                        {allExercises.map((exercise) => {
+                            const editedExercise = editedExercises.find(e => e.id === exercise.id);
+
+                            return (
+                                <div key={exercise.id} style={{
+                                    background: '#1a1a2a',
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    marginBottom: '12px',
+                                    border: '1px solid #2a2a3a'
+                                }}>
+                                    <div style={{ fontWeight: '600', marginBottom: '8px' }}>
+                                        {exercise.name}
+                                    </div>
+                                    {exercise.type === 'assault-bike' ? (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input
+                                                type="text"
+                                                value="30/30"
+                                                disabled
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #2a2a3a',
+                                                    borderRadius: '4px',
+                                                    color: '#666'
+                                                }}
+                                            />
+                                            <input
+                                                type="number"
+                                                placeholder="Rounds"
+                                                value={editedExercise?.rounds || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'rounds', e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #3a2a5a',
+                                                    borderRadius: '4px',
+                                                    color: '#b8b8d0'
+                                                }}
+                                            />
+                                        </div>
+                                    ) : exercise.type === 'stairmaster' ? (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input
+                                                type="text"
+                                                value="Level 7"
+                                                disabled
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #2a2a3a',
+                                                    borderRadius: '4px',
+                                                    color: '#666'
+                                                }}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="MM:SS"
+                                                value={editedExercise?.time || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'time', e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #3a2a5a',
+                                                    borderRadius: '4px',
+                                                    color: '#b8b8d0'
+                                                }}
+                                            />
+                                        </div>
+                                    ) : exercise.type === 'bodyweight' ? (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input
+                                                type="text"
+                                                value="Body Weight"
+                                                disabled
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #2a2a3a',
+                                                    borderRadius: '4px',
+                                                    color: '#666'
+                                                }}
+                                            />
+                                            <input
+                                                type="number"
+                                                placeholder="Reps"
+                                                value={editedExercise?.reps || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #3a2a5a',
+                                                    borderRadius: '4px',
+                                                    color: '#b8b8d0'
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input
+                                                type="number"
+                                                placeholder="Weight"
+                                                value={editedExercise?.weight || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'weight', e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #3a2a5a',
+                                                    borderRadius: '4px',
+                                                    color: '#b8b8d0'
+                                                }}
+                                            />
+                                            <input
+                                                type="number"
+                                                placeholder="Reps"
+                                                value={editedExercise?.reps || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #3a2a5a',
+                                                    borderRadius: '4px',
+                                                    color: '#b8b8d0'
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                            <button className="modal-btn primary" onClick={handleSave} style={{ flex: 1 }}>
+                                Save Changes
+                            </button>
+                            <button className="modal-btn" onClick={onClose} style={{ flex: 1 }}>
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -1872,7 +2125,7 @@
             return <div className="pr-glow" />;
         }
 
-        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises }) {
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises, onEditWorkout }) {
             const weekWorkouts = workoutHistory.filter(w => w.week === viewingWeek);
 
             return (
@@ -1928,8 +2181,21 @@
 
                                 return (
                                     <div key={idx} className="history-item">
-                                        <div className="history-date">
-                                            Day {dayNumber} - {formattedDate}
+                                        <div className="history-date" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>Day {dayNumber} - {formattedDate}</span>
+                                            <button
+                                                onClick={() => onEditWorkout(workout)}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: '#6a5a8a',
+                                                    cursor: 'pointer',
+                                                    fontSize: '18px',
+                                                    padding: '4px 8px'
+                                                }}
+                                            >
+                                                ✏️
+                                            </button>
                                         </div>
                                         {allExercises.map((expectedExercise) => {
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
