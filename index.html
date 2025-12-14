@@ -546,12 +546,19 @@
             'ab-crunch': [85, 120, 155, 180, 220]
         };
 
-        // Calculate percentile based on weight
-        function getPercentile(exerciseId, weight) {
+        // Calculate percentile based on weight and user's bodyweight
+        function getPercentile(exerciseId, liftWeight, userBodyweight) {
             if (!STRENGTH_STANDARDS[exerciseId]) return null;
-            const standards = STRENGTH_STANDARDS[exerciseId];
-            const w = parseFloat(weight);
+            const baseStandards = STRENGTH_STANDARDS[exerciseId];
+            const w = parseFloat(liftWeight);
             if (isNaN(w) || w === 0) return null;
+
+            const baseBodyweight = 150;
+            const userBW = parseFloat(userBodyweight) || baseBodyweight;
+
+            // Adjust standards based on bodyweight (using 0.7 power for realistic scaling)
+            const adjustmentFactor = Math.pow(userBW / baseBodyweight, 0.7);
+            const standards = baseStandards.map(std => std * adjustmentFactor);
 
             if (w < standards[0]) return 'Top 40%';
             if (w < standards[1]) return 'Top 25%';
@@ -602,17 +609,22 @@
             return (diffDays % 2 === 0) ? 1 : 2;
         }
 
-        // Calculate current week number (starting from Dec 14, 2025 as Week 1)
+        // Calculate current week number (weeks start on Monday)
         function getCurrentWeek() {
-            const startDate = new Date('2025-12-14');
             const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            startDate.setHours(0, 0, 0, 0);
+            const startOfYear = new Date(today.getFullYear(), 0, 1);
+            const dayOfYear = Math.floor((today - startOfYear) / (1000 * 60 * 60 * 24));
+            const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+            return weekNumber;
+        }
 
-            const diffTime = today - startDate;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-            return Math.floor(diffDays / 7) + 1;
+        // Get week number for a specific date
+        function getWeekNumber(date) {
+            const d = new Date(date);
+            const startOfYear = new Date(d.getFullYear(), 0, 1);
+            const dayOfYear = Math.floor((d - startOfYear) / (1000 * 60 * 60 * 24));
+            const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+            return weekNumber;
         }
 
         // Parse MM:SS to total seconds
@@ -645,12 +657,51 @@
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [viewingWeek, setViewingWeek] = useState(getCurrentWeek());
+            const [userBodyweight, setUserBodyweight] = useState(null);
+            const [showWeightPrompt, setShowWeightPrompt] = useState(false);
             const currentWeek = getCurrentWeek();
 
             useEffect(() => {
                 const saved = localStorage.getItem('gymWorkoutHistory');
                 if (saved) {
-                    setWorkoutHistory(JSON.parse(saved));
+                    const history = JSON.parse(saved);
+                    setWorkoutHistory(history);
+                } else {
+                    // Hardcode retroactive workout from Dec 11, 2025
+                    const retroactiveWorkout = {
+                        date: '2025-12-11T18:00:00.000Z',
+                        day: 1,
+                        week: getWeekNumber(new Date('2025-12-11')),
+                        exercises: [
+                            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', weight: '162.5', reps: '8' },
+                            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard', weight: '131.25', reps: '9' },
+                            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper', type: 'standard', weight: '126.25', reps: '7' },
+                            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper', type: 'standard', weight: '55', reps: '8' },
+                            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper', type: 'standard', weight: '36.25', reps: '8' },
+                            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper', type: 'standard', weight: '26.25', reps: '8' },
+                            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper', type: 'standard', weight: '26.25', reps: '8' },
+                            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard', weight: '190', reps: '7' },
+                            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard', weight: '190', reps: '7' },
+                            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard', weight: '175', reps: '8' },
+                            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', weight: '240', reps: '7' },
+                            { id: 'leg-curls', name: 'Seated Leg Curls', category: 'Lower', type: 'standard', weight: '150', reps: '7' },
+                            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', weight: '115', reps: '8' },
+                            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', weight: '82.5', reps: '10' },
+                            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', weight: '135', reps: '8' },
+                            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', weight: 'Body Weight', reps: '8' },
+                            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', level: 'Level 7', time: '12:30' }
+                        ]
+                    };
+                    setWorkoutHistory([retroactiveWorkout]);
+                    localStorage.setItem('gymWorkoutHistory', JSON.stringify([retroactiveWorkout]));
+                }
+
+                // Load user bodyweight
+                const savedWeight = localStorage.getItem('userBodyweight');
+                if (savedWeight) {
+                    setUserBodyweight(savedWeight);
+                } else {
+                    setShowWeightPrompt(true);
                 }
 
                 // Check last backup reminder
@@ -820,7 +871,7 @@
                 const newWorkout = {
                     date: new Date().toISOString(),
                     day: currentDay,
-                    week: currentWeek,
+                    week: getWeekNumber(new Date()),
                     exercises
                 };
 
@@ -889,12 +940,24 @@
                 setShowBackupReminder(false);
             };
 
+            const saveBodyweight = (weight) => {
+                setUserBodyweight(weight);
+                localStorage.setItem('userBodyweight', weight);
+                setShowWeightPrompt(false);
+            };
+
             return (
                 <div className="app">
                     {showSuccess && <div className={`success-message ${showBackupReminder ? 'backup-reminder' : ''}`}>{successMessage}</div>}
                     {celebration && <Celebration />}
 
-                    {showBackupReminder && (
+                    {showWeightPrompt && (
+                        <BodyweightPromptModal
+                            onSave={saveBodyweight}
+                        />
+                    )}
+
+                    {showBackupReminder && !showWeightPrompt && (
                         <BackupReminderModal
                             onExport={() => { exportData(); dismissBackupReminder(); }}
                             onDismiss={dismissBackupReminder}
@@ -907,6 +970,8 @@
                             onExport={exportData}
                             onImport={importData}
                             onReset={resetData}
+                            userBodyweight={userBodyweight}
+                            onSaveBodyweight={saveBodyweight}
                         />
                     )}
 
@@ -951,6 +1016,7 @@
                             celebration={celebration}
                             getCurrentExercises={getCurrentExercises}
                             currentWeek={currentWeek}
+                            userBodyweight={userBodyweight}
                         />}
                         {currentView === 'weekly' && <WeeklyView
                             workoutHistory={workoutHistory}
@@ -963,6 +1029,35 @@
                             selectedExercise={selectedExercise}
                             setSelectedExercise={setSelectedExercise}
                         />}
+                    </div>
+                </div>
+            );
+        }
+
+        function BodyweightPromptModal({ onSave }) {
+            const [weight, setWeight] = useState('150');
+
+            return (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <div className="modal-title">⚖️ Enter Your Bodyweight</div>
+                        <p style={{ color: '#888', marginBottom: '20px', fontSize: '14px' }}>
+                            We'll use this to show your strength percentile rankings.
+                        </p>
+                        <div className="input-group" style={{ marginBottom: '20px' }}>
+                            <label className="input-label">Bodyweight (lbs)</label>
+                            <input
+                                type="number"
+                                inputMode="decimal"
+                                className="input-field"
+                                value={weight}
+                                onChange={(e) => setWeight(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+                        <button className="modal-btn primary" onClick={() => onSave(weight)}>
+                            Save
+                        </button>
                     </div>
                 </div>
             );
@@ -987,13 +1082,61 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, userBodyweight, onSaveBodyweight }) {
             const fileInputRef = useRef();
+            const [editingWeight, setEditingWeight] = useState(false);
+            const [weight, setWeight] = useState(userBodyweight || '150');
+
+            const handleSaveWeight = () => {
+                onSaveBodyweight(weight);
+                setEditingWeight(false);
+            };
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Settings</div>
+
+                        <div style={{ marginBottom: '20px', padding: '12px', background: '#2a2a2a', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>Your Bodyweight</div>
+                            {!editingWeight ? (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ fontSize: '16px', fontWeight: '600' }}>{userBodyweight || '150'} lbs</div>
+                                    <button
+                                        style={{ padding: '6px 12px', background: '#3a3a3a', border: 'none', borderRadius: '6px', color: '#fff', cursor: 'pointer' }}
+                                        onClick={() => setEditingWeight(true)}
+                                    >
+                                        Edit
+                                    </button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <input
+                                        type="number"
+                                        inputMode="decimal"
+                                        className="input-field"
+                                        value={weight}
+                                        onChange={(e) => setWeight(e.target.value)}
+                                        style={{ marginBottom: '8px' }}
+                                    />
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            style={{ flex: 1, padding: '8px', background: '#0a84ff', border: 'none', borderRadius: '6px', color: '#fff', cursor: 'pointer' }}
+                                            onClick={handleSaveWeight}
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            style={{ flex: 1, padding: '8px', background: '#3a3a3a', border: 'none', borderRadius: '6px', color: '#fff', cursor: 'pointer' }}
+                                            onClick={() => { setEditingWeight(false); setWeight(userBodyweight || '150'); }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <button className="modal-btn" onClick={onExport}>
                             📥 Export Data
                         </button>
@@ -1018,7 +1161,7 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, celebration, getCurrentExercises, currentWeek }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, celebration, getCurrentExercises, currentWeek, userBodyweight }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
@@ -1208,7 +1351,7 @@
 
                 const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
 
-                const percentile = previous ? getPercentile(exercise.id, previous.weight) : null;
+                const percentile = previous ? getPercentile(exercise.id, previous.weight, userBodyweight) : null;
 
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1218,9 +1361,9 @@
                                     {exercise.name}
                                     {isPROpportunity && <span className="pr-badge">PR READY</span>}
                                 </div>
-                                {percentile && (
+                                {percentile && userBodyweight && (
                                     <div className="percentile-text">
-                                        {percentile} at 150 lbs bodyweight
+                                        {percentile} at {userBodyweight} lbs bodyweight
                                     </div>
                                 )}
                             </div>
@@ -1367,6 +1510,10 @@
                                     minute: '2-digit'
                                 });
 
+                                // Get all exercises for this day
+                                const allExercises = workout.day === 1 ? DAY_1_EXERCISES : DAY_2_EXERCISES;
+                                const completedIds = new Set(workout.exercises.map(e => e.id));
+
                                 return (
                                     <div key={idx} className="history-item">
                                         <div className="history-date">
@@ -1375,19 +1522,25 @@
                                                 {formattedTime}
                                             </div>
                                         </div>
-                                        {workout.exercises.map((exercise, exIdx) => (
-                                            <div key={exIdx} className="history-exercise">
-                                                <div className="history-exercise-name">{exercise.name}</div>
-                                                <div className="history-exercise-data">
-                                                    {exercise.type === 'assault-bike'
-                                                        ? `${exercise.rounds} rounds`
-                                                        : exercise.type === 'stairmaster'
-                                                        ? `${exercise.time}`
-                                                        : `${exercise.weight}${exercise.weight === 'Body Weight' ? '' : 'lbs'} × ${exercise.reps}`
-                                                    }
+                                        {allExercises.map((expectedExercise) => {
+                                            const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
+                                            return (
+                                                <div key={expectedExercise.id} className="history-exercise">
+                                                    <div className="history-exercise-name">{expectedExercise.name}</div>
+                                                    <div className="history-exercise-data">
+                                                        {completedExercise ? (
+                                                            completedExercise.type === 'assault-bike'
+                                                                ? `${completedExercise.rounds} rounds`
+                                                                : completedExercise.type === 'stairmaster'
+                                                                ? `${completedExercise.time}`
+                                                                : `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
+                                                        ) : (
+                                                            <span style={{ color: '#555' }}>NA</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 );
                             })}
