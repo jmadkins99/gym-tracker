@@ -940,6 +940,10 @@
                     return;
                 }
 
+                // Reset all log states so exercises act like a fresh day
+                setLoggedExercises({});
+                setWorkoutData({});
+
                 setShowDayBreakdown(true);
             };
 
@@ -1171,9 +1175,13 @@
                 return null;
             };
 
+            // Get only exercises that match the current day
+            const currentDayExerciseIds = new Set(getCurrentExercises().map(e => e.id));
+            const currentDayWorkoutExercises = todayWorkout.exercises.filter(e => currentDayExerciseIds.has(e.id));
+
             // Calculate PRs
             const prs = [];
-            todayWorkout.exercises.forEach(exercise => {
+            currentDayWorkoutExercises.forEach(exercise => {
                 if (!exercise.weight && !exercise.reps && !exercise.rounds && !exercise.time) {
                     return; // Skip NA exercises
                 }
@@ -1227,8 +1235,8 @@
                 }
             });
 
-            // Count completed exercises
-            const completedCount = todayWorkout.exercises.filter(e =>
+            // Count completed exercises (only for current day)
+            const completedCount = currentDayWorkoutExercises.filter(e =>
                 e.weight || e.reps || e.rounds || e.time
             ).length;
             const totalCount = getCurrentExercises().length;
@@ -1586,7 +1594,7 @@
                     )}
 
                     <button className="save-btn" onClick={completeDay}>
-                        View Day Breakdown
+                        Submit Day and View Breakdown
                     </button>
                 </>
             );
@@ -1663,10 +1671,12 @@
                                                     <div className="history-exercise-data">
                                                         {completedExercise ? (
                                                             completedExercise.type === 'assault-bike'
-                                                                ? `${completedExercise.rounds} rounds`
+                                                                ? (completedExercise.rounds ? `${completedExercise.rounds} rounds` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
-                                                                ? `${completedExercise.time}`
-                                                                : `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
+                                                                ? (completedExercise.time ? `${completedExercise.time}` : <span style={{ color: '#555' }}>NA</span>)
+                                                                : (completedExercise.weight && completedExercise.reps
+                                                                    ? `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
+                                                                    : <span style={{ color: '#555' }}>NA</span>)
                                                         ) : (
                                                             <span style={{ color: '#555' }}>NA</span>
                                                         )}
