@@ -699,7 +699,7 @@
                             if (exercise.type === 'assault-bike') {
                                 newWorkoutData[exercise.id] = { rounds: exercise.rounds };
                             } else if (exercise.type === 'stairmaster') {
-                                newWorkoutData[exercise.id] = { time: exercise.time };
+                                newWorkoutData[exercise.id] = { time: exercise.time, level: exercise.level || 'Level 7' };
                             } else if (exercise.type === 'bodyweight') {
                                 newWorkoutData[exercise.id] = { reps: exercise.reps };
                             } else {
@@ -913,7 +913,7 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        level: 'Level 7',
+                        level: finalData.level || 'Level 7',
                         time: finalData.time || ''
                     };
                 } else if (exercise.type === 'bodyweight') {
@@ -1554,22 +1554,24 @@
                                         </div>
                                     ) : exercise.type === 'stairmaster' ? (
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                            <input
-                                                type="text"
-                                                value="Level 7"
-                                                disabled
+                                            <select
+                                                value={editedExercise?.level || 'Level 7'}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'level', e.target.value)}
                                                 style={{
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #2a2a3a',
+                                                    border: '1px solid #3a2a5a',
                                                     borderRadius: '4px',
-                                                    color: '#666'
+                                                    color: '#b8b8d0'
                                                 }}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="MM:SS"
+                                            >
+                                                <option value="Level 7">Level 7</option>
+                                                <option value="Level 8">Level 8</option>
+                                                <option value="Level 9">Level 9</option>
+                                                <option value="Level 10">Level 10</option>
+                                            </select>
+                                            <select
                                                 value={editedExercise?.time || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'time', e.target.value)}
                                                 style={{
@@ -1580,7 +1582,20 @@
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
-                                            />
+                                            >
+                                                <option value="">Select time</option>
+                                                {(() => {
+                                                    const timeOptions = [];
+                                                    for (let minutes = 5; minutes <= 20; minutes++) {
+                                                        for (let seconds = 0; seconds < 60; seconds += 15) {
+                                                            if (minutes === 20 && seconds > 0) break;
+                                                            const time = formatSecondsToTime(minutes * 60 + seconds);
+                                                            timeOptions.push(<option key={time} value={time}>{time}</option>);
+                                                        }
+                                                    }
+                                                    return timeOptions;
+                                                })()}
+                                            </select>
                                         </div>
                                     ) : exercise.type === 'bodyweight' ? (
                                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -1904,6 +1919,7 @@
                 if (exercise.type === 'stairmaster') {
                     const isPROpportunity = previous && previous.time;
                     let suggestedTime = null;
+                    let suggestedLevel = previous?.level || 'Level 7';
                     if (isPROpportunity) {
                         const prevSeconds = parseTimeToSeconds(previous.time);
                         const newSeconds = prevSeconds + 15;
@@ -1911,6 +1927,15 @@
                     }
                     const isCurrentlyPRAttempt = isPROpportunity && data.time &&
                         parseTimeToSeconds(data.time) > parseTimeToSeconds(previous.time);
+
+                    // Generate time options from 5:00 to 20:00 in 15-second increments
+                    const timeOptions = [];
+                    for (let minutes = 5; minutes <= 20; minutes++) {
+                        for (let seconds = 0; seconds < 60; seconds += 15) {
+                            if (minutes === 20 && seconds > 0) break; // Stop at 20:00
+                            timeOptions.push(formatSecondsToTime(minutes * 60 + seconds));
+                        }
+                    }
 
                     return (
                         <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -1920,7 +1945,7 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: {previous.time}
+                                        Last: {previous.level || 'Level 7'} - {previous.time}
                                     </div>
                                 )}
                             </div>
@@ -1932,24 +1957,31 @@
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Level</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         className="input-field"
-                                        value="Level 7"
-                                        disabled
-                                    />
+                                        value={data.level || suggestedLevel}
+                                        onChange={(e) => handleInputChange(exercise.id, 'level', e.target.value)}
+                                        disabled={isLogged}
+                                    >
+                                        <option value="Level 7">Level 7</option>
+                                        <option value="Level 8">Level 8</option>
+                                        <option value="Level 9">Level 9</option>
+                                        <option value="Level 10">Level 10</option>
+                                    </select>
                                 </div>
                                 <div className="input-group">
-                                    <label className="input-label">Time (MM:SS)</label>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
+                                    <label className="input-label">Time</label>
+                                    <select
                                         className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
                                         value={data.time || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
-                                        placeholder={suggestedTime || previous?.time || 'MM:SS'}
                                         disabled={isLogged}
-                                    />
+                                    >
+                                        <option value="">{suggestedTime || previous?.time || 'Select time'}</option>
+                                        {timeOptions.map(time => (
+                                            <option key={time} value={time}>{time}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <button
@@ -2207,7 +2239,7 @@
                                                             completedExercise.type === 'assault-bike'
                                                                 ? (completedExercise.rounds ? `${completedExercise.rounds} rounds` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
-                                                                ? (completedExercise.time ? `${completedExercise.time}` : <span style={{ color: '#555' }}>NA</span>)
+                                                                ? (completedExercise.time ? `${completedExercise.level || 'Level 7'} - ${completedExercise.time}` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : (completedExercise.weight && completedExercise.reps
                                                                     ? `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
                                                                     : <span style={{ color: '#555' }}>NA</span>)
