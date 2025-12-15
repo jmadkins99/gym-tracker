@@ -245,6 +245,29 @@
             color: #666;
         }
 
+        .na-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3a1a1a;
+            border: 2px solid #6a2a2a;
+            border-radius: 8px;
+            color: #d08888;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+
+        .na-btn:hover {
+            background: #4a2222;
+            border-color: #8a3a3a;
+        }
+
+        .na-btn:active {
+            transform: scale(0.98);
+        }
+
         .week-nav {
             display: flex;
             gap: 10px;
@@ -1046,6 +1069,110 @@
                 setWorkoutData({});
 
                 setShowDayBreakdown(true);
+            };
+
+            const markDayAsNA = () => {
+                // Check if workout is already submitted
+                if (isWorkoutSubmitted()) {
+                    alert('This workout has been submitted and is locked. Use the pencil icon in the Weekly tab to edit.');
+                    return;
+                }
+
+                const timestamp = new Date().toISOString();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayWeek = getWeekNumber(today);
+
+                // Get all exercises for the current day
+                const currentDayExercises = getCurrentExercises();
+
+                // Create NA entries for all exercises based on their type
+                const naExercises = currentDayExercises.map(ex => {
+                    if (ex.type === 'assault-bike') {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            intensity: '30/30',
+                            rounds: 'NA'
+                        };
+                    } else if (ex.type === 'stairmaster') {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            level: 'Level 7',
+                            time: 'NA'
+                        };
+                    } else if (ex.type === 'bodyweight') {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            weight: 'Body Weight',
+                            reps: 'NA'
+                        };
+                    } else {
+                        return {
+                            id: ex.id,
+                            name: ex.name,
+                            category: ex.category,
+                            type: ex.type,
+                            weight: 'NA',
+                            reps: 'NA'
+                        };
+                    }
+                });
+
+                // Find if there's already a workout for today with the same day number
+                let existingWorkoutIndex = workoutHistory.findIndex(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    const isSameDay = workoutDate.getTime() === today.getTime();
+                    const isSameWorkoutDay = w.day === currentDay;
+                    return isSameDay && isSameWorkoutDay;
+                });
+
+                let updatedHistory;
+                if (existingWorkoutIndex !== -1) {
+                    // Update existing workout with NA values
+                    updatedHistory = [...workoutHistory];
+                    updatedHistory[existingWorkoutIndex] = {
+                        ...updatedHistory[existingWorkoutIndex],
+                        exercises: naExercises,
+                        date: timestamp
+                    };
+                } else {
+                    // Create new workout
+                    const newWorkout = {
+                        date: timestamp,
+                        day: currentDay,
+                        week: todayWeek,
+                        exercises: naExercises,
+                        submitted: false
+                    };
+                    updatedHistory = [newWorkout, ...workoutHistory];
+                }
+
+                setWorkoutHistory(updatedHistory);
+                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+
+                // Mark all exercises as logged (since they're all NA now)
+                const loggedState = {};
+                currentDayExercises.forEach(ex => {
+                    loggedState[ex.id] = true;
+                });
+                setLoggedExercises(loggedState);
+
+                // Clear workout data inputs
+                setWorkoutData({});
+
+                setSuccessMessage('All exercises marked as NA!');
+                setShowSuccess(true);
+                setTimeout(() => setShowSuccess(false), 2000);
             };
 
             const updateWorkout = (workoutDate, updatedExercises) => {
@@ -2148,6 +2275,10 @@
 
                     <button className="save-btn" onClick={completeDay}>
                         Submit Day and View Breakdown
+                    </button>
+
+                    <button className="na-btn" onClick={markDayAsNA}>
+                        NA
                     </button>
                 </>
             );
