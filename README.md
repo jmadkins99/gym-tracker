@@ -24,7 +24,7 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - **Weight Suggestions**: Shows "+1.25 lbs" when you hit 8+ reps last time
 - **Smart Rep Defaults**: Reps default to 6 when increasing weight
 - **Assault Bike**: Suggests +1 round when ready (default: 5 rounds)
-- **StairMaster**: Suggests +15 seconds when ready
+- **StairMaster**: Dropdown selectors for level (7-10) and time (5:00-20:00 in 15s increments), suggests +15 seconds for PRs
 - **Minimal Noise**: Clean interface with only essential feedback
 
 ### Data Safety
@@ -74,7 +74,7 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - Hanging Leg Raises (Body Weight)
 
 **Cardio (1 exercise)**
-- StairMaster (Level 7, tracked by time in MM:SS format, PR = +15 seconds)
+- StairMaster (Selectable level 7-10, time dropdown 5:00-20:00 in 15-second increments, PR = +15 seconds)
 
 ## How to Use
 
@@ -144,6 +144,6 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - Weekly view shows sequential day numbers (Day 1, Day 2, Day 3...)
 - Export your data before major iOS updates or Safari changes
 - The monthly reminder helps prevent data loss
-- StairMaster time format: enter as MM:SS (e.g., "12:45" for 12 minutes 45 seconds)
+- StairMaster has dropdown selectors: choose level (7-10) and time from 5:00 to 20:00 in 15-second increments
 - Assault Bike defaults to 5 rounds placeholder
 - Dark theme is easy on the eyes during early morning or late night workouts
