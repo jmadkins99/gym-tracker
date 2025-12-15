@@ -1138,21 +1138,22 @@
 
                 let updatedHistory;
                 if (existingWorkoutIndex !== -1) {
-                    // Update existing workout with NA values
+                    // Update existing workout with NA values and mark as submitted
                     updatedHistory = [...workoutHistory];
                     updatedHistory[existingWorkoutIndex] = {
                         ...updatedHistory[existingWorkoutIndex],
                         exercises: naExercises,
-                        date: timestamp
+                        date: timestamp,
+                        submitted: true
                     };
                 } else {
-                    // Create new workout
+                    // Create new workout and mark as submitted
                     const newWorkout = {
                         date: timestamp,
                         day: currentDay,
                         week: todayWeek,
                         exercises: naExercises,
-                        submitted: false
+                        submitted: true
                     };
                     updatedHistory = [newWorkout, ...workoutHistory];
                 }
@@ -1160,19 +1161,12 @@
                 setWorkoutHistory(updatedHistory);
                 localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
-                // Mark all exercises as logged (since they're all NA now)
-                const loggedState = {};
-                currentDayExercises.forEach(ex => {
-                    loggedState[ex.id] = true;
-                });
-                setLoggedExercises(loggedState);
-
-                // Clear workout data inputs
+                // Reset all log states so exercises act like a fresh day
+                setLoggedExercises({});
                 setWorkoutData({});
 
-                setSuccessMessage('All exercises marked as NA!');
-                setShowSuccess(true);
-                setTimeout(() => setShowSuccess(false), 2000);
+                // Show the breakdown modal
+                setShowDayBreakdown(true);
             };
 
             const updateWorkout = (workoutDate, updatedExercises) => {
@@ -1899,10 +1893,19 @@
                 }
             });
 
-            // Count completed exercises (only for current day)
-            const completedCount = currentDayWorkoutExercises.filter(e =>
-                e.weight || e.reps || e.rounds || e.time
-            ).length;
+            // Count completed exercises (only for current day, excluding NA)
+            const completedCount = currentDayWorkoutExercises.filter(e => {
+                // Check if exercise has valid data (not NA)
+                if (e.type === 'assault-bike') {
+                    return e.rounds && e.rounds !== 'NA';
+                } else if (e.type === 'stairmaster') {
+                    return e.time && e.time !== 'NA';
+                } else if (e.type === 'bodyweight') {
+                    return e.reps && e.reps !== 'NA';
+                } else {
+                    return (e.weight && e.weight !== 'NA') || (e.reps && e.reps !== 'NA');
+                }
+            }).length;
             const totalCount = getCurrentExercises().length;
 
             const date = new Date(todayWorkout.date);
