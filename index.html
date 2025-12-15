@@ -1361,6 +1361,7 @@
                             getPreviousWorkout={getPreviousWorkout}
                             logExercise={logExercise}
                             completeDay={completeDay}
+                            markDayAsNA={markDayAsNA}
                             celebration={celebration}
                             getCurrentExercises={getCurrentExercises}
                             currentWeek={currentWeek}
@@ -1968,7 +1969,7 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, celebration, getCurrentExercises, currentWeek, userBodyweight }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, celebration, getCurrentExercises, currentWeek, userBodyweight }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
