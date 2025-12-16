@@ -533,9 +533,9 @@
 
         // Calculate which day it should be based on the date
         function getTodayDay() {
-            // Reference: Dec 15, 2025 is Day 1
+            // Reference: Dec 16, 2025 is Day 1 (Full Body)
             const today = new Date();
-            const referenceDate = new Date(2025, 11, 15); // Month is 0-indexed, so 11 = December
+            const referenceDate = new Date(2025, 11, 16); // Month is 0-indexed, so 11 = December
 
             // Reset to midnight
             today.setHours(0, 0, 0, 0);
@@ -544,7 +544,7 @@
             const diffTime = today - referenceDate;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            // Alternates each day: Dec 15 = Day 1, Dec 16 = Day 2, Dec 17 = Day 1, etc.
+            // Alternates each day: Dec 16 = Day 1 (Full Body), Dec 17 = Day 2 (Accessory), Dec 18 = Day 1, etc.
             return (diffDays % 2 === 0) ? 1 : 2;
         }
 
