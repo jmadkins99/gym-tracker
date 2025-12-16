@@ -403,69 +403,6 @@
             max-height: 250px;
         }
 
-        .pr-glow {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            z-index: 9999;
-            box-shadow: inset 0 0 80px 20px rgba(255, 215, 0, 0.6);
-            animation: pr-pulse 1s ease-in-out;
-        }
-
-        @keyframes pr-pulse {
-            0% {
-                box-shadow: inset 0 0 0px 0px rgba(255, 215, 0, 0);
-            }
-            50% {
-                box-shadow: inset 0 0 80px 20px rgba(255, 215, 0, 0.8);
-            }
-            100% {
-                box-shadow: inset 0 0 0px 0px rgba(255, 215, 0, 0);
-            }
-        }
-
-        .pr-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: #000;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            margin-left: 8px;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.05);
-            }
-        }
-
-        .pr-suggestion {
-            font-size: 11px;
-            color: #6a5a8a;
-            margin-bottom: 4px;
-            font-weight: 600;
-            height: 16px;
-            visibility: visible;
-        }
-
-        .pr-suggestion.hidden {
-            visibility: hidden;
-        }
-
-        .input-field.pr-attempt {
-            border: 2px solid #FFD700;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1));
-        }
 
 
         .modal-overlay {
@@ -596,9 +533,9 @@
 
         // Calculate which day it should be based on the date
         function getTodayDay() {
-            // Reference: Dec 14, 2025 is Day 1
+            // Reference: Dec 15, 2025 is Day 1
             const today = new Date();
-            const referenceDate = new Date(2025, 11, 14); // Month is 0-indexed, so 11 = December
+            const referenceDate = new Date(2025, 11, 15); // Month is 0-indexed, so 11 = December
 
             // Reset to midnight
             today.setHours(0, 0, 0, 0);
@@ -607,7 +544,7 @@
             const diffTime = today - referenceDate;
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            // Alternates each day: Dec 14 = Day 1, Dec 15 = Day 2, Dec 16 = Day 1, etc.
+            // Alternates each day: Dec 15 = Day 1, Dec 16 = Day 2, Dec 17 = Day 1, etc.
             return (diffDays % 2 === 0) ? 1 : 2;
         }
 
@@ -658,7 +595,6 @@
             const [day1Exercises, setDay1Exercises] = useState(DEFAULT_DAY_1_EXERCISES);
             const [day2Exercises, setDay2Exercises] = useState(DEFAULT_DAY_2_EXERCISES);
             const [selectedExercise, setSelectedExercise] = useState(DEFAULT_DAY_1_EXERCISES[0].id);
-            const [celebration, setCelebration] = useState(null);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
@@ -716,7 +652,20 @@
                     const newWorkoutData = {};
 
                     todayWorkout.exercises.forEach(exercise => {
-                        if (exercise.weight || exercise.reps || exercise.rounds || exercise.time) {
+                        // Check if exercise has actual data (not just defaults or empty values)
+                        let hasData = false;
+                        if (exercise.type === 'assault-bike') {
+                            hasData = exercise.rounds && exercise.rounds !== '' && exercise.rounds !== 'NA';
+                        } else if (exercise.type === 'stairmaster') {
+                            hasData = exercise.time && exercise.time !== '' && exercise.time !== 'NA';
+                        } else if (exercise.type === 'bodyweight') {
+                            hasData = exercise.reps && exercise.reps !== '' && exercise.reps !== 'NA';
+                        } else {
+                            hasData = (exercise.weight && exercise.weight !== '' && exercise.weight !== 'NA') ||
+                                     (exercise.reps && exercise.reps !== '' && exercise.reps !== 'NA');
+                        }
+
+                        if (hasData) {
                             newLoggedExercises[exercise.id] = true;
 
                             if (exercise.type === 'assault-bike') {
@@ -824,10 +773,23 @@
             const getPreviousWorkout = (exerciseId) => {
                 if (workoutHistory.length === 0) return null;
 
-                // Find most recent workout with this exercise
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Find most recent workout with this exercise (excluding today's unsubmitted workout)
                 for (let workout of workoutHistory) {
+                    const workoutDate = new Date(workout.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+
+                    // Skip today's workout only if it's not submitted yet
+                    if (workoutDate.getTime() === today.getTime() && workout.day === currentDay && !workout.submitted) {
+                        continue;
+                    }
+
                     const exercise = workout.exercises.find(e => e.id === exerciseId);
-                    if (exercise) return exercise;
+                    if (exercise) {
+                        return exercise;
+                    }
                 }
                 return null;
             };
@@ -840,33 +802,6 @@
                         [field]: value
                     }
                 }));
-
-                // Trigger celebration for standard exercises when reps >= 8
-                const exercise = getCurrentExercises().find(e => e.id === exerciseId);
-                if (exercise?.type === 'standard' && field === 'reps' && parseInt(value) >= 8) {
-                    setCelebration(exerciseId);
-                    setTimeout(() => setCelebration(null), 1000);
-                }
-                // Trigger celebration for assault bike when rounds > previous
-                else if (exercise?.type === 'assault-bike' && field === 'rounds') {
-                    const previous = getPreviousWorkout(exerciseId);
-                    if (previous && parseInt(value) > parseInt(previous.rounds || 0)) {
-                        setCelebration(exerciseId);
-                        setTimeout(() => setCelebration(null), 1000);
-                    }
-                }
-                // Trigger celebration for stairmaster when time > previous
-                else if (exercise?.type === 'stairmaster' && field === 'time') {
-                    const previous = getPreviousWorkout(exerciseId);
-                    if (previous && previous.time) {
-                        const currentSeconds = parseTimeToSeconds(value);
-                        const previousSeconds = parseTimeToSeconds(previous.time);
-                        if (currentSeconds > previousSeconds) {
-                            setCelebration(exerciseId);
-                            setTimeout(() => setCelebration(null), 1000);
-                        }
-                    }
-                }
             };
 
             const logExercise = (exerciseId) => {
@@ -881,26 +816,11 @@
                 if (exercise.type === 'bodyweight' && !data.reps) return;
                 if (exercise.type === 'standard' && !data.weight && !data.reps) return;
 
-                // Auto-fill weight for standard exercises if blank
                 let finalData = { ...data };
-                if (exercise.type === 'standard' && !data.weight && data.reps) {
-                    const previous = getPreviousWorkout(exerciseId);
-                    const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exerciseId] : null;
-                    const isPROpportunity = previous && parseInt(previous.reps) >= 8;
-                    const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
-                    finalData.weight = suggestedWeight || previous?.weight || defaultWeight || '0';
-                }
-
                 const timestamp = new Date().toISOString();
                 finalData.timestamp = timestamp;
 
-                // Update workoutData with final data
-                setWorkoutData(prev => ({
-                    ...prev,
-                    [exerciseId]: finalData
-                }));
-
-                // Find if there's already a workout for today
+                // Find if there's already a workout for today (that hasn't been submitted)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const todayWeek = getWeekNumber(today);
@@ -910,7 +830,8 @@
                     workoutDate.setHours(0, 0, 0, 0);
                     const isSameDay = workoutDate.getTime() === today.getTime();
                     const isSameWorkoutDay = w.day === currentDay;
-                    return isSameDay && isSameWorkoutDay;
+                    const isNotSubmitted = !w.submitted;
+                    return isSameDay && isSameWorkoutDay && isNotSubmitted;
                 });
 
                 // Create exercise object to save
@@ -1115,13 +1036,14 @@
                     }
                 });
 
-                // Find if there's already a workout for today with the same day number
+                // Find if there's already a workout for today with the same day number (that hasn't been submitted)
                 let existingWorkoutIndex = workoutHistory.findIndex(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
                     const isSameDay = workoutDate.getTime() === today.getTime();
                     const isSameWorkoutDay = w.day === currentDay;
-                    return isSameDay && isSameWorkoutDay;
+                    const isNotSubmitted = !w.submitted;
+                    return isSameDay && isSameWorkoutDay && isNotSubmitted;
                 });
 
                 let updatedHistory;
@@ -1260,7 +1182,6 @@
             return (
                 <div className="app">
                     {showSuccess && <div className={`success-message ${showBackupReminder ? 'backup-reminder' : ''}`}>{successMessage}</div>}
-                    {celebration && <Celebration />}
 
                     {showBackupReminder && (
                         <BackupReminderModal
@@ -1344,7 +1265,6 @@
                             logExercise={logExercise}
                             completeDay={completeDay}
                             markDayAsNA={markDayAsNA}
-                            celebration={celebration}
                             getCurrentExercises={getCurrentExercises}
                             currentWeek={currentWeek}
                         />}
@@ -1418,11 +1338,12 @@
             if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
                 const day = settingsView === 'exercises-day1' ? 1 : 2;
                 const exercises = day === 1 ? day1Exercises : day2Exercises;
+                const dayName = day === 1 ? 'Full Body' : 'Accessory';
 
                 return (
                     <div className="modal-overlay" onClick={onClose}>
                         <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
-                            <div className="modal-title">Day {day} Exercises</div>
+                            <div className="modal-title">{dayName} Day Exercises</div>
 
                             <div style={{ marginBottom: '20px' }}>
                                 {exercises.map((exercise, idx) => (
@@ -1609,11 +1530,12 @@
                 month: 'long',
                 day: 'numeric'
             });
+            const dayName = workout.day === 1 ? 'Full Body' : 'Accessory';
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
-                        <div className="modal-title">Edit Workout - Day {workout.day}</div>
+                        <div className="modal-title">Edit Workout - {dayName} Day</div>
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}
                         </div>
@@ -1803,83 +1725,85 @@
                 return null;
             }
 
-            // Function to get previous workout excluding today
-            const getPreviousWorkoutExcludingToday = (exerciseId) => {
-                for (let workout of workoutHistory) {
-                    // Skip today's workout
-                    const workoutDate = new Date(workout.date);
-                    workoutDate.setHours(0, 0, 0, 0);
-                    if (workoutDate.getTime() === today.getTime() && workout.day === currentDay) {
-                        continue;
-                    }
+            // Function to get most recent previous workout for the same exercise
+            const getPreviousWorkoutForExercise = (exerciseId) => {
+                const todayDate = new Date(todayWorkout.date);
 
-                    const exercise = workout.exercises.find(e => e.id === exerciseId);
-                    if (exercise && (exercise.weight || exercise.reps || exercise.rounds || exercise.time)) {
-                        return exercise;
-                    }
-                }
-                return null;
+                console.log('Looking for previous workout for:', exerciseId, 'Current day type:', currentDay);
+
+                // Find most recent workout of the same day type (before today)
+                const previousWorkout = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        return w.day === currentDay && workoutDate < todayDate;
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                console.log('Previous workout found:', previousWorkout ? 'Yes' : 'No');
+
+                if (!previousWorkout) return null;
+
+                const exercise = previousWorkout.exercises.find(e => e.id === exerciseId);
+                return exercise;
             };
 
             // Get only exercises that match the current day
             const currentDayExerciseIds = new Set(getCurrentExercises().map(e => e.id));
             const currentDayWorkoutExercises = todayWorkout.exercises.filter(e => currentDayExerciseIds.has(e.id));
 
-            // Calculate PRs
-            const prs = [];
+            // Calculate PRs (just count them)
+            let prCount = 0;
             currentDayWorkoutExercises.forEach(exercise => {
                 if (!exercise.weight && !exercise.reps && !exercise.rounds && !exercise.time) {
                     return; // Skip NA exercises
                 }
 
-                const previous = getPreviousWorkoutExcludingToday(exercise.id);
+                const previous = getPreviousWorkoutForExercise(exercise.id);
                 if (!previous) {
+                    console.log('No previous data for:', exercise.name);
                     return; // Skip if no previous workout
                 }
 
                 let isPR = false;
-                let prType = '';
 
                 if (exercise.type === 'assault-bike') {
                     if (parseInt(exercise.rounds) > parseInt(previous.rounds || 0)) {
                         isPR = true;
-                        prType = `${exercise.rounds} rounds (prev: ${previous.rounds})`;
                     }
                 } else if (exercise.type === 'stairmaster') {
                     const currentSeconds = parseTimeToSeconds(exercise.time);
                     const previousSeconds = parseTimeToSeconds(previous.time);
                     if (currentSeconds > previousSeconds) {
                         isPR = true;
-                        prType = `${exercise.time} (prev: ${previous.time})`;
                     }
                 } else if (exercise.type === 'bodyweight') {
-                    if (parseInt(exercise.reps) > parseInt(previous.reps || 0)) {
+                    const currentReps = parseInt(exercise.reps);
+                    const previousReps = parseInt(previous.reps || 0);
+                    console.log('Bodyweight comparison:', exercise.name, 'Current:', currentReps, 'Previous:', previousReps);
+                    if (currentReps > previousReps) {
                         isPR = true;
-                        prType = `${exercise.reps} reps (prev: ${previous.reps})`;
                     }
                 } else {
-                    // Standard exercise - PR if weight increased or same weight with more reps
+                    // Standard exercise - PR if weight OR reps increased
                     const currentWeight = parseFloat(exercise.weight);
                     const previousWeight = parseFloat(previous.weight);
                     const currentReps = parseInt(exercise.reps);
                     const previousReps = parseInt(previous.reps);
 
-                    if (currentWeight > previousWeight) {
+                    console.log('Standard comparison:', exercise.name, 'Current:', currentWeight, 'lbs x', currentReps, 'Previous:', previousWeight, 'lbs x', previousReps);
+
+                    if (currentWeight > previousWeight || currentReps > previousReps) {
                         isPR = true;
-                        prType = `${exercise.weight}lbs × ${exercise.reps} (prev: ${previous.weight}lbs × ${previous.reps})`;
-                    } else if (currentWeight === previousWeight && currentReps > previousReps) {
-                        isPR = true;
-                        prType = `${exercise.weight}lbs × ${exercise.reps} (prev: ${previous.weight}lbs × ${previous.reps})`;
                     }
                 }
 
                 if (isPR) {
-                    prs.push({
-                        name: exercise.name,
-                        description: prType
-                    });
+                    console.log('PR detected for:', exercise.name);
+                    prCount++;
                 }
             });
+
+            console.log('Total PR count:', prCount);
 
             // Count completed exercises (only for current day, excluding NA)
             const completedCount = currentDayWorkoutExercises.filter(e => {
@@ -1922,35 +1846,14 @@
                             </div>
                         </div>
 
-                        {prs.length > 0 && (
-                            <div style={{ marginBottom: '20px' }}>
-                                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
-                                    Personal Records
-                                </div>
-                                {prs.map((pr, idx) => (
-                                    <div key={idx} style={{
-                                        background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.1))',
-                                        border: '1px solid #FFD700',
-                                        borderRadius: '8px',
-                                        padding: '12px',
-                                        marginBottom: '8px'
-                                    }}>
-                                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                            {pr.name}
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#888' }}>
-                                            {pr.description}
-                                        </div>
-                                    </div>
-                                ))}
+                        <div style={{ marginBottom: '20px' }}>
+                            <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
+                                PRs Smashed
                             </div>
-                        )}
-
-                        {prs.length === 0 && (
-                            <div style={{ marginBottom: '20px', color: '#666', textAlign: 'center', padding: '20px' }}>
-                                No PRs this session. Keep pushing!
+                            <div style={{ fontSize: '32px', fontWeight: '700', color: '#3a2a5a' }}>
+                                {prCount}
                             </div>
-                        )}
+                        </div>
 
                         <button className="modal-btn primary" onClick={onClose}>
                             Close
@@ -1960,7 +1863,7 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, celebration, getCurrentExercises, currentWeek, userBodyweight }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
@@ -1977,11 +1880,6 @@
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
                 if (exercise.type === 'assault-bike') {
-                    const isPROpportunity = previous && previous.rounds;
-                    const suggestedRounds = isPROpportunity ? (parseInt(previous.rounds) + 1).toString() : null;
-                    const isCurrentlyPRAttempt = isPROpportunity && data.rounds &&
-                        parseInt(data.rounds) > parseInt(previous.rounds);
-
                     return (
                         <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
@@ -1996,11 +1894,6 @@
                                     </div>
                                 )}
                             </div>
-                            {isPROpportunity && (
-                                <div className="pr-suggestion">
-                                    Try {suggestedRounds} rounds for a new PR
-                                </div>
-                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Intensity</label>
@@ -2016,10 +1909,10 @@
                                     <input
                                         type="number"
                                         inputMode="numeric"
-                                        className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
+                                        className="input-field"
                                         value={data.rounds || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
-                                        placeholder={suggestedRounds || previous?.rounds || '5'}
+                                        placeholder={previous?.rounds || ''}
                                         disabled={isLogged}
                                     />
                                 </div>
@@ -2036,17 +1929,6 @@
                 }
 
                 if (exercise.type === 'stairmaster') {
-                    const isPROpportunity = previous && previous.time;
-                    let suggestedTime = null;
-                    let suggestedLevel = previous?.level || 'Level 7';
-                    if (isPROpportunity) {
-                        const prevSeconds = parseTimeToSeconds(previous.time);
-                        const newSeconds = prevSeconds + 15;
-                        suggestedTime = formatSecondsToTime(newSeconds);
-                    }
-                    const isCurrentlyPRAttempt = isPROpportunity && data.time &&
-                        parseTimeToSeconds(data.time) > parseTimeToSeconds(previous.time);
-
                     // Generate time options from 5:00 to 20:00 in 15-second increments
                     const timeOptions = [];
                     for (let minutes = 5; minutes <= 20; minutes++) {
@@ -2068,17 +1950,12 @@
                                     </div>
                                 )}
                             </div>
-                            {isPROpportunity && (
-                                <div className="pr-suggestion">
-                                    Try {suggestedTime} for a new PR
-                                </div>
-                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Level</label>
                                     <select
                                         className="input-field"
-                                        value={data.level || suggestedLevel}
+                                        value={data.level || previous?.level || 'Level 7'}
                                         onChange={(e) => handleInputChange(exercise.id, 'level', e.target.value)}
                                         disabled={isLogged}
                                     >
@@ -2091,12 +1968,12 @@
                                 <div className="input-group">
                                     <label className="input-label">Time</label>
                                     <select
-                                        className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
+                                        className="input-field"
                                         value={data.time || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
                                         disabled={isLogged}
                                     >
-                                        <option value="">{suggestedTime || previous?.time || 'Select time'}</option>
+                                        <option value="">{previous?.time || 'Select time'}</option>
                                         {timeOptions.map(time => (
                                             <option key={time} value={time}>{time}</option>
                                         ))}
@@ -2143,7 +2020,7 @@
                                         className="input-field"
                                         value={data.reps || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                        placeholder={previous?.reps || '0'}
+                                        placeholder={previous?.reps || ''}
                                         disabled={isLogged}
                                     />
                                 </div>
@@ -2160,17 +2037,6 @@
                 }
 
                 // Standard exercise
-                const previousReps = previous ? parseInt(previous.reps) : 0;
-                const isPROpportunity = previous && previousReps >= 8;
-                const suggestedWeight = isPROpportunity ? (parseFloat(previous.weight) + 1.25).toFixed(2) : null;
-                const isCurrentlyPRAttempt = isPROpportunity && data.weight &&
-                    parseFloat(data.weight) >= parseFloat(suggestedWeight);
-
-                const placeholderWeight = suggestedWeight || previous?.weight || defaultWeight || '0';
-                // If it's a PR opportunity (adding 1.25 lbs), keep reps at 6
-                // Otherwise, aim for one rep higher than last week
-                const placeholderReps = isPROpportunity ? '6' : (previous ? (previousReps + 1).toString() : '0');
-
                 return (
                     <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                         <div className="exercise-header">
@@ -2187,23 +2053,18 @@
                         </div>
                         <div className="input-row">
                             <div className="input-group">
-                                <div className={`pr-suggestion ${!isPROpportunity ? 'hidden' : ''}`}>
-                                    +1.25 lbs
-                                </div>
                                 <label className="input-label">Weight (lbs)</label>
                                 <input
                                     type="number"
                                     inputMode="decimal"
-                                    className={`input-field ${isCurrentlyPRAttempt ? 'pr-attempt' : ''}`}
+                                    className="input-field"
                                     value={data.weight || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
-                                    placeholder={placeholderWeight}
+                                    placeholder={previous?.weight || ''}
                                     disabled={isLogged}
                                 />
                             </div>
                             <div className="input-group">
-                                <div className="pr-suggestion hidden">
-                                </div>
                                 <label className="input-label">Reps</label>
                                 <input
                                     type="number"
@@ -2211,7 +2072,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={placeholderReps}
+                                    placeholder={previous?.reps || ''}
                                     disabled={isLogged}
                                 />
                             </div>
@@ -2276,12 +2137,11 @@
             );
         }
 
-        function Celebration() {
-            return <div className="pr-glow" />;
-        }
 
         function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises, onEditWorkout }) {
-            const weekWorkouts = workoutHistory.filter(w => w.week === viewingWeek);
+            const weekWorkouts = workoutHistory
+                .filter(w => w.week === viewingWeek)
+                .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest to oldest
 
             return (
                 <>
@@ -2330,8 +2190,8 @@
                                 const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
-                                // Calculate sequential day number within the current week
-                                const dayNumber = idx + 1;
+                                // Calculate sequential day number - count down from total
+                                const dayNumber = weekWorkouts.length - idx;
 
                                 return (
                                     <div key={idx} className="history-item">
