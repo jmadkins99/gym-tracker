@@ -1547,10 +1547,10 @@
                         <div className="modal-title">Settings</div>
 
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
-                            ✏️ Manage Day 1 Exercises
+                            ✏️ Manage Full Body Day Exercises
                         </button>
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
-                            ✏️ Manage Day 2 Exercises
+                            ✏️ Manage Accessory Day Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
@@ -1907,7 +1907,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">Day {currentDay} Breakdown</div>
+                        <div className="modal-title">{currentDay === 1 ? 'Full Body' : 'Accessory'} Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}
@@ -2234,13 +2234,13 @@
                             className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(1)}
                         >
-                            Day 1{todayDay === 1 ? ' (Today)' : ''}
+                            Full Body Day{todayDay === 1 ? ' (Today)' : ''}
                         </button>
                         <button
                             className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(2)}
                         >
-                            Day 2{todayDay === 2 ? ' (Today)' : ''}
+                            Accessory Day{todayDay === 2 ? ' (Today)' : ''}
                         </button>
                     </div>
 
@@ -2330,9 +2330,8 @@
                                 const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
-                                // Calculate sequential day number (total workouts completed)
-                                const workoutIndex = workoutHistory.indexOf(workout);
-                                const dayNumber = workoutHistory.length - workoutIndex;
+                                // Calculate sequential day number within the current week
+                                const dayNumber = idx + 1;
 
                                 return (
                                     <div key={idx} className="history-item">
@@ -2563,27 +2562,27 @@
                         value={selectedExercise}
                         onChange={(e) => setSelectedExercise(e.target.value)}
                     >
-                        <optgroup label="Day 1 - Upper Body">
+                        <optgroup label="Full Body - Upper Body">
                             {day1Exercises.filter(e => e.category === 'Upper').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
-                        <optgroup label="Day 1 - Lower Body">
+                        <optgroup label="Full Body - Lower Body">
                             {day1Exercises.filter(e => e.category === 'Lower').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
-                        <optgroup label="Day 1 - Cardio">
+                        <optgroup label="Full Body - Cardio">
                             {day1Exercises.filter(e => e.category === 'Cardio').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
-                        <optgroup label="Day 2 - Accessories">
+                        <optgroup label="Accessory - Accessories">
                             {day2Exercises.filter(e => e.category === 'Accessories').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
-                        <optgroup label="Day 2 - Cardio">
+                        <optgroup label="Accessory - Cardio">
                             {day2Exercises.filter(e => e.category === 'Cardio').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
