@@ -1880,6 +1880,12 @@
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
                 if (exercise.type === 'assault-bike') {
+                    // Generate round options from 5 to 20
+                    const roundOptions = [];
+                    for (let i = 5; i <= 20; i++) {
+                        roundOptions.push(i);
+                    }
+
                     return (
                         <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
@@ -1906,15 +1912,17 @@
                                 </div>
                                 <div className="input-group">
                                     <label className="input-label">Rounds</label>
-                                    <input
-                                        type="number"
-                                        inputMode="numeric"
+                                    <select
                                         className="input-field"
                                         value={data.rounds || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
-                                        placeholder={previous?.rounds || ''}
                                         disabled={isLogged}
-                                    />
+                                    >
+                                        <option value="">{previous?.rounds ? `${previous.rounds} rounds` : 'Select rounds'}</option>
+                                        {roundOptions.map(rounds => (
+                                            <option key={rounds} value={rounds}>{rounds}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <button
