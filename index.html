@@ -870,12 +870,6 @@
             };
 
             const logExercise = (exerciseId) => {
-                // Check if workout is already submitted
-                if (isWorkoutSubmitted()) {
-                    alert('This workout has been submitted and is locked. Use the pencil icon in the Weekly tab to edit.');
-                    return;
-                }
-
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
                 let data = workoutData[exerciseId];
 
@@ -1072,12 +1066,6 @@
             };
 
             const markDayAsNA = () => {
-                // Check if workout is already submitted
-                if (isWorkoutSubmitted()) {
-                    alert('This workout has been submitted and is locked. Use the pencil icon in the Weekly tab to edit.');
-                    return;
-                }
-
                 const timestamp = new Date().toISOString();
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
