@@ -584,6 +584,42 @@
             return `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
 
+        // Namespace localStorage based on app path to prevent conflicts between gym-tracker and public-gym-app
+        const APP_NAMESPACE = (() => {
+            const path = window.location.pathname;
+            if (path.includes('/gym-tracker/')) return 'gym-tracker:';
+            if (path.includes('/public-gym-app/')) return 'public-gym-app:';
+            // Fallback for local development or other paths
+            return 'gym-local:';
+        })();
+
+        // Helper functions for namespaced localStorage
+        const storage = {
+            getItem: (key) => localStorage.getItem(APP_NAMESPACE + key),
+            setItem: (key, value) => localStorage.setItem(APP_NAMESPACE + key, value),
+            removeItem: (key) => localStorage.removeItem(APP_NAMESPACE + key),
+        };
+
+        // Migrate existing data to namespaced keys (one-time migration for existing users)
+        function migrateToNamespacedStorage() {
+            const keysToMigrate = ['gymWorkoutHistory', 'gymExerciseConfig', 'lastBackupReminder'];
+
+            keysToMigrate.forEach(key => {
+                // Check if data exists in the old location (without namespace)
+                const oldData = localStorage.getItem(key);
+                // Check if data already exists in the new location (with namespace)
+                const newData = storage.getItem(key);
+
+                // Only migrate if old data exists and new location is empty
+                if (oldData && !newData) {
+                    storage.setItem(key, oldData);
+                    // Optionally remove the old data to clean up
+                    // Commenting this out to be safe - users can manually clear old data later
+                    // localStorage.removeItem(key);
+                }
+            });
+        }
+
         function App() {
             const [currentView, setCurrentView] = useState('workout');
             const [currentDay, setCurrentDay] = useState(getTodayDay());
@@ -604,15 +640,18 @@
             const currentWeek = getCurrentWeek();
 
             useEffect(() => {
+                // Migrate existing data to namespaced storage (one-time for existing users)
+                migrateToNamespacedStorage();
+
                 // Load workout history
-                const saved = localStorage.getItem('gymWorkoutHistory');
+                const saved = storage.getItem('gymWorkoutHistory');
                 if (saved) {
                     const history = JSON.parse(saved);
                     setWorkoutHistory(history);
                 }
 
                 // Load custom exercise configurations
-                const savedExercises = localStorage.getItem('gymExerciseConfig');
+                const savedExercises = storage.getItem('gymExerciseConfig');
                 if (savedExercises) {
                     const config = JSON.parse(savedExercises);
                     if (config.day1) {
@@ -624,7 +663,7 @@
                 }
 
                 // Check last backup reminder
-                const lastReminder = localStorage.getItem('lastBackupReminder');
+                const lastReminder = storage.getItem('lastBackupReminder');
                 const now = new Date().getTime();
                 const oneMonth = 30 * 24 * 60 * 60 * 1000;
 
@@ -718,7 +757,7 @@
                     day1: day1Exercises,
                     day2: day2Exercises
                 };
-                localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                storage.setItem('gymExerciseConfig', JSON.stringify(config));
             };
 
             const updateExerciseName = (day, exerciseId, newName) => {
@@ -729,7 +768,7 @@
                         );
                         // Save immediately
                         const config = { day1: updated, day2: day2Exercises };
-                        localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                        storage.setItem('gymExerciseConfig', JSON.stringify(config));
                         return updated;
                     });
                 } else {
@@ -739,7 +778,7 @@
                         );
                         // Save immediately
                         const config = { day1: day1Exercises, day2: updated };
-                        localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                        storage.setItem('gymExerciseConfig', JSON.stringify(config));
                         return updated;
                     });
                 }
@@ -762,11 +801,11 @@
                 if (day === 1) {
                     setDay1Exercises(updated);
                     const config = { day1: updated, day2: day2Exercises };
-                    localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                    storage.setItem('gymExerciseConfig', JSON.stringify(config));
                 } else {
                     setDay2Exercises(updated);
                     const config = { day1: day1Exercises, day2: updated };
-                    localStorage.setItem('gymExerciseConfig', JSON.stringify(config));
+                    storage.setItem('gymExerciseConfig', JSON.stringify(config));
                 }
             };
 
@@ -947,7 +986,7 @@
                 }
 
                 setWorkoutHistory(updatedHistory);
-                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
                 setLoggedExercises(prev => ({
                     ...prev,
@@ -977,7 +1016,7 @@
                 });
 
                 setWorkoutHistory(updatedHistory);
-                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
                 // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
@@ -1069,7 +1108,7 @@
                 }
 
                 setWorkoutHistory(updatedHistory);
-                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
                 // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
@@ -1088,7 +1127,7 @@
                 });
 
                 setWorkoutHistory(updatedHistory);
-                localStorage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
                 setSuccessMessage('Workout updated!');
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 2000);
@@ -1126,12 +1165,12 @@
                         if (Array.isArray(imported)) {
                             // Old format
                             setWorkoutHistory(imported);
-                            localStorage.setItem('gymWorkoutHistory', JSON.stringify(imported));
+                            storage.setItem('gymWorkoutHistory', JSON.stringify(imported));
                         } else {
                             // New format
                             if (imported.workoutHistory) {
                                 setWorkoutHistory(imported.workoutHistory);
-                                localStorage.setItem('gymWorkoutHistory', JSON.stringify(imported.workoutHistory));
+                                storage.setItem('gymWorkoutHistory', JSON.stringify(imported.workoutHistory));
                             }
                             if (imported.exerciseConfig) {
                                 if (imported.exerciseConfig.day1) {
@@ -1140,7 +1179,7 @@
                                 if (imported.exerciseConfig.day2) {
                                     setDay2Exercises(imported.exerciseConfig.day2.sort((a, b) => a.order - b.order));
                                 }
-                                localStorage.setItem('gymExerciseConfig', JSON.stringify(imported.exerciseConfig));
+                                storage.setItem('gymExerciseConfig', JSON.stringify(imported.exerciseConfig));
                             }
                         }
 
@@ -1158,9 +1197,9 @@
             const resetData = () => {
                 if (confirm('ARE YOU VERY SURE? This will delete ALL your workout data AND exercise customizations permanently. This cannot be undone!')) {
                     if (confirm('FINAL WARNING: All your progress and custom exercise names/order will be lost forever. Continue?')) {
-                        localStorage.removeItem('gymWorkoutHistory');
-                        localStorage.removeItem('gymExerciseConfig');
-                        localStorage.removeItem('lastBackupReminder');
+                        storage.removeItem('gymWorkoutHistory');
+                        storage.removeItem('gymExerciseConfig');
+                        storage.removeItem('lastBackupReminder');
                         setWorkoutHistory([]);
                         setWorkoutData({});
                         setLoggedExercises({});
@@ -1175,7 +1214,7 @@
             };
 
             const dismissBackupReminder = () => {
-                localStorage.setItem('lastBackupReminder', new Date().getTime().toString());
+                storage.setItem('lastBackupReminder', new Date().getTime().toString());
                 setShowBackupReminder(false);
             };
 
