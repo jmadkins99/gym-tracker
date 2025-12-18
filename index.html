@@ -815,8 +815,11 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Find most recent workout with this exercise (excluding today's unsubmitted workout)
+                // Find up to 3 most recent workouts with this exercise (excluding today's unsubmitted workout)
+                const candidates = [];
                 for (let workout of workoutHistory) {
+                    if (candidates.length >= 3) break; // Stop after finding 3 candidates
+
                     const workoutDate = new Date(workout.date);
                     workoutDate.setHours(0, 0, 0, 0);
 
@@ -827,10 +830,19 @@
 
                     const exercise = workout.exercises.find(e => e.id === exerciseId);
                     if (exercise) {
-                        return exercise;
+                        candidates.push(exercise);
                     }
                 }
-                return null;
+
+                // Return first candidate that doesn't have "NA" reps
+                for (let candidate of candidates) {
+                    if (candidate.reps && candidate.reps !== 'NA') {
+                        return candidate;
+                    }
+                }
+
+                // If all candidates have NA reps (or no valid candidates), return the most recent one
+                return candidates.length > 0 ? candidates[0] : null;
             };
 
             const handleInputChange = (exerciseId, field, value) => {
@@ -1280,7 +1292,7 @@
                             </button>
                             <button
                                 className={`nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
-                                onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); }}
+                                onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); window.scrollTo(0, 0); }}
                             >
                                 Weekly
                             </button>
