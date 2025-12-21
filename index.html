@@ -1038,6 +1038,10 @@
             };
 
             const markDayAsNA = () => {
+                if (!confirm('Are you sure you want to mark this day as NA?')) {
+                    return;
+                }
+
                 const timestamp = new Date().toISOString();
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
