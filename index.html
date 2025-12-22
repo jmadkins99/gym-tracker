@@ -521,7 +521,6 @@
             { id: 'leg-curls', name: 'Prone Leg Curls', category: 'Lower', type: 'standard', order: 13 },
             { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', order: 14 },
             { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', order: 15 },
-            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 16 },
         ];
 
         const DEFAULT_DAY_2_EXERCISES = [
@@ -529,6 +528,7 @@
             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', order: 1 },
             { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', order: 2 },
             { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', order: 3 },
+            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 4 },
         ];
 
         // Calculate which day it should be based on the date
@@ -1030,6 +1030,9 @@
                 setWorkoutHistory(updatedHistory);
                 storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
+                // Automatically backup to Downloads folder
+                autoBackup();
+
                 // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
                 setWorkoutData({});
@@ -1126,6 +1129,9 @@
                 setWorkoutHistory(updatedHistory);
                 storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
+                // Automatically backup to Downloads folder
+                autoBackup();
+
                 // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
                 setWorkoutData({});
@@ -1164,6 +1170,26 @@
                 const link = document.createElement('a');
                 link.href = url;
                 link.download = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const autoBackup = () => {
+                const exportObj = {
+                    workoutHistory,
+                    exerciseConfig: {
+                        day1: day1Exercises,
+                        day2: day2Exercises
+                    },
+                    exportDate: new Date().toISOString()
+                };
+                const dataStr = JSON.stringify(exportObj, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                link.download = `gym-tracker-AUTO-BACKUP-${timestamp}.json`;
                 link.click();
                 URL.revokeObjectURL(url);
             };
@@ -2175,9 +2201,6 @@
 
                             <div className="section-title">Lower Body</div>
                             {lowerExercises.map(renderExercise)}
-
-                            <div className="section-title">Cardio</div>
-                            {cardioExercises.map(renderExercise)}
                         </>
                     ) : (
                         <>
