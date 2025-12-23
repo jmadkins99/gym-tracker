@@ -502,6 +502,29 @@
             'hanging-leg-raises': 'Body Weight'
         };
 
+        // PR Auto-Regulation: Weight increments when you hit 8+ reps
+        // Edit these values to customize weight progression for each exercise
+        const PR_WEIGHT_INCREMENTS = {
+            'chest-flies': 1.25,
+            'incline-chest-press': 2.5,
+            'flat-chest-press': 2.5,
+            'shoulder-press': 2.5,
+            'preacher-curls': 1.25,
+            'tricep-pushdown': 1.25,
+            'lateral-raises': 1.25,
+            'overhead-tricep': 1.25,
+            'frontal-pulldowns': 1.25,
+            'upper-back-row': 2.5,
+            'kelso-shrugs': 2.5,
+            'hammer-row': 2.5,
+            'leg-extensions': 1.25,
+            'leg-curls': 1.25,
+            'hip-adduction': 1.25,
+            'calf-raise': 1.25,
+            'cable-wrist-curls': 1.25,
+            'ab-crunch': 1.25
+        };
+
         const DEFAULT_DAY_1_EXERCISES = [
             // Upper
             { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', order: 0 },
@@ -859,30 +882,25 @@
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
                 let data = workoutData[exerciseId] || {};
 
-                // Check for PR Weight Recovery and auto-fill if weight is not set
-                if (exercise.type === 'standard' && !data.weight) {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-
-                    const previousWorkouts = workoutHistory
-                        .filter(w => {
-                            const workoutDate = new Date(w.date);
-                            workoutDate.setHours(0, 0, 0, 0);
-                            return w.day === currentDay && (workoutDate < today || (workoutDate.getTime() === today.getTime() && w.submitted));
-                        })
-                        .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                    if (previousWorkouts.length >= 2) {
-                        const twoWeeksAgo = previousWorkouts[1];
-                        if (twoWeeksAgo.plateauBusters && twoWeeksAgo.plateauBusters.includes(exerciseId)) {
-                            const twoWeeksExercise = twoWeeksAgo.exercises.find(e => e.id === exerciseId);
-                            if (twoWeeksExercise && twoWeeksExercise.weight) {
-                                // Auto-fill the weight from 2 weeks ago (the plateau weight)
-                                data = { ...data, weight: twoWeeksExercise.weight };
-                            }
+                // Capture auto-filled weight if user didn't manually enter it
+                if (exercise.type === 'standard' && !data.weight && data.reps) {
+                    console.log('[logExercise] Trying to capture auto-filled weight for:', exercise.name);
+                    console.log('[logExercise] Current data:', data);
+                    // Find the weight input field for this exercise and read its displayed value
+                    const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+                    console.log('[logExercise] Found exercise card:', exerciseCard);
+                    if (exerciseCard) {
+                        // Find the weight input (it's the first number input with inputmode="decimal")
+                        const weightInput = exerciseCard.querySelector('input[type="number"][inputmode="decimal"]');
+                        console.log('[logExercise] Found weight input:', weightInput);
+                        console.log('[logExercise] Weight input value:', weightInput?.value);
+                        if (weightInput && weightInput.value) {
+                            data = { ...data, weight: weightInput.value };
+                            console.log('[logExercise] Captured weight from DOM:', weightInput.value);
                         }
                     }
                 }
+                console.log('[logExercise] Final data to save:', data);
 
                 if (!data || Object.keys(data).length === 0) return;
 
@@ -1047,15 +1065,19 @@
 
                 // Detect exercises with less than 6 reps for plateau busting next week
                 const plateauBusters = [];
+                console.log('[completeDay] Checking for plateau busters in:', todayWorkout);
                 todayWorkout.exercises.forEach(exercise => {
                     // Only check standard and bodyweight exercises (those with reps)
                     if ((exercise.type === 'standard' || exercise.type === 'bodyweight') && exercise.reps) {
                         const reps = parseInt(exercise.reps);
+                        console.log('[completeDay] Exercise:', exercise.name, 'Reps:', reps);
                         if (!isNaN(reps) && reps < 6) {
+                            console.log('[completeDay] PLATEAU BUSTER detected for:', exercise.name);
                             plateauBusters.push(exercise.id);
                         }
                     }
                 });
+                console.log('[completeDay] Total plateau busters:', plateauBusters);
 
                 // Mark workout as submitted (immutable) and add plateau busters
                 const updatedHistory = workoutHistory.map(w => {
@@ -1902,11 +1924,11 @@
                     const currentReps = parseInt(exercise.reps);
                     const previousReps = parseInt(previous.reps || 0);
                     console.log('Bodyweight comparison:', exercise.name, 'Current:', currentReps, 'Previous:', previousReps);
-                    if (currentReps > previousReps) {
+                    if (currentReps > previousReps && currentReps >= 6) {
                         isPR = true;
                     }
                 } else {
-                    // Standard exercise - PR if weight OR reps increased
+                    // Standard exercise - PR if weight OR reps increased (and reps >= 6)
                     const currentWeight = parseFloat(exercise.weight);
                     const previousWeight = parseFloat(previous.weight);
                     const currentReps = parseInt(exercise.reps);
@@ -1914,7 +1936,7 @@
 
                     console.log('Standard comparison:', exercise.name, 'Current:', currentWeight, 'lbs x', currentReps, 'Previous:', previousWeight, 'lbs x', previousReps);
 
-                    if (currentWeight > previousWeight || currentReps > previousReps) {
+                    if ((currentWeight > previousWeight || currentReps > previousReps) && currentReps >= 6) {
                         isPR = true;
                     }
                 }
@@ -1993,6 +2015,14 @@
             const cardioExercises = exercises.filter(e => e.category === 'Cardio');
             const todayDay = getTodayDay();
 
+            // Helper function to check if an exercise has valid data (not NA)
+            const isValidExercise = (exercise) => {
+                if (!exercise) return false;
+                if (exercise.reps === 'NA' || exercise.weight === 'NA') return false;
+                if (!exercise.reps || !exercise.weight) return false;
+                return true;
+            };
+
             // Helper function to check if exercise is marked for plateau busting
             const isPlateauBuster = (exerciseId) => {
                 if (!workoutHistory || workoutHistory.length === 0) return false;
@@ -2000,13 +2030,21 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Find most recent previous workout of the same day type
+                // Find most recent previous workout of the same day type with valid data for this exercise
                 const previousWorkout = workoutHistory
                     .filter(w => {
                         const workoutDate = new Date(w.date);
                         workoutDate.setHours(0, 0, 0, 0);
-                        // Look for workouts of the same day type and before today (or today if submitted)
-                        return w.day === currentDay && (workoutDate < today || (workoutDate.getTime() === today.getTime() && w.submitted));
+                        if (w.day !== currentDay) return false;
+                        // Exclude future workouts
+                        if (workoutDate > today) return false;
+
+                        // Exclude today's unsubmitted workout
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        // Check if this workout has valid data for this exercise
+                        const exercise = w.exercises.find(e => e.id === exerciseId);
+                        return isValidExercise(exercise);
                     })
                     .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
@@ -2022,12 +2060,21 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Get the two most recent previous workouts of the same day type
+                // Get the two most recent previous workouts of the same day type with valid data
                 const previousWorkouts = workoutHistory
                     .filter(w => {
                         const workoutDate = new Date(w.date);
                         workoutDate.setHours(0, 0, 0, 0);
-                        return w.day === currentDay && (workoutDate < today || (workoutDate.getTime() === today.getTime() && w.submitted));
+                        if (w.day !== currentDay) return false;
+                        // Exclude future workouts
+                        if (workoutDate > today) return false;
+
+                        // Exclude today's unsubmitted workout
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        // Check if this workout has valid data for this exercise
+                        const exercise = w.exercises.find(e => e.id === exerciseId);
+                        return isValidExercise(exercise);
                     })
                     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -2043,11 +2090,126 @@
                     if (twoWeeksExercise && twoWeeksExercise.weight) {
                         return {
                             weight: twoWeeksExercise.weight,
-                            reps: twoWeeksExercise.reps
+                            reps: '6'  // Always show 6 as the target for Trial of Strength
                         };
                     }
                 }
 
+                return null;
+            };
+
+            // Helper function to check if this is a PR Auto-Regulation week (after hitting 8+ reps)
+            const getPRAutoRegulation = (exerciseId) => {
+                console.log('[getPRAutoRegulation] Checking for:', exerciseId);
+                if (!workoutHistory || workoutHistory.length === 0) {
+                    console.log('[getPRAutoRegulation] No workout history');
+                    return null;
+                }
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Find most recent previous workout with valid data
+                const previousWorkout = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        if (w.day !== currentDay) return false;
+                        // Exclude future workouts
+                        if (workoutDate > today) return false;
+
+                        // Exclude today's unsubmitted workout
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        // Check if this workout has valid data for this exercise
+                        const exercise = w.exercises.find(e => e.id === exerciseId);
+                        return isValidExercise(exercise);
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                console.log('[getPRAutoRegulation] Previous workout:', previousWorkout);
+
+                if (!previousWorkout) {
+                    console.log('[getPRAutoRegulation] No previous workout found');
+                    return null;
+                }
+
+                const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
+                console.log('[getPRAutoRegulation] Previous exercise:', previousExercise);
+
+                // Check if last week hit a PR (8+ reps) and has a weight increment defined
+                if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps) >= 8 &&
+                    previousExercise.weight && PR_WEIGHT_INCREMENTS[exerciseId]) {
+                    const lastWeight = parseFloat(previousExercise.weight);
+                    const increment = PR_WEIGHT_INCREMENTS[exerciseId];
+                    const newWeight = (lastWeight + increment).toString();
+
+                    console.log('[getPRAutoRegulation] PR DETECTED! Last:', lastWeight, 'lbs x', previousExercise.reps, 'New:', newWeight);
+
+                    return {
+                        weight: newWeight,
+                        lastWeight: previousExercise.weight,
+                        lastReps: previousExercise.reps,
+                        increment: increment
+                    };
+                }
+
+                console.log('[getPRAutoRegulation] No PR (reps < 8 or missing data)');
+                return null;
+            };
+
+            // Helper function for plateau buster weight decrement
+            const getPlateauBusterDecrement = (exerciseId) => {
+                console.log('[getPlateauBusterDecrement] Checking for:', exerciseId);
+                if (!workoutHistory || workoutHistory.length === 0) return null;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Find most recent previous workout with valid data
+                const previousWorkout = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        if (w.day !== currentDay) return false;
+                        // Exclude future workouts
+                        if (workoutDate > today) return false;
+
+                        // Exclude today's unsubmitted workout
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        // Check if this workout has valid data for this exercise
+                        const exercise = w.exercises.find(e => e.id === exerciseId);
+                        return isValidExercise(exercise);
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                console.log('[getPlateauBusterDecrement] Previous workout:', previousWorkout);
+                console.log('[getPlateauBusterDecrement] Plateau busters:', previousWorkout?.plateauBusters);
+
+                if (!previousWorkout || !previousWorkout.plateauBusters || !previousWorkout.plateauBusters.includes(exerciseId)) {
+                    console.log('[getPlateauBusterDecrement] Not a plateau buster');
+                    return null;
+                }
+
+                const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
+
+                // Decrease weight by the increment amount
+                if (previousExercise && previousExercise.weight && PR_WEIGHT_INCREMENTS[exerciseId]) {
+                    const lastWeight = parseFloat(previousExercise.weight);
+                    const increment = PR_WEIGHT_INCREMENTS[exerciseId];
+                    const newWeight = (lastWeight - increment).toString();
+
+                    console.log('[getPlateauBusterDecrement] PLATEAU BUSTER! Last:', lastWeight, 'New:', newWeight);
+
+                    return {
+                        weight: newWeight,
+                        lastWeight: previousExercise.weight,
+                        increment: increment
+                    };
+                }
+
+                console.log('[getPlateauBusterDecrement] Missing data');
                 return null;
             };
 
@@ -2057,6 +2219,18 @@
                 const data = workoutData[exercise.id] || {};
                 const showPlateauBuster = isPlateauBuster(exercise.id);
                 const prWeightRecovery = getPRWeightRecovery(exercise.id);
+                const prAutoRegulation = !prWeightRecovery ? getPRAutoRegulation(exercise.id) : null; // Only show if not already showing plateau recovery
+                const plateauBusterDecrement = showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id) : null;
+
+                if (exercise.type === 'standard') {
+                    console.log('[renderExercise]', exercise.name, {
+                        showPlateauBuster,
+                        prWeightRecovery,
+                        prAutoRegulation,
+                        plateauBusterDecrement,
+                        previous
+                    });
+                }
 
                 // Get default weight for Week 1
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
@@ -2069,7 +2243,7 @@
                     }
 
                     return (
-                        <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                        <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
                                 <div>
                                     <div className="exercise-name">
@@ -2129,7 +2303,7 @@
                     }
 
                     return (
-                        <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                        <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
                                 <div className="exercise-name">
                                     {exercise.name}
@@ -2183,7 +2357,7 @@
 
                 if (exercise.type === 'bodyweight') {
                     return (
-                        <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                        <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
                                 <div className="exercise-name">{exercise.name}</div>
                                 {previous && (
@@ -2268,7 +2442,7 @@
 
                 // Standard exercise
                 return (
-                    <div key={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
+                    <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                         <div className="exercise-header">
                             <div>
                                 <div className="exercise-name">
@@ -2306,51 +2480,56 @@
                                 Plateau Buster - Hit 2 sets
                             </div>
                         ) : null}
+                        {prWeightRecovery && (
+                            <div style={{
+                                color: '#4CAF50',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                marginBottom: '8px',
+                                marginTop: '-4px'
+                            }}>
+                                PR Weight Detected
+                            </div>
+                        )}
+                        {prAutoRegulation && !prWeightRecovery && (
+                            <div style={{
+                                color: '#4CAF50',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                marginBottom: '8px',
+                                marginTop: '4px'
+                            }}>
+                                +{prAutoRegulation.increment}lbs
+                            </div>
+                        )}
+                        {plateauBusterDecrement && !prWeightRecovery && !prAutoRegulation && (
+                            <div style={{
+                                color: '#ff9500',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                marginBottom: '8px',
+                                marginTop: '4px'
+                            }}>
+                                -{plateauBusterDecrement.increment}lbs
+                            </div>
+                        )}
                         <div className="input-row">
-                            <div className="input-group" style={{ position: 'relative' }}>
-                                {prWeightRecovery && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '-20px',
-                                        left: '0',
-                                        color: '#4CAF50',
-                                        fontSize: '12px',
-                                        fontWeight: '600'
-                                    }}>
-                                        PR Weight Detected
-                                    </div>
-                                )}
+                            <div className="input-group">
                                 <label className="input-label">Weight (lbs)</label>
                                 <input
                                     type="number"
                                     inputMode="decimal"
                                     className="input-field"
-                                    value={data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || '')}
+                                    value={data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || '')}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
                                     placeholder={previous?.weight || ''}
                                     disabled={isLogged}
-                                    style={prWeightRecovery ? {
+                                    style={prWeightRecovery || prAutoRegulation ? {
                                         border: '2px solid #4CAF50'
                                     } : showPlateauBuster ? {
-                                        border: '2px solid #ff9500',
-                                        paddingRight: '50px'
+                                        border: '2px solid #ff9500'
                                     } : {}}
                                 />
-                                {showPlateauBuster && !prWeightRecovery && !data.weight && previous?.weight && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        right: '12px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        color: '#ff9500',
-                                        fontSize: '20px',
-                                        fontWeight: 'bold',
-                                        pointerEvents: 'none',
-                                        marginTop: '10px'
-                                    }}>
-                                        ↓
-                                    </div>
-                                )}
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Reps</label>
@@ -2360,7 +2539,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={prWeightRecovery?.reps || previous?.reps || ''}
+                                    placeholder={prWeightRecovery?.reps || (prAutoRegulation ? '6' : (plateauBusterDecrement ? '8' : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))}
                                     disabled={isLogged}
                                 />
                             </div>
