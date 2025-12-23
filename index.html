@@ -857,9 +857,34 @@
 
             const logExercise = (exerciseId) => {
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
-                let data = workoutData[exerciseId];
+                let data = workoutData[exerciseId] || {};
 
-                if (!data) return;
+                // Check for PR Weight Recovery and auto-fill if weight is not set
+                if (exercise.type === 'standard' && !data.weight) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const previousWorkouts = workoutHistory
+                        .filter(w => {
+                            const workoutDate = new Date(w.date);
+                            workoutDate.setHours(0, 0, 0, 0);
+                            return w.day === currentDay && (workoutDate < today || (workoutDate.getTime() === today.getTime() && w.submitted));
+                        })
+                        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    if (previousWorkouts.length >= 2) {
+                        const twoWeeksAgo = previousWorkouts[1];
+                        if (twoWeeksAgo.plateauBusters && twoWeeksAgo.plateauBusters.includes(exerciseId)) {
+                            const twoWeeksExercise = twoWeeksAgo.exercises.find(e => e.id === exerciseId);
+                            if (twoWeeksExercise && twoWeeksExercise.weight) {
+                                // Auto-fill the weight from 2 weeks ago (the plateau weight)
+                                data = { ...data, weight: twoWeeksExercise.weight };
+                            }
+                        }
+                    }
+                }
+
+                if (!data || Object.keys(data).length === 0) return;
 
                 // Validate data based on exercise type
                 if (exercise.type === 'assault-bike' && !data.rounds) return;
@@ -991,7 +1016,8 @@
                         day: currentDay,
                         week: todayWeek,
                         exercises: allExercises,
-                        submitted: false
+                        submitted: false,
+                        plateauBusters: []
                     };
 
                     updatedHistory = [newWorkout, ...workoutHistory];
@@ -1019,10 +1045,22 @@
                     return;
                 }
 
-                // Mark workout as submitted (immutable)
+                // Detect exercises with less than 6 reps for plateau busting next week
+                const plateauBusters = [];
+                todayWorkout.exercises.forEach(exercise => {
+                    // Only check standard and bodyweight exercises (those with reps)
+                    if ((exercise.type === 'standard' || exercise.type === 'bodyweight') && exercise.reps) {
+                        const reps = parseInt(exercise.reps);
+                        if (!isNaN(reps) && reps < 6) {
+                            plateauBusters.push(exercise.id);
+                        }
+                    }
+                });
+
+                // Mark workout as submitted (immutable) and add plateau busters
                 const updatedHistory = workoutHistory.map(w => {
                     if (w === todayWorkout) {
-                        return { ...w, submitted: true };
+                        return { ...w, submitted: true, plateauBusters };
                     }
                     return w;
                 });
@@ -1112,7 +1150,8 @@
                         ...updatedHistory[existingWorkoutIndex],
                         exercises: naExercises,
                         date: timestamp,
-                        submitted: true
+                        submitted: true,
+                        plateauBusters: []
                     };
                 } else {
                     // Create new workout and mark as submitted
@@ -1121,7 +1160,8 @@
                         day: currentDay,
                         week: todayWeek,
                         exercises: naExercises,
-                        submitted: true
+                        submitted: true,
+                        plateauBusters: []
                     };
                     updatedHistory = [newWorkout, ...workoutHistory];
                 }
@@ -1348,6 +1388,7 @@
                             markDayAsNA={markDayAsNA}
                             getCurrentExercises={getCurrentExercises}
                             currentWeek={currentWeek}
+                            workoutHistory={workoutHistory}
                         />}
                         {currentView === 'weekly' && <WeeklyView
                             workoutHistory={workoutHistory}
@@ -1944,7 +1985,7 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
@@ -1952,10 +1993,70 @@
             const cardioExercises = exercises.filter(e => e.category === 'Cardio');
             const todayDay = getTodayDay();
 
+            // Helper function to check if exercise is marked for plateau busting
+            const isPlateauBuster = (exerciseId) => {
+                if (!workoutHistory || workoutHistory.length === 0) return false;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Find most recent previous workout of the same day type
+                const previousWorkout = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        // Look for workouts of the same day type and before today (or today if submitted)
+                        return w.day === currentDay && (workoutDate < today || (workoutDate.getTime() === today.getTime() && w.submitted));
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                if (!previousWorkout || !previousWorkout.plateauBusters) return false;
+
+                return previousWorkout.plateauBusters.includes(exerciseId);
+            };
+
+            // Helper function to check if this is a PR Weight Recovery week (week after plateau buster)
+            const getPRWeightRecovery = (exerciseId) => {
+                if (!workoutHistory || workoutHistory.length < 2) return null;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Get the two most recent previous workouts of the same day type
+                const previousWorkouts = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        return w.day === currentDay && (workoutDate < today || (workoutDate.getTime() === today.getTime() && w.submitted));
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                if (previousWorkouts.length < 2) return null;
+
+                const twoWeeksAgo = previousWorkouts[1];
+
+                // Check if two weeks ago had this exercise as a plateau buster
+                // That means last week the user saw the gold plateau buster reminder
+                // This week they should see green and recover to the original weight
+                if (twoWeeksAgo.plateauBusters && twoWeeksAgo.plateauBusters.includes(exerciseId)) {
+                    const twoWeeksExercise = twoWeeksAgo.exercises.find(e => e.id === exerciseId);
+                    if (twoWeeksExercise && twoWeeksExercise.weight) {
+                        return {
+                            weight: twoWeeksExercise.weight,
+                            reps: twoWeeksExercise.reps
+                        };
+                    }
+                }
+
+                return null;
+            };
+
             const renderExercise = (exercise) => {
                 const previous = getPreviousWorkout(exercise.id);
                 const isLogged = loggedExercises[exercise.id];
                 const data = workoutData[exercise.id] || {};
+                const showPlateauBuster = isPlateauBuster(exercise.id);
+                const prWeightRecovery = getPRWeightRecovery(exercise.id);
 
                 // Get default weight for Week 1
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
@@ -2091,6 +2192,31 @@
                                     </div>
                                 )}
                             </div>
+                            {prWeightRecovery ? (
+                                <div style={{
+                                    color: '#4CAF50',
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    marginBottom: '12px',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                    textAlign: 'center'
+                                }}>
+                                    Trial of Strength
+                                </div>
+                            ) : showPlateauBuster ? (
+                                <div style={{
+                                    color: '#ff9500',
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    marginBottom: '12px',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                    textAlign: 'center'
+                                }}>
+                                    Plateau Buster - Hit 2 sets
+                                </div>
+                            ) : null}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Weight</label>
@@ -2101,7 +2227,19 @@
                                         disabled
                                     />
                                 </div>
-                                <div className="input-group">
+                                <div className="input-group" style={{ position: 'relative' }}>
+                                    {prWeightRecovery && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '-20px',
+                                            left: '0',
+                                            color: '#4CAF50',
+                                            fontSize: '12px',
+                                            fontWeight: '600'
+                                        }}>
+                                            PR Reps to Beat
+                                        </div>
+                                    )}
                                     <label className="input-label">Reps</label>
                                     <input
                                         type="number"
@@ -2109,8 +2247,11 @@
                                         className="input-field"
                                         value={data.reps || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                        placeholder={previous?.reps || ''}
+                                        placeholder={prWeightRecovery?.reps || previous?.reps || ''}
                                         disabled={isLogged}
+                                        style={prWeightRecovery ? {
+                                            border: '2px solid #4CAF50'
+                                        } : {}}
                                     />
                                 </div>
                             </div>
@@ -2140,18 +2281,76 @@
                                 )}
                             </div>
                         </div>
+                        {prWeightRecovery ? (
+                            <div style={{
+                                color: '#4CAF50',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                marginBottom: '12px',
+                                fontWeight: '600',
+                                fontSize: '14px',
+                                textAlign: 'center'
+                            }}>
+                                Trial of Strength
+                            </div>
+                        ) : showPlateauBuster ? (
+                            <div style={{
+                                color: '#ff9500',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                marginBottom: '12px',
+                                fontWeight: '600',
+                                fontSize: '14px',
+                                textAlign: 'center'
+                            }}>
+                                Plateau Buster - Hit 2 sets
+                            </div>
+                        ) : null}
                         <div className="input-row">
-                            <div className="input-group">
+                            <div className="input-group" style={{ position: 'relative' }}>
+                                {prWeightRecovery && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '-20px',
+                                        left: '0',
+                                        color: '#4CAF50',
+                                        fontSize: '12px',
+                                        fontWeight: '600'
+                                    }}>
+                                        PR Weight Detected
+                                    </div>
+                                )}
                                 <label className="input-label">Weight (lbs)</label>
                                 <input
                                     type="number"
                                     inputMode="decimal"
                                     className="input-field"
-                                    value={data.weight || ''}
+                                    value={data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || '')}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
                                     placeholder={previous?.weight || ''}
                                     disabled={isLogged}
+                                    style={prWeightRecovery ? {
+                                        border: '2px solid #4CAF50'
+                                    } : showPlateauBuster ? {
+                                        border: '2px solid #ff9500',
+                                        paddingRight: '50px'
+                                    } : {}}
                                 />
+                                {showPlateauBuster && !prWeightRecovery && !data.weight && previous?.weight && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        color: '#ff9500',
+                                        fontSize: '20px',
+                                        fontWeight: 'bold',
+                                        pointerEvents: 'none',
+                                        marginTop: '10px'
+                                    }}>
+                                        ↓
+                                    </div>
+                                )}
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Reps</label>
@@ -2161,7 +2360,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={previous?.reps || ''}
+                                    placeholder={prWeightRecovery?.reps || previous?.reps || ''}
                                     disabled={isLogged}
                                 />
                             </div>
