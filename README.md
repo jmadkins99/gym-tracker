@@ -1,12 +1,11 @@
 # Gym Tracker App
 
-A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your progress, log PRs, and never lose your data. Features a dark theme that's easy on the eyes.
+A personalized FBEOD workout tracking web app. 
 
 ## Features
 
 ### Workout Tracking
 - **Two-Day Routine**: Alternates automatically between Full Body Day and Accessory Day
-- **Auto Day Detection**: App knows what day it is based on the calendar (Dec 15, 2025 = Day 1, then alternates forever)
 - **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
 - **Sequential Day Counter**: Weekly view shows newest workouts first (Day 5, Day 4, Day 3...) for easy access
 - **Instant Save**: LOG button immediately saves to Weekly tab - no page refresh needed
@@ -26,7 +25,7 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - **Clean Interface**: Minimal distractions, maximum focus on your workout
 
 ### Data Safety
-- **Monthly Backup Reminders**: App reminds you every 30 days to download a backup
+- **Automatic Backup**: App downloads the backup .json file on every day submission
 - **Export Data**: Download JSON backup file to your phone via Settings gear icon
 - **Import Data**: Restore from backup if you switch devices or clear browser data
 - **Reset Data**: Nuclear option in Settings with double confirmation to wipe everything
@@ -52,19 +51,16 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - Cuffed Tricep Pushdown
 - Cuffed Cable Lateral Raises
 - Cuffed Overhead Tricep Extension
+- Frontal Plane Pulldowns
 - Upper Back Row Machine
 - Machine Kelso Shrugs
-- Frontal Plane Pulldowns
-- Seated Row Machine
+- Extreme Row Machine
 
 **Lower Body (4 exercises)**
 - Leg Extensions
-- Prone Leg Curls
+- Precor Seated Leg Curls
 - Hip Adduction Machine
 - Seated Calf Raise Machine
-
-**Cardio (1 exercise)**
-- Assault Bike (30/30 intensity, tracked by rounds)
 
 ### Accessory Day
 **Accessories (3 exercises)**
@@ -73,55 +69,8 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - Hanging Leg Raises (Body Weight)
 
 **Cardio (1 exercise)**
+- Assault Bike (30/30 intensity, tracked by rounds)
 - StairMaster (Selectable level 7-10, time dropdown 5:00-20:00 in 15-second increments)
-
-## How to Use
-
-### Deploying the App
-
-**Option 1: GitHub Pages (Recommended)**
-1. Go to: https://github.com/jmadkins99/gym-tracker/settings/pages
-2. Source: Deploy from branch `main`
-3. Click Save
-4. Your app will be live at: `https://jmadkins99.github.io/gym-tracker/`
-
-**Option 2: Netlify Drop**
-1. Go to https://app.netlify.com/drop
-2. Drag and drop `index.html`
-3. Get instant live URL
-
-**Option 3: Open Locally**
-1. Open `index.html` in Safari on your iPhone
-2. Tap Share → "Add to Home Screen"
-
-### Using the App
-
-1. **Start Workout**: App automatically shows today's routine (Full Body or Accessory Day) and current week
-2. **See Last Workout**: Check the "Last: Xlbs × Y" text above each exercise for reference
-3. **Enter Data**: Fill in weight and reps for each exercise - placeholders show your last workout values as hints
-4. **LOG Exercise**: Tap LOG button after each exercise - saves immediately and button shows ✓ Logged
-5. **Check Weekly Tab**: Your workout appears instantly with logged exercises and NA for remaining
-6. **Continue Logging**: Return to Workout tab and log more exercises - each updates the Weekly entry
-7. **Submit Day**: When done, tap "Submit Day and View Breakdown" to see exercises completed and PRs smashed
-8. **Track Progress**: Use Progress tab to see weight/time progression graphs
-9. **Backup Data**: Tap the ⚙️ gear icon and export your data monthly
-
-## Important Data Safety Notes
-
-⚠️ **Your workout data is stored in your browser's local storage**
-
-**This means:**
-- Data is private - never leaves your phone
-- Works offline
-- BUT: Data is tied to Safari on this specific iPhone
-- If you clear Safari's browsing data, you lose everything
-- Getting a new phone doesn't transfer data automatically
-
-**To protect your data:**
-- Download monthly backups using the Settings gear icon
-- Save the JSON file to your iCloud Drive or Files app
-- If you lose data, use Import to restore from backup
-- NEVER use Reset Data unless you want to start completely fresh
 
 ## Tech Stack
 
@@ -141,8 +90,6 @@ A minimalist workout tracking web app optimized for iPhone 15 Pro. Track your pr
 - You can switch between Full Body Day and Accessory Day manually if needed
 - Weekly view shows newest workouts first with descending day numbers (Day 5, Day 4, Day 3...)
 - PRs are counted when weight OR reps increase compared to your last workout of that type
-- Export your data before major iOS updates or Safari changes
 - The monthly reminder helps prevent data loss
 - StairMaster has dropdown selectors: choose level (7-10) and time from 5:00 to 20:00 in 15-second increments
 - You're in full control - no auto-suggestions, you decide what weight to lift
-- Dark theme is easy on the eyes during early morning or late night workouts
