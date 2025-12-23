@@ -68,7 +68,7 @@ A personalized FBEOD workout tracking web app.
 - Ab Crunch Machine
 - Hanging Leg Raises (Body Weight)
 
-**Cardio (2 exercise)**
+**Cardio (2 exercises)**
 - Assault Bike (30/30 intensity, tracked by rounds)
 - StairMaster (Selectable level 7-10, time dropdown 5:00-20:00 in 15-second increments)
 
