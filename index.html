@@ -857,14 +857,29 @@
                     }
                 }
 
-                // Return first candidate that doesn't have "NA" reps
+                // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
                 for (let candidate of candidates) {
-                    if (candidate.reps && candidate.reps !== 'NA') {
-                        return candidate;
+                    // For assault bike, check rounds
+                    if (candidate.type === 'assault-bike') {
+                        if (candidate.rounds && candidate.rounds !== 'NA') {
+                            return candidate;
+                        }
+                    }
+                    // For stairmaster, check time
+                    else if (candidate.type === 'stairmaster') {
+                        if (candidate.time && candidate.time !== 'NA') {
+                            return candidate;
+                        }
+                    }
+                    // For standard/bodyweight exercises, check reps
+                    else {
+                        if (candidate.reps && candidate.reps !== 'NA') {
+                            return candidate;
+                        }
                     }
                 }
 
-                // If all candidates have NA reps (or no valid candidates), return the most recent one
+                // If all candidates have NA values (or no valid candidates), return the most recent one
                 return candidates.length > 0 ? candidates[0] : null;
             };
 
