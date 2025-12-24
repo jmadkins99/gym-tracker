@@ -1884,26 +1884,60 @@
                 return null;
             }
 
-            // Function to get most recent previous workout for the same exercise
+            // Function to get most recent previous workout for the same exercise (looks back up to 3 sessions, skips NA)
             const getPreviousWorkoutForExercise = (exerciseId) => {
                 const todayDate = new Date(todayWorkout.date);
 
                 console.log('Looking for previous workout for:', exerciseId, 'Current day type:', currentDay);
 
-                // Find most recent workout of the same day type (before today)
-                const previousWorkout = workoutHistory
+                // Find up to 3 most recent workouts of the same day type (before today) with this exercise
+                const candidates = [];
+                const sortedWorkouts = workoutHistory
                     .filter(w => {
                         const workoutDate = new Date(w.date);
                         return w.day === currentDay && workoutDate < todayDate;
                     })
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                console.log('Previous workout found:', previousWorkout ? 'Yes' : 'No');
+                for (let workout of sortedWorkouts) {
+                    if (candidates.length >= 3) break; // Stop after finding 3 candidates
 
-                if (!previousWorkout) return null;
+                    const exercise = workout.exercises.find(e => e.id === exerciseId);
+                    if (exercise) {
+                        candidates.push(exercise);
+                    }
+                }
 
-                const exercise = previousWorkout.exercises.find(e => e.id === exerciseId);
-                return exercise;
+                console.log('Found', candidates.length, 'candidate(s)');
+
+                // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
+                for (let candidate of candidates) {
+                    // For assault bike, check rounds
+                    if (candidate.type === 'assault-bike') {
+                        if (candidate.rounds && candidate.rounds !== 'NA') {
+                            console.log('Returning valid assault-bike workout with rounds:', candidate.rounds);
+                            return candidate;
+                        }
+                    }
+                    // For stairmaster, check time
+                    else if (candidate.type === 'stairmaster') {
+                        if (candidate.time && candidate.time !== 'NA') {
+                            console.log('Returning valid stairmaster workout with time:', candidate.time);
+                            return candidate;
+                        }
+                    }
+                    // For standard/bodyweight exercises, check reps
+                    else {
+                        if (candidate.reps && candidate.reps !== 'NA') {
+                            console.log('Returning valid workout with reps:', candidate.reps);
+                            return candidate;
+                        }
+                    }
+                }
+
+                console.log('All candidates have NA values or no valid candidates found');
+                // If all candidates have NA values (or no valid candidates), return the most recent one
+                return candidates.length > 0 ? candidates[0] : null;
             };
 
             // Get only exercises that match the current day
