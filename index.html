@@ -550,8 +550,8 @@
             { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', order: 0 },
             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', order: 1 },
             { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', order: 2 },
-            { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', order: 3 },
-            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 4 },
+           // { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', order: 3 },
+            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 3 },
         ];
 
         // Calculate which day it should be based on the date
@@ -2285,9 +2285,9 @@
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
                 if (exercise.type === 'assault-bike') {
-                    // Generate round options from 5 to 20
+                    // Generate round options from 3 to 20
                     const roundOptions = [];
-                    for (let i = 5; i <= 20; i++) {
+                    for (let i = 3; i <= 20; i++) {
                         roundOptions.push(i);
                     }
 
