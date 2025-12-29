@@ -477,7 +477,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
         // Week 1 default weights
         const WEEK_1_DEFAULTS = {
@@ -571,23 +571,71 @@
             return (diffDays % 2 === 0) ? 1 : 2;
         }
 
-        // ISO week number (weeks start on Monday)
-        function getISOWeek(date) {
+        // Get the Monday of the week containing a given date
+        function getMondayOfWeek(date) {
             const d = new Date(date);
             d.setHours(0, 0, 0, 0);
-            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-            const yearStart = new Date(d.getFullYear(), 0, 1);
-            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            const day = d.getDay();
+            const diff = day === 0 ? -6 : 1 - day; // If Sunday (0), go back 6 days; otherwise go to Monday
+            d.setDate(d.getDate() + diff);
+            return d;
         }
 
-        // Calculate current week number (ISO weeks start on Monday)
-        function getCurrentWeek() {
-            return getISOWeek(new Date());
+        // Get the Monday of the first workout (Week 1 start date)
+        // This is cached in localStorage to avoid recalculating
+        function getFirstWorkoutMonday(workoutHistory) {
+            // Try to get cached value first
+            const cached = storage.getItem('firstWorkoutMonday');
+            if (cached) {
+                return new Date(cached);
+            }
+
+            // If no cache and no workout history, use today as default
+            if (!workoutHistory || workoutHistory.length === 0) {
+                const today = getMondayOfWeek(new Date());
+                storage.setItem('firstWorkoutMonday', today.toISOString());
+                return today;
+            }
+
+            // Find the earliest workout date
+            const earliestWorkout = workoutHistory.reduce((earliest, workout) => {
+                const workoutDate = new Date(workout.date);
+                return !earliest || workoutDate < earliest ? workoutDate : earliest;
+            }, null);
+
+            // Get the Monday of that week
+            const firstMonday = getMondayOfWeek(earliestWorkout);
+
+            // Cache it for future use
+            storage.setItem('firstWorkoutMonday', firstMonday.toISOString());
+
+            return firstMonday;
+        }
+
+        // Calculate consecutive week number starting from first workout
+        // Week 1 = the week of the first workout, incrementing indefinitely
+        function getConsecutiveWeek(date, workoutHistory) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+
+            const firstMonday = getFirstWorkoutMonday(workoutHistory);
+            const currentMonday = getMondayOfWeek(d);
+
+            // Calculate weeks difference
+            const diffTime = currentMonday - firstMonday;
+            const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+
+            return diffWeeks + 1; // Week 1 is the first week
+        }
+
+        // Calculate current week number (consecutive weeks starting from first workout)
+        function getCurrentWeek(workoutHistory) {
+            return getConsecutiveWeek(new Date(), workoutHistory);
         }
 
         // Get week number for a specific date
-        function getWeekNumber(date) {
-            return getISOWeek(date);
+        function getWeekNumber(date, workoutHistory) {
+            return getConsecutiveWeek(date, workoutHistory);
         }
 
         // Parse MM:SS to total seconds
@@ -659,8 +707,9 @@
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
-            const [viewingWeek, setViewingWeek] = useState(getCurrentWeek());
-            const currentWeek = getCurrentWeek();
+            const [viewingWeek, setViewingWeek] = useState(1);
+            const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
+            const hasMigratedWeeks = useRef(false);
 
             useEffect(() => {
                 // Migrate existing data to namespaced storage (one-time for existing users)
@@ -694,6 +743,36 @@
                     setShowBackupReminder(true);
                 }
             }, []);
+
+            // Update viewing week and migrate workout history when it loads
+            useEffect(() => {
+                if (workoutHistory.length > 0 && !hasMigratedWeeks.current) {
+                    // Clear the cached first workout Monday to recalculate based on actual data
+                    storage.removeItem('firstWorkoutMonday');
+
+                    // Recalculate and migrate week numbers for all workouts
+                    const migratedHistory = workoutHistory.map(workout => ({
+                        ...workout,
+                        week: getWeekNumber(workout.date, workoutHistory)
+                    }));
+
+                    // Only update if week numbers actually changed
+                    const hasChanges = migratedHistory.some((workout, idx) =>
+                        workout.week !== workoutHistory[idx].week
+                    );
+
+                    if (hasChanges) {
+                        setWorkoutHistory(migratedHistory);
+                        storage.setItem('gymWorkoutHistory', JSON.stringify(migratedHistory));
+                    }
+
+                    // Set viewing week to current week
+                    setViewingWeek(currentWeek);
+
+                    // Mark migration as complete
+                    hasMigratedWeeks.current = true;
+                }
+            }, [workoutHistory.length, currentWeek]); // Run when history loads or length changes
 
             // Restore logged state and workout data from today's workout
             useEffect(() => {
@@ -932,7 +1011,7 @@
                 // Find if there's already a workout for today (that hasn't been submitted)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const todayWeek = getWeekNumber(today);
+                const todayWeek = getWeekNumber(today, workoutHistory);
 
                 let existingWorkoutIndex = workoutHistory.findIndex(w => {
                     const workoutDate = new Date(w.date);
@@ -1123,7 +1202,7 @@
                 const timestamp = new Date().toISOString();
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const todayWeek = getWeekNumber(today);
+                const todayWeek = getWeekNumber(today, workoutHistory);
 
                 // Get all exercises for the current day
                 const currentDayExercises = getCurrentExercises();
