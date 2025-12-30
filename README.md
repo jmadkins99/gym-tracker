@@ -15,6 +15,9 @@ A personalized FBEOD workout tracking web app.
 - **Input Hints**: Placeholder text shows values from your last workout (e.g., "50" for weight, "8" for reps)
 - **Visual Feedback**: Logged exercises show ✓ Logged and persist across page refreshes
 - **Manual Entry**: All inputs are blank by default - you choose what weight and reps to use
+- **Weight Breakdown**: Click the "Weight Breakdown" button on any exercise to see warmup set recommendations
+  - **Plate-Loaded Machines**: Shows 2 warmup sets (50%, 75%) with exact plate breakdown per side
+  - **Pin-Stack Machines**: Shows 2 warmup sets (50%, 75%) rounded to achievable weights (5 lb increments + micro-plates)
 
 ### PR Tracking
 - **Day Breakdown**: "Submit Day and View Breakdown" shows completed exercises count and PRs smashed
@@ -23,6 +26,18 @@ A personalized FBEOD workout tracking web app.
 - **Multiple Exercise Types**: Tracks PRs for weight/reps, bodyweight reps, assault bike rounds, and stairmaster time
 - **No Automation**: App tracks your PRs but doesn't tell you what to lift - you're in control
 - **Clean Interface**: Minimal distractions, maximum focus on your workout
+
+### Auto-Regulation & Plateau Busting
+- **Plateau Buster**: When you get less than 6 reps on a set, the app automatically reduces the weight next session (orange border)
+  - Weight drops by the exercise's PR increment (e.g., 2.5 lbs for most compound movements)
+  - Goal: Hit 8 reps with the reduced weight to prove you've recovered
+  - If you hit 8+ reps: Triggers Trial of Strength next session
+  - If you get 6-7 reps: Retry at same weight, aiming for +1 rep next session (no Trial of Strength)
+- **Trial of Strength**: After successfully completing a plateau buster (8+ reps), return to your original PR weight
+  - Green border indicates Trial of Strength active
+  - Goal: Hit 6 reps at your previous PR weight to reclaim it
+- **PR Auto-Regulation**: When you hit 8+ reps, weight automatically increases next session (green border)
+  - No manual calculation needed - app suggests the progression
 
 ### Data Safety
 - **Automatic Backup**: App downloads the backup .json file on every day submission
@@ -92,4 +107,7 @@ A personalized FBEOD workout tracking web app.
 - PRs are counted when weight OR reps increase compared to your last workout of that type
 - The monthly reminder helps prevent data loss
 - StairMaster has dropdown selectors: choose level (7-10) and time from 5:00 to 20:00 in 15-second increments
-- You're in full control - no auto-suggestions, you decide what weight to lift
+- Click "Weight Breakdown" to see warmup sets calculated from your current weight input (updates in real-time)
+- Orange border = Plateau Buster (weight reduced) or Failed Plateau Retry (trying again for +1 rep)
+- Green border = Trial of Strength (recovering PR weight) or PR Auto-Regulation (weight increased after 8+ reps)
+- You're in control - the app suggests weights based on your performance, but you can always override them

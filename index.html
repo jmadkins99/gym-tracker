@@ -525,6 +525,37 @@
             'ab-crunch': 1.25
         };
 
+        // Plate-loaded exercises configuration
+        // Defines which exercises show the "Weight Breakdown" button
+        // type: 'one-sided' or 'two-sided'
+        // machineWeight: starting weight of the machine (usually 0 for plate-loaded)
+        const PLATE_LOADED_EXERCISES = {
+            'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
+            'flat-chest-press': { type: 'two-sided', machineWeight: 0 },
+            'shoulder-press': { type: 'two-sided', machineWeight: 0 },
+            'preacher-curls': { type: 'one-sided', machineWeight: 0 },
+            'upper-back-row': { type: 'two-sided', machineWeight: 0 },
+            'kelso-shrugs': { type: 'two-sided', machineWeight: 0 },
+            'hammer-row': { type: 'two-sided', machineWeight: 0 },
+            'leg-extensions': { type: 'one-sided', machineWeight: 0 },
+            'leg-curls': { type: 'two-sided', machineWeight: 0 }
+        };
+
+        // Pin-stack exercises configuration
+        // These machines use weight stacks with 5 lb increments
+        // Can add micro-plates (1.25, 2.5, or 3.75) on top of the pin
+        const PIN_STACK_EXERCISES = {
+            'chest-flies': true,
+            'tricep-pushdown': true,
+            'lateral-raises': true,
+            'overhead-tricep': true,
+            'frontal-pulldowns': true,
+            'hip-adduction': true,
+            'calf-raise': true,
+            'ab-crunch': true,
+            'cable-wrist-curls': true
+        };
+
         const DEFAULT_DAY_1_EXERCISES = [
             // Upper
             { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', order: 0 },
@@ -708,6 +739,7 @@
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
+            const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
 
@@ -1505,6 +1537,8 @@
                             getCurrentExercises={getCurrentExercises}
                             currentWeek={currentWeek}
                             workoutHistory={workoutHistory}
+                            expandedWeightBreakdown={expandedWeightBreakdown}
+                            setExpandedWeightBreakdown={setExpandedWeightBreakdown}
                         />}
                         {currentView === 'weekly' && <WeeklyView
                             workoutHistory={workoutHistory}
@@ -2135,7 +2169,7 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
@@ -2400,6 +2434,85 @@
                 return null;
             };
 
+            // Calculate plate breakdown for a given weight
+            const calculatePlateBreakdown = (totalWeight, exerciseId) => {
+                const config = PLATE_LOADED_EXERCISES[exerciseId];
+                if (!config) return null;
+
+                const availablePlates = [45, 25, 10, 5, 2.5, 1.25];
+
+                // Helper function to break down weight into plates
+                const breakdownWeight = (weight) => {
+                    const plates = {};
+                    let remaining = weight;
+
+                    for (const plate of availablePlates) {
+                        const count = Math.floor(remaining / plate);
+                        if (count > 0) {
+                            plates[plate] = count;
+                            remaining = parseFloat((remaining - (count * plate)).toFixed(2));
+                        }
+                    }
+
+                    return plates;
+                };
+
+                // Calculate warmup and top set weights
+                const warmup1Weight = totalWeight * 0.5;  // 50%
+                const warmup2Weight = totalWeight * 0.75; // 75%
+                const topSetWeight = totalWeight;
+
+                // For two-sided machines, divide by 2 to get per-side weight
+                const isTwoSided = config.type === 'two-sided';
+
+                const warmup1PerSide = isTwoSided ? warmup1Weight / 2 : warmup1Weight;
+                const warmup2PerSide = isTwoSided ? warmup2Weight / 2 : warmup2Weight;
+                const topSetPerSide = isTwoSided ? topSetWeight / 2 : topSetWeight;
+
+                return {
+                    isTwoSided,
+                    warmup1: {
+                        totalWeight: warmup1Weight,
+                        perSideWeight: warmup1PerSide,
+                        plates: breakdownWeight(warmup1PerSide)
+                    },
+                    warmup2: {
+                        totalWeight: warmup2Weight,
+                        perSideWeight: warmup2PerSide,
+                        plates: breakdownWeight(warmup2PerSide)
+                    },
+                    topSet: {
+                        totalWeight: topSetWeight,
+                        perSideWeight: topSetPerSide,
+                        plates: breakdownWeight(topSetPerSide)
+                    }
+                };
+            };
+
+            // Calculate warmup sets for pin-stack exercises
+            const calculatePinStackWarmups = (totalWeight) => {
+                // Round to nearest achievable weight (5 lb increments + optional 1.25, 2.5, or 3.75)
+                const roundToAchievable = (weight) => {
+                    const base = Math.floor(weight / 5) * 5;
+                    const remainder = weight - base;
+
+                    // Find closest achievable increment: 0, 1.25, 2.5, or 3.75
+                    if (remainder < 0.625) return base;
+                    else if (remainder < 1.875) return base + 1.25;
+                    else if (remainder < 3.125) return base + 2.5;
+                    else if (remainder < 4.375) return base + 3.75;
+                    else return base + 5;
+                };
+
+                const warmup1 = roundToAchievable(totalWeight * 0.5);  // 50%
+                const warmup2 = roundToAchievable(totalWeight * 0.75); // 75%
+
+                return {
+                    warmup1,
+                    warmup2
+                };
+            };
+
             const renderExercise = (exercise) => {
                 const previous = getPreviousWorkout(exercise.id);
                 const isLogged = loggedExercises[exercise.id];
@@ -2630,6 +2743,11 @@
                 }
 
                 // Standard exercise
+                const isPlateLoaded = PLATE_LOADED_EXERCISES[exercise.id];
+                const isPinStack = PIN_STACK_EXERCISES[exercise.id];
+                const hasWeightBreakdown = isPlateLoaded || isPinStack;
+                const isBreakdownExpanded = expandedWeightBreakdown === exercise.id;
+
                 return (
                     <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                         <div className="exercise-header">
@@ -2643,7 +2761,137 @@
                                     </div>
                                 )}
                             </div>
+                            {hasWeightBreakdown && (
+                                <button
+                                    onClick={() => setExpandedWeightBreakdown(isBreakdownExpanded ? null : exercise.id)}
+                                    style={{
+                                        padding: '6px 12px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        backgroundColor: '#3a2a5a',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    {isBreakdownExpanded ? 'Hide' : 'Weight Breakdown'}
+                                </button>
+                            )}
                         </div>
+                        {isBreakdownExpanded && (() => {
+                            // Get current weight from input field (same logic as the input field's value)
+                            const displayedWeight = data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || defaultWeight || '');
+                            const currentWeight = parseFloat(displayedWeight) || 0;
+
+                            if (currentWeight === 0) return null;
+
+                            // PIN-STACK EXERCISE
+                            if (isPinStack) {
+                                const warmups = calculatePinStackWarmups(currentWeight);
+
+                                return (
+                                    <div style={{
+                                        backgroundColor: '#050510',
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        marginBottom: '12px',
+                                        fontSize: '13px',
+                                        fontFamily: 'monospace'
+                                    }}>
+                                        <div style={{ marginBottom: '8px' }}>
+                                            <div style={{ fontWeight: '600' }}>
+                                                Warmup Set #1 (~50%): {warmups.warmup1} lbs
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <div style={{ fontWeight: '600' }}>
+                                                Warmup Set #2 (~75%): {warmups.warmup2} lbs
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            // PLATE-LOADED EXERCISE
+                            const breakdown = calculatePlateBreakdown(currentWeight, exercise.id);
+
+                            if (!breakdown) return null;
+
+                            const renderPlates = (plates) => {
+                                // Sort plates in descending order: 45s > 25s > 10s > 5s > 2.5s > 1.25s
+                                const sortedPlates = Object.entries(plates).sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]));
+                                return sortedPlates.map(([weight, count]) => (
+                                    <div key={weight} style={{ marginLeft: '12px' }}>
+                                        {weight}s - {count}
+                                    </div>
+                                ));
+                            };
+
+                            // Calculate actual weight from plates
+                            const getActualWeight = (plates) => {
+                                return Object.entries(plates).reduce((total, [weight, count]) => {
+                                    return total + (parseFloat(weight) * count);
+                                }, 0);
+                            };
+
+                            const warmup1Actual = getActualWeight(breakdown.warmup1.plates);
+                            const warmup2Actual = getActualWeight(breakdown.warmup2.plates);
+                            const topSetActual = getActualWeight(breakdown.topSet.plates);
+
+                            const warmup1Total = breakdown.isTwoSided ? warmup1Actual * 2 : warmup1Actual;
+                            const warmup2Total = breakdown.isTwoSided ? warmup2Actual * 2 : warmup2Actual;
+                            const topSetTotal = breakdown.isTwoSided ? topSetActual * 2 : topSetActual;
+
+                            return (
+                                <div style={{
+                                    backgroundColor: '#050510',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    marginBottom: '12px',
+                                    fontSize: '13px',
+                                    fontFamily: 'monospace'
+                                }}>
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                            Warmup Set #1 ({warmup1Total} lbs - ~50%):
+                                        </div>
+                                        {breakdown.isTwoSided && (
+                                            <div style={{ marginLeft: '12px', fontStyle: 'italic', color: '#666' }}>
+                                                Per side: {warmup1Actual} lbs
+                                            </div>
+                                        )}
+                                        {renderPlates(breakdown.warmup1.plates)}
+                                    </div>
+
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                            Warmup Set #2 ({warmup2Total} lbs - ~75%):
+                                        </div>
+                                        {breakdown.isTwoSided && (
+                                            <div style={{ marginLeft: '12px', fontStyle: 'italic', color: '#666' }}>
+                                                Per side: {warmup2Actual} lbs
+                                            </div>
+                                        )}
+                                        {renderPlates(breakdown.warmup2.plates)}
+                                    </div>
+
+                                    <div>
+                                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                            Top Set ({topSetTotal} lbs):
+                                        </div>
+                                        {breakdown.isTwoSided && (
+                                            <div style={{ marginLeft: '12px', fontStyle: 'italic', color: '#666' }}>
+                                                Per side: {topSetActual} lbs
+                                            </div>
+                                        )}
+                                        {renderPlates(breakdown.topSet.plates)}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                         {prWeightRecovery ? (
                             <div style={{
                                 color: '#4CAF50',
