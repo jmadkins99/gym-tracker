@@ -2208,18 +2208,77 @@
 
                 if (previousWorkouts.length < 2) return null;
 
+                const lastWeek = previousWorkouts[0];
                 const twoWeeksAgo = previousWorkouts[1];
 
                 // Check if two weeks ago had this exercise as a plateau buster
                 // That means last week the user saw the gold plateau buster reminder
                 // This week they should see green and recover to the original weight
+                // BUT only if last week hit 8+ reps (plateau buster success)
                 if (twoWeeksAgo.plateauBusters && twoWeeksAgo.plateauBusters.includes(exerciseId)) {
+                    const lastWeekExercise = lastWeek.exercises.find(e => e.id === exerciseId);
                     const twoWeeksExercise = twoWeeksAgo.exercises.find(e => e.id === exerciseId);
-                    if (twoWeeksExercise && twoWeeksExercise.weight) {
-                        return {
-                            weight: twoWeeksExercise.weight,
-                            reps: '6'  // Always show 6 as the target for Trial of Strength
-                        };
+
+                    // Only trigger Trial of Strength if last week hit 8+ reps
+                    if (lastWeekExercise && lastWeekExercise.reps && parseInt(lastWeekExercise.reps) >= 8) {
+                        if (twoWeeksExercise && twoWeeksExercise.weight) {
+                            return {
+                                weight: twoWeeksExercise.weight,
+                                reps: '6'  // Always show 6 as the target for Trial of Strength
+                            };
+                        }
+                    }
+                    // If last week didn't hit 8 reps, return null so other logic can handle it
+                }
+
+                return null;
+            };
+
+            // Helper function to handle failed plateau buster (got 6-7 reps, need to retry)
+            const getFailedPlateauBusterRetry = (exerciseId) => {
+                if (!workoutHistory || workoutHistory.length < 2) return null;
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Get the two most recent previous workouts of the same day type with valid data
+                const previousWorkouts = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        if (w.day !== currentDay) return false;
+                        // Exclude future workouts
+                        if (workoutDate > today) return false;
+
+                        // Exclude today's unsubmitted workout
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        // Check if this workout has valid data for this exercise
+                        const exercise = w.exercises.find(e => e.id === exerciseId);
+                        return isValidExercise(exercise);
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                if (previousWorkouts.length < 2) return null;
+
+                const lastWeek = previousWorkouts[0];
+                const twoWeeksAgo = previousWorkouts[1];
+
+                // Check if two weeks ago had a plateau buster and last week got 6-7 reps (failed plateau buster)
+                if (twoWeeksAgo.plateauBusters && twoWeeksAgo.plateauBusters.includes(exerciseId)) {
+                    const lastWeekExercise = lastWeek.exercises.find(e => e.id === exerciseId);
+
+                    if (lastWeekExercise && lastWeekExercise.reps && lastWeekExercise.weight) {
+                        const lastReps = parseInt(lastWeekExercise.reps);
+
+                        // If got 6-7 reps (didn't hit the 8 rep goal), suggest same weight but reps+1
+                        if (lastReps >= 6 && lastReps < 8) {
+                            return {
+                                weight: lastWeekExercise.weight,
+                                targetReps: (lastReps + 1).toString(),
+                                lastReps: lastWeekExercise.reps
+                            };
+                        }
                     }
                 }
 
@@ -2347,13 +2406,15 @@
                 const data = workoutData[exercise.id] || {};
                 const showPlateauBuster = isPlateauBuster(exercise.id);
                 const prWeightRecovery = getPRWeightRecovery(exercise.id);
-                const prAutoRegulation = !prWeightRecovery ? getPRAutoRegulation(exercise.id) : null; // Only show if not already showing plateau recovery
+                const failedPlateauBusterRetry = !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id) : null;
+                const prAutoRegulation = !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id) : null; // Only show if not already showing plateau recovery or failed plateau retry
                 const plateauBusterDecrement = showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id) : null;
 
                 if (exercise.type === 'standard') {
                     console.log('[renderExercise]', exercise.name, {
                         showPlateauBuster,
                         prWeightRecovery,
+                        failedPlateauBusterRetry,
                         prAutoRegulation,
                         plateauBusterDecrement,
                         previous
@@ -2516,7 +2577,7 @@
                                     fontSize: '14px',
                                     textAlign: 'center'
                                 }}>
-                                    Plateau Buster - Hit 2 sets
+                                    Plateau Buster - Hit 2 Sets
                                 </div>
                             ) : null}
                             <div className="input-row">
@@ -2605,7 +2666,7 @@
                                 fontSize: '14px',
                                 textAlign: 'center'
                             }}>
-                                Plateau Buster - Hit 2 sets
+                                Plateau Buster - Hit 2 Sets
                             </div>
                         ) : null}
                         {prWeightRecovery && (
@@ -2630,7 +2691,7 @@
                                 +{prAutoRegulation.increment}lbs
                             </div>
                         )}
-                        {plateauBusterDecrement && !prWeightRecovery && !prAutoRegulation && (
+                        {plateauBusterDecrement && !prWeightRecovery && !prAutoRegulation && !failedPlateauBusterRetry && (
                             <div style={{
                                 color: '#ff9500',
                                 fontSize: '12px',
@@ -2641,6 +2702,19 @@
                                 -{plateauBusterDecrement.increment}lbs
                             </div>
                         )}
+                        {failedPlateauBusterRetry && !prWeightRecovery && !prAutoRegulation && (
+                                <div style={{
+                                    color: '#ff9500',
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    marginBottom: '12px',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                    textAlign: 'center'
+                                }}>
+                                Plateau Buster - Hit 1 Set of {failedPlateauBusterRetry.targetReps} Reps
+                                </div>
+                        )}
                         <div className="input-row">
                             <div className="input-group">
                                 <label className="input-label">Weight (lbs)</label>
@@ -2648,13 +2722,13 @@
                                     type="number"
                                     inputMode="decimal"
                                     className="input-field"
-                                    value={data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || '')}
+                                    value={data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || '')}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
                                     placeholder={previous?.weight || ''}
                                     disabled={isLogged}
                                     style={prWeightRecovery || prAutoRegulation ? {
                                         border: '2px solid #4CAF50'
-                                    } : showPlateauBuster ? {
+                                    } : (showPlateauBuster || failedPlateauBusterRetry) ? {
                                         border: '2px solid #ff9500'
                                     } : {}}
                                 />
@@ -2667,7 +2741,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={prWeightRecovery?.reps || (prAutoRegulation ? '6' : (plateauBusterDecrement ? '8' : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))}
+                                    placeholder={prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '6' : (plateauBusterDecrement ? '8' : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))}
                                     disabled={isLogged}
                                 />
                             </div>
