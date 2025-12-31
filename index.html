@@ -2379,6 +2379,58 @@
                 return null;
             };
 
+            // Helper function for assault bike PR detection (2 consecutive same rounds)
+            const getAssaultBikePR = () => {
+                if (!workoutHistory || workoutHistory.length === 0) {
+                    return null;
+                }
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Find the last 2 Accessory Day workouts with valid assault bike data
+                const previousWorkouts = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        // Only Accessory Day (day 2)
+                        if (w.day !== 2) return false;
+                        // Exclude future workouts
+                        if (workoutDate > today) return false;
+                        // Exclude today's unsubmitted workout
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        // Check if this workout has valid assault bike data
+                        const assaultBike = w.exercises.find(e => e.id === 'assault-bike');
+                        return assaultBike && assaultBike.rounds && assaultBike.rounds !== 'NA';
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(0, 2);
+
+                // Need at least 2 previous workouts to compare
+                if (previousWorkouts.length < 2) return null;
+
+                const lastWorkout = previousWorkouts[0];
+                const secondLastWorkout = previousWorkouts[1];
+
+                const lastAssaultBike = lastWorkout.exercises.find(e => e.id === 'assault-bike');
+                const secondLastAssaultBike = secondLastWorkout.exercises.find(e => e.id === 'assault-bike');
+
+                // If both workouts have the same rounds, trigger PR
+                if (lastAssaultBike && secondLastAssaultBike &&
+                    lastAssaultBike.rounds === secondLastAssaultBike.rounds) {
+                    const currentRounds = parseInt(lastAssaultBike.rounds);
+                    const newRounds = currentRounds + 1;
+
+                    return {
+                        rounds: newRounds.toString(),
+                        lastRounds: lastAssaultBike.rounds
+                    };
+                }
+
+                return null;
+            };
+
             // Helper function for plateau buster weight decrement
             const getPlateauBusterDecrement = (exerciseId) => {
                 console.log('[getPlateauBusterDecrement] Checking for:', exerciseId);
@@ -2538,6 +2590,8 @@
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
                 if (exercise.type === 'assault-bike') {
+                    const assaultBikePR = getAssaultBikePR();
+
                     // Generate round options from 3 to 20
                     const roundOptions = [];
                     for (let i = 3; i <= 20; i++) {
@@ -2558,6 +2612,17 @@
                                     </div>
                                 )}
                             </div>
+                            {assaultBikePR && (
+                                <div style={{
+                                    color: '#4CAF50',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    marginBottom: '8px',
+                                    marginTop: '-4px'
+                                }}>
+                                    +1 round
+                                </div>
+                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Intensity</label>
@@ -2575,8 +2640,11 @@
                                         value={data.rounds || ''}
                                         onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
                                         disabled={isLogged}
+                                        style={assaultBikePR ? {
+                                            border: '2px solid #4CAF50'
+                                        } : {}}
                                     >
-                                        <option value="">{previous?.rounds ? `${previous.rounds} rounds` : 'Select rounds'}</option>
+                                        <option value="">{assaultBikePR ? `${assaultBikePR.rounds} rounds` : (previous?.rounds ? `${previous.rounds} rounds` : 'Select rounds')}</option>
                                         {roundOptions.map(rounds => (
                                             <option key={rounds} value={rounds}>{rounds}</option>
                                         ))}
