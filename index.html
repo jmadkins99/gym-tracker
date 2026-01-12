@@ -530,13 +530,7 @@
         // type: 'one-sided' or 'two-sided'
         // machineWeight: starting weight of the machine (usually 0 for plate-loaded)
         const PLATE_LOADED_EXERCISES = {
-            'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
-            'flat-chest-press': { type: 'two-sided', machineWeight: 0 },
-            'shoulder-press': { type: 'two-sided', machineWeight: 0 },
             'preacher-curls': { type: 'one-sided', machineWeight: 0 },
-            'upper-back-row': { type: 'two-sided', machineWeight: 0 },
-            'kelso-shrugs': { type: 'two-sided', machineWeight: 0 },
-            'hammer-row': { type: 'two-sided', machineWeight: 0 },
             'leg-extensions': { type: 'one-sided', machineWeight: 0 },
             'leg-curls': { type: 'two-sided', machineWeight: 0 }
         };
@@ -546,10 +540,16 @@
         // Can add micro-plates (1.25, 2.5, or 3.75) on top of the pin
         const PIN_STACK_EXERCISES = {
             'chest-flies': true,
+            'incline-chest-press': true,
+            'flat-chest-press': true,
+            'shoulder-press': true,
             'tricep-pushdown': true,
             'lateral-raises': true,
             'overhead-tricep': true,
             'frontal-pulldowns': true,
+            'upper-back-row': true,
+            'kelso-shrugs': true,
+            'hammer-row': true,
             'hip-adduction': true,
             'calf-raise': true,
             'ab-crunch': true,
