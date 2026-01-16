@@ -506,19 +506,19 @@
         // Edit these values to customize weight progression for each exercise
         const PR_WEIGHT_INCREMENTS = {
             'chest-flies': 1.25,
-            'incline-chest-press': 2.5,
-            'flat-chest-press': 2.5,
-            'shoulder-press': 2.5,
+            'incline-chest-press': 1.25,
+            'flat-chest-press': 1.25,
+            'shoulder-press': 1.25,
             'preacher-curls': 1.25,
             'tricep-pushdown': 1.25,
             'lateral-raises': 1.25,
             'overhead-tricep': 1.25,
             'frontal-pulldowns': 1.25,
-            'upper-back-row': 2.5,
-            'kelso-shrugs': 2.5,
-            'hammer-row': 2.5,
+            'upper-back-row': 1.25,
+            'kelso-shrugs': 1.25,
+            'hammer-row': 1.25,
             'leg-extensions': 1.25,
-            'leg-curls': 2.5,
+            'leg-curls': 5,
             'hip-adduction': 1.25,
             'calf-raise': 1.25,
             'cable-wrist-curls': 1.25,
@@ -531,8 +531,8 @@
         // machineWeight: starting weight of the machine (usually 0 for plate-loaded)
         const PLATE_LOADED_EXERCISES = {
             'preacher-curls': { type: 'one-sided', machineWeight: 0 },
-            'leg-extensions': { type: 'one-sided', machineWeight: 0 },
-            'leg-curls': { type: 'two-sided', machineWeight: 0 }
+            'leg-curls': { type: 'two-sided', machineWeight: 0 },
+            'hip-adduction': { type: 'one-sided', machineWeight: 0 } 
         };
 
         // Pin-stack exercises configuration
@@ -550,7 +550,7 @@
             'upper-back-row': true,
             'kelso-shrugs': true,
             'hammer-row': true,
-            'hip-adduction': true,
+            'leg-extensions': true,
             'calf-raise': true,
             'ab-crunch': true,
             'cable-wrist-curls': true
