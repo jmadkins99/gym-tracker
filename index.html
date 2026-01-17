@@ -98,31 +98,6 @@
             padding: 20px;
         }
 
-        .day-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .day-btn {
-            flex: 1;
-            padding: 12px;
-            background: #1a1a2a;
-            border: 1px solid #2a2a3a;
-            color: #8a8aa0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .day-btn.active {
-            background: #3a2a5a;
-            border-color: #4a3a6a;
-            color: #b8b8d0;
-        }
-
         .section-title {
             font-size: 14px;
             color: #6a5a8a;
@@ -497,7 +472,6 @@
             'leg-curls': '150',
             'hip-adduction': '120',
             'calf-raise': '180',
-            'cable-wrist-curls': '87.5',
             'ab-crunch': '140',
             'hanging-leg-raises': 'Body Weight'
         };
@@ -521,7 +495,6 @@
             'leg-curls': 5,
             'hip-adduction': 1.25,
             'calf-raise': 1.25,
-            'cable-wrist-curls': 1.25,
             'ab-crunch': 1.25
         };
 
@@ -552,8 +525,7 @@
             'hammer-row': true,
             'leg-extensions': true,
             'calf-raise': true,
-            'ab-crunch': true,
-            'cable-wrist-curls': true
+            'ab-crunch': true
         };
 
         const DEFAULT_DAY_1_EXERCISES = [
@@ -579,28 +551,6 @@
             { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', order: 16 },
             { id: 'assault-bike', name: 'Assault Bike', category: 'Lower', type: 'assault-bike', order: 17 },
         ];
-
-        const DEFAULT_DAY_2_EXERCISES = [
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', order: 0 },
-           // { id: 'stairmaster', name: 'StairMaster', category: 'Cardio', type: 'stairmaster', order: 3 },
-        ];
-
-        // Calculate which day it should be based on the date
-        function getTodayDay() {
-            // Reference: Dec 16, 2025 is Day 1 (Full Body)
-            const today = new Date();
-            const referenceDate = new Date(2025, 11, 16); // Month is 0-indexed, so 11 = December
-
-            // Reset to midnight
-            today.setHours(0, 0, 0, 0);
-            referenceDate.setHours(0, 0, 0, 0);
-
-            const diffTime = today - referenceDate;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-            // Alternates each day: Dec 16 = Day 1 (Full Body), Dec 17 = Day 2 (Accessory), Dec 18 = Day 1, etc.
-            return (diffDays % 2 === 0) ? 1 : 2;
-        }
 
         // Get the Monday of the week containing a given date
         function getMondayOfWeek(date) {
@@ -724,14 +674,13 @@
 
         function App() {
             const [currentView, setCurrentView] = useState('workout');
-            const [currentDay, setCurrentDay] = useState(getTodayDay());
+            const [currentDay] = useState(1); // Always day 1 (Full Body)
             const [workoutData, setWorkoutData] = useState({});
             const [loggedExercises, setLoggedExercises] = useState({});
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
             const [successMessage, setSuccessMessage] = useState('');
             const [day1Exercises, setDay1Exercises] = useState(DEFAULT_DAY_1_EXERCISES);
-            const [day2Exercises, setDay2Exercises] = useState(DEFAULT_DAY_2_EXERCISES);
             const [selectedExercise, setSelectedExercise] = useState(DEFAULT_DAY_1_EXERCISES[0].id);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
@@ -761,9 +710,6 @@
                     if (config.day1) {
                         setDay1Exercises(config.day1.sort((a, b) => a.order - b.order));
                     }
-                    if (config.day2) {
-                        setDay2Exercises(config.day2.sort((a, b) => a.order - b.order));
-                    }
                 }
 
                 // Check last backup reminder
@@ -783,14 +729,16 @@
                     storage.removeItem('firstWorkoutMonday');
 
                     // Recalculate and migrate week numbers for all workouts
+                    // Also migrate day 2 workouts to day 1
                     const migratedHistory = workoutHistory.map(workout => ({
                         ...workout,
+                        day: 1, // Migrate all workouts to day 1
                         week: getWeekNumber(workout.date, workoutHistory)
                     }));
 
-                    // Only update if week numbers actually changed
+                    // Only update if week numbers or days changed
                     const hasChanges = migratedHistory.some((workout, idx) =>
-                        workout.week !== workoutHistory[idx].week
+                        workout.week !== workoutHistory[idx].week || workout.day !== workoutHistory[idx].day
                     );
 
                     if (hasChanges) {
@@ -828,7 +776,7 @@
                         // Check if exercise has actual data (not just defaults or empty values)
                         let hasData = false;
                         if (exercise.type === 'assault-bike') {
-                            hasData = exercise.rounds && exercise.rounds !== '' && exercise.rounds !== 'NA';
+                            hasData = exercise.watts && exercise.watts !== '' && exercise.watts !== 'NA';
                         } else if (exercise.type === 'stairmaster') {
                             hasData = exercise.time && exercise.time !== '' && exercise.time !== 'NA';
                         } else if (exercise.type === 'bodyweight') {
@@ -842,7 +790,7 @@
                             newLoggedExercises[exercise.id] = true;
 
                             if (exercise.type === 'assault-bike') {
-                                newWorkoutData[exercise.id] = { rounds: exercise.rounds };
+                                newWorkoutData[exercise.id] = { watts: exercise.watts };
                             } else if (exercise.type === 'stairmaster') {
                                 newWorkoutData[exercise.id] = { time: exercise.time, level: exercise.level || 'Level 7' };
                             } else if (exercise.type === 'bodyweight') {
@@ -866,7 +814,7 @@
             }, [workoutHistory, currentDay]);
 
             const getCurrentExercises = () => {
-                return currentDay === 1 ? day1Exercises : day2Exercises;
+                return day1Exercises;
             };
 
             const getTodayWorkout = () => {
@@ -888,38 +836,25 @@
 
             const saveExerciseConfig = () => {
                 const config = {
-                    day1: day1Exercises,
-                    day2: day2Exercises
+                    day1: day1Exercises
                 };
                 storage.setItem('gymExerciseConfig', JSON.stringify(config));
             };
 
             const updateExerciseName = (day, exerciseId, newName) => {
-                if (day === 1) {
-                    setDay1Exercises(prev => {
-                        const updated = prev.map(ex =>
-                            ex.id === exerciseId ? { ...ex, name: newName } : ex
-                        );
-                        // Save immediately
-                        const config = { day1: updated, day2: day2Exercises };
-                        storage.setItem('gymExerciseConfig', JSON.stringify(config));
-                        return updated;
-                    });
-                } else {
-                    setDay2Exercises(prev => {
-                        const updated = prev.map(ex =>
-                            ex.id === exerciseId ? { ...ex, name: newName } : ex
-                        );
-                        // Save immediately
-                        const config = { day1: day1Exercises, day2: updated };
-                        storage.setItem('gymExerciseConfig', JSON.stringify(config));
-                        return updated;
-                    });
-                }
+                setDay1Exercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, name: newName } : ex
+                    );
+                    // Save immediately
+                    const config = { day1: updated };
+                    storage.setItem('gymExerciseConfig', JSON.stringify(config));
+                    return updated;
+                });
             };
 
             const moveExercise = (day, exerciseId, direction) => {
-                const exercises = day === 1 ? day1Exercises : day2Exercises;
+                const exercises = day1Exercises;
                 const currentIndex = exercises.findIndex(ex => ex.id === exerciseId);
 
                 if (direction === 'up' && currentIndex === 0) return;
@@ -932,15 +867,9 @@
                 // Update order values
                 const updated = reordered.map((ex, idx) => ({ ...ex, order: idx }));
 
-                if (day === 1) {
-                    setDay1Exercises(updated);
-                    const config = { day1: updated, day2: day2Exercises };
-                    storage.setItem('gymExerciseConfig', JSON.stringify(config));
-                } else {
-                    setDay2Exercises(updated);
-                    const config = { day1: day1Exercises, day2: updated };
-                    storage.setItem('gymExerciseConfig', JSON.stringify(config));
-                }
+                setDay1Exercises(updated);
+                const config = { day1: updated };
+                storage.setItem('gymExerciseConfig', JSON.stringify(config));
             };
 
             const getPreviousWorkout = (exerciseId) => {
@@ -970,9 +899,9 @@
 
                 // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
                 for (let candidate of candidates) {
-                    // For assault bike, check rounds
+                    // For assault bike, check watts
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.rounds && candidate.rounds !== 'NA') {
+                        if (candidate.watts && candidate.watts !== 'NA') {
                             return candidate;
                         }
                     }
@@ -1031,7 +960,7 @@
                 if (!data || Object.keys(data).length === 0) return;
 
                 // Validate data based on exercise type
-                if (exercise.type === 'assault-bike' && !data.rounds) return;
+                if (exercise.type === 'assault-bike' && !data.watts) return;
                 if (exercise.type === 'stairmaster' && !data.time) return;
                 if (exercise.type === 'bodyweight' && !data.reps) return;
                 if (exercise.type === 'standard' && !data.weight && !data.reps) return;
@@ -1062,8 +991,8 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        intensity: '30/30',
-                        rounds: finalData.rounds || ''
+                        intensity: '10/20',
+                        watts: finalData.watts || ''
                     };
                 } else if (exercise.type === 'stairmaster') {
                     exerciseToSave = {
@@ -1121,8 +1050,8 @@
                                     name: ex.name,
                                     category: ex.category,
                                     type: ex.type,
-                                    intensity: '30/30',
-                                    rounds: ''
+                                    intensity: '10/20',
+                                    watts: ''
                                 };
                             } else if (ex.type === 'stairmaster') {
                                 return {
@@ -1247,8 +1176,8 @@
                             name: ex.name,
                             category: ex.category,
                             type: ex.type,
-                            intensity: '30/30',
-                            rounds: 'NA'
+                            intensity: '10/20',
+                            watts: 'NA'
                         };
                     } else if (ex.type === 'stairmaster') {
                         return {
@@ -1347,8 +1276,7 @@
                 const exportObj = {
                     workoutHistory,
                     exerciseConfig: {
-                        day1: day1Exercises,
-                        day2: day2Exercises
+                        day1: day1Exercises
                     },
                     exportDate: new Date().toISOString()
                 };
@@ -1366,8 +1294,7 @@
                 const exportObj = {
                     workoutHistory,
                     exerciseConfig: {
-                        day1: day1Exercises,
-                        day2: day2Exercises
+                        day1: day1Exercises
                     },
                     exportDate: new Date().toISOString()
                 };
@@ -1406,10 +1333,7 @@
                                 if (imported.exerciseConfig.day1) {
                                     setDay1Exercises(imported.exerciseConfig.day1.sort((a, b) => a.order - b.order));
                                 }
-                                if (imported.exerciseConfig.day2) {
-                                    setDay2Exercises(imported.exerciseConfig.day2.sort((a, b) => a.order - b.order));
-                                }
-                                storage.setItem('gymExerciseConfig', JSON.stringify(imported.exerciseConfig));
+                                storage.setItem('gymExerciseConfig', JSON.stringify({ day1: imported.exerciseConfig.day1 }));
                             }
                         }
 
@@ -1434,7 +1358,6 @@
                         setWorkoutData({});
                         setLoggedExercises({});
                         setDay1Exercises(DEFAULT_DAY_1_EXERCISES);
-                        setDay2Exercises(DEFAULT_DAY_2_EXERCISES);
                         setShowSettings(false);
                         setSuccessMessage('All data has been reset');
                         setShowSuccess(true);
@@ -1466,7 +1389,6 @@
                             onImport={importData}
                             onReset={resetData}
                             day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
                             updateExerciseName={updateExerciseName}
                             moveExercise={moveExercise}
                         />
@@ -1491,7 +1413,6 @@
                             }}
                             onSave={updateWorkout}
                             day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
                         />
                     )}
 
@@ -1526,7 +1447,6 @@
                     <div className="content">
                         {currentView === 'workout' && <WorkoutView
                             currentDay={currentDay}
-                            setCurrentDay={setCurrentDay}
                             workoutData={workoutData}
                             loggedExercises={loggedExercises}
                             handleInputChange={handleInputChange}
@@ -1546,7 +1466,6 @@
                             setViewingWeek={setViewingWeek}
                             currentWeek={currentWeek}
                             day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
                             onEditWorkout={(workout) => {
                                 setEditingWorkout(workout);
                                 setShowEditWorkout(true);
@@ -1557,7 +1476,6 @@
                             selectedExercise={selectedExercise}
                             setSelectedExercise={setSelectedExercise}
                             day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
                         />}
                     </div>
                 </div>
@@ -1583,9 +1501,9 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, day2Exercises, updateExerciseName, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, updateExerciseName, moveExercise }) {
             const fileInputRef = useRef();
-            const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises-day1', 'exercises-day2'
+            const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
             const [tempName, setTempName] = useState('');
 
@@ -1594,9 +1512,9 @@
                 setTempName(exercise.name);
             };
 
-            const handleSaveEdit = (day, exerciseId) => {
+            const handleSaveEdit = (exerciseId) => {
                 if (tempName.trim()) {
-                    updateExerciseName(day, exerciseId, tempName.trim());
+                    updateExerciseName(1, exerciseId, tempName.trim());
                 }
                 setEditingExercise(null);
                 setTempName('');
@@ -1607,15 +1525,13 @@
                 setTempName('');
             };
 
-            if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
-                const day = settingsView === 'exercises-day1' ? 1 : 2;
-                const exercises = day === 1 ? day1Exercises : day2Exercises;
-                const dayName = day === 1 ? 'Full Body' : 'Accessory';
+            if (settingsView === 'exercises') {
+                const exercises = day1Exercises;
 
                 return (
                     <div className="modal-overlay" onClick={onClose}>
                         <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
-                            <div className="modal-title">{dayName} Day Exercises</div>
+                            <div className="modal-title">Full Body Day Exercises</div>
 
                             <div style={{ marginBottom: '20px' }}>
                                 {exercises.map((exercise, idx) => (
@@ -1645,7 +1561,7 @@
                                                 />
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button
-                                                        onClick={() => handleSaveEdit(day, exercise.id)}
+                                                        onClick={() => handleSaveEdit(exercise.id)}
                                                         style={{
                                                             flex: 1,
                                                             padding: '6px',
@@ -1680,7 +1596,7 @@
                                                     {exercise.name}
                                                 </div>
                                                 <button
-                                                    onClick={() => moveExercise(day, exercise.id, 'up')}
+                                                    onClick={() => moveExercise(1, exercise.id, 'up')}
                                                     disabled={idx === 0}
                                                     style={{
                                                         padding: '4px 8px',
@@ -1694,7 +1610,7 @@
                                                     ↑
                                                     </button>
                                                 <button
-                                                    onClick={() => moveExercise(day, exercise.id, 'down')}
+                                                    onClick={() => moveExercise(1, exercise.id, 'down')}
                                                     disabled={idx === exercises.length - 1}
                                                     style={{
                                                         padding: '4px 8px',
@@ -1739,11 +1655,8 @@
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Settings</div>
 
-                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
-                            ✏️ Manage Full Body Day Exercises
-                        </button>
-                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
-                            ✏️ Manage Accessory Day Exercises
+                        <button className="modal-btn" onClick={() => setSettingsView('exercises')}>
+                            ✏️ Manage Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
@@ -1772,9 +1685,9 @@
             );
         }
 
-        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises, day2Exercises }) {
+        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises }) {
             const [editedExercises, setEditedExercises] = useState(workout.exercises);
-            const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
+            const allExercises = day1Exercises;
 
             const handleExerciseChange = (exerciseId, field, value) => {
                 setEditedExercises(prev => {
@@ -1802,7 +1715,7 @@
                 month: 'long',
                 day: 'numeric'
             });
-            const dayName = workout.day === 1 ? 'Full Body' : 'Accessory';
+            const dayName = 'Full Body';
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
@@ -1830,7 +1743,7 @@
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <input
                                                 type="text"
-                                                value="30/30"
+                                                value="10/20"
                                                 disabled
                                                 style={{
                                                     flex: 1,
@@ -1843,9 +1756,9 @@
                                             />
                                             <input
                                                 type="number"
-                                                placeholder="Rounds"
-                                                value={editedExercise?.rounds || ''}
-                                                onChange={(e) => handleExerciseChange(exercise.id, 'rounds', e.target.value)}
+                                                placeholder="Watts"
+                                                value={editedExercise?.watts || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'watts', e.target.value)}
                                                 style={{
                                                     flex: 1,
                                                     padding: '8px',
@@ -2025,10 +1938,10 @@
 
                 // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
                 for (let candidate of candidates) {
-                    // For assault bike, check rounds
+                    // For assault bike, check watts
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.rounds && candidate.rounds !== 'NA') {
-                            console.log('Returning valid assault-bike workout with rounds:', candidate.rounds);
+                        if (candidate.watts && candidate.watts !== 'NA') {
+                            console.log('Returning valid assault-bike workout with watts:', candidate.watts);
                             return candidate;
                         }
                     }
@@ -2060,7 +1973,7 @@
             // Calculate PRs (just count them)
             let prCount = 0;
             currentDayWorkoutExercises.forEach(exercise => {
-                if (!exercise.weight && !exercise.reps && !exercise.rounds && !exercise.time) {
+                if (!exercise.weight && !exercise.reps && !exercise.watts && !exercise.time) {
                     return; // Skip NA exercises
                 }
 
@@ -2073,7 +1986,7 @@
                 let isPR = false;
 
                 if (exercise.type === 'assault-bike') {
-                    if (parseInt(exercise.rounds) > parseInt(previous.rounds || 0)) {
+                    if (parseInt(exercise.watts) > parseInt(previous.watts || 0)) {
                         isPR = true;
                     }
                 } else if (exercise.type === 'stairmaster') {
@@ -2115,7 +2028,7 @@
             const completedCount = currentDayWorkoutExercises.filter(e => {
                 // Check if exercise has valid data (not NA)
                 if (e.type === 'assault-bike') {
-                    return e.rounds && e.rounds !== 'NA';
+                    return e.watts && e.watts !== 'NA';
                 } else if (e.type === 'stairmaster') {
                     return e.time && e.time !== 'NA';
                 } else if (e.type === 'bodyweight') {
@@ -2137,7 +2050,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">{currentDay === 1 ? 'Full Body' : 'Accessory'} Day Breakdown</div>
+                        <div className="modal-title">Full Body Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}
@@ -2169,13 +2082,10 @@
             );
         }
 
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
+        function WorkoutView({ currentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
-            const accessoryExercises = exercises.filter(e => e.category === 'Accessories');
-            const cardioExercises = exercises.filter(e => e.category === 'Cardio');
-            const todayDay = getTodayDay();
 
             // Helper function to check if an exercise has valid data (not NA)
             const isValidExercise = (exercise) => {
@@ -2379,7 +2289,7 @@
                 return null;
             };
 
-            // Helper function for assault bike PR detection (2 consecutive same rounds)
+            // Helper function for assault bike PR detection (+25 watts from last workout)
             const getAssaultBikePR = () => {
                 if (!workoutHistory || workoutHistory.length === 0) {
                     return null;
@@ -2388,13 +2298,11 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Find the last 2 Accessory Day workouts with valid assault bike data
-                const previousWorkouts = workoutHistory
+                // Find the most recent workout with valid assault bike data
+                const previousWorkout = workoutHistory
                     .filter(w => {
                         const workoutDate = new Date(w.date);
                         workoutDate.setHours(0, 0, 0, 0);
-                        // Only Accessory Day (day 2)
-                        if (w.day !== 2) return false;
                         // Exclude future workouts
                         if (workoutDate > today) return false;
                         // Exclude today's unsubmitted workout
@@ -2402,29 +2310,21 @@
 
                         // Check if this workout has valid assault bike data
                         const assaultBike = w.exercises.find(e => e.id === 'assault-bike');
-                        return assaultBike && assaultBike.rounds && assaultBike.rounds !== 'NA';
+                        return assaultBike && assaultBike.watts && assaultBike.watts !== 'NA';
                     })
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
-                    .slice(0, 2);
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
-                // Need at least 2 previous workouts to compare
-                if (previousWorkouts.length < 2) return null;
+                if (!previousWorkout) return null;
 
-                const lastWorkout = previousWorkouts[0];
-                const secondLastWorkout = previousWorkouts[1];
+                const lastAssaultBike = previousWorkout.exercises.find(e => e.id === 'assault-bike');
 
-                const lastAssaultBike = lastWorkout.exercises.find(e => e.id === 'assault-bike');
-                const secondLastAssaultBike = secondLastWorkout.exercises.find(e => e.id === 'assault-bike');
-
-                // If both workouts have the same rounds, trigger PR
-                if (lastAssaultBike && secondLastAssaultBike &&
-                    lastAssaultBike.rounds === secondLastAssaultBike.rounds) {
-                    const currentRounds = parseInt(lastAssaultBike.rounds);
-                    const newRounds = currentRounds + 1;
+                if (lastAssaultBike && lastAssaultBike.watts) {
+                    const lastWatts = parseInt(lastAssaultBike.watts);
+                    const newWatts = lastWatts + 25;
 
                     return {
-                        rounds: newRounds.toString(),
-                        lastRounds: lastAssaultBike.rounds
+                        watts: newWatts.toString(),
+                        lastWatts: lastAssaultBike.watts
                     };
                 }
 
@@ -2592,12 +2492,6 @@
                 if (exercise.type === 'assault-bike') {
                     const assaultBikePR = getAssaultBikePR();
 
-                    // Generate round options from 3 to 20
-                    const roundOptions = [];
-                    for (let i = 3; i <= 20; i++) {
-                        roundOptions.push(i);
-                    }
-
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
@@ -2608,7 +2502,7 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: {previous.rounds} rounds
+                                        Last: {previous.watts} watts
                                     </div>
                                 )}
                             </div>
@@ -2620,7 +2514,7 @@
                                     marginBottom: '8px',
                                     marginTop: '-4px'
                                 }}>
-                                    +1 round
+                                    +25 watts
                                 </div>
                             )}
                             <div className="input-row">
@@ -2629,26 +2523,24 @@
                                     <input
                                         type="text"
                                         className="input-field"
-                                        value="30/30"
+                                        value="10/20"
                                         disabled
                                     />
                                 </div>
                                 <div className="input-group">
-                                    <label className="input-label">Rounds</label>
-                                    <select
+                                    <label className="input-label">Watts</label>
+                                    <input
+                                        type="number"
+                                        inputMode="numeric"
                                         className="input-field"
-                                        value={data.rounds || ''}
-                                        onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
+                                        value={data.watts || ''}
+                                        onChange={(e) => handleInputChange(exercise.id, 'watts', e.target.value)}
+                                        placeholder={assaultBikePR ? assaultBikePR.watts : (previous?.watts || '')}
                                         disabled={isLogged}
                                         style={assaultBikePR ? {
                                             border: '2px solid #4CAF50'
                                         } : {}}
-                                    >
-                                        <option value="">{assaultBikePR ? `${assaultBikePR.rounds} rounds` : (previous?.rounds ? `${previous.rounds} rounds` : 'Select rounds')}</option>
-                                        {roundOptions.map(rounds => (
-                                            <option key={rounds} value={rounds}>{rounds}</option>
-                                        ))}
-                                    </select>
+                                    />
                                 </div>
                             </div>
                             <button
@@ -3075,38 +2967,11 @@
 
             return (
                 <>
-                    <div className="day-selector">
-                        <button
-                            className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
-                            onClick={() => setCurrentDay(1)}
-                        >
-                            Full Body Day{todayDay === 1 ? ' (Today)' : ''}
-                        </button>
-                        <button
-                            className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
-                            onClick={() => setCurrentDay(2)}
-                        >
-                            Accessory Day{todayDay === 2 ? ' (Today)' : ''}
-                        </button>
-                    </div>
+                    <div className="section-title">Upper Body</div>
+                    {upperExercises.map(renderExercise)}
 
-                    {currentDay === 1 ? (
-                        <>
-                            <div className="section-title">Upper Body</div>
-                            {upperExercises.map(renderExercise)}
-
-                            <div className="section-title">Lower Body</div>
-                            {lowerExercises.map(renderExercise)}
-                        </>
-                    ) : (
-                        <>
-                            <div className="section-title">Accessories</div>
-                            {accessoryExercises.map(renderExercise)}
-
-                            <div className="section-title">Cardio</div>
-                            {cardioExercises.map(renderExercise)}
-                        </>
-                    )}
+                    <div className="section-title">Lower Body</div>
+                    {lowerExercises.map(renderExercise)}
 
                     <button className="save-btn" onClick={completeDay}>
                         Submit Day and View Breakdown
@@ -3120,7 +2985,7 @@
         }
 
 
-        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises, onEditWorkout }) {
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, onEditWorkout }) {
             const weekWorkouts = workoutHistory
                 .filter(w => w.week === viewingWeek)
                 .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest to oldest
@@ -3169,7 +3034,7 @@
                                 });
 
                                 // Get all exercises for this day
-                                const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
+                                const allExercises = day1Exercises;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
                                 // Calculate sequential day number - count down from total
@@ -3201,7 +3066,7 @@
                                                     <div className="history-exercise-data">
                                                         {completedExercise ? (
                                                             completedExercise.type === 'assault-bike'
-                                                                ? (completedExercise.rounds ? `${completedExercise.rounds} rounds` : <span style={{ color: '#555' }}>NA</span>)
+                                                                ? (completedExercise.watts ? `${completedExercise.watts} watts` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
                                                                 ? (completedExercise.time ? `${completedExercise.level || 'Level 7'} - ${completedExercise.time}` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : (completedExercise.weight && completedExercise.reps
@@ -3223,8 +3088,8 @@
             );
         }
 
-        function ProgressView({ workoutHistory, selectedExercise, setSelectedExercise, day1Exercises, day2Exercises }) {
-            const allExercises = [...day1Exercises, ...day2Exercises];
+        function ProgressView({ workoutHistory, selectedExercise, setSelectedExercise, day1Exercises }) {
+            const allExercises = day1Exercises;
 
             useEffect(() => {
                 if (workoutHistory.length === 0) return;
@@ -3248,8 +3113,8 @@
                             labels: exerciseData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
                             datasets: [
                                 {
-                                    label: 'Rounds',
-                                    data: exerciseData.map(d => parseInt(d.exercise.rounds) || 0),
+                                    label: 'Watts',
+                                    data: exerciseData.map(d => parseInt(d.exercise.watts) || 0),
                                     borderColor: '#0a84ff',
                                     backgroundColor: 'rgba(10, 132, 255, 0.1)',
                                     tension: 0.3
@@ -3277,7 +3142,7 @@
                                     grid: { color: '#2a2a2a' },
                                     title: {
                                         display: true,
-                                        text: 'Rounds',
+                                        text: 'Watts',
                                         color: '#888'
                                     }
                                 }
@@ -3404,28 +3269,13 @@
                         value={selectedExercise}
                         onChange={(e) => setSelectedExercise(e.target.value)}
                     >
-                        <optgroup label="Full Body - Upper Body">
+                        <optgroup label="Upper Body">
                             {day1Exercises.filter(e => e.category === 'Upper').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
-                        <optgroup label="Full Body - Lower Body">
+                        <optgroup label="Lower Body">
                             {day1Exercises.filter(e => e.category === 'Lower').map(ex => (
-                                <option key={ex.id} value={ex.id}>{ex.name}</option>
-                            ))}
-                        </optgroup>
-                        <optgroup label="Full Body - Cardio">
-                            {day1Exercises.filter(e => e.category === 'Cardio').map(ex => (
-                                <option key={ex.id} value={ex.id}>{ex.name}</option>
-                            ))}
-                        </optgroup>
-                        <optgroup label="Accessory - Accessories">
-                            {day2Exercises.filter(e => e.category === 'Accessories').map(ex => (
-                                <option key={ex.id} value={ex.id}>{ex.name}</option>
-                            ))}
-                        </optgroup>
-                        <optgroup label="Accessory - Cardio">
-                            {day2Exercises.filter(e => e.category === 'Cardio').map(ex => (
                                 <option key={ex.id} value={ex.id}>{ex.name}</option>
                             ))}
                         </optgroup>
