@@ -9,7 +9,6 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -96,6 +95,30 @@
 
         .content {
             padding: 20px;
+        }
+
+        .day-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .day-btn {
+            flex: 1;
+            padding: 12px;
+            background: #1a1a2a;
+            border: 1px solid #2a2a3a;
+            color: #8a8aa0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .day-btn.active {
+            background: #3a2a5a;
+            border-color: #4a3a6a;
+            color: #b8b8d0;
         }
 
         .section-title {
@@ -308,20 +331,6 @@
             font-weight: 600;
         }
 
-        .chart-container {
-            background: #0d0d1a;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
-            border: 1px solid #1a1a2a;
-        }
-
-        .chart-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -358,25 +367,6 @@
             }
         }
 
-        .exercise-select {
-            width: 100%;
-            padding: 12px;
-            background: #1a1a2a;
-            border: 1px solid #2a2a3a;
-            border-radius: 8px;
-            color: #b8b8d0;
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
-
-        .exercise-select option {
-            background: #0d0d1a;
-            color: #b8b8d0;
-        }
-
-        canvas {
-            max-height: 250px;
-        }
 
 
 
@@ -542,15 +532,70 @@
             { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard', order: 9 },
             { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard', order: 10 },
             { id: 'hammer-row', name: 'Seated Row Machine', category: 'Upper', type: 'standard', order: 11 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Upper', type: 'standard', order: 12 },
-            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Upper', type: 'bodyweight', order: 12 },
-            // Lower
-            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', order: 13 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Lower', type: 'standard', order: 14 },
-            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', order: 15 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', order: 16 },
-            { id: 'assault-bike', name: 'Assault Bike', category: 'Lower', type: 'assault-bike', order: 17 },
         ];
+
+        const DEFAULT_DAY_2_EXERCISES = [
+            // Lower
+            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', order: 0 },
+            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Lower', type: 'standard', order: 1 },
+            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', order: 2 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', order: 3 },
+            // Accessories
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', order: 4 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', order: 5 },
+            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', order: 6 },
+            // Cardio
+            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 7 },
+        ];
+
+        // Calculate which day it should be based on the date
+        // 4-day cycle: Upper (Day 1) -> Lower (Day 2) -> Upper (Day 1) -> Rest -> repeat
+        function getTodayDay() {
+            // Reference: Jan 25, 2026 is Day 1 (Upper)
+            const today = new Date();
+            const referenceDate = new Date(2026, 0, 25); // Month is 0-indexed, so 0 = January
+
+            // Reset to midnight
+            today.setHours(0, 0, 0, 0);
+            referenceDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today - referenceDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            // Handle negative days (before reference date) - use old 2-day alternating logic
+            if (diffDays < 0) {
+                const oldReferenceDate = new Date(2025, 11, 16); // Dec 16, 2025
+                oldReferenceDate.setHours(0, 0, 0, 0);
+                const oldDiffTime = today - oldReferenceDate;
+                const oldDiffDays = Math.floor(oldDiffTime / (1000 * 60 * 60 * 24));
+                return (oldDiffDays % 2 === 0) ? 1 : 2;
+            }
+
+            // 4-day cycle: Upper, Lower, Upper, Rest
+            const cycleDay = diffDays % 4;
+            if (cycleDay === 0) return 1; // Upper
+            if (cycleDay === 1) return 2; // Lower
+            if (cycleDay === 2) return 1; // Upper
+            return 1; // Rest day - default to Upper (Day 1)
+        }
+
+        // Check if today is a rest day
+        function isRestDay() {
+            const today = new Date();
+            const referenceDate = new Date(2026, 0, 25); // Jan 25, 2026
+
+            today.setHours(0, 0, 0, 0);
+            referenceDate.setHours(0, 0, 0, 0);
+
+            const diffTime = today - referenceDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            // Before new cycle starts, no rest days in old system
+            if (diffDays < 0) return false;
+
+            // Rest day is every 4th day (cycleDay === 3)
+            return (diffDays % 4) === 3;
+        }
 
         // Get the Monday of the week containing a given date
         function getMondayOfWeek(date) {
@@ -674,14 +719,14 @@
 
         function App() {
             const [currentView, setCurrentView] = useState('workout');
-            const [currentDay] = useState(1); // Always day 1 (Full Body)
+            const [currentDay, setCurrentDay] = useState(getTodayDay());
             const [workoutData, setWorkoutData] = useState({});
             const [loggedExercises, setLoggedExercises] = useState({});
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
             const [successMessage, setSuccessMessage] = useState('');
             const [day1Exercises, setDay1Exercises] = useState(DEFAULT_DAY_1_EXERCISES);
-            const [selectedExercise, setSelectedExercise] = useState(DEFAULT_DAY_1_EXERCISES[0].id);
+            const [day2Exercises, setDay2Exercises] = useState(DEFAULT_DAY_2_EXERCISES);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
@@ -814,7 +859,7 @@
             }, [workoutHistory, currentDay]);
 
             const getCurrentExercises = () => {
-                return day1Exercises;
+                return currentDay === 1 ? day1Exercises : day2Exercises;
             };
 
             const getTodayWorkout = () => {
@@ -1118,18 +1163,94 @@
                     return;
                 }
 
-                // Detect exercises with less than 6 reps for plateau busting next week
+                // Helper to find previous valid workout data for an exercise (up to 5 sessions back, skipping NA)
+                const findPreviousValidExercise = (exerciseId) => {
+                    // Get previous workouts of the same day type, sorted by date descending
+                    // Exclude the current workout being submitted (compare by date string to handle same-day workouts)
+                    const previousWorkouts = workoutHistory
+                        .filter(w => {
+                            // Same day type
+                            if (w.day !== currentDay) return false;
+                            // Exclude the current workout being submitted
+                            if (w.date === todayWorkout.date) return false;
+                            // Must be submitted
+                            if (!w.submitted) return false;
+                            return true;
+                        })
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .slice(0, 5); // Check up to 5 sessions back
+
+                    // Find first workout with valid (non-NA) data for this exercise
+                    for (const workout of previousWorkouts) {
+                        const exercise = workout.exercises.find(e => e.id === exerciseId);
+                        if (exercise && exercise.reps && exercise.reps !== 'NA' &&
+                            (exercise.type === 'bodyweight' || (exercise.weight && exercise.weight !== 'NA'))) {
+                            return exercise;
+                        }
+                    }
+                    return null;
+                };
+
+                // Detect exercises for plateau busting
+                // Rules:
+                // - reps < 6: ALWAYS plateau buster
+                // - reps 6-7: plateau buster IF weight <= previous weight AND reps <= previous reps
+                // - reps 8+: no plateau buster (PR system handles this)
                 const plateauBusters = [];
                 console.log('[completeDay] Checking for plateau busters in:', todayWorkout);
                 todayWorkout.exercises.forEach(exercise => {
                     // Only check standard and bodyweight exercises (those with reps)
-                    if ((exercise.type === 'standard' || exercise.type === 'bodyweight') && exercise.reps) {
+                    if ((exercise.type === 'standard' || exercise.type === 'bodyweight') && exercise.reps && exercise.reps !== 'NA') {
                         const reps = parseInt(exercise.reps);
                         console.log('[completeDay] Exercise:', exercise.name, 'Reps:', reps);
-                        if (!isNaN(reps) && reps < 6) {
-                            console.log('[completeDay] PLATEAU BUSTER detected for:', exercise.name);
+
+                        if (isNaN(reps)) return;
+
+                        // Rule 1: Less than 6 reps ALWAYS triggers plateau buster
+                        if (reps < 6) {
+                            console.log('[completeDay] PLATEAU BUSTER (< 6 reps) detected for:', exercise.name);
                             plateauBusters.push(exercise.id);
+                            return;
                         }
+
+                        // Rule 2: 6-7 reps triggers plateau buster only if weight AND reps are not improving
+                        if (reps >= 6 && reps <= 7) {
+                            const previousExercise = findPreviousValidExercise(exercise.id);
+
+                            if (previousExercise) {
+                                const previousReps = parseInt(previousExercise.reps) || 0;
+
+                                // For bodyweight exercises, trigger plateau buster only if reps didn't improve
+                                if (exercise.type === 'bodyweight') {
+                                    if (reps <= previousReps) {
+                                        console.log('[completeDay] PLATEAU BUSTER (bodyweight 6-7 reps, no rep improvement) detected for:', exercise.name);
+                                        plateauBusters.push(exercise.id);
+                                    } else {
+                                        console.log('[completeDay] Neutral (bodyweight 6-7 reps but reps improved) for:', exercise.name);
+                                    }
+                                    return;
+                                }
+
+                                const currentWeight = parseFloat(exercise.weight) || 0;
+                                const previousWeight = parseFloat(previousExercise.weight) || 0;
+
+                                // Plateau buster only if: weight not increased AND reps not increased
+                                if (currentWeight <= previousWeight && reps <= previousReps) {
+                                    console.log('[completeDay] PLATEAU BUSTER (6-7 reps, no progress) detected for:', exercise.name);
+                                    console.log('[completeDay] Current:', currentWeight, 'lbs ×', reps, '| Previous:', previousWeight, 'lbs ×', previousReps);
+                                    plateauBusters.push(exercise.id);
+                                } else if (currentWeight > previousWeight) {
+                                    console.log('[completeDay] Neutral (6-7 reps but weight increased) for:', exercise.name);
+                                } else {
+                                    console.log('[completeDay] Neutral (6-7 reps but reps improved) for:', exercise.name);
+                                }
+                            } else {
+                                // No previous data - treat 6-7 reps as neutral (not enough history to compare)
+                                console.log('[completeDay] No previous data for comparison, treating as neutral:', exercise.name);
+                            }
+                        }
+
+                        // Rule 3: 8+ reps - no plateau buster (PR system handles this)
                     }
                 });
                 console.log('[completeDay] Total plateau busters:', plateauBusters);
@@ -1389,6 +1510,7 @@
                             onImport={importData}
                             onReset={resetData}
                             day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
                             updateExerciseName={updateExerciseName}
                             moveExercise={moveExercise}
                         />
@@ -1413,6 +1535,7 @@
                             }}
                             onSave={updateWorkout}
                             day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
                         />
                     )}
 
@@ -1435,18 +1558,13 @@
                             >
                                 Weekly
                             </button>
-                            <button
-                                className={`nav-btn ${currentView === 'progress' ? 'active' : ''}`}
-                                onClick={() => setCurrentView('progress')}
-                            >
-                                Progress
-                            </button>
                         </div>
                     </div>
 
                     <div className="content">
                         {currentView === 'workout' && <WorkoutView
                             currentDay={currentDay}
+                            setCurrentDay={setCurrentDay}
                             workoutData={workoutData}
                             loggedExercises={loggedExercises}
                             handleInputChange={handleInputChange}
@@ -1466,16 +1584,11 @@
                             setViewingWeek={setViewingWeek}
                             currentWeek={currentWeek}
                             day1Exercises={day1Exercises}
+                            day2Exercises={day2Exercises}
                             onEditWorkout={(workout) => {
                                 setEditingWorkout(workout);
                                 setShowEditWorkout(true);
                             }}
-                        />}
-                        {currentView === 'progress' && <ProgressView
-                            workoutHistory={workoutHistory}
-                            selectedExercise={selectedExercise}
-                            setSelectedExercise={setSelectedExercise}
-                            day1Exercises={day1Exercises}
                         />}
                     </div>
                 </div>
@@ -1501,7 +1614,7 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, updateExerciseName, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, day2Exercises, updateExerciseName, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -1512,9 +1625,9 @@
                 setTempName(exercise.name);
             };
 
-            const handleSaveEdit = (exerciseId) => {
+            const handleSaveEdit = (day, exerciseId) => {
                 if (tempName.trim()) {
-                    updateExerciseName(1, exerciseId, tempName.trim());
+                    updateExerciseName(day, exerciseId, tempName.trim());
                 }
                 setEditingExercise(null);
                 setTempName('');
@@ -1525,13 +1638,15 @@
                 setTempName('');
             };
 
-            if (settingsView === 'exercises') {
-                const exercises = day1Exercises;
+            if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
+                const day = settingsView === 'exercises-day1' ? 1 : 2;
+                const exercises = day === 1 ? day1Exercises : day2Exercises;
+                const dayName = day === 1 ? 'Upper' : 'Lower';
 
                 return (
                     <div className="modal-overlay" onClick={onClose}>
                         <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
-                            <div className="modal-title">Full Body Day Exercises</div>
+                            <div className="modal-title">{dayName} Day Exercises</div>
 
                             <div style={{ marginBottom: '20px' }}>
                                 {exercises.map((exercise, idx) => (
@@ -1561,7 +1676,7 @@
                                                 />
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button
-                                                        onClick={() => handleSaveEdit(exercise.id)}
+                                                        onClick={() => handleSaveEdit(day, exercise.id)}
                                                         style={{
                                                             flex: 1,
                                                             padding: '6px',
@@ -1596,7 +1711,7 @@
                                                     {exercise.name}
                                                 </div>
                                                 <button
-                                                    onClick={() => moveExercise(1, exercise.id, 'up')}
+                                                    onClick={() => moveExercise(day, exercise.id, 'up')}
                                                     disabled={idx === 0}
                                                     style={{
                                                         padding: '4px 8px',
@@ -1610,7 +1725,7 @@
                                                     ↑
                                                     </button>
                                                 <button
-                                                    onClick={() => moveExercise(1, exercise.id, 'down')}
+                                                    onClick={() => moveExercise(day, exercise.id, 'down')}
                                                     disabled={idx === exercises.length - 1}
                                                     style={{
                                                         padding: '4px 8px',
@@ -1655,8 +1770,11 @@
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Settings</div>
 
-                        <button className="modal-btn" onClick={() => setSettingsView('exercises')}>
-                            ✏️ Manage Exercises
+                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
+                            ✏️ Manage Upper Day Exercises
+                        </button>
+                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
+                            ✏️ Manage Lower Day Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
@@ -1685,9 +1803,9 @@
             );
         }
 
-        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises }) {
+        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises, day2Exercises }) {
             const [editedExercises, setEditedExercises] = useState(workout.exercises);
-            const allExercises = day1Exercises;
+            const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
 
             const handleExerciseChange = (exerciseId, field, value) => {
                 setEditedExercises(prev => {
@@ -1715,7 +1833,15 @@
                 month: 'long',
                 day: 'numeric'
             });
-            const dayName = 'Full Body';
+            // Show "Full Body" for day 1 workouts before the Upper/Lower split (Jan 25, 2026)
+            const splitDate = new Date(2026, 0, 25);
+            splitDate.setHours(0, 0, 0, 0);
+            const workoutDate = new Date(workout.date);
+            workoutDate.setHours(0, 0, 0, 0);
+            const isBeforeSplit = workoutDate < splitDate;
+            const dayName = workout.day === 1
+                ? (isBeforeSplit ? 'Full Body' : 'Upper')
+                : (isBeforeSplit ? 'Accessory' : 'Lower');
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
@@ -2050,7 +2176,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">Full Body Day Breakdown</div>
+                        <div className="modal-title">{currentDay === 1 ? 'Upper' : 'Lower'} Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}
@@ -2082,10 +2208,12 @@
             );
         }
 
-        function WorkoutView({ currentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
+        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
             const exercises = getCurrentExercises();
             const upperExercises = exercises.filter(e => e.category === 'Upper');
             const lowerExercises = exercises.filter(e => e.category === 'Lower');
+            const accessoryExercises = exercises.filter(e => e.category === 'Accessories');
+            const cardioExercises = exercises.filter(e => e.category === 'Cardio');
 
             // Helper function to check if an exercise has valid data (not NA)
             const isValidExercise = (exercise) => {
@@ -2967,11 +3095,38 @@
 
             return (
                 <>
-                    <div className="section-title">Upper Body</div>
-                    {upperExercises.map(renderExercise)}
+                    <div className="day-selector">
+                        <button
+                            className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
+                            onClick={() => setCurrentDay(1)}
+                        >
+                            Upper
+                        </button>
+                        <button
+                            className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
+                            onClick={() => setCurrentDay(2)}
+                        >
+                            Lower
+                        </button>
+                    </div>
 
-                    <div className="section-title">Lower Body</div>
-                    {lowerExercises.map(renderExercise)}
+                    {currentDay === 1 ? (
+                        <>
+                            <div className="section-title">Upper Body</div>
+                            {upperExercises.map(renderExercise)}
+                        </>
+                    ) : (
+                        <>
+                            <div className="section-title">Lower Body</div>
+                            {lowerExercises.map(renderExercise)}
+
+                            <div className="section-title">Accessories</div>
+                            {accessoryExercises.map(renderExercise)}
+
+                            <div className="section-title">Cardio</div>
+                            {cardioExercises.map(renderExercise)}
+                        </>
+                    )}
 
                     <button className="save-btn" onClick={completeDay}>
                         Submit Day and View Breakdown
@@ -2985,7 +3140,7 @@
         }
 
 
-        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, onEditWorkout }) {
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises, onEditWorkout }) {
             const weekWorkouts = workoutHistory
                 .filter(w => w.week === viewingWeek)
                 .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest to oldest
@@ -3034,7 +3189,7 @@
                                 });
 
                                 // Get all exercises for this day
-                                const allExercises = day1Exercises;
+                                const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
                                 // Calculate sequential day number - count down from total
@@ -3084,208 +3239,6 @@
                             })}
                         </>
                     )}
-                </>
-            );
-        }
-
-        function ProgressView({ workoutHistory, selectedExercise, setSelectedExercise, day1Exercises }) {
-            const allExercises = day1Exercises;
-
-            useEffect(() => {
-                if (workoutHistory.length === 0) return;
-
-                const ctx = document.getElementById('progressChart');
-                if (!ctx) return;
-
-                const exercise = allExercises.find(e => e.id === selectedExercise);
-                const exerciseData = workoutHistory
-                    .map(w => ({
-                        date: new Date(w.date),
-                        exercise: w.exercises.find(e => e.id === selectedExercise)
-                    }))
-                    .filter(d => d.exercise)
-                    .reverse();
-
-                if (exercise?.type === 'assault-bike') {
-                    const chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: exerciseData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-                            datasets: [
-                                {
-                                    label: 'Watts',
-                                    data: exerciseData.map(d => parseInt(d.exercise.watts) || 0),
-                                    borderColor: '#0a84ff',
-                                    backgroundColor: 'rgba(10, 132, 255, 0.1)',
-                                    tension: 0.3
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            plugins: {
-                                legend: { labels: { color: '#fff' } }
-                            },
-                            scales: {
-                                x: {
-                                    ticks: { color: '#888' },
-                                    grid: { color: '#2a2a2a' },
-                                    title: {
-                                        display: true,
-                                        text: 'Date',
-                                        color: '#888'
-                                    }
-                                },
-                                y: {
-                                    ticks: { color: '#888' },
-                                    grid: { color: '#2a2a2a' },
-                                    title: {
-                                        display: true,
-                                        text: 'Watts',
-                                        color: '#888'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    return () => chart.destroy();
-                }
-
-                if (exercise?.type === 'stairmaster') {
-                    const chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: exerciseData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-                            datasets: [
-                                {
-                                    label: 'Time (seconds)',
-                                    data: exerciseData.map(d => parseTimeToSeconds(d.exercise.time)),
-                                    borderColor: '#0a84ff',
-                                    backgroundColor: 'rgba(10, 132, 255, 0.1)',
-                                    tension: 0.3
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            plugins: {
-                                legend: { labels: { color: '#fff' } }
-                            },
-                            scales: {
-                                x: {
-                                    ticks: { color: '#888' },
-                                    grid: { color: '#2a2a2a' },
-                                    title: {
-                                        display: true,
-                                        text: 'Date',
-                                        color: '#888'
-                                    }
-                                },
-                                y: {
-                                    ticks: {
-                                        color: '#888',
-                                        callback: function(value) {
-                                            return formatSecondsToTime(value);
-                                        }
-                                    },
-                                    grid: { color: '#2a2a2a' },
-                                    title: {
-                                        display: true,
-                                        text: 'Time',
-                                        color: '#888'
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    return () => chart.destroy();
-                }
-
-                // Standard exercise - show only weight
-                const chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: exerciseData.map(d => d.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
-                        datasets: [
-                            {
-                                label: 'Weight (lbs)',
-                                data: exerciseData.map(d => {
-                                    if (d.exercise.weight === 'Body Weight') return 0;
-                                    return parseFloat(d.exercise.weight) || 0;
-                                }),
-                                borderColor: '#0a84ff',
-                                backgroundColor: 'rgba(10, 132, 255, 0.1)',
-                                tension: 0.3
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        plugins: {
-                            legend: { labels: { color: '#fff' } }
-                        },
-                        scales: {
-                            x: {
-                                ticks: { color: '#888' },
-                                grid: { color: '#2a2a2a' },
-                                title: {
-                                    display: true,
-                                    text: 'Date',
-                                    color: '#888'
-                                }
-                            },
-                            y: {
-                                ticks: { color: '#888' },
-                                grid: { color: '#2a2a2a' },
-                                title: {
-                                    display: true,
-                                    text: 'Weight (lbs)',
-                                    color: '#888'
-                                }
-                            }
-                        }
-                    }
-                });
-
-                return () => chart.destroy();
-            }, [workoutHistory, selectedExercise]);
-
-            if (workoutHistory.length === 0) {
-                return (
-                    <div className="empty-state">
-                        <div className="empty-state-icon">📈</div>
-                        <div>Complete some workouts to see progress</div>
-                    </div>
-                );
-            }
-
-            return (
-                <>
-                    <select
-                        className="exercise-select"
-                        value={selectedExercise}
-                        onChange={(e) => setSelectedExercise(e.target.value)}
-                    >
-                        <optgroup label="Upper Body">
-                            {day1Exercises.filter(e => e.category === 'Upper').map(ex => (
-                                <option key={ex.id} value={ex.id}>{ex.name}</option>
-                            ))}
-                        </optgroup>
-                        <optgroup label="Lower Body">
-                            {day1Exercises.filter(e => e.category === 'Lower').map(ex => (
-                                <option key={ex.id} value={ex.id}>{ex.name}</option>
-                            ))}
-                        </optgroup>
-                    </select>
-                    <div className="chart-container">
-                        <div className="chart-title">
-                            {allExercises.find(e => e.id === selectedExercise)?.name}
-                        </div>
-                        <canvas id="progressChart"></canvas>
-                    </div>
                 </>
             );
         }
