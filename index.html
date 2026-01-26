@@ -1229,7 +1229,24 @@
                         }
 
                         // Rule 2: 6-7 reps triggers plateau buster only if weight AND reps are not improving
+                        // BUT skip if already in plateau buster recovery (previous session had this as plateau buster)
                         if (reps >= 6 && reps <= 7) {
+                            // Check if previous session already had this as a plateau buster
+                            const previousWorkoutWithPlateau = workoutHistory
+                                .filter(w => {
+                                    if (w.day !== currentDay) return false;
+                                    if (w.date === todayWorkout.date) return false;
+                                    if (!w.submitted) return false;
+                                    const ex = w.exercises.find(e => e.id === exercise.id);
+                                    return ex && ex.reps && ex.reps !== 'NA';
+                                })
+                                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                            if (previousWorkoutWithPlateau?.plateauBusters?.includes(exercise.id)) {
+                                console.log('[completeDay] Already in plateau buster recovery, skipping chain for:', exercise.name);
+                                return; // Don't chain - retry system handles this
+                            }
+
                             const previousExercise = findPreviousValidExercise(exercise.id);
 
                             if (previousExercise) {
@@ -2783,7 +2800,7 @@
                                 }}>
                                     Trial of Strength
                                 </div>
-                            ) : showPlateauBuster ? (
+                            ) : (showPlateauBuster && !failedPlateauBusterRetry) ? (
                                 <div style={{
                                     color: '#ff9500',
                                     padding: '8px 12px',
@@ -3007,7 +3024,7 @@
                             }}>
                                 Trial of Strength
                             </div>
-                        ) : showPlateauBuster ? (
+                        ) : (showPlateauBuster && !failedPlateauBusterRetry) ? (
                             <div style={{
                                 color: '#ff9500',
                                 padding: '8px 12px',
