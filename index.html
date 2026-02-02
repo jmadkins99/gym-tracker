@@ -462,8 +462,7 @@
             'leg-curls': '150',
             'hip-adduction': '120',
             'calf-raise': '180',
-            'ab-crunch': '140',
-            'hanging-leg-raises': 'Body Weight'
+            'ab-crunch': '140'
         };
 
         // PR Auto-Regulation: Weight increments when you hit 8+ reps
@@ -519,82 +518,53 @@
         };
 
         const DEFAULT_DAY_1_EXERCISES = [
-            // Upper
-            { id: 'chest-flies', name: 'Chest Flies', category: 'Upper', type: 'standard', order: 0 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press Machine', category: 'Upper', type: 'standard', order: 1 },
-            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Upper', type: 'standard', order: 2 },
-            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Upper', type: 'standard', order: 3 },
-            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Upper', type: 'standard', order: 4 },
-            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Upper', type: 'standard', order: 5 },
-            { id: 'lateral-raises', name: 'Cuffed Cable Lateral Raises', category: 'Upper', type: 'standard', order: 6 },
-            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Upper', type: 'standard', order: 7 },
-            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Upper', type: 'standard', order: 8 },
-            { id: 'kelso-shrugs', name: 'Machine Kelso Shrugs', category: 'Upper', type: 'standard', order: 9 },
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Upper', type: 'standard', order: 10 },
-            { id: 'hammer-row', name: 'Seated Row Machine', category: 'Upper', type: 'standard', order: 11 },
+            // Anterior
+            { id: 'chest-flies', name: 'Chest Flies', category: 'Anterior', type: 'standard', order: 0 },
+            { id: 'incline-chest-press', name: 'Incline Chest Flies', category: 'Anterior', type: 'standard', order: 1 },
+            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Anterior', type: 'standard', order: 2 },
+            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Anterior', type: 'standard', order: 3 },
+            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Anterior', type: 'standard', order: 4 },
+            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Anterior', type: 'standard', order: 5 },
+            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Anterior', type: 'standard', order: 6 },
+            { id: 'hip-adduction', name: 'Squats', category: 'Anterior', type: 'standard', order: 7 },
+            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Anterior', type: 'standard', order: 8 },
         ];
 
         const DEFAULT_DAY_2_EXERCISES = [
-            // Lower
-            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Lower', type: 'standard', order: 0 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Lower', type: 'standard', order: 1 },
-            { id: 'hip-adduction', name: 'Hip Adduction Machine', category: 'Lower', type: 'standard', order: 2 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Lower', type: 'standard', order: 3 },
-            // Accessories
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Accessories', type: 'standard', order: 4 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Accessories', type: 'standard', order: 5 },
-            { id: 'hanging-leg-raises', name: 'Hanging Leg Raises', category: 'Accessories', type: 'bodyweight', order: 6 },
+            // Posterior
+            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Posterior', type: 'standard', order: 0 },
+            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Posterior', type: 'standard', order: 1 },
+            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Posterior', type: 'standard', order: 2 },
+            { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Posterior', type: 'standard', order: 3 },
+            { id: 'hammer-row', name: 'Seated Row Machine', category: 'Posterior', type: 'standard', order: 4 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Posterior', type: 'standard', order: 5 },
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Posterior', type: 'standard', order: 6 },
+            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Posterior', type: 'standard', order: 7 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Posterior', type: 'standard', order: 8 },
             // Cardio
-            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 7 },
+            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 9 },
         ];
 
-        // Calculate which day it should be based on the date
-        // 4-day cycle: Upper (Day 1) -> Lower (Day 2) -> Upper (Day 1) -> Rest -> repeat
-        function getTodayDay() {
-            // Reference: Jan 25, 2026 is Day 1 (Upper)
+        // Get today's date string for localStorage key
+        function getTodayDateString() {
             const today = new Date();
-            const referenceDate = new Date(2026, 0, 25); // Month is 0-indexed, so 0 = January
-
-            // Reset to midnight
-            today.setHours(0, 0, 0, 0);
-            referenceDate.setHours(0, 0, 0, 0);
-
-            const diffTime = today - referenceDate;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-            // Handle negative days (before reference date) - use old 2-day alternating logic
-            if (diffDays < 0) {
-                const oldReferenceDate = new Date(2025, 11, 16); // Dec 16, 2025
-                oldReferenceDate.setHours(0, 0, 0, 0);
-                const oldDiffTime = today - oldReferenceDate;
-                const oldDiffDays = Math.floor(oldDiffTime / (1000 * 60 * 60 * 24));
-                return (oldDiffDays % 2 === 0) ? 1 : 2;
-            }
-
-            // 4-day cycle: Upper, Lower, Upper, Rest
-            const cycleDay = diffDays % 4;
-            if (cycleDay === 0) return 1; // Upper
-            if (cycleDay === 1) return 2; // Lower
-            if (cycleDay === 2) return 1; // Upper
-            return 1; // Rest day - default to Upper (Day 1)
+            return today.toISOString().split('T')[0]; // YYYY-MM-DD format
         }
 
-        // Check if today is a rest day
-        function isRestDay() {
-            const today = new Date();
-            const referenceDate = new Date(2026, 0, 25); // Jan 25, 2026
+        // Get the active day for today from localStorage, or default to Anterior (1)
+        function getTodayDay() {
+            const todayKey = 'activeDay_' + getTodayDateString();
+            const savedDay = storage.getItem(todayKey);
+            if (savedDay) {
+                return parseInt(savedDay);
+            }
+            return 1; // Default to Anterior
+        }
 
-            today.setHours(0, 0, 0, 0);
-            referenceDate.setHours(0, 0, 0, 0);
-
-            const diffTime = today - referenceDate;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-            // Before new cycle starts, no rest days in old system
-            if (diffDays < 0) return false;
-
-            // Rest day is every 4th day (cycleDay === 3)
-            return (diffDays % 4) === 3;
+        // Save the active day for today to localStorage
+        function saveActiveDay(day) {
+            const todayKey = 'activeDay_' + getTodayDateString();
+            storage.setItem(todayKey, day.toString());
         }
 
         // Get the Monday of the week containing a given date
@@ -737,6 +707,12 @@
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
 
+            // Wrapper to change day and save to localStorage (sticky session)
+            const handleDayChange = (day) => {
+                setCurrentDay(day);
+                saveActiveDay(day);
+            };
+
             useEffect(() => {
                 // Migrate existing data to namespaced storage (one-time for existing users)
                 migrateToNamespacedStorage();
@@ -749,14 +725,22 @@
                 }
 
                 // Load custom exercise configurations
-                const savedExercises = storage.getItem('gymExerciseConfig');
-                if (savedExercises) {
-                    const config = JSON.parse(savedExercises);
-                    if (config.day1) {
-                        setDay1Exercises(config.day1.sort((a, b) => a.order - b.order));
-                    }
-                    if (config.day2) {
-                        setDay2Exercises(config.day2.sort((a, b) => a.order - b.order));
+                // Check if we need to migrate to Anterior/Posterior split
+                const hasMigratedToAP = storage.getItem('migratedToAnteriorPosterior');
+                if (!hasMigratedToAP) {
+                    // Clear old exercise config and use new defaults
+                    storage.removeItem('gymExerciseConfig');
+                    storage.setItem('migratedToAnteriorPosterior', 'true');
+                } else {
+                    const savedExercises = storage.getItem('gymExerciseConfig');
+                    if (savedExercises) {
+                        const config = JSON.parse(savedExercises);
+                        if (config.day1) {
+                            setDay1Exercises(config.day1.sort((a, b) => a.order - b.order));
+                        }
+                        if (config.day2) {
+                            setDay2Exercises(config.day2.sort((a, b) => a.order - b.order));
+                        }
                     }
                 }
 
@@ -776,17 +760,15 @@
                     // Clear the cached first workout Monday to recalculate based on actual data
                     storage.removeItem('firstWorkoutMonday');
 
-                    // Recalculate and migrate week numbers for all workouts
-                    // Also migrate day 2 workouts to day 1
+                    // Recalculate week numbers for all workouts
                     const migratedHistory = workoutHistory.map(workout => ({
                         ...workout,
-                        day: 1, // Migrate all workouts to day 1
                         week: getWeekNumber(workout.date, workoutHistory)
                     }));
 
-                    // Only update if week numbers or days changed
+                    // Only update if week numbers changed
                     const hasChanges = migratedHistory.some((workout, idx) =>
-                        workout.week !== workoutHistory[idx].week || workout.day !== workoutHistory[idx].day
+                        workout.week !== workoutHistory[idx].week
                     );
 
                     if (hasChanges) {
@@ -1031,6 +1013,9 @@
                 let finalData = { ...data };
                 const timestamp = new Date().toISOString();
                 finalData.timestamp = timestamp;
+
+                // Save current day as active day (sticky session)
+                saveActiveDay(currentDay);
 
                 // Find if there's already a workout for today (that hasn't been submitted)
                 const today = new Date();
@@ -1599,7 +1584,7 @@
                     <div className="content">
                         {currentView === 'workout' && <WorkoutView
                             currentDay={currentDay}
-                            setCurrentDay={setCurrentDay}
+                            setCurrentDay={handleDayChange}
                             workoutData={workoutData}
                             loggedExercises={loggedExercises}
                             handleInputChange={handleInputChange}
@@ -1676,7 +1661,7 @@
             if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
                 const day = settingsView === 'exercises-day1' ? 1 : 2;
                 const exercises = day === 1 ? day1Exercises : day2Exercises;
-                const dayName = day === 1 ? 'Upper' : 'Lower';
+                const dayName = day === 1 ? 'Anterior' : 'Posterior';
 
                 return (
                     <div className="modal-overlay" onClick={onClose}>
@@ -1806,10 +1791,10 @@
                         <div className="modal-title">Settings</div>
 
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
-                            ✏️ Manage Upper Day Exercises
+                            ✏️ Manage Anterior Day Exercises
                         </button>
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
-                            ✏️ Manage Lower Day Exercises
+                            ✏️ Manage Posterior Day Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
@@ -1868,15 +1853,15 @@
                 month: 'long',
                 day: 'numeric'
             });
-            // Show "Full Body" for day 1 workouts before the Upper/Lower split (Jan 25, 2026)
-            const splitDate = new Date(2026, 0, 25);
+            // Show "Full Body" for day 1 workouts before the Anterior/Posterior split (Feb 2, 2026)
+            const splitDate = new Date(2026, 1, 2);
             splitDate.setHours(0, 0, 0, 0);
             const workoutDate = new Date(workout.date);
             workoutDate.setHours(0, 0, 0, 0);
             const isBeforeSplit = workoutDate < splitDate;
             const dayName = workout.day === 1
-                ? (isBeforeSplit ? 'Full Body' : 'Upper')
-                : (isBeforeSplit ? 'Accessory' : 'Lower');
+                ? (isBeforeSplit ? 'Upper' : 'Anterior')
+                : (isBeforeSplit ? 'Lower' : 'Posterior');
 
             return (
                 <div className="modal-overlay" onClick={onClose}>
@@ -2211,7 +2196,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">{currentDay === 1 ? 'Upper' : 'Lower'} Day Breakdown</div>
+                        <div className="modal-title">{currentDay === 1 ? 'Anterior' : 'Posterior'} Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}
@@ -2245,9 +2230,8 @@
 
         function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
             const exercises = getCurrentExercises();
-            const upperExercises = exercises.filter(e => e.category === 'Upper');
-            const lowerExercises = exercises.filter(e => e.category === 'Lower');
-            const accessoryExercises = exercises.filter(e => e.category === 'Accessories');
+            const anteriorExercises = exercises.filter(e => e.category === 'Anterior');
+            const posteriorExercises = exercises.filter(e => e.category === 'Posterior');
             const cardioExercises = exercises.filter(e => e.category === 'Cardio');
 
             // Helper function to check if an exercise has valid data (not NA)
@@ -3135,28 +3119,25 @@
                             className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(1)}
                         >
-                            Upper
+                            Anterior
                         </button>
                         <button
                             className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(2)}
                         >
-                            Lower
+                            Posterior
                         </button>
                     </div>
 
                     {currentDay === 1 ? (
                         <>
-                            <div className="section-title">Upper Body</div>
-                            {upperExercises.map(renderExercise)}
+                            <div className="section-title">Anterior</div>
+                            {anteriorExercises.map(renderExercise)}
                         </>
                     ) : (
                         <>
-                            <div className="section-title">Lower Body</div>
-                            {lowerExercises.map(renderExercise)}
-
-                            <div className="section-title">Accessories</div>
-                            {accessoryExercises.map(renderExercise)}
+                            <div className="section-title">Posterior</div>
+                            {posteriorExercises.map(renderExercise)}
 
                             <div className="section-title">Cardio</div>
                             {cardioExercises.map(renderExercise)}
