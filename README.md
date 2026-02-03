@@ -5,7 +5,7 @@ A personalized workout tracking web app.
 ## Features
 
 ### Workout Tracking
-- **Upper-Lower-Upper-Rest Routine**: Alternates automatically between Upper - Lower - Upper - Rest
+- **Anterior-Posterior Routine**: Alternates automatically between Anterior and Posterior days
 - **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
 - **Sequential Day Counter**: Weekly view shows newest workouts first (Day 5, Day 4, Day 3...) for easy access
 - **Instant Save**: LOG button immediately saves to Weekly tab - no page refresh needed
