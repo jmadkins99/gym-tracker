@@ -1954,10 +1954,24 @@
                     const updated = [...prev];
                     const exerciseIndex = updated.findIndex(e => e.id === exerciseId);
                     if (exerciseIndex !== -1) {
+                        // Exercise exists - update it
                         updated[exerciseIndex] = {
                             ...updated[exerciseIndex],
                             [field]: value
                         };
+                    } else {
+                        // Exercise doesn't exist in workout data - add it
+                        // Find the exercise definition from allExercises
+                        const exerciseDef = allExercises.find(e => e.id === exerciseId);
+                        if (exerciseDef) {
+                            updated.push({
+                                id: exerciseDef.id,
+                                name: exerciseDef.name,
+                                category: exerciseDef.category,
+                                type: exerciseDef.type,
+                                [field]: value
+                            });
+                        }
                     }
                     return updated;
                 });
