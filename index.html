@@ -694,6 +694,109 @@
             });
         }
 
+        // Migrate exercise config when exercises are added/removed from defaults
+        // This ensures new exercises show up for existing users
+        function migrateExerciseConfig() {
+            const savedConfig = storage.getItem('gymExerciseConfig');
+            if (!savedConfig) return null; // No saved config, will use defaults
+
+            try {
+                const config = JSON.parse(savedConfig);
+                const savedDay1 = config.day1 || [];
+                const savedDay2 = config.day2 || [];
+
+                // Create lookup maps for saved exercises (by ID)
+                const savedDay1ById = new Map(savedDay1.map(e => [e.id, e]));
+                const savedDay2ById = new Map(savedDay2.map(e => [e.id, e]));
+
+                // Get sets of exercise IDs for comparison
+                const savedDay1Ids = new Set(savedDay1.map(e => e.id));
+                const savedDay2Ids = new Set(savedDay2.map(e => e.id));
+                const defaultDay1Ids = new Set(DEFAULT_DAY_1_EXERCISES.map(e => e.id));
+                const defaultDay2Ids = new Set(DEFAULT_DAY_2_EXERCISES.map(e => e.id));
+
+                // Special handling: treat assault-bike as stairmaster for comparison
+                // (since we're replacing one with the other)
+                let hasAssaultBikeToStairmasterSwap = false;
+                if (savedDay2Ids.has('assault-bike') && defaultDay2Ids.has('stairmaster') && !defaultDay2Ids.has('assault-bike')) {
+                    savedDay2Ids.delete('assault-bike');
+                    savedDay2Ids.add('stairmaster');
+                    hasAssaultBikeToStairmasterSwap = true;
+                }
+
+                // Check if exercise IDs match (ignoring order)
+                const setsEqual = (a, b) => {
+                    if (a.size !== b.size) return false;
+                    for (const item of a) {
+                        if (!b.has(item)) return false;
+                    }
+                    return true;
+                };
+
+                const day1Match = setsEqual(savedDay1Ids, defaultDay1Ids);
+                const day2Match = setsEqual(savedDay2Ids, defaultDay2Ids);
+
+                if (day1Match && day2Match) {
+                    return null; // No migration needed
+                }
+
+                console.log('[Exercise Config Migration] Changes detected, migrating...');
+
+                // Helper to migrate a single day's exercises
+                const migrateDay = (savedById, defaultExercises, dayName) => {
+                    const result = [];
+
+                    // Build new list based on default order
+                    for (const defaultEx of defaultExercises) {
+                        if (savedById.has(defaultEx.id)) {
+                            // Exercise exists in saved - preserve custom name
+                            const saved = savedById.get(defaultEx.id);
+                            result.push({
+                                ...defaultEx,  // Use all default properties (order, type, category)
+                                name: saved.name  // Preserve custom name if user renamed it
+                            });
+                        } else {
+                            // New exercise from defaults
+                            result.push({ ...defaultEx });
+                            console.log(`[${dayName}] Added new exercise: ${defaultEx.name}`);
+                        }
+                    }
+
+                    // Log removed exercises (for transparency)
+                    for (const [id, saved] of savedById) {
+                        const isInDefaults = defaultExercises.some(d => d.id === id);
+                        const isAssaultBikeReplacement = id === 'assault-bike' && hasAssaultBikeToStairmasterSwap;
+                        if (!isInDefaults && !isAssaultBikeReplacement) {
+                            console.log(`[${dayName}] Removed exercise: ${saved.name} (id: ${id})`);
+                        }
+                    }
+
+                    return result;
+                };
+
+                // Handle assault-bike -> stairmaster replacement
+                if (hasAssaultBikeToStairmasterSwap) {
+                    console.log('[Day 2 (Posterior)] Replacing assault-bike with stairmaster');
+                    savedDay2ById.delete('assault-bike');
+                }
+
+                // Migrate each day
+                const newDay1 = migrateDay(savedDay1ById, DEFAULT_DAY_1_EXERCISES, 'Day 1 (Anterior)');
+                const newDay2 = migrateDay(savedDay2ById, DEFAULT_DAY_2_EXERCISES, 'Day 2 (Posterior)');
+
+                // Save the migrated config
+                const newConfig = { day1: newDay1, day2: newDay2 };
+                storage.setItem('gymExerciseConfig', JSON.stringify(newConfig));
+
+                console.log('[Exercise Config Migration] Complete! Exercise list updated to match defaults.');
+
+                return newConfig;
+            } catch (e) {
+                console.error('[Exercise Config Migration] Error:', e);
+                return null;
+            }
+        }
+
         function App() {
             const [currentView, setCurrentView] = useState('workout');
             const [currentDay, setCurrentDay] = useState(getTodayDay());
@@ -738,7 +841,19 @@
                     // Clear old exercise config and use new defaults
                     storage.removeItem('gymExerciseConfig');
                     storage.setItem('migratedToAnteriorPosterior', 'true');
+                }
+
+                // Check if exercise config needs migration (new exercises added/removed)
+                // This runs after AP migration and handles ongoing exercise list changes
+                const migratedConfig = migrateExerciseConfig();
+
+                // Load the exercise config (either migrated or existing)
+                if (migratedConfig) {
+                    // Use the freshly migrated config
+                    setDay1Exercises(migratedConfig.day1.sort((a, b) => a.order - b.order));
+                    setDay2Exercises(migratedConfig.day2.sort((a, b) => a.order - b.order));
                 } else {
+                    // Load from storage if no migration occurred
                     const savedExercises = storage.getItem('gymExerciseConfig');
                     if (savedExercises) {
                         const config = JSON.parse(savedExercises);
