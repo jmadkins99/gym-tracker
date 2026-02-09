@@ -484,7 +484,9 @@
             'leg-curls': 5,
             'hip-adduction': 1.25,
             'calf-raise': 1.25,
-            'ab-crunch': 1.25
+            'ab-crunch': 1.25,
+            'cable-wrist-curls': 1.25,
+            'reverse-wrist-curls': 1.25
         };
 
         // Plate-loaded exercises configuration
@@ -514,7 +516,9 @@
             'hammer-row': true,
             'leg-extensions': true,
             'calf-raise': true,
-            'ab-crunch': true
+            'ab-crunch': true,
+            'cable-wrist-curls': true,
+            'reverse-wrist-curls': true
         };
 
         const DEFAULT_DAY_1_EXERCISES = [
@@ -539,10 +543,13 @@
             { id: 'hammer-row', name: 'Seated Row Machine', category: 'Posterior', type: 'standard', order: 4 },
             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Posterior', type: 'standard', order: 5 },
             { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Posterior', type: 'standard', order: 6 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Posterior', type: 'standard', order: 7 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Posterior', type: 'standard', order: 8 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Posterior', type: 'standard', order: 7 },
+            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Posterior', type: 'standard', order: 8 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Posterior', type: 'standard', order: 9 },
             // Cardio
-            { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 9 },
+            // SWAP: Uncomment assault-bike and comment out stairmaster to switch back
+            // { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 10 },
+            { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 10 },
         ];
 
         // Get today's date string for localStorage key
@@ -1048,7 +1055,7 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        level: finalData.level || 'Level 7',
+                        level: 'Level 9',  // Hardcoded level
                         time: finalData.time || ''
                     };
                 } else if (exercise.type === 'bodyweight') {
@@ -1107,7 +1114,7 @@
                                     name: ex.name,
                                     category: ex.category,
                                     type: ex.type,
-                                    level: 'Level 7',
+                                    level: 'Level 9',  // Hardcoded level
                                     time: ''
                                 };
                             } else if (ex.type === 'bodyweight') {
@@ -1326,7 +1333,7 @@
                             name: ex.name,
                             category: ex.category,
                             type: ex.type,
-                            level: 'Level 7',
+                            level: 'Level 9',  // Hardcoded level
                             time: 'NA'
                         };
                     } else if (ex.type === 'bodyweight') {
@@ -1917,9 +1924,10 @@
                                         </div>
                                     ) : exercise.type === 'stairmaster' ? (
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                            <select
-                                                value={editedExercise?.level || 'Level 7'}
-                                                onChange={(e) => handleExerciseChange(exercise.id, 'level', e.target.value)}
+                                            <input
+                                                type="text"
+                                                value="Level 9"
+                                                disabled
                                                 style={{
                                                     flex: 1,
                                                     padding: '8px',
@@ -1928,12 +1936,7 @@
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
-                                            >
-                                                <option value="Level 7">Level 7</option>
-                                                <option value="Level 8">Level 8</option>
-                                                <option value="Level 9">Level 9</option>
-                                                <option value="Level 10">Level 10</option>
-                                            </select>
+                                            />
                                             <select
                                                 value={editedExercise?.time || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'time', e.target.value)}
@@ -2478,6 +2481,48 @@
                 return null;
             };
 
+            // Helper function for stairmaster time suggestion (+15 seconds from last workout, cap at 20:00)
+            const getStairmasterSuggestion = () => {
+                if (!workoutHistory || workoutHistory.length === 0) {
+                    return { time: '5:00', isFirstSession: true };
+                }
+
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Find the most recent workout with valid stairmaster data
+                const previousWorkout = workoutHistory
+                    .filter(w => {
+                        const workoutDate = new Date(w.date);
+                        workoutDate.setHours(0, 0, 0, 0);
+                        if (workoutDate > today) return false;
+                        if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                        const stairmaster = w.exercises.find(e => e.id === 'stairmaster');
+                        return stairmaster && stairmaster.time && stairmaster.time !== 'NA';
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                if (!previousWorkout) {
+                    return { time: '5:00', isFirstSession: true };
+                }
+
+                const lastStairmaster = previousWorkout.exercises.find(e => e.id === 'stairmaster');
+
+                if (lastStairmaster && lastStairmaster.time) {
+                    const lastSeconds = parseTimeToSeconds(lastStairmaster.time);
+                    const newSeconds = Math.min(lastSeconds + 15, 20 * 60); // Cap at 20:00
+
+                    return {
+                        time: formatSecondsToTime(newSeconds),
+                        lastTime: lastStairmaster.time,
+                        isFirstSession: false
+                    };
+                }
+
+                return { time: '5:00', isFirstSession: true };
+            };
+
             // Helper function for plateau buster weight decrement
             const getPlateauBusterDecrement = (exerciseId) => {
                 console.log('[getPlateauBusterDecrement] Checking for:', exerciseId);
@@ -2636,6 +2681,12 @@
                 // Get default weight for Week 1
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
+                /* ============================================
+                   ASSAULT BIKE DISPLAY - COMMENTED OUT
+                   To switch back: uncomment this block and comment out stairmaster below
+                   Also update DEFAULT_DAY_2_EXERCISES to use assault-bike instead of stairmaster
+                   ============================================ */
+                /*
                 if (exercise.type === 'assault-bike') {
                     const assaultBikePR = getAssaultBikePR();
 
@@ -2700,7 +2751,10 @@
                         </div>
                     );
                 }
+                */
+                /* END ASSAULT BIKE DISPLAY */
 
+                /* STAIRMASTER DISPLAY - To switch back to assault bike, comment out this block */
                 if (exercise.type === 'stairmaster') {
                     // Generate time options from 5:00 to 20:00 in 15-second increments
                     const timeOptions = [];
@@ -2711,6 +2765,10 @@
                         }
                     }
 
+                    const stairmasterSuggestion = getStairmasterSuggestion();
+                    const suggestedTime = stairmasterSuggestion?.time || '5:00';
+                    const showSuggestion = !stairmasterSuggestion?.isFirstSession;
+
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
@@ -2719,34 +2777,42 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: {previous.level || 'Level 7'} - {previous.time}
+                                        Last: Level 9 - {previous.time}
                                     </div>
                                 )}
                             </div>
+                            {showSuggestion && (
+                                <div style={{
+                                    color: '#4CAF50',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    marginBottom: '8px',
+                                    marginTop: '-4px'
+                                }}>
+                                    +15 seconds
+                                </div>
+                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Level</label>
-                                    <select
+                                    <input
+                                        type="text"
                                         className="input-field"
-                                        value={data.level || previous?.level || 'Level 7'}
-                                        onChange={(e) => handleInputChange(exercise.id, 'level', e.target.value)}
-                                        disabled={isLogged}
-                                    >
-                                        <option value="Level 7">Level 7</option>
-                                        <option value="Level 8">Level 8</option>
-                                        <option value="Level 9">Level 9</option>
-                                        <option value="Level 10">Level 10</option>
-                                    </select>
+                                        value="Level 9"
+                                        disabled
+                                    />
                                 </div>
                                 <div className="input-group">
                                     <label className="input-label">Time</label>
                                     <select
                                         className="input-field"
-                                        value={data.time || ''}
+                                        value={data.time || suggestedTime}
                                         onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
                                         disabled={isLogged}
+                                        style={showSuggestion ? {
+                                            border: '2px solid #4CAF50'
+                                        } : {}}
                                     >
-                                        <option value="">{previous?.time || 'Select time'}</option>
                                         {timeOptions.map(time => (
                                             <option key={time} value={time}>{time}</option>
                                         ))}
@@ -2763,6 +2829,7 @@
                         </div>
                     );
                 }
+                /* END STAIRMASTER DISPLAY */
 
                 if (exercise.type === 'bodyweight') {
                     return (
@@ -3239,7 +3306,7 @@
                                                             completedExercise.type === 'assault-bike'
                                                                 ? (completedExercise.watts ? `${completedExercise.watts} watts` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
-                                                                ? (completedExercise.time ? `${completedExercise.level || 'Level 7'} - ${completedExercise.time}` : <span style={{ color: '#555' }}>NA</span>)
+                                                                ? (completedExercise.time ? `${completedExercise.time} / Level 9` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : (completedExercise.weight && completedExercise.reps
                                                                     ? `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
                                                                     : <span style={{ color: '#555' }}>NA</span>)
