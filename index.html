@@ -448,7 +448,6 @@
         const WEEK_1_DEFAULTS = {
             'chest-flies': '165',
             'incline-chest-press': '110',
-            'flat-chest-press': '135',
             'shoulder-press': '126.25',
             'preacher-curls': '56.25',
             'tricep-pushdown': '36.25',
@@ -470,7 +469,6 @@
         const PR_WEIGHT_INCREMENTS = {
             'chest-flies': 1.25,
             'incline-chest-press': 1.25,
-            'flat-chest-press': 1.25,
             'shoulder-press': 1.25,
             'preacher-curls': 1.25,
             'tricep-pushdown': 1.25,
@@ -505,7 +503,6 @@
         const PIN_STACK_EXERCISES = {
             'chest-flies': true,
             'incline-chest-press': true,
-            'flat-chest-press': true,
             'shoulder-press': true,
             'tricep-pushdown': true,
             'lateral-raises': true,
@@ -525,11 +522,11 @@
             // Anterior
             { id: 'chest-flies', name: 'Chest Flies', category: 'Anterior', type: 'standard', order: 0 },
             { id: 'incline-chest-press', name: 'Incline Chest Flies', category: 'Anterior', type: 'standard', order: 1 },
-            { id: 'flat-chest-press', name: 'Flat Chest Press Machine', category: 'Anterior', type: 'standard', order: 2 },
-            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Anterior', type: 'standard', order: 3 },
-            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Anterior', type: 'standard', order: 4 },
+            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Anterior', type: 'standard', order: 2 },
+            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Anterior', type: 'standard', order: 3 },
+            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Anterior', type: 'standard', order: 4 },
             { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Anterior', type: 'standard', order: 5 },
-            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Anterior', type: 'standard', order: 6 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Anterior', type: 'standard', order: 6 },
             { id: 'hip-adduction', name: 'Squats', category: 'Anterior', type: 'standard', order: 7 },
             { id: 'leg-extensions', name: 'Leg Extensions', category: 'Anterior', type: 'standard', order: 8 },
         ];
@@ -541,15 +538,14 @@
             { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Posterior', type: 'standard', order: 2 },
             { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Posterior', type: 'standard', order: 3 },
             { id: 'hammer-row', name: 'Seated Row Machine', category: 'Posterior', type: 'standard', order: 4 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Posterior', type: 'standard', order: 5 },
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Posterior', type: 'standard', order: 6 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Posterior', type: 'standard', order: 7 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Posterior', type: 'standard', order: 8 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Posterior', type: 'standard', order: 9 },
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Posterior', type: 'standard', order: 5 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Posterior', type: 'standard', order: 6 },
+            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Posterior', type: 'standard', order: 7 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Posterior', type: 'standard', order: 8 },
             // Cardio
             // SWAP: Uncomment assault-bike and comment out stairmaster to switch back
-            // { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 10 },
-            { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 10 },
+            // { id: 'assault-bike', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 9 },
+            { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];
 
         // Get today's date string for localStorage key
@@ -724,6 +720,18 @@
                     hasAssaultBikeToStairmasterSwap = true;
                 }
 
+                // Special handling: ab-crunch moved from Day 2 to Day 1
+                // Preserve custom name if user renamed it
+                let hasAbCrunchDaySwap = false;
+                if (savedDay2Ids.has('ab-crunch') && defaultDay1Ids.has('ab-crunch') && !defaultDay2Ids.has('ab-crunch')) {
+                    // Move ab-crunch from Day 2 lookup to Day 1 lookup (preserving custom name)
+                    const savedAbCrunch = savedDay2ById.get('ab-crunch');
+                    savedDay1ById.set('ab-crunch', savedAbCrunch);
+                    savedDay1Ids.add('ab-crunch');
+                    savedDay2Ids.delete('ab-crunch');
+                    hasAbCrunchDaySwap = true;
+                }
+
                 // Check if exercise IDs match (ignoring order)
                 const setsEqual = (a, b) => {
                     if (a.size !== b.size) return false;
@@ -766,7 +774,8 @@
                     for (const [id, saved] of savedById) {
                         const isInDefaults = defaultExercises.some(d => d.id === id);
                         const isAssaultBikeReplacement = id === 'assault-bike' && hasAssaultBikeToStairmasterSwap;
-                        if (!isInDefaults && !isAssaultBikeReplacement) {
+                        const isAbCrunchDayMove = id === 'ab-crunch' && hasAbCrunchDaySwap;
+                        if (!isInDefaults && !isAssaultBikeReplacement && !isAbCrunchDayMove) {
                             console.log(`[${dayName}] Removed exercise: ${saved.name} (id: ${id})`);
                         }
                     }
@@ -778,6 +787,12 @@
                 if (hasAssaultBikeToStairmasterSwap) {
                     console.log('[Day 2 (Posterior)] Replacing assault-bike with stairmaster');
                     savedDay2ById.delete('assault-bike');
+                }
+
+                // Handle ab-crunch cross-day move
+                if (hasAbCrunchDaySwap) {
+                    console.log('[Migration] Moving ab-crunch from Day 2 (Posterior) to Day 1 (Anterior)');
+                    savedDay2ById.delete('ab-crunch');
                 }
 
                 // Migrate each day
