@@ -2703,7 +2703,15 @@
 
                 const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
 
-                // Decrease weight by the increment amount
+                // Only drop weight if previous reps were < 6 (true failure)
+                // For 6-7 reps stagnation, keep same weight (just do 2 sets)
+                const previousReps = parseInt(previousExercise?.reps) || 0;
+                if (previousReps >= 6) {
+                    console.log('[getPlateauBusterDecrement] Previous reps were', previousReps, '(>= 6), no weight drop needed');
+                    return null;
+                }
+
+                // Decrease weight by the increment amount (only for < 6 reps)
                 if (previousExercise && previousExercise.weight && PR_WEIGHT_INCREMENTS[exerciseId]) {
                     const lastWeight = parseFloat(previousExercise.weight);
                     const increment = PR_WEIGHT_INCREMENTS[exerciseId];
@@ -3307,7 +3315,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '6' : (plateauBusterDecrement ? '8' : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))}
+                                    placeholder={prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '6' : (plateauBusterDecrement ? '8' : (showPlateauBuster && previous?.reps ? String(parseInt(previous.reps)) : (previous?.reps ? String(parseInt(previous.reps) + 1) : ''))))}
                                     disabled={isLogged}
                                 />
                             </div>
