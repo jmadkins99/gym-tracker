@@ -529,6 +529,10 @@
             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Anterior', type: 'standard', order: 6 },
             { id: 'hip-adduction', name: 'Squats', category: 'Anterior', type: 'standard', order: 7 },
             { id: 'leg-extensions', name: 'Leg Extensions', category: 'Anterior', type: 'standard', order: 8 },
+            // Cardio
+            // SWAP: Uncomment assault-bike-anterior and comment out stairmaster-anterior to switch back
+            // { id: 'assault-bike-anterior', name: 'Assault Bike', category: 'Cardio', type: 'assault-bike', order: 9 },
+            { id: 'stairmaster-anterior', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];
 
         const DEFAULT_DAY_2_EXERCISES = [
@@ -1121,23 +1125,22 @@
 
                 // Capture auto-filled weight if user didn't manually enter it
                 if (exercise.type === 'standard' && !data.weight && data.reps) {
-                    console.log('[logExercise] Trying to capture auto-filled weight for:', exercise.name);
-                    console.log('[logExercise] Current data:', data);
-                    // Find the weight input field for this exercise and read its displayed value
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-                    console.log('[logExercise] Found exercise card:', exerciseCard);
                     if (exerciseCard) {
-                        // Find the weight input (it's the first number input with inputmode="decimal")
                         const weightInput = exerciseCard.querySelector('input[type="number"][inputmode="decimal"]');
-                        console.log('[logExercise] Found weight input:', weightInput);
-                        console.log('[logExercise] Weight input value:', weightInput?.value);
                         if (weightInput && weightInput.value) {
                             data = { ...data, weight: weightInput.value };
-                            console.log('[logExercise] Captured weight from DOM:', weightInput.value);
                         }
                     }
                 }
-                console.log('[logExercise] Final data to save:', data);
+                // For stairmaster, capture displayed time from dropdown if user didn't interact with it
+                if (exercise.type === 'stairmaster' && !data.time) {
+                    const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+                    const timeSelect = exerciseCard?.querySelector('select');
+                    if (timeSelect && timeSelect.value) {
+                        data = { ...data, time: timeSelect.value };
+                    }
+                }
 
                 if (!data || Object.keys(data).length === 0) return;
 
@@ -1185,7 +1188,7 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        level: 'Level 9',  // Hardcoded level
+                        level: 'Level 10',  // Hardcoded level
                         time: finalData.time || ''
                     };
                 } else if (exercise.type === 'bodyweight') {
@@ -1244,7 +1247,7 @@
                                     name: ex.name,
                                     category: ex.category,
                                     type: ex.type,
-                                    level: 'Level 9',  // Hardcoded level
+                                    level: 'Level 10',  // Hardcoded level
                                     time: ''
                                 };
                             } else if (ex.type === 'bodyweight') {
@@ -1463,7 +1466,7 @@
                             name: ex.name,
                             category: ex.category,
                             type: ex.type,
-                            level: 'Level 9',  // Hardcoded level
+                            level: 'Level 10',  // Hardcoded level
                             time: 'NA'
                         };
                     } else if (ex.type === 'bodyweight') {
@@ -2070,7 +2073,7 @@
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <input
                                                 type="text"
-                                                value="Level 9"
+                                                value="Level 10"
                                                 disabled
                                                 style={{
                                                     flex: 1,
@@ -2626,7 +2629,8 @@
             };
 
             // Helper function for stairmaster time suggestion (+15 seconds from last workout, cap at 20:00)
-            const getStairmasterSuggestion = () => {
+            // exerciseId parameter allows independent tracking per day (e.g. 'stairmaster' vs 'stairmaster-anterior')
+            const getStairmasterSuggestion = (exerciseId = 'stairmaster') => {
                 if (!workoutHistory || workoutHistory.length === 0) {
                     return { time: '5:00', isFirstSession: true };
                 }
@@ -2634,7 +2638,7 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Find the most recent workout with valid stairmaster data
+                // Find the most recent workout with valid stairmaster data for this specific exercise
                 const previousWorkout = workoutHistory
                     .filter(w => {
                         const workoutDate = new Date(w.date);
@@ -2642,7 +2646,7 @@
                         if (workoutDate > today) return false;
                         if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
 
-                        const stairmaster = w.exercises.find(e => e.id === 'stairmaster');
+                        const stairmaster = w.exercises.find(e => e.id === exerciseId);
                         return stairmaster && stairmaster.time && stairmaster.time !== 'NA';
                     })
                     .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -2651,7 +2655,7 @@
                     return { time: '5:00', isFirstSession: true };
                 }
 
-                const lastStairmaster = previousWorkout.exercises.find(e => e.id === 'stairmaster');
+                const lastStairmaster = previousWorkout.exercises.find(e => e.id === exerciseId);
 
                 if (lastStairmaster && lastStairmaster.time) {
                     const lastSeconds = parseTimeToSeconds(lastStairmaster.time);
@@ -2917,7 +2921,7 @@
                         }
                     }
 
-                    const stairmasterSuggestion = getStairmasterSuggestion();
+                    const stairmasterSuggestion = getStairmasterSuggestion(exercise.id);
                     const suggestedTime = stairmasterSuggestion?.time || '5:00';
                     const showSuggestion = !stairmasterSuggestion?.isFirstSession;
 
@@ -2929,7 +2933,7 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: Level 9 - {previous.time}
+                                        Last: Level 10 - {previous.time}
                                     </div>
                                 )}
                             </div>
@@ -2950,7 +2954,7 @@
                                     <input
                                         type="text"
                                         className="input-field"
-                                        value="Level 9"
+                                        value="Level 10"
                                         disabled
                                     />
                                 </div>
@@ -3352,6 +3356,9 @@
                         <>
                             <div className="section-title">Anterior</div>
                             {anteriorExercises.map(renderExercise)}
+
+                            <div className="section-title">Cardio</div>
+                            {cardioExercises.map(renderExercise)}
                         </>
                     ) : (
                         <>
@@ -3455,7 +3462,7 @@
                                                             completedExercise.type === 'assault-bike'
                                                                 ? (completedExercise.watts ? `${completedExercise.watts} watts` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
-                                                                ? (completedExercise.time ? `${completedExercise.time} / Level 9` : <span style={{ color: '#555' }}>NA</span>)
+                                                                ? (completedExercise.time ? `${completedExercise.time} / Level 10` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : (completedExercise.weight && completedExercise.reps
                                                                     ? `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
                                                                     : <span style={{ color: '#555' }}>NA</span>)
