@@ -2646,7 +2646,7 @@
                         if (workoutDate > today) return false;
                         if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
 
-                        const stairmaster = w.exercises.find(e => e.id === exerciseId);
+                        const stairmaster = w.exercises.find(e => e.type === 'stairmaster');
                         return stairmaster && stairmaster.time && stairmaster.time !== 'NA';
                     })
                     .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -2655,7 +2655,7 @@
                     return { time: '5:00', isFirstSession: true };
                 }
 
-                const lastStairmaster = previousWorkout.exercises.find(e => e.id === exerciseId);
+                const lastStairmaster = previousWorkout.exercises.find(e => e.type === 'stairmaster');
 
                 if (lastStairmaster && lastStairmaster.time) {
                     const lastSeconds = parseTimeToSeconds(lastStairmaster.time);
