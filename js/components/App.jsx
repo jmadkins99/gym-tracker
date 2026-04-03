@@ -537,9 +537,9 @@
 
                 // Detect exercises for plateau busting
                 // Rules:
-                // - reps < 6: ALWAYS plateau buster
-                // - reps 6-7: plateau buster IF weight <= previous weight AND reps <= previous reps
-                // - reps 8+: no plateau buster (PR system handles this)
+                // - reps < 4: ALWAYS plateau buster
+                // - reps 4-5: plateau buster IF weight <= previous weight AND reps <= previous reps
+                // - reps 6+: no plateau buster (PR system handles this)
                 const plateauBusters = [];
                 console.log('[completeDay] Checking for plateau busters in:', todayWorkout);
                 todayWorkout.exercises.forEach(exercise => {
@@ -550,16 +550,16 @@
 
                         if (isNaN(reps)) return;
 
-                        // Rule 1: Less than 6 reps ALWAYS triggers plateau buster
-                        if (reps < 6) {
-                            console.log('[completeDay] PLATEAU BUSTER (< 6 reps) detected for:', exercise.name);
+                        // Rule 1: Less than 4 reps ALWAYS triggers plateau buster
+                        if (reps < 4) {
+                            console.log('[completeDay] PLATEAU BUSTER (< 4 reps) detected for:', exercise.name);
                             plateauBusters.push(exercise.id);
                             return;
                         }
 
-                        // Rule 2: 6-7 reps triggers plateau buster only if weight AND reps are not improving
+                        // Rule 2: 4-5 reps triggers plateau buster only if weight AND reps are not improving
                         // BUT skip if already in plateau buster recovery (previous session had this as plateau buster)
-                        if (reps >= 6 && reps <= 7) {
+                        if (reps >= 4 && reps <= 5) {
                             // Check if previous session already had this as a plateau buster
                             const previousWorkoutWithPlateau = workoutHistory
                                 .filter(w => {
@@ -584,10 +584,10 @@
                                 // For bodyweight exercises, trigger plateau buster only if reps didn't improve
                                 if (exercise.type === 'bodyweight') {
                                     if (reps <= previousReps) {
-                                        console.log('[completeDay] PLATEAU BUSTER (bodyweight 6-7 reps, no rep improvement) detected for:', exercise.name);
+                                        console.log('[completeDay] PLATEAU BUSTER (bodyweight 4-5 reps, no rep improvement) detected for:', exercise.name);
                                         plateauBusters.push(exercise.id);
                                     } else {
-                                        console.log('[completeDay] Neutral (bodyweight 6-7 reps but reps improved) for:', exercise.name);
+                                        console.log('[completeDay] Neutral (bodyweight 4-5 reps but reps improved) for:', exercise.name);
                                     }
                                     return;
                                 }
@@ -597,21 +597,21 @@
 
                                 // Plateau buster only if: weight not increased AND reps not increased
                                 if (currentWeight <= previousWeight && reps <= previousReps) {
-                                    console.log('[completeDay] PLATEAU BUSTER (6-7 reps, no progress) detected for:', exercise.name);
+                                    console.log('[completeDay] PLATEAU BUSTER (4-5 reps, no progress) detected for:', exercise.name);
                                     console.log('[completeDay] Current:', currentWeight, 'lbs ×', reps, '| Previous:', previousWeight, 'lbs ×', previousReps);
                                     plateauBusters.push(exercise.id);
                                 } else if (currentWeight > previousWeight) {
-                                    console.log('[completeDay] Neutral (6-7 reps but weight increased) for:', exercise.name);
+                                    console.log('[completeDay] Neutral (4-5 reps but weight increased) for:', exercise.name);
                                 } else {
-                                    console.log('[completeDay] Neutral (6-7 reps but reps improved) for:', exercise.name);
+                                    console.log('[completeDay] Neutral (4-5 reps but reps improved) for:', exercise.name);
                                 }
                             } else {
-                                // No previous data - treat 6-7 reps as neutral (not enough history to compare)
+                                // No previous data - treat 4-5 reps as neutral (not enough history to compare)
                                 console.log('[completeDay] No previous data for comparison, treating as neutral:', exercise.name);
                             }
                         }
 
-                        // Rule 3: 8+ reps - no plateau buster (PR system handles this)
+                        // Rule 3: 6+ reps - no plateau buster (PR system handles this)
                     }
                 });
                 console.log('[completeDay] Total plateau busters:', plateauBusters);

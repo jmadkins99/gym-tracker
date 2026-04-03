@@ -18,7 +18,13 @@
             'ab-crunch': '140'
         };
 
-        // PR Auto-Regulation: Weight increments when you hit 8+ reps
+        // Tracking mode: only one should be true at a time
+        // SIMPLE_PR_TRACKING: if you hit 6 reps last session, bump weight and highlight green. No plateau buster.
+        // ADVANCED_PR_TRACKING: full plateau buster + PR auto-regulation system
+        const SIMPLE_PR_TRACKING = true;
+        const ADVANCED_PR_TRACKING = false;
+
+        // PR Auto-Regulation: Weight increments when you hit 6+ reps (top of 4-6 range)
         // Edit these values to customize weight progression for each exercise
         const PR_WEIGHT_INCREMENTS = {
             'chest-flies': 1.25,

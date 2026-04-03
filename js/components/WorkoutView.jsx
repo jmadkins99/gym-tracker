@@ -7,11 +7,12 @@
                 const previous = getPreviousWorkout(exercise.id);
                 const isLogged = loggedExercises[exercise.id];
                 const data = workoutData[exercise.id] || {};
-                const showPlateauBuster = isPlateauBuster(exercise.id, workoutHistory, currentDay);
-                const prWeightRecovery = getPRWeightRecovery(exercise.id, workoutHistory, currentDay);
-                const failedPlateauBusterRetry = !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id, workoutHistory, currentDay) : null;
-                const prAutoRegulation = !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory, currentDay) : null; // Only show if not already showing plateau recovery or failed plateau retry
-                const plateauBusterDecrement = showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory, currentDay) : null;
+                const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory, currentDay) : false;
+                const prWeightRecovery = ADVANCED_PR_TRACKING ? getPRWeightRecovery(exercise.id, workoutHistory, currentDay) : null;
+                const failedPlateauBusterRetry = ADVANCED_PR_TRACKING && !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id, workoutHistory, currentDay) : null;
+                const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory, currentDay) : null;
+                const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory, currentDay) : null;
+                const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory, currentDay) : null;
 
                 if (exercise.type === 'standard') {
                     console.log('[renderExercise]', exercise.name, {
@@ -302,7 +303,7 @@
                         </div>
                         {isBreakdownExpanded && (() => {
                             // Get current weight from input field (same logic as the input field's value)
-                            const displayedWeight = data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || defaultWeight || '');
+                            const displayedWeight = data.weight !== undefined ? data.weight : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || defaultWeight || '');
                             const currentWeight = parseFloat(displayedWeight) || 0;
 
                             if (currentWeight === 0) return null;
@@ -437,7 +438,18 @@
                                 Plateau Buster - Hit 2 Sets
                             </div>
                         ) : null}
-                        {prWeightRecovery && (
+                        {simplePR && (
+                            <div style={{
+                                color: '#4CAF50',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                marginBottom: '8px',
+                                marginTop: '4px'
+                            }}>
+                                +{simplePR.increment}lbs
+                            </div>
+                        )}
+                        {!simplePR && prWeightRecovery && (
                             <div style={{
                                 color: '#4CAF50',
                                 fontSize: '12px',
@@ -448,7 +460,7 @@
                                 PR Weight Detected
                             </div>
                         )}
-                        {prAutoRegulation && !prWeightRecovery && (
+                        {!simplePR && prAutoRegulation && !prWeightRecovery && (
                             <div style={{
                                 color: '#4CAF50',
                                 fontSize: '12px',
@@ -490,11 +502,11 @@
                                     type="number"
                                     inputMode="decimal"
                                     className="input-field"
-                                    value={data.weight !== undefined ? data.weight : (prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || '')}
+                                    value={data.weight !== undefined ? data.weight : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || '')}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
                                     placeholder={previous?.weight || ''}
                                     disabled={isLogged}
-                                    style={prWeightRecovery || prAutoRegulation ? {
+                                    style={simplePR || prWeightRecovery || prAutoRegulation ? {
                                         border: '2px solid #4CAF50'
                                     } : (showPlateauBuster || failedPlateauBusterRetry) ? {
                                         border: '2px solid #ff9500'
@@ -509,7 +521,7 @@
                                     className="input-field"
                                     value={data.reps || ''}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '6' : (plateauBusterDecrement ? '8' : (showPlateauBuster && previous?.reps ? String(parseInt(previous.reps)) : (previous?.reps ? String(parseInt(previous.reps) + 1) : ''))))}
+                                    placeholder={simplePR ? '4' : (prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '4' : (plateauBusterDecrement ? '6' : (showPlateauBuster && previous?.reps ? String(parseInt(previous.reps)) : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))))}
                                     disabled={isLogged}
                                 />
                             </div>

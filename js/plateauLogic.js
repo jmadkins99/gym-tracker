@@ -36,6 +36,45 @@
             return previousWorkout.plateauBusters.includes(exerciseId);
         }
 
+        // Simple PR tracking: if last session hit 6+ reps, suggest weight + increment highlighted green
+        function getSimplePR(exerciseId, workoutHistory, currentDay) {
+            if (!workoutHistory || workoutHistory.length === 0) return null;
+            if (!PR_WEIGHT_INCREMENTS[exerciseId]) return null;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const previousWorkout = workoutHistory
+                .filter(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (w.day !== currentDay) return false;
+                    if (workoutDate > today) return false;
+                    if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+                    const exercise = w.exercises.find(e => e.id === exerciseId);
+                    return isValidExercise(exercise);
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+            if (!previousWorkout) return null;
+
+            const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
+            if (!previousExercise || !previousExercise.reps || !previousExercise.weight) return null;
+
+            if (parseInt(previousExercise.reps) >= 6) {
+                const lastWeight = parseFloat(previousExercise.weight);
+                const increment = PR_WEIGHT_INCREMENTS[exerciseId];
+                return {
+                    weight: (lastWeight + increment).toString(),
+                    lastWeight: previousExercise.weight,
+                    lastReps: previousExercise.reps,
+                    increment
+                };
+            }
+
+            return null;
+        }
+
         // Helper function to check if this is a PR Weight Recovery week (week after plateau buster)
         function getPRWeightRecovery(exerciseId, workoutHistory, currentDay) {
             if (!workoutHistory || workoutHistory.length < 2) return null;
@@ -74,12 +113,12 @@
                 const lastWeekExercise = lastWeek.exercises.find(e => e.id === exerciseId);
                 const twoWeeksExercise = twoWeeksAgo.exercises.find(e => e.id === exerciseId);
 
-                // Only trigger Trial of Strength if last week hit 8+ reps
-                if (lastWeekExercise && lastWeekExercise.reps && parseInt(lastWeekExercise.reps) >= 8) {
+                // Only trigger Trial of Strength if last week hit 6+ reps
+                if (lastWeekExercise && lastWeekExercise.reps && parseInt(lastWeekExercise.reps) >= 6) {
                     if (twoWeeksExercise && twoWeeksExercise.weight) {
                         return {
                             weight: twoWeeksExercise.weight,
-                            reps: '6'  // Always show 6 as the target for Trial of Strength
+                            reps: '4'  // Always show 4 as the target for Trial of Strength
                         };
                     }
                 }
@@ -126,8 +165,8 @@
                 if (lastWeekExercise && lastWeekExercise.reps && lastWeekExercise.weight) {
                     const lastReps = parseInt(lastWeekExercise.reps);
 
-                    // If got 6-7 reps (didn't hit the 8 rep goal), suggest same weight but reps+1
-                    if (lastReps >= 6 && lastReps < 8) {
+                    // If got 4-5 reps (didn't hit the 6 rep goal), suggest same weight but reps+1
+                    if (lastReps >= 4 && lastReps < 6) {
                         return {
                             weight: lastWeekExercise.weight,
                             targetReps: (lastReps + 1).toString(),
@@ -179,8 +218,8 @@
             const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
             console.log('[getPRAutoRegulation] Previous exercise:', previousExercise);
 
-            // Check if last week hit a PR (8+ reps) and has a weight increment defined
-            if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps) >= 8 &&
+            // Check if last week hit a PR (6+ reps) and has a weight increment defined
+            if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps) >= 6 &&
                 previousExercise.weight && PR_WEIGHT_INCREMENTS[exerciseId]) {
                 const lastWeight = parseFloat(previousExercise.weight);
                 const increment = PR_WEIGHT_INCREMENTS[exerciseId];
@@ -196,7 +235,7 @@
                 };
             }
 
-            console.log('[getPRAutoRegulation] No PR (reps < 8 or missing data)');
+            console.log('[getPRAutoRegulation] No PR (reps < 6 or missing data)');
             return null;
         }
 
@@ -321,11 +360,11 @@
 
             const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
 
-            // Only drop weight if previous reps were < 6 (true failure)
-            // For 6-7 reps stagnation, keep same weight (just do 2 sets)
+            // Only drop weight if previous reps were < 4 (true failure)
+            // For 4-5 reps stagnation, keep same weight (just do 2 sets)
             const previousReps = parseInt(previousExercise?.reps) || 0;
-            if (previousReps >= 6) {
-                console.log('[getPlateauBusterDecrement] Previous reps were', previousReps, '(>= 6), no weight drop needed');
+            if (previousReps >= 4) {
+                console.log('[getPlateauBusterDecrement] Previous reps were', previousReps, '(>= 4), no weight drop needed');
                 return null;
             }
 

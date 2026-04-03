@@ -104,11 +104,11 @@
                     const currentReps = parseInt(exercise.reps);
                     const previousReps = parseInt(previous.reps || 0);
                     console.log('Bodyweight comparison:', exercise.name, 'Current:', currentReps, 'Previous:', previousReps);
-                    if (currentReps > previousReps && currentReps >= 6) {
+                    if (currentReps > previousReps && currentReps >= 4) {
                         isPR = true;
                     }
                 } else {
-                    // Standard exercise - PR if weight OR reps increased (and reps >= 6)
+                    // Standard exercise - PR if weight OR reps increased (and reps >= 4)
                     const currentWeight = parseFloat(exercise.weight);
                     const previousWeight = parseFloat(previous.weight);
                     const currentReps = parseInt(exercise.reps);
@@ -116,7 +116,7 @@
 
                     console.log('Standard comparison:', exercise.name, 'Current:', currentWeight, 'lbs x', currentReps, 'Previous:', previousWeight, 'lbs x', previousReps);
 
-                    if ((currentWeight > previousWeight || currentReps > previousReps) && currentReps >= 6) {
+                    if ((currentWeight > previousWeight || currentReps > previousReps) && currentReps >= 4) {
                         isPR = true;
                     }
                 }
