@@ -47,12 +47,8 @@
                     storage.setItem('migratedToPushPullLegs', 'true');
                 }
 
-                // Force removal of stairmaster from saved config
-                const removedStairmaster = storage.getItem('removedStairmaster');
-                if (!removedStairmaster) {
-                    storage.removeItem('gymExerciseConfig');
-                    storage.setItem('removedStairmaster', 'true');
-                }
+                // Clean up stale migration flag
+                storage.removeItem('removedStairmaster');
 
                 // Check if exercise config needs migration (new exercises added/removed)
                 // This runs after AP migration and handles ongoing exercise list changes
