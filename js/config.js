@@ -87,7 +87,7 @@
             { id: 'lateral-raises', name: 'Lateral Raises', category: 'Push', type: 'standard', order: 4 },
             { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Push', type: 'standard', order: 5 },
             // Cardio
-            { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 6 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 6 },
         ];
 
         const DEFAULT_DAY_2_EXERCISES = [
@@ -100,7 +100,7 @@
             { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Pull', type: 'standard', order: 5 },
             { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Pull', type: 'standard', order: 6 },
             // Cardio
-            { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 7 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 7 },
         ];
 
         const DEFAULT_DAY_3_EXERCISES = [
@@ -111,5 +111,5 @@
             { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Legs', type: 'standard', order: 3 },
             { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Legs', type: 'standard', order: 4 },
             // Cardio
-            { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 5 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 5 },
         ];
