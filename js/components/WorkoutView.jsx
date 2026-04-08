@@ -581,8 +581,10 @@
                         <div className="section-title">{currentDay === 1 ? 'Push' : currentDay === 2 ? 'Pull' : 'Legs'}</div>
                         {mainExercises.map(renderExercise)}
 
-                        <div className="section-title">Cardio</div>
-                        {cardioExercises.map(renderExercise)}
+                        {cardioExercises.length > 0 && <>
+                            <div className="section-title">Cardio</div>
+                            {cardioExercises.map(renderExercise)}
+                        </>}
                     </>
 
                     <button className="save-btn" onClick={completeDay}>
