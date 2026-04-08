@@ -13,6 +13,7 @@
                 const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory, currentDay) : null;
                 const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory, currentDay) : null;
                 const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory, currentDay) : null;
+                const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory, currentDay) : null;
 
                 if (exercise.type === 'standard') {
                     console.log('[renderExercise]', exercise.name, {
@@ -460,6 +461,19 @@
                                 PR Weight Detected
                             </div>
                         )}
+                        {stagnation && (
+                            <div style={{
+                                color: '#ff9500',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                marginBottom: '12px',
+                                fontWeight: '600',
+                                fontSize: '14px',
+                                textAlign: 'center'
+                            }}>
+                                2 Sets Recommended
+                            </div>
+                        )}
                         {!simplePR && prAutoRegulation && !prWeightRecovery && (
                             <div style={{
                                 color: '#4CAF50',
@@ -523,6 +537,9 @@
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
                                     placeholder={simplePR ? '4' : (prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '4' : (plateauBusterDecrement ? '6' : (showPlateauBuster && previous?.reps ? String(parseInt(previous.reps)) : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))))}
                                     disabled={isLogged}
+                                    style={stagnation ? {
+                                        border: '2px solid #ff9500'
+                                    } : {}}
                                 />
                             </div>
                         </div>

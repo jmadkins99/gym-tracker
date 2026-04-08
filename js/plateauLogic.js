@@ -75,6 +75,42 @@
             return null;
         }
 
+        // Simple stagnation detection: same weight + same reps for 3 consecutive sessions
+        function getStagnationWarning(exerciseId, workoutHistory, currentDay) {
+            if (!workoutHistory || workoutHistory.length === 0) return null;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const recentWorkouts = workoutHistory
+                .filter(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (w.day !== currentDay) return false;
+                    if (workoutDate > today) return false;
+                    if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+                    if (!w.submitted) return false;
+                    const exercise = w.exercises.find(e => e.id === exerciseId);
+                    return isValidExercise(exercise);
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 3);
+
+            if (recentWorkouts.length < 3) return null;
+
+            const exercises = recentWorkouts.map(w => w.exercises.find(e => e.id === exerciseId));
+            const firstWeight = exercises[0].weight;
+            const firstReps = exercises[0].reps;
+
+            const allSame = exercises.every(e => e.weight === firstWeight && e.reps === firstReps);
+
+            if (allSame) {
+                return { weight: firstWeight, reps: firstReps };
+            }
+
+            return null;
+        }
+
         // Helper function to check if this is a PR Weight Recovery week (week after plateau buster)
         function getPRWeightRecovery(exerciseId, workoutHistory, currentDay) {
             if (!workoutHistory || workoutHistory.length < 2) return null;
