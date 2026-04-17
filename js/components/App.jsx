@@ -10,7 +10,6 @@
             const [successMessage, setSuccessMessage] = useState('');
             const [day1Exercises, setDay1Exercises] = useState(DEFAULT_DAY_1_EXERCISES);
             const [day2Exercises, setDay2Exercises] = useState(DEFAULT_DAY_2_EXERCISES);
-            const [day3Exercises, setDay3Exercises] = useState(DEFAULT_DAY_3_EXERCISES);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
@@ -39,12 +38,12 @@
                 }
 
                 // Load custom exercise configurations
-                // Check if we need to migrate to Push/Pull/Legs split
-                const hasMigratedToPPL = storage.getItem('migratedToPushPullLegs');
-                if (!hasMigratedToPPL) {
+                // Check if we need to migrate to Anterior/Posterior split (back from PPL)
+                const hasMigratedToAP2 = storage.getItem('migratedToAnteriorPosterior2');
+                if (!hasMigratedToAP2) {
                     // Clear old exercise config and use new defaults
                     storage.removeItem('gymExerciseConfig');
-                    storage.setItem('migratedToPushPullLegs', 'true');
+                    storage.setItem('migratedToAnteriorPosterior2', 'true');
                 }
 
                 // Clean up stale migration flag
@@ -59,7 +58,6 @@
                     // Use the freshly migrated config
                     setDay1Exercises(migratedConfig.day1.sort((a, b) => a.order - b.order));
                     setDay2Exercises(migratedConfig.day2.sort((a, b) => a.order - b.order));
-                    setDay3Exercises(migratedConfig.day3.sort((a, b) => a.order - b.order));
                 } else {
                     // Load from storage if no migration occurred
                     const savedExercises = storage.getItem('gymExerciseConfig');
@@ -70,9 +68,6 @@
                         }
                         if (config.day2) {
                             setDay2Exercises(config.day2.sort((a, b) => a.order - b.order));
-                        }
-                        if (config.day3) {
-                            setDay3Exercises(config.day3.sort((a, b) => a.order - b.order));
                         }
                     }
                 }
@@ -177,9 +172,7 @@
             }, [workoutHistory, currentDay]);
 
             const getCurrentExercises = () => {
-                if (currentDay === 1) return day1Exercises;
-                if (currentDay === 2) return day2Exercises;
-                return day3Exercises;
+                return currentDay === 1 ? day1Exercises : day2Exercises;
             };
 
             const getTodayWorkout = () => {
@@ -199,11 +192,10 @@
                 return todayWorkout && todayWorkout.submitted;
             };
 
-            const saveExerciseConfig = (updatedDay1 = day1Exercises, updatedDay2 = day2Exercises, updatedDay3 = day3Exercises) => {
+            const saveExerciseConfig = (updatedDay1 = day1Exercises, updatedDay2 = day2Exercises) => {
                 const config = {
                     day1: updatedDay1,
-                    day2: updatedDay2,
-                    day3: updatedDay3
+                    day2: updatedDay2
                 };
                 storage.setItem('gymExerciseConfig', JSON.stringify(config));
             };
@@ -214,30 +206,22 @@
                         const updated = prev.map(ex =>
                             ex.id === exerciseId ? { ...ex, name: newName } : ex
                         );
-                        saveExerciseConfig(updated, day2Exercises, day3Exercises);
+                        saveExerciseConfig(updated, day2Exercises);
                         return updated;
                     });
-                } else if (day === 2) {
+                } else {
                     setDay2Exercises(prev => {
                         const updated = prev.map(ex =>
                             ex.id === exerciseId ? { ...ex, name: newName } : ex
                         );
-                        saveExerciseConfig(day1Exercises, updated, day3Exercises);
-                        return updated;
-                    });
-                } else {
-                    setDay3Exercises(prev => {
-                        const updated = prev.map(ex =>
-                            ex.id === exerciseId ? { ...ex, name: newName } : ex
-                        );
-                        saveExerciseConfig(day1Exercises, day2Exercises, updated);
+                        saveExerciseConfig(day1Exercises, updated);
                         return updated;
                     });
                 }
             };
 
             const moveExercise = (day, exerciseId, direction) => {
-                const exercises = day === 1 ? day1Exercises : day === 2 ? day2Exercises : day3Exercises;
+                const exercises = day === 1 ? day1Exercises : day2Exercises;
                 const currentIndex = exercises.findIndex(ex => ex.id === exerciseId);
 
                 if (direction === 'up' && currentIndex === 0) return;
@@ -252,13 +236,10 @@
 
                 if (day === 1) {
                     setDay1Exercises(updated);
-                    saveExerciseConfig(updated, day2Exercises, day3Exercises);
-                } else if (day === 2) {
-                    setDay2Exercises(updated);
-                    saveExerciseConfig(day1Exercises, updated, day3Exercises);
+                    saveExerciseConfig(updated, day2Exercises);
                 } else {
-                    setDay3Exercises(updated);
-                    saveExerciseConfig(day1Exercises, day2Exercises, updated);
+                    setDay2Exercises(updated);
+                    saveExerciseConfig(day1Exercises, updated);
                 }
             };
 
@@ -762,8 +743,7 @@
                     workoutHistory,
                     exerciseConfig: {
                         day1: day1Exercises,
-                        day2: day2Exercises,
-                        day3: day3Exercises
+                        day2: day2Exercises
                     },
                     exportDate: new Date().toISOString()
                 };
@@ -782,8 +762,7 @@
                     workoutHistory,
                     exerciseConfig: {
                         day1: day1Exercises,
-                        day2: day2Exercises,
-                        day3: day3Exercises
+                        day2: day2Exercises
                     },
                     exportDate: new Date().toISOString()
                 };
@@ -825,13 +804,9 @@
                                 if (imported.exerciseConfig.day2) {
                                     setDay2Exercises(imported.exerciseConfig.day2.sort((a, b) => a.order - b.order));
                                 }
-                                if (imported.exerciseConfig.day3) {
-                                    setDay3Exercises(imported.exerciseConfig.day3.sort((a, b) => a.order - b.order));
-                                }
                                 storage.setItem('gymExerciseConfig', JSON.stringify({
                                     day1: imported.exerciseConfig.day1,
-                                    day2: imported.exerciseConfig.day2,
-                                    day3: imported.exerciseConfig.day3
+                                    day2: imported.exerciseConfig.day2
                                 }));
                             }
                         }
@@ -858,7 +833,6 @@
                         setLoggedExercises({});
                         setDay1Exercises(DEFAULT_DAY_1_EXERCISES);
                         setDay2Exercises(DEFAULT_DAY_2_EXERCISES);
-                        setDay3Exercises(DEFAULT_DAY_3_EXERCISES);
                         setShowSettings(false);
                         setSuccessMessage('All data has been reset');
                         setShowSuccess(true);
@@ -891,7 +865,6 @@
                             onReset={resetData}
                             day1Exercises={day1Exercises}
                             day2Exercises={day2Exercises}
-                            day3Exercises={day3Exercises}
                             updateExerciseName={updateExerciseName}
                             moveExercise={moveExercise}
                         />
@@ -917,7 +890,6 @@
                             onSave={updateWorkout}
                             day1Exercises={day1Exercises}
                             day2Exercises={day2Exercises}
-                            day3Exercises={day3Exercises}
                         />
                     )}
 
@@ -967,7 +939,6 @@
                             currentWeek={currentWeek}
                             day1Exercises={day1Exercises}
                             day2Exercises={day2Exercises}
-                            day3Exercises={day3Exercises}
                             onEditWorkout={(workout) => {
                                 setEditingWorkout(workout);
                                 setShowEditWorkout(true);

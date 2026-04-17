@@ -1,4 +1,4 @@
-        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises, day3Exercises, onEditWorkout }) {
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, day1Exercises, day2Exercises, onEditWorkout }) {
             const weekWorkouts = workoutHistory
                 .filter(w => w.week === viewingWeek)
                 .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest to oldest
@@ -47,7 +47,8 @@
                                 });
 
                                 // Get all exercises for this day
-                                const allExercises = workout.day === 1 ? day1Exercises : workout.day === 2 ? day2Exercises : day3Exercises;
+                                // For historical day 3 (Legs) workouts, fall back to exercises stored in the workout itself
+                                const allExercises = workout.day === 1 ? day1Exercises : workout.day === 2 ? day2Exercises : workout.exercises;
                                 const completedIds = new Set(workout.exercises.map(e => e.id));
 
                                 // Calculate sequential day number - count down from total

@@ -20,14 +20,14 @@
             return today.toISOString().split('T')[0]; // YYYY-MM-DD format
         }
 
-        // Get the active day for today from localStorage, or default to Push (1)
+        // Get the active day for today from localStorage, or default to Anterior (1)
         function getTodayDay() {
             const todayKey = 'activeDay_' + getTodayDateString();
             const savedDay = storage.getItem(todayKey);
             if (savedDay) {
                 return parseInt(savedDay);
             }
-            return 1; // Default to Push
+            return 1; // Default to Anterior
         }
 
         // Save the active day for today to localStorage

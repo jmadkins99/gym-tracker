@@ -5,7 +5,7 @@ A personalized workout tracking web app.
 ## Features
 
 ### Workout Tracking
-- **Push-Pull-Legs Routine**: Manually select between Push, Pull, and Legs days
+- **Anterior-Posterior Routine**: Manually select between Anterior and Posterior days
 - **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
 - **Sequential Day Counter**: Weekly view shows newest workouts first (Day 5, Day 4, Day 3...) for easy access
 - **Instant Save**: LOG button immediately saves to Weekly tab - no page refresh needed
@@ -13,30 +13,18 @@ A personalized workout tracking web app.
 - **Live Updates**: Each LOG updates that specific exercise in the Weekly view
 - **Previous Workout Data**: See your last weight/reps for each exercise above the input fields
 - **Input Hints**: Placeholder text shows values from your last workout (e.g., "50" for weight, "8" for reps)
-- **Visual Feedback**: Logged exercises show ✓ Logged and persist across page refreshes
+- **Visual Feedback**: Logged exercises show checkmark and persist across page refreshes
 - **Manual Entry**: All inputs are blank by default - you choose what weight and reps to use
 - **Weight Breakdown**: Click the "Weight Breakdown" button on any exercise to see warmup set recommendations
   - **Plate-Loaded Machines**: Shows 2 warmup sets (50%, 75%) with exact plate breakdown per side
   - **Pin-Stack Machines**: Shows 2 warmup sets (50%, 75%) rounded to achievable weights (5 lb increments + micro-plates)
 
-### PR Tracking
+### PR Tracking (Two Modes)
+- **Simple PR Tracking** (default): If you hit 6 reps (top of 4-6 range) last session, weight auto-increments and the weight box highlights green with target of 4 reps
+- **Stagnation Detection**: If same weight and reps for 3 consecutive sessions, gold "2 Sets Recommended" indicator appears until the streak breaks
+- **Advanced PR Tracking** (optional): Full plateau buster + PR auto-regulation system with weight recovery and trial of strength mechanics
 - **Day Breakdown**: "Submit Day and View Breakdown" shows completed exercises count and PRs smashed
-- **Simple PR Counter**: Compares your workout to the most recent previous workout of the same type
-- **PR Detection**: Counts as a PR if weight OR reps increased for standard exercises
-- **Multiple Exercise Types**: Tracks PRs for weight/reps, bodyweight reps, and assault bike wattage
-- **Clean Interface**: Minimal distractions, maximum focus on your workout
-
-### Auto-Regulation & Plateau Busting
-- **Plateau Buster**: When you get less than 6 reps on a set or you don't progress in weight/reps, the app automatically reduces the weight next session (orange border)
-  - Weight drops by the exercise's PR increment (e.g., 2.5 lbs for most compound movements)
-  - Goal: Hit 8 reps with the reduced weight to prove you've recovered
-  - If you hit 8+ reps: Triggers Trial of Strength next session
-  - If you get 6-7 reps: Retry at same weight, aiming for +1 rep next session (no Trial of Strength)
-- **Trial of Strength**: After successfully completing a plateau buster (8+ reps), return to your original PR weight
-  - Green border indicates Trial of Strength active
-  - Goal: Hit 6 reps at your previous PR weight to reclaim it
-- **PR Auto-Regulation**: When you hit 8+ reps, weight automatically increases next session (green border)
-  - No manual calculation needed - app suggests the progression
+- **PR Detection**: Counts as a PR if weight OR reps increased (reps >= 4 threshold)
 
 ### Data Safety
 - **Automatic Backup**: App downloads the backup .json file on every day submission
@@ -52,6 +40,25 @@ A personalized workout tracking web app.
 ## Tech Stack
 
 - React 18 (via CDN)
-- Chart.js for progress visualization
+- Babel standalone for JSX transpilation
 - Local Storage API for data persistence
-- Single HTML file - no build process needed
+- Modular file structure - no build process needed
+
+## File Structure
+
+```
+index.html              # Entry point - loads all scripts
+css/styles.css          # App styles
+js/config.js            # Exercise defaults, weight increments, tracking mode flags
+js/utils.js             # Storage helpers, date/week utilities
+js/migrations.js        # localStorage migration logic
+js/plateauLogic.js      # PR tracking, plateau buster, stagnation detection
+js/components/
+  App.jsx               # Main app component, state management, data persistence
+  WorkoutView.jsx       # Active workout UI with exercise cards
+  WeeklyView.jsx        # Historical workout browser
+  SettingsModal.jsx     # Settings, exercise management, import/export
+  EditWorkoutModal.jsx  # Edit historical workout data
+  DayBreakdownModal.jsx # Post-workout summary with PR count
+  BackupReminderModal.jsx # Monthly backup reminder
+```

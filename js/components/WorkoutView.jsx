@@ -561,24 +561,18 @@
                             className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(1)}
                         >
-                            Push
+                            Anterior
                         </button>
                         <button
                             className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(2)}
                         >
-                            Pull
-                        </button>
-                        <button
-                            className={`day-btn ${currentDay === 3 ? 'active' : ''}`}
-                            onClick={() => setCurrentDay(3)}
-                        >
-                            Legs
+                            Posterior
                         </button>
                     </div>
 
                     <>
-                        <div className="section-title">{currentDay === 1 ? 'Push' : currentDay === 2 ? 'Pull' : 'Legs'}</div>
+                        <div className="section-title">{currentDay === 1 ? 'Anterior' : 'Posterior'}</div>
                         {mainExercises.map(renderExercise)}
 
                         {cardioExercises.length > 0 && <>

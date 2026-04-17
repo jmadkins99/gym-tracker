@@ -1,8 +1,8 @@
         const { useState } = React;
 
-        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises, day2Exercises, day3Exercises }) {
+        function EditWorkoutModal({ workout, onClose, onSave, day1Exercises, day2Exercises }) {
             const [editedExercises, setEditedExercises] = useState(workout.exercises);
-            const allExercises = workout.day === 1 ? day1Exercises : workout.day === 2 ? day2Exercises : day3Exercises;
+            const allExercises = workout.day === 1 ? day1Exercises : day2Exercises;
 
             const handleExerciseChange = (exerciseId, field, value) => {
                 setEditedExercises(prev => {
@@ -46,8 +46,10 @@
             });
             const apSplitDate = new Date(2026, 1, 2); // Feb 2, 2026
             const pplSplitDate = new Date(2026, 2, 14); // Mar 14, 2026
+            const ap2SplitDate = new Date(2026, 3, 16); // Apr 16, 2026
             apSplitDate.setHours(0, 0, 0, 0);
             pplSplitDate.setHours(0, 0, 0, 0);
+            ap2SplitDate.setHours(0, 0, 0, 0);
             const workoutDate = new Date(workout.date);
             workoutDate.setHours(0, 0, 0, 0);
             let dayName;
@@ -55,8 +57,10 @@
                 dayName = workout.day === 1 ? 'Upper' : 'Lower';
             } else if (workoutDate < pplSplitDate) {
                 dayName = workout.day === 1 ? 'Anterior' : 'Posterior';
-            } else {
+            } else if (workoutDate < ap2SplitDate) {
                 dayName = workout.day === 1 ? 'Push' : workout.day === 2 ? 'Pull' : 'Legs';
+            } else {
+                dayName = workout.day === 1 ? 'Anterior' : 'Posterior';
             }
 
             return (

@@ -155,7 +155,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">{currentDay === 1 ? 'Push' : currentDay === 2 ? 'Pull' : 'Legs'} Day Breakdown</div>
+                        <div className="modal-title">{currentDay === 1 ? 'Anterior' : 'Posterior'} Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}

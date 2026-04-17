@@ -79,37 +79,31 @@
         };
 
         const DEFAULT_DAY_1_EXERCISES = [
-            // Push
-            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Push', type: 'standard', order: 0 },
-            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Push', type: 'standard', order: 1 },
-            { id: 'chest-flies', name: 'Chest Flies', category: 'Push', type: 'standard', order: 2 },
-            { id: 'incline-chest-press', name: 'Incline Chest Flies', category: 'Push', type: 'standard', order: 3 },
-            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Push', type: 'standard', order: 4 },
-            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Push', type: 'standard', order: 5 },
+            // Anterior
+            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Anterior', type: 'standard', order: 0 },
+            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Anterior', type: 'standard', order: 1 },
+            { id: 'overhead-tricep', name: 'Cuffed Overhead Tricep Extension', category: 'Anterior', type: 'standard', order: 2 },
+            { id: 'chest-flies', name: 'Chest Flies', category: 'Anterior', type: 'standard', order: 3 },
+            { id: 'incline-chest-press', name: 'Incline Chest Flies', category: 'Anterior', type: 'standard', order: 4 },
+            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Anterior', type: 'standard', order: 5 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Anterior', type: 'standard', order: 6 },
+            { id: 'hip-adduction', name: 'Pendulum Squats', category: 'Anterior', type: 'standard', order: 7 },
+            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Anterior', type: 'standard', order: 8 },
             // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 6 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];
 
         const DEFAULT_DAY_2_EXERCISES = [
-            // Pull
-            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Pull', type: 'standard', order: 0 },
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Pull', type: 'standard', order: 1 },
-            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Pull', type: 'standard', order: 2 },
-            { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Pull', type: 'standard', order: 3 },
-            { id: 'hammer-row', name: 'Seated Row Machine', category: 'Pull', type: 'standard', order: 4 },
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Pull', type: 'standard', order: 5 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Pull', type: 'standard', order: 6 },
+            // Posterior
+            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Posterior', type: 'standard', order: 0 },
+            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Posterior', type: 'standard', order: 1 },
+            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Posterior', type: 'standard', order: 2 },
+            { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Posterior', type: 'standard', order: 3 },
+            { id: 'hammer-row', name: 'Seated Row Machine', category: 'Posterior', type: 'standard', order: 4 },
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Posterior', type: 'standard', order: 5 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Posterior', type: 'standard', order: 6 },
+            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Posterior', type: 'standard', order: 7 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Posterior', type: 'standard', order: 8 },
             // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 7 },
-        ];
-
-        const DEFAULT_DAY_3_EXERCISES = [
-            // Legs
-            { id: 'hip-adduction', name: 'Pendulum Squats', category: 'Legs', type: 'standard', order: 0 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Legs', type: 'standard', order: 1 },
-            { id: 'leg-extensions', name: 'Leg Extensions', category: 'Legs', type: 'standard', order: 2 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Legs', type: 'standard', order: 3 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Legs', type: 'standard', order: 4 },
-            // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 5 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];

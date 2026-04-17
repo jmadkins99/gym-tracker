@@ -1,6 +1,6 @@
         const { useState, useRef } = React;
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, day2Exercises, day3Exercises, updateExerciseName, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, day2Exercises, updateExerciseName, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -24,10 +24,10 @@
                 setTempName('');
             };
 
-            if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2' || settingsView === 'exercises-day3') {
-                const day = settingsView === 'exercises-day1' ? 1 : settingsView === 'exercises-day2' ? 2 : 3;
-                const exercises = day === 1 ? day1Exercises : day === 2 ? day2Exercises : day3Exercises;
-                const dayName = day === 1 ? 'Push' : day === 2 ? 'Pull' : 'Legs';
+            if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
+                const day = settingsView === 'exercises-day1' ? 1 : 2;
+                const exercises = day === 1 ? day1Exercises : day2Exercises;
+                const dayName = day === 1 ? 'Anterior' : 'Posterior';
 
                 return (
                     <div className="modal-overlay" onClick={onClose}>
@@ -157,13 +157,10 @@
                         <div className="modal-title">Settings</div>
 
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
-                            ✏️ Manage Push Day Exercises
+                            ✏️ Manage Anterior Day Exercises
                         </button>
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
-                            ✏️ Manage Pull Day Exercises
-                        </button>
-                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day3')}>
-                            ✏️ Manage Legs Day Exercises
+                            ✏️ Manage Posterior Day Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
