@@ -73,8 +73,8 @@
                     return result;
                 };
 
-                const newDay1 = migrateDay(savedDay1ById, DEFAULT_DAY_1_EXERCISES, 'Day 1 (Anterior)');
-                const newDay2 = migrateDay(savedDay2ById, DEFAULT_DAY_2_EXERCISES, 'Day 2 (Posterior)');
+                const newDay1 = migrateDay(savedDay1ById, DEFAULT_DAY_1_EXERCISES, 'Day 1 (Torso)');
+                const newDay2 = migrateDay(savedDay2ById, DEFAULT_DAY_2_EXERCISES, 'Day 2 (Limbs)');
 
                 const newConfig = { day1: newDay1, day2: newDay2 };
                 storage.setItem('gymExerciseConfig', JSON.stringify(newConfig));

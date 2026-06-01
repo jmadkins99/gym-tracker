@@ -5,7 +5,7 @@ A personalized workout tracking web app.
 ## Features
 
 ### Workout Tracking
-- **Anterior-Posterior Routine**: Manually select between Anterior and Posterior days
+- **Torso-Limbs Routine**: Manually select between Torso and Limbs days
 - **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
 - **Sequential Day Counter**: Weekly view shows newest workouts first (Day 5, Day 4, Day 3...) for easy access
 - **Instant Save**: LOG button immediately saves to Weekly tab - no page refresh needed
@@ -16,8 +16,8 @@ A personalized workout tracking web app.
 - **Visual Feedback**: Logged exercises show checkmark and persist across page refreshes
 - **Manual Entry**: All inputs are blank by default - you choose what weight and reps to use
 - **Weight Breakdown**: Click the "Weight Breakdown" button on any exercise to see warmup set recommendations
-  - **Plate-Loaded Machines**: Shows 2 warmup sets (50%, 75%) with exact plate breakdown per side
-  - **Pin-Stack Machines**: Shows 2 warmup sets (50%, 75%) rounded to achievable weights (5 lb increments + micro-plates)
+  - **Plate-Loaded Machines**: Shows 2 warmup sets (70%, 90%) with exact plate breakdown per side
+  - **Pin-Stack Machines**: Shows 2 warmup sets (70%, 90%) rounded to achievable weights (5 lb increments + micro-plates)
 
 ### PR Tracking (Two Modes)
 - **Simple PR Tracking** (default): If you hit 6 reps (top of 4-6 range) last session, weight auto-increments and the weight box highlights green with target of 4 reps

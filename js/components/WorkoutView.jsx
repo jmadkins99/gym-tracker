@@ -324,13 +324,13 @@
                                     }}>
                                         <div style={{ marginBottom: '8px' }}>
                                             <div style={{ fontWeight: '600' }}>
-                                                Warmup Set #1 (~50%): {warmups.warmup1} lbs
+                                                Warmup Set #1 (~70%): {warmups.warmup1} lbs
                                             </div>
                                         </div>
 
                                         <div>
                                             <div style={{ fontWeight: '600' }}>
-                                                Warmup Set #2 (~75%): {warmups.warmup2} lbs
+                                                Warmup Set #2 (~90%): {warmups.warmup2} lbs
                                             </div>
                                         </div>
                                     </div>
@@ -378,7 +378,7 @@
                                 }}>
                                     <div style={{ marginBottom: '12px' }}>
                                         <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                            Warmup Set #1 ({warmup1Total} lbs - ~50%):
+                                            Warmup Set #1 ({warmup1Total} lbs - ~70%):
                                         </div>
                                         {breakdown.isTwoSided && (
                                             <div style={{ marginLeft: '12px', fontStyle: 'italic', color: '#666' }}>
@@ -390,7 +390,7 @@
 
                                     <div style={{ marginBottom: '12px' }}>
                                         <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                            Warmup Set #2 ({warmup2Total} lbs - ~75%):
+                                            Warmup Set #2 ({warmup2Total} lbs - ~90%):
                                         </div>
                                         {breakdown.isTwoSided && (
                                             <div style={{ marginLeft: '12px', fontStyle: 'italic', color: '#666' }}>
@@ -561,18 +561,18 @@
                             className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(1)}
                         >
-                            Anterior
+                            Torso
                         </button>
                         <button
                             className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
                             onClick={() => setCurrentDay(2)}
                         >
-                            Posterior
+                            Limbs
                         </button>
                     </div>
 
                     <>
-                        <div className="section-title">{currentDay === 1 ? 'Anterior' : 'Posterior'}</div>
+                        <div className="section-title">{currentDay === 1 ? 'Torso' : 'Limbs'}</div>
                         {mainExercises.map(renderExercise)}
 
                         {cardioExercises.length > 0 && <>

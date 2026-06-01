@@ -27,7 +27,7 @@
             if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
                 const day = settingsView === 'exercises-day1' ? 1 : 2;
                 const exercises = day === 1 ? day1Exercises : day2Exercises;
-                const dayName = day === 1 ? 'Anterior' : 'Posterior';
+                const dayName = day === 1 ? 'Torso' : 'Limbs';
 
                 return (
                     <div className="modal-overlay" onClick={onClose}>
@@ -157,10 +157,10 @@
                         <div className="modal-title">Settings</div>
 
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
-                            ✏️ Manage Anterior Day Exercises
+                            ✏️ Manage Torso Day Exercises
                         </button>
                         <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
-                            ✏️ Manage Posterior Day Exercises
+                            ✏️ Manage Limbs Day Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>

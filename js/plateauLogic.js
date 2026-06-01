@@ -447,8 +447,8 @@
             };
 
             // Calculate warmup and top set weights
-            const warmup1Weight = totalWeight * 0.5;  // 50%
-            const warmup2Weight = totalWeight * 0.75; // 75%
+            const warmup1Weight = totalWeight * 0.7;  // 70%
+            const warmup2Weight = totalWeight * 0.9;  // 90%
             const topSetWeight = totalWeight;
 
             // For two-sided machines, divide by 2 to get per-side weight
@@ -493,8 +493,8 @@
                 else return base + 5;
             };
 
-            const warmup1 = roundToAchievable(totalWeight * 0.5);  // 50%
-            const warmup2 = roundToAchievable(totalWeight * 0.75); // 75%
+            const warmup1 = roundToAchievable(totalWeight * 0.7);  // 70%
+            const warmup2 = roundToAchievable(totalWeight * 0.9);  // 90%
 
             return {
                 warmup1,

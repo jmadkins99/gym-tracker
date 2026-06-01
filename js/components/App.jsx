@@ -38,12 +38,12 @@
                 }
 
                 // Load custom exercise configurations
-                // Check if we need to migrate to Anterior/Posterior split (back from PPL)
-                const hasMigratedToAP2 = storage.getItem('migratedToAnteriorPosterior2');
-                if (!hasMigratedToAP2) {
+                // Check if we need to migrate to Torso/Limbs split
+                const hasMigratedToTL = storage.getItem('migratedToTorsoLimbs');
+                if (!hasMigratedToTL) {
                     // Clear old exercise config and use new defaults
                     storage.removeItem('gymExerciseConfig');
-                    storage.setItem('migratedToAnteriorPosterior2', 'true');
+                    storage.setItem('migratedToTorsoLimbs', 'true');
                 }
 
                 // Clean up stale migration flag
@@ -249,11 +249,9 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Find up to 3 most recent workouts with this exercise (excluding today's unsubmitted workout)
+                // Find all previous workouts with this exercise (excluding today's unsubmitted workout)
                 const candidates = [];
                 for (let workout of workoutHistory) {
-                    if (candidates.length >= 3) break; // Stop after finding 3 candidates
-
                     const workoutDate = new Date(workout.date);
                     workoutDate.setHours(0, 0, 0, 0);
 

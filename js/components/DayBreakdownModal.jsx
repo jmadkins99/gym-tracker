@@ -15,13 +15,13 @@
                 return null;
             }
 
-            // Function to get most recent previous workout for the same exercise (looks back up to 3 sessions, skips NA)
+            // Function to get most recent previous workout for the same exercise (skips NA, no lookback cap)
             const getPreviousWorkoutForExercise = (exerciseId) => {
                 const todayDate = new Date(todayWorkout.date);
 
                 console.log('Looking for previous workout for:', exerciseId, 'Current day type:', currentDay);
 
-                // Find up to 3 most recent workouts of the same day type (before today) with this exercise
+                // Find all previous workouts of the same day type with this exercise, most recent first
                 const candidates = [];
                 const sortedWorkouts = workoutHistory
                     .filter(w => {
@@ -31,8 +31,6 @@
                     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
                 for (let workout of sortedWorkouts) {
-                    if (candidates.length >= 3) break; // Stop after finding 3 candidates
-
                     const exercise = workout.exercises.find(e => e.id === exerciseId);
                     if (exercise) {
                         candidates.push(exercise);
@@ -155,7 +153,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">{currentDay === 1 ? 'Anterior' : 'Posterior'} Day Breakdown</div>
+                        <div className="modal-title">{currentDay === 1 ? 'Torso' : 'Limbs'} Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}
