@@ -88,8 +88,9 @@
             { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Torso', type: 'standard', order: 5 },
             { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Torso', type: 'standard', order: 6 },
             { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Torso', type: 'standard', order: 7 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Torso', type: 'standard', order: 8 },
             // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 8 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];
 
         const DEFAULT_DAY_2_EXERCISES = [
@@ -99,11 +100,10 @@
             { id: 'lateral-raises', name: 'Lateral Raises', category: 'Limbs', type: 'standard', order: 2 },
             { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Limbs', type: 'standard', order: 3 },
             { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Limbs', type: 'standard', order: 4 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Limbs', type: 'standard', order: 5 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Limbs', type: 'standard', order: 6 },
-            { id: 'leg-extensions', name: 'Hip Adduction', category: 'Limbs', type: 'standard', order: 7 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Limbs', type: 'standard', order: 8 },
-            { id: 'hip-adduction', name: 'Pendulum Squats', category: 'Limbs', type: 'standard', order: 9 },
+            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Limbs', type: 'standard', order: 5 },
+            { id: 'leg-extensions', name: 'Hip Adduction', category: 'Limbs', type: 'standard', order: 6 },
+            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Limbs', type: 'standard', order: 7 },
+            { id: 'hip-adduction', name: 'Pendulum Squats', category: 'Limbs', type: 'standard', order: 8 },
             // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 10 },
+            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];
