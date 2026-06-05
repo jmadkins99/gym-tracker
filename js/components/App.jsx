@@ -39,11 +39,11 @@
 
                 // Load custom exercise configurations
                 // Check if we need to migrate to Torso/Limbs split
-                const hasMigratedToTL = storage.getItem('migratedToTorsoLimbs');
+                const hasMigratedToTL = storage.getItem('migratedToTorsoLimbs2');
                 if (!hasMigratedToTL) {
                     // Clear old exercise config and use new defaults
                     storage.removeItem('gymExerciseConfig');
-                    storage.setItem('migratedToTorsoLimbs', 'true');
+                    storage.setItem('migratedToTorsoLimbs2', 'true');
                 }
 
                 // Clean up stale migration flag

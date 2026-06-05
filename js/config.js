@@ -57,7 +57,8 @@
             'hip-adduction': { type: 'one-sided', machineWeight: 0 },
             'chest-flies': { type: 'two-sided', machineWeight: 0 },
             'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
-            'hammer-row': { type: 'one-sided', machineWeight: 0 }
+            'hammer-row': { type: 'one-sided', machineWeight: 0 },
+            'overhead-tricep': { type: 'one-sided', machineWeight: 0 }
         };
 
         // Pin-stack exercises configuration
@@ -67,7 +68,6 @@
             'shoulder-press': true,
             'tricep-pushdown': true,
             'lateral-raises': true,
-            'overhead-tricep': true,
             'frontal-pulldowns': true,
             'upper-back-row': true,
             'kelso-shrugs': true,
@@ -84,11 +84,11 @@
             { id: 'incline-chest-press', name: 'Incline Chest Flies', category: 'Torso', type: 'standard', order: 1 },
             { id: 'hammer-row', name: 'Seated Row Machine', category: 'Torso', type: 'standard', order: 2 },
             { id: 'overhead-tricep', name: 'Weighted Dips', category: 'Torso', type: 'standard', order: 3 },
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Torso', type: 'standard', order: 4 },
-            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Torso', type: 'standard', order: 5 },
-            { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Torso', type: 'standard', order: 6 },
-            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Torso', type: 'standard', order: 7 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Torso', type: 'standard', order: 8 },
+            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Torso', type: 'standard', order: 4 },
+            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Torso', type: 'standard', order: 5 },
+            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Torso', type: 'standard', order: 6 },
+            { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Torso', type: 'standard', order: 7 },
+            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Torso', type: 'standard', order: 8 },
             // Cardio
             // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
         ];
@@ -97,9 +97,9 @@
             // Limbs
             { id: 'preacher-curls', name: 'Preacher Curls', category: 'Limbs', type: 'standard', order: 0 },
             { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Limbs', type: 'standard', order: 1 },
-            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Limbs', type: 'standard', order: 2 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Limbs', type: 'standard', order: 3 },
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Limbs', type: 'standard', order: 4 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Limbs', type: 'standard', order: 2 },
+            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Limbs', type: 'standard', order: 3 },
+            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Limbs', type: 'standard', order: 4 },
             { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Limbs', type: 'standard', order: 5 },
             { id: 'leg-extensions', name: 'Hip Adduction', category: 'Limbs', type: 'standard', order: 6 },
             { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Limbs', type: 'standard', order: 7 },

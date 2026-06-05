@@ -1,0 +1,12 @@
+{
+  "name": "gym-app-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Integration tests for gym_app and public_gym_app",
+  "scripts": {
+    "test": "bash run.sh"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^22.0.0"
+  }
+}

@@ -18,8 +18,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
-                    // Exclude future workouts
                     if (workoutDate > today) return false;
 
                     // Exclude today's unsubmitted workout
@@ -48,7 +46,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
                     if (workoutDate > today) return false;
                     if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
                     const exercise = w.exercises.find(e => e.id === exerciseId);
@@ -86,7 +83,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
                     if (workoutDate > today) return false;
                     if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
                     if (!w.submitted) return false;
@@ -123,8 +119,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
-                    // Exclude future workouts
                     if (workoutDate > today) return false;
 
                     // Exclude today's unsubmitted workout
@@ -176,8 +170,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
-                    // Exclude future workouts
                     if (workoutDate > today) return false;
 
                     // Exclude today's unsubmitted workout
@@ -231,8 +223,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
-                    // Exclude future workouts
                     if (workoutDate > today) return false;
 
                     // Exclude today's unsubmitted workout
@@ -373,8 +363,6 @@
                 .filter(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    if (w.day !== currentDay) return false;
-                    // Exclude future workouts
                     if (workoutDate > today) return false;
 
                     // Exclude today's unsubmitted workout

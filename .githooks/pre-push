@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Pre-push hook: runs the integration test suite before allowing a push.
+# Blocks the push on any test failure.
+#
+# Bypass in emergencies with: git push --no-verify
+#
+# To enable this hook after cloning:
+#   git config core.hooksPath .githooks
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+TESTS_DIR="$REPO_ROOT/tests"
+
+if [ ! -d "$TESTS_DIR" ]; then
+    echo "pre-push: no tests/ directory — skipping"
+    exit 0
+fi
+
+echo "pre-push: running tests/run.sh ..."
+echo
+if bash "$TESTS_DIR/run.sh"; then
+    echo
+    echo "pre-push: all tests passed, allowing push."
+    exit 0
+else
+    echo
+    echo "pre-push: tests FAILED. Push aborted."
+    echo "  Fix the failure, or bypass with: git push --no-verify"
+    exit 1
+fi
