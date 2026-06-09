@@ -27,6 +27,7 @@ async function seedPublicApp(page, { exerciseConfig, workoutHistory, schedule, n
         // Bypass the new-user wizard.
         localStorage.setItem(ns + 'gymSetupCompleted', JSON.stringify({ version: 1, completed: true }));
         // Force the Jessi TL migration to re-run.
+        localStorage.removeItem(ns + 'jessiTLMigrationApplied5');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied4');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied3');
         localStorage.removeItem(ns + 'jessiAPMigrationApplied');
@@ -86,6 +87,42 @@ function jessiPreMigrationConfig() {
     };
 }
 
+// Jessi's actual 2026-06-09 backup shape: stale display names "Dips" and
+// "Transverse Plane Rows" that don't match a naive name-based classifier.
+// Earlier migration revisions silently dumped both into Limbs; this config
+// is the regression fixture for that bug.
+function jessiStaleNameConfig() {
+    return {
+        version: 2,
+        categories: ['Torso', 'Limbs'],
+        minimalistPrTracking: true,
+        days: {
+            1: [
+                { id: 'jchest', name: 'Chest Flies',              category: 'Torso', order: 0, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jincl',  name: 'Incline Chest Press',      category: 'Torso', order: 1, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jlat',   name: 'Cable Lateral Raises',     category: 'Torso', order: 2, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jsag',   name: 'Sagittal Plane Pulldowns', category: 'Torso', order: 3, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jfront', name: 'Frontal Plane Pulldowns',  category: 'Torso', order: 4, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jkelso', name: 'Kelso Shrugs',             category: 'Torso', order: 5, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jsp',    name: 'Shoulder Press Machine',   category: 'Torso', order: 6, type: 'standard', minReps: 6, maxReps: 8 },
+            ],
+            2: [
+                { id: 'jprea',  name: 'Preacher Curls',           category: 'Limbs', order: 0, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jtri',   name: 'Tricep Pushdown',          category: 'Limbs', order: 1, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jrwc',   name: 'Reverse Wrist Curls',      category: 'Limbs', order: 2, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jcwc',   name: 'Cable Wrist Curls',        category: 'Limbs', order: 3, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jab',    name: 'Ab Crunch Machine',        category: 'Limbs', order: 4, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jcalf',  name: 'Calf Raises',              category: 'Limbs', order: 5, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jleg',   name: 'Leg Extensions',           category: 'Limbs', order: 6, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jsld',   name: 'Stiff Legged Deadlifts',   category: 'Limbs', order: 7, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jpend',  name: 'Pendulum Squats',          category: 'Limbs', order: 8, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jdip',   name: 'Dips',                     category: 'Limbs', order: 9, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'jtrow',  name: 'Transverse Plane Rows',    category: 'Limbs', order: 10, type: 'standard', minReps: 6, maxReps: 8 },
+            ],
+        },
+    };
+}
+
 function jessiDefaultSchedule() {
     return {
         version: 2,
@@ -105,5 +142,6 @@ module.exports = {
     seedPublicApp,
     workoutEntry,
     jessiPreMigrationConfig,
+    jessiStaleNameConfig,
     jessiDefaultSchedule,
 };

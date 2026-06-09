@@ -43,13 +43,13 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         // Read what the migration produced.
         const after = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
-            const flag4 = localStorage.getItem('gym-local:jessiTLMigrationApplied4');
+            const flag5 = localStorage.getItem('gym-local:jessiTLMigrationApplied5');
             return {
                 day1: (cfg.days[1] || []).map(e => e.name),
                 day2: (cfg.days[2] || []).map(e => e.name),
                 day1Cats: [...new Set((cfg.days[1] || []).map(e => e.category))],
                 day2Cats: [...new Set((cfg.days[2] || []).map(e => e.category))],
-                flag4Set: flag4 === 'true',
+                flag5Set: flag5 === 'true',
             };
         });
 
@@ -68,7 +68,7 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         eq(after.day2, expectedLimbs, 'Limbs (Day 2) exercise order after migration');
         eq(after.day1Cats, ['Torso'], 'all Day 1 exercises tagged Torso');
         eq(after.day2Cats, ['Limbs'], 'all Day 2 exercises tagged Limbs');
-        ok(after.flag4Set, 'jessiTLMigrationApplied4 flag is set so migration does not re-run');
+        ok(after.flag5Set, 'jessiTLMigrationApplied5 flag is set so migration does not re-run');
         eq(errors, [], 'no console errors during load');
 
         console.log('PASS: Jessi migration reshuffled exercises into canonical Torso/Limbs layout.');
