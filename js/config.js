@@ -27,7 +27,7 @@
         // PR Auto-Regulation: Weight increments when you hit 6+ reps (top of 4-6 range)
         // 5 lbs for two-sided plate-loaded (= 2.5/side per move); 2.5 lbs for everything else.
         const PR_WEIGHT_INCREMENTS = {
-            'chest-flies': 5,
+            'chest-flies': 1.25,
             'incline-chest-press': 5,
             'leg-curls': 5,
             'shoulder-press': 2.5,
@@ -55,7 +55,6 @@
             'preacher-curls': { type: 'one-sided', machineWeight: 0 },
             'leg-curls': { type: 'two-sided', machineWeight: 0 },
             'hip-adduction': { type: 'one-sided', machineWeight: 0 },
-            'chest-flies': { type: 'two-sided', machineWeight: 0 },
             'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
             'hammer-row': { type: 'one-sided', machineWeight: 0 },
             'overhead-tricep': { type: 'one-sided', machineWeight: 0 }
@@ -64,7 +63,12 @@
         // Pin-stack exercises configuration
         // These machines use weight stacks with 5 lb increments
         // Can add micro-plates (1.25, 2.5, or 3.75) on top of the pin
+        // Value `true`     — plain pin stack, no cap
+        // Value `{ maxPin, overflowPlateMode }` — pin stack with a hard cap;
+        //   weights above `maxPin` show "pin at max + plate breakdown" for the
+        //   excess. overflowPlateMode is 'one-sided' or 'two-sided'.
         const PIN_STACK_EXERCISES = {
+            'chest-flies': true,
             'shoulder-press': true,
             'tricep-pushdown': true,
             'lateral-raises': true,
@@ -74,7 +78,7 @@
             'leg-extensions': true,
             'calf-raise': true,
             'ab-crunch': true,
-            'cable-wrist-curls': true,
+            'cable-wrist-curls': { maxPin: 97.5, overflowPlateMode: 'one-sided' },
             'reverse-wrist-curls': true
         };
 

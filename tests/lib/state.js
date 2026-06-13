@@ -31,6 +31,8 @@ async function seedPublicApp(page, { exerciseConfig, workoutHistory, schedule, n
         localStorage.removeItem(ns + 'jessiTLMigrationApplied4');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied3');
         localStorage.removeItem(ns + 'jessiAPMigrationApplied');
+        // Auto-enable of gympinMode for AP/TL configs is its own one-shot.
+        localStorage.removeItem(ns + 'jessiGympinEnabled');
     }, ns, exerciseConfig || null, workoutHistory || null, schedule || null);
 }
 

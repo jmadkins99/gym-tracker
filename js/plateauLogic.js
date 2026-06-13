@@ -466,14 +466,31 @@
             };
         }
 
-        // Calculate warmup sets for pin-stack exercises
-        function calculatePinStackWarmups(totalWeight) {
-            // Round to nearest achievable weight (5 lb increments + optional 1.25, 2.5, or 3.75)
-            const roundToAchievable = (weight) => {
+        // Calculate the warmup + top-set breakdown for a pin-stack exercise.
+        //
+        // Returns: { warmup1, warmup2, topSet } where each set is one of:
+        //   { overflow: false, pinWeight, totalWeight }
+        //     - The set fits on the pin stack. Display just the pin weight.
+        //   { overflow: true, pinWeight, plates, totalWeight }
+        //     - The set exceeds maxPin (cable-wrist-curls is the only such
+        //       exercise today). Display "pin at max + plates" using the
+        //       same plate breakdown shape as plate-loaded exercises.
+        //       Plate weight is rounded DOWN to a clean plate combination,
+        //       so totalWeight may be slightly under the target.
+        //
+        // When the exercise has no `maxPin` configured, no set is ever in
+        // overflow mode and the top-set entry can be ignored by the UI
+        // (the user already sees their working weight in the input field).
+        function calculatePinStackBreakdown(totalWeight, exerciseId) {
+            const config = PIN_STACK_EXERCISES[exerciseId];
+            const maxPin = (config && typeof config === 'object') ? config.maxPin : null;
+            const availablePlates = [45, 25, 10, 5, 2.5, 1.25];
+
+            // Round to nearest achievable pin weight (5 lb increments + optional
+            // 1.25, 2.5, or 3.75 micro-plate on top of the pin).
+            const roundPinToAchievable = (weight) => {
                 const base = Math.floor(weight / 5) * 5;
                 const remainder = weight - base;
-
-                // Find closest achievable increment: 0, 1.25, 2.5, or 3.75
                 if (remainder < 0.625) return base;
                 else if (remainder < 1.875) return base + 1.25;
                 else if (remainder < 3.125) return base + 2.5;
@@ -481,11 +498,42 @@
                 else return base + 5;
             };
 
-            const warmup1 = roundToAchievable(totalWeight * 0.7);  // 70%
-            const warmup2 = roundToAchievable(totalWeight * 0.9);  // 90%
+            // Break `weight` down into the largest plate combo that doesn't
+            // exceed it. Floor semantics — if there's a remainder smaller than
+            // 1.25 it's dropped (no fractional plate available).
+            const breakdownPlatesFloor = (weight) => {
+                const plates = {};
+                let remaining = weight;
+                for (const plate of availablePlates) {
+                    const count = Math.floor(remaining / plate);
+                    if (count > 0) {
+                        plates[plate] = count;
+                        remaining = parseFloat((remaining - count * plate).toFixed(2));
+                    }
+                }
+                return plates;
+            };
+
+            const buildSet = (target) => {
+                if (maxPin === null || target <= maxPin) {
+                    const w = roundPinToAchievable(target);
+                    return { overflow: false, pinWeight: w, totalWeight: w };
+                }
+                const excess = target - maxPin;
+                const plates = breakdownPlatesFloor(excess);
+                const plateTotal = Object.entries(plates)
+                    .reduce((sum, [p, c]) => sum + parseFloat(p) * c, 0);
+                return {
+                    overflow: true,
+                    pinWeight: maxPin,
+                    plates,
+                    totalWeight: parseFloat((maxPin + plateTotal).toFixed(2)),
+                };
+            };
 
             return {
-                warmup1,
-                warmup2
+                warmup1: buildSet(totalWeight * 0.7),
+                warmup2: buildSet(totalWeight * 0.9),
+                topSet: buildSet(totalWeight),
             };
         }

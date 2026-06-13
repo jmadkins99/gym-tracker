@@ -311,7 +311,40 @@
 
                             // PIN-STACK EXERCISE
                             if (isPinStack) {
-                                const warmups = calculatePinStackWarmups(currentWeight);
+                                const breakdown = calculatePinStackBreakdown(currentWeight, exercise.id);
+
+                                // Render a pin row, optionally with a plate breakdown when the
+                                // set is in overflow mode (cable wrist curls above 97.5).
+                                const renderPinSet = (label, set) => {
+                                    if (!set.overflow) {
+                                        return (
+                                            <div style={{ fontWeight: '600' }}>
+                                                {label}: {set.pinWeight} lbs
+                                            </div>
+                                        );
+                                    }
+                                    const sortedPlates = Object.entries(set.plates)
+                                        .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]));
+                                    return (
+                                        <div>
+                                            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                                {label}: {set.totalWeight} lbs
+                                            </div>
+                                            <div style={{ marginLeft: '12px' }}>
+                                                Pin: {set.pinWeight} lbs
+                                            </div>
+                                            {sortedPlates.map(([weight, count]) => (
+                                                <div key={weight} style={{ marginLeft: '12px' }}>
+                                                    {weight}s - {count}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                };
+
+                                // Top set is informative only when overflow is in play —
+                                // otherwise the user already sees their working weight above.
+                                const showTopSet = breakdown.topSet.overflow;
 
                                 return (
                                     <div style={{
@@ -322,17 +355,17 @@
                                         fontSize: '13px',
                                         fontFamily: 'monospace'
                                     }}>
-                                        <div style={{ marginBottom: '8px' }}>
-                                            <div style={{ fontWeight: '600' }}>
-                                                Warmup Set #1 (~70%): {warmups.warmup1} lbs
-                                            </div>
+                                        <div style={{ marginBottom: '12px' }}>
+                                            {renderPinSet('Warmup Set #1 (~70%)', breakdown.warmup1)}
                                         </div>
-
-                                        <div>
-                                            <div style={{ fontWeight: '600' }}>
-                                                Warmup Set #2 (~90%): {warmups.warmup2} lbs
-                                            </div>
+                                        <div style={{ marginBottom: showTopSet ? '12px' : '0' }}>
+                                            {renderPinSet('Warmup Set #2 (~90%)', breakdown.warmup2)}
                                         </div>
+                                        {showTopSet && (
+                                            <div>
+                                                {renderPinSet('Top Set', breakdown.topSet)}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             }
