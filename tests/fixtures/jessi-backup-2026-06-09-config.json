@@ -1,0 +1,217 @@
+{
+  "exerciseConfig": {
+    "version": 2,
+    "days": {
+      "1": [
+        {
+          "id": "8acc159e-fc2a-4d5a-9c61-e75908ca1928",
+          "name": "Chest Flies",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 0
+        },
+        {
+          "id": "93de12cc-1835-4d83-bf75-b4335a4ff35a",
+          "name": "Incline Chest Press",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 1
+        },
+        {
+          "id": "c6625761-50e1-41ef-8070-567228e1de4f",
+          "name": "Cable Lateral Raises",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 2
+        },
+        {
+          "id": "9df5161d-45c8-4435-8bef-0875a94dc41c",
+          "name": "Sagittal Plane Pulldowns",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 3
+        },
+        {
+          "id": "121551d4-91ae-440f-9f22-266039ea5e20",
+          "name": "Frontal Plane Pulldowns",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 4
+        },
+        {
+          "id": "6f1a174a-9892-4a7f-ba94-f9278df18fc3",
+          "name": "Kelso Shrugs",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 5
+        },
+        {
+          "id": "1c627b58-1227-46bb-9daf-9fe78e6b95f5",
+          "name": "Shoulder Press Machine",
+          "category": "Torso",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 6
+        }
+      ],
+      "2": [
+        {
+          "id": "d989eb9d-921d-4135-8e72-57006d76e3e3",
+          "name": "Preacher Curls",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 0
+        },
+        {
+          "id": "676b6dcc-4d13-4cd3-8fb4-6987788ceabd",
+          "name": "Tricep Pushdown",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 1
+        },
+        {
+          "id": "da1d13f9-50ae-4f22-a214-79c4696d71c8",
+          "name": "Reverse Wrist Curls",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 2
+        },
+        {
+          "id": "3e4b41b9-c69d-43eb-8bda-ab87a1deed84",
+          "name": "Cable Wrist Curls",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 3
+        },
+        {
+          "id": "770cfe8d-e09c-40c7-b6c8-1676d9c64a02",
+          "name": "Ab Crunch Machine",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 4
+        },
+        {
+          "id": "107ecf47-ae8c-4b68-90da-f2b930118983",
+          "name": "Calf Raises",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 5
+        },
+        {
+          "id": "c65da494-c391-47b3-a742-e6ca5184d60d",
+          "name": "Leg Extensions",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 6
+        },
+        {
+          "id": "e6d80fad-07d0-464b-90bc-ab4d7e059b86",
+          "name": "Stiff Legged Deadlifts",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 7
+        },
+        {
+          "id": "f6dde47c-e085-485a-b446-a4d1cfd566f1",
+          "name": "Pendulum Squats",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 8
+        },
+        {
+          "id": "ab490c47-37fb-436d-aaa9-998fd39887bb",
+          "name": "Dips",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 9
+        },
+        {
+          "id": "db4fb026-d3f0-4653-b4e9-4968d52df293",
+          "name": "Transverse Plane Rows",
+          "category": "Limbs",
+          "typeId": "standard",
+          "sets": 1,
+          "minReps": 6,
+          "maxReps": 8,
+          "order": 10
+        }
+      ]
+    },
+    "categories": [
+      "Torso",
+      "Limbs"
+    ],
+    "prTracking": false,
+    "advancedPrTracking": false,
+    "minimalistPrTracking": true
+  },
+  "schedule": {
+    "version": 2,
+    "workoutDays": [
+      {
+        "dayOfWeek": "Monday",
+        "workoutDayNumber": 1
+      },
+      {
+        "dayOfWeek": "Wednesday",
+        "workoutDayNumber": 2
+      },
+      {
+        "dayOfWeek": "Friday",
+        "workoutDayNumber": 1
+      }
+    ],
+    "totalWorkoutDays": 2,
+    "scheduleIsExplicit": false
+  }
+}
