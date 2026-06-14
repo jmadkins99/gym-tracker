@@ -1,14 +1,16 @@
 // What this test covers
 // ----------------------
 // Weighted Dips replaced Cuffed Overhead Tricep Extension on Torso. The
-// machine type also changed: it's loaded as one-sided plate-loaded, not
-// pin-stack. That distinction drives the Weight Breakdown UI — pin-stack
-// just shows two warmup percentages, while plate-loaded shows a per-plate
-// breakdown (45s, 25s, 10s, 5s, 2.5s, 1.25s).
+// machine type also changed: it's loaded as TWO-sided plate-loaded, not
+// pin-stack and not one-sided. That distinction drives the Weight
+// Breakdown UI — pin-stack just shows two warmup percentages, while
+// plate-loaded shows a per-plate breakdown (45s, 25s, 10s, 5s, 2.5s,
+// 1.25s). Two-sided additionally renders a "Per side: X lbs" line that
+// one-sided does NOT.
 //
 // If we ever forget to move `overhead-tricep` between PIN_STACK_EXERCISES
-// and PLATE_LOADED_EXERCISES, this test fails. It also acts as a smoke
-// test for the Weight Breakdown popover itself.
+// and PLATE_LOADED_EXERCISES, or flip its plate-mode back to one-sided,
+// this test fails.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -85,9 +87,22 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             /\d+(?:\.\d+)?s - \d+/.test(breakdownText),
             'breakdown lists at least one plate count (e.g. "25s - 1") — pin-stack would not'
         );
+
+        // Two-sided signature: every set renders a "Per side: X lbs" line.
+        // One-sided would not, so the count would be 0. If overhead-tricep
+        // is ever flipped back to one-sided, this regresses.
+        const perSideMatches = breakdownText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || [];
+        eq(perSideMatches.length, 3,
+            'two-sided renders three "Per side: X lbs" lines (warmup1, warmup2, top set); one-sided shows none');
+
+        // For 60-lb total two-sided at floor allocation, top-set per-side = 30,
+        // and the total label rounds back to the sum of plates × 2 = 60.
+        contains(breakdownText, 'Per side: 30 lbs',
+            'two-sided top set per-side = 30 lbs for a 60-lb total Weighted Dips entry');
+
         eq(errors, [], 'no console errors during load');
 
-        console.log('PASS: Weighted Dips renders plate-loaded weight breakdown.');
+        console.log('PASS: Weighted Dips renders TWO-sided plate-loaded weight breakdown.');
     } finally {
         await browser.close();
         await server.stop();
