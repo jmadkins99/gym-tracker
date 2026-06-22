@@ -7,7 +7,7 @@
         }
 
         // Helper function to check if exercise is marked for plateau busting
-        function isPlateauBuster(exerciseId, workoutHistory, currentDay) {
+        function isPlateauBuster(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return false;
 
             const today = new Date();
@@ -35,7 +35,7 @@
         }
 
         // Simple PR tracking: if last session hit 6+ reps, suggest weight + increment highlighted green
-        function getSimplePR(exerciseId, workoutHistory, currentDay) {
+        function getSimplePR(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
             if (!PR_WEIGHT_INCREMENTS[exerciseId]) return null;
 
@@ -73,7 +73,7 @@
         }
 
         // Simple stagnation detection: same weight + same reps for 3 consecutive sessions
-        function getStagnationWarning(exerciseId, workoutHistory, currentDay) {
+        function getStagnationWarning(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
             const today = new Date();
@@ -108,7 +108,7 @@
         }
 
         // Helper function to check if this is a PR Weight Recovery week (week after plateau buster)
-        function getPRWeightRecovery(exerciseId, workoutHistory, currentDay) {
+        function getPRWeightRecovery(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length < 2) return null;
 
             const today = new Date();
@@ -159,7 +159,7 @@
         }
 
         // Helper function to handle failed plateau buster (got 6-7 reps, need to retry)
-        function getFailedPlateauBusterRetry(exerciseId, workoutHistory, currentDay) {
+        function getFailedPlateauBusterRetry(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length < 2) return null;
 
             const today = new Date();
@@ -208,7 +208,7 @@
         }
 
         // Helper function to check if this is a PR Auto-Regulation week (after hitting 8+ reps)
-        function getPRAutoRegulation(exerciseId, workoutHistory, currentDay) {
+        function getPRAutoRegulation(exerciseId, workoutHistory) {
             console.log('[getPRAutoRegulation] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) {
                 console.log('[getPRAutoRegulation] No workout history');
@@ -351,7 +351,7 @@
         }
 
         // Helper function for plateau buster weight decrement
-        function getPlateauBusterDecrement(exerciseId, workoutHistory, currentDay) {
+        function getPlateauBusterDecrement(exerciseId, workoutHistory) {
             console.log('[getPlateauBusterDecrement] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) return null;
 

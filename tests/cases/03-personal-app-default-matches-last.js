@@ -1,12 +1,12 @@
 // What this test covers
 // ----------------------
-// The same day-filter regression as case 02, but on the personal app.
+// The day-filter regression: getSimplePR was once `w.day === currentDay`-
+// filtered. Under Full Body that filter would silently drop history from
+// pre-FB-migration entries (which were day:1 or day:2 under Torso/Limbs).
 //
-// Personal app uses SIMPLE_PR_TRACKING (bump when last reps >= 6).
-// frontal-pulldowns is on Day 1 (Torso) per the current canonical
-// program. We give it stale Day 1 history (220 × 8 → would PR-bump to
-// 222.5 with the bug) AND recent Day 2 history (160 × 4 → no PR bump,
-// the real "Last:").
+// We seed two history entries for frontal-pulldowns:
+//   - Stale (Feb 1) at 220 × 8 — would PR-bump to 222.5 if surfaced.
+//   - Recent (May 30) at 160 × 4 — the real "Last:".
 //
 // Default should be "160" — matching "Last:" — not "222.5".
 
@@ -45,12 +45,12 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const cards = await readCards(page);
         const frontal = cards.find(c => c.name === 'Frontal Plane Pulldowns');
 
-        ok(frontal, 'Frontal Plane Pulldowns card is rendered on Day 1 (Torso)');
-        contains(frontal.last, '160', '"Last:" shows recent Day-2 weight');
-        contains(frontal.last, '4',   '"Last:" shows recent Day-2 reps');
+        ok(frontal, 'Frontal Plane Pulldowns card is rendered in Full Body view');
+        contains(frontal.last, '160', '"Last:" shows recent weight');
+        contains(frontal.last, '4',   '"Last:" shows recent reps');
         eq(frontal.weightValue, '160',
-            'default Weight (lbs) field should equal recent weight, ' +
-            'not a stale Day-1 PR bump (would be 222.5 with the bug)');
+            'default Weight (lbs) field equals recent weight, ' +
+            'not a stale PR bump (would be 222.5 with the bug)');
         eq(errors, [], 'no console errors during load');
 
         console.log('PASS: personal app default weight tracks most-recent session regardless of day slot.');

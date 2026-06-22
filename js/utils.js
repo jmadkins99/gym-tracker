@@ -14,28 +14,6 @@
             removeItem: (key) => localStorage.removeItem(APP_NAMESPACE + key),
         };
 
-        // Get today's date string for localStorage key
-        function getTodayDateString() {
-            const today = new Date();
-            return today.toISOString().split('T')[0]; // YYYY-MM-DD format
-        }
-
-        // Get the active day for today from localStorage, or default to Torso (1)
-        function getTodayDay() {
-            const todayKey = 'activeDay_' + getTodayDateString();
-            const savedDay = storage.getItem(todayKey);
-            if (savedDay) {
-                return parseInt(savedDay);
-            }
-            return 1; // Default to Torso
-        }
-
-        // Save the active day for today to localStorage
-        function saveActiveDay(day) {
-            const todayKey = 'activeDay_' + getTodayDateString();
-            storage.setItem(todayKey, day.toString());
-        }
-
         // Get the Monday of the week containing a given date
         function getMondayOfWeek(date) {
             const d = new Date(date);

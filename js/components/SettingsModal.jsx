@@ -1,6 +1,6 @@
         const { useState, useRef } = React;
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, day1Exercises, day2Exercises, updateExerciseName, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -11,9 +11,9 @@
                 setTempName(exercise.name);
             };
 
-            const handleSaveEdit = (day, exerciseId) => {
+            const handleSaveEdit = (exerciseId) => {
                 if (tempName.trim()) {
-                    updateExerciseName(day, exerciseId, tempName.trim());
+                    updateExerciseName(exerciseId, tempName.trim());
                 }
                 setEditingExercise(null);
                 setTempName('');
@@ -24,15 +24,11 @@
                 setTempName('');
             };
 
-            if (settingsView === 'exercises-day1' || settingsView === 'exercises-day2') {
-                const day = settingsView === 'exercises-day1' ? 1 : 2;
-                const exercises = day === 1 ? day1Exercises : day2Exercises;
-                const dayName = day === 1 ? 'Torso' : 'Limbs';
-
+            if (settingsView === 'exercises') {
                 return (
                     <div className="modal-overlay" onClick={onClose}>
                         <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
-                            <div className="modal-title">{dayName} Day Exercises</div>
+                            <div className="modal-title">Exercises</div>
 
                             <div style={{ marginBottom: '20px' }}>
                                 {exercises.map((exercise, idx) => (
@@ -62,7 +58,7 @@
                                                 />
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button
-                                                        onClick={() => handleSaveEdit(day, exercise.id)}
+                                                        onClick={() => handleSaveEdit(exercise.id)}
                                                         style={{
                                                             flex: 1,
                                                             padding: '6px',
@@ -97,7 +93,7 @@
                                                     {exercise.name}
                                                 </div>
                                                 <button
-                                                    onClick={() => moveExercise(day, exercise.id, 'up')}
+                                                    onClick={() => moveExercise(exercise.id, 'up')}
                                                     disabled={idx === 0}
                                                     style={{
                                                         padding: '4px 8px',
@@ -109,9 +105,9 @@
                                                     }}
                                                 >
                                                     ↑
-                                                    </button>
+                                                </button>
                                                 <button
-                                                    onClick={() => moveExercise(day, exercise.id, 'down')}
+                                                    onClick={() => moveExercise(exercise.id, 'down')}
                                                     disabled={idx === exercises.length - 1}
                                                     style={{
                                                         padding: '4px 8px',
@@ -156,11 +152,8 @@
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Settings</div>
 
-                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day1')}>
-                            ✏️ Manage Torso Day Exercises
-                        </button>
-                        <button className="modal-btn" onClick={() => setSettingsView('exercises-day2')}>
-                            ✏️ Manage Limbs Day Exercises
+                        <button className="modal-btn" onClick={() => setSettingsView('exercises')}>
+                            ✏️ Manage Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>

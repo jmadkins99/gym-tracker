@@ -1,24 +1,12 @@
 // What this test covers
 // ----------------------
-// Reproduces Jessi's 2026-06-09 backup: his exerciseConfig had stale
-// display names "Dips" (no "Weighted" prefix — replaces overhead tricep
-// extensions) and "Transverse Plane Rows" (Jessi's name for the upper-
-// back-row pattern). Earlier revisions of `migrateJessiToTorsoLimbs` had
-// a classifier that only matched `weighted dip` and `seated row`, so
-// both exercises silently fell through to Limbs — leaving his Torso day
-// visibly short.
+// Reproduces Jessi's 2026-06-09 backup: stale display names like "Dips"
+// (no "Weighted" prefix) and "Transverse Plane Rows" that need to be
+// preserved through the Full Body migration.
 //
-// What we assert: Jessi's full canonical Torso order after migration.
-// His equipment names map onto the personal-app structure:
-//   - Sagittal Plane Pulldowns ← Seated Row Machine slot (sagittal-plane pull)
-//   - Dips ← Weighted Dips slot
-//   - Transverse Plane Rows ← Upper Back Row Machine slot (transverse-plane row)
-//
-// And no Dips / Transverse Plane Rows leaks into Limbs.
-//
-// To verify this test is real: revert any of the classifier changes in
-// `migrateJessiToTorsoLimbs` (drop `\bdip`, `transverse`, or `sagittal`
-// from the relevant regex). The test should fail.
+// Drops 3 movements: Cable Lateral Raises (matches /lateral raise/),
+// Reverse Wrist Curls, Cable Wrist Curls. Everything else flattens into
+// a single day in canonical order.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -47,32 +35,41 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
             return {
                 day1: (cfg.days[1] || []).map(e => e.name),
-                day2: (cfg.days[2] || []).map(e => e.name),
+                day2Exists: !!cfg.days[2],
             };
         });
 
-        const expectedTorso = [
+        const expectedOrder = [
+            'Preacher Curls',
+            'Tricep Pushdown',
             'Chest Flies',
             'Incline Chest Press',
             'Sagittal Plane Pulldowns',
-            'Dips',
-            'Cable Lateral Raises',
             'Frontal Plane Pulldowns',
             'Transverse Plane Rows',
             'Kelso Shrugs',
             'Shoulder Press Machine',
+            'Ab Crunch Machine',
+            'Calf Raises',
+            'Leg Extensions',
+            'Stiff Legged Deadlifts',
+            'Pendulum Squats',
+            'Dips',
         ];
-        eq(after.day1, expectedTorso,
-            'Jessi Torso order mirrors the personal-app split (sagittal pull at slot 3, dips at slot 4, transverse row at slot 7)');
+        eq(after.day1, expectedOrder,
+            'Jessi Full Body order preserves stale "Dips"/"Transverse" names in canonical slots');
 
-        ok(!after.day2.includes('Dips'),
-            'Limbs day must NOT contain "Dips"');
-        ok(!after.day2.includes('Transverse Plane Rows'),
-            'Limbs day must NOT contain "Transverse Plane Rows"');
+        ok(!after.day1.includes('Cable Lateral Raises'),
+            'Cable Lateral Raises dropped from new Full Body program');
+        ok(!after.day1.includes('Reverse Wrist Curls'),
+            'Reverse Wrist Curls dropped from new Full Body program');
+        ok(!after.day1.includes('Cable Wrist Curls'),
+            'Cable Wrist Curls dropped from new Full Body program');
+        eq(after.day2Exists, false, 'no day 2 after Full Body migration');
 
         eq(errors, [], 'no console errors during load');
 
-        console.log('PASS: stale display names "Dips" and "Transverse Plane Rows" classified onto Torso.');
+        console.log('PASS: stale names preserved, dropped movements removed, single day intact.');
     } finally {
         await browser.close();
         await server.stop();

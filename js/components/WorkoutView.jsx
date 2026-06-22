@@ -1,4 +1,4 @@
-        function WorkoutView({ currentDay, setCurrentDay, workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
+        function WorkoutView({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
             const exercises = getCurrentExercises();
             const mainExercises = exercises.filter(e => e.category !== 'Cardio');
             const cardioExercises = exercises.filter(e => e.category === 'Cardio');
@@ -7,13 +7,13 @@
                 const previous = getPreviousWorkout(exercise.id);
                 const isLogged = loggedExercises[exercise.id];
                 const data = workoutData[exercise.id] || {};
-                const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory, currentDay) : false;
-                const prWeightRecovery = ADVANCED_PR_TRACKING ? getPRWeightRecovery(exercise.id, workoutHistory, currentDay) : null;
-                const failedPlateauBusterRetry = ADVANCED_PR_TRACKING && !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id, workoutHistory, currentDay) : null;
-                const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory, currentDay) : null;
-                const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory, currentDay) : null;
-                const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory, currentDay) : null;
-                const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory, currentDay) : null;
+                const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory) : false;
+                const prWeightRecovery = ADVANCED_PR_TRACKING ? getPRWeightRecovery(exercise.id, workoutHistory) : null;
+                const failedPlateauBusterRetry = ADVANCED_PR_TRACKING && !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id, workoutHistory) : null;
+                const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory) : null;
+                const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory) : null;
+                const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory) : null;
+                const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory) : null;
 
                 if (exercise.type === 'standard') {
                     console.log('[renderExercise]', exercise.name, {
@@ -589,30 +589,12 @@
 
             return (
                 <>
-                    <div className="day-selector">
-                        <button
-                            className={`day-btn ${currentDay === 1 ? 'active' : ''}`}
-                            onClick={() => setCurrentDay(1)}
-                        >
-                            Torso
-                        </button>
-                        <button
-                            className={`day-btn ${currentDay === 2 ? 'active' : ''}`}
-                            onClick={() => setCurrentDay(2)}
-                        >
-                            Limbs
-                        </button>
-                    </div>
+                    {mainExercises.map(renderExercise)}
 
-                    <>
-                        <div className="section-title">{currentDay === 1 ? 'Torso' : 'Limbs'}</div>
-                        {mainExercises.map(renderExercise)}
-
-                        {cardioExercises.length > 0 && <>
-                            <div className="section-title">Cardio</div>
-                            {cardioExercises.map(renderExercise)}
-                        </>}
-                    </>
+                    {cardioExercises.length > 0 && <>
+                        <div className="section-title">Cardio</div>
+                        {cardioExercises.map(renderExercise)}
+                    </>}
 
                     <button className="save-btn" onClick={completeDay}>
                         Submit Day and View Breakdown

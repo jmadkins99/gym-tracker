@@ -106,13 +106,7 @@ async function readCard(page, name) {
         });
         eq(persisted, true, 'gympinMode auto-enabled for Jessi-shaped install');
 
-        // Switch to Torso (where Dips and Sagittal Plane Pulldowns land post-migration).
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.day-btn'))
-                .find(b => b.textContent.trim() === 'Torso');
-            btn?.click();
-        });
-        await new Promise(r => setTimeout(r, 400));
+        // Full Body program — single day, no selector to click.
 
         // --- Dips: two-sided plate-loaded ---
         ok(await clickBreakdown(page, 'Dips'), 'Dips card has a Weight Breakdown button');

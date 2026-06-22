@@ -1,4 +1,4 @@
-        function DayBreakdownModal({ onClose, workoutHistory, currentDay, getCurrentExercises, getPreviousWorkout }) {
+        function DayBreakdownModal({ onClose, workoutHistory, getCurrentExercises, getPreviousWorkout }) {
             // Find today's workout
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -6,9 +6,7 @@
             const todayWorkout = workoutHistory.find(w => {
                 const workoutDate = new Date(w.date);
                 workoutDate.setHours(0, 0, 0, 0);
-                const isSameDay = workoutDate.getTime() === today.getTime();
-                const isSameWorkoutDay = w.day === currentDay;
-                return isSameDay && isSameWorkoutDay;
+                return workoutDate.getTime() === today.getTime();
             });
 
             if (!todayWorkout) {
@@ -19,14 +17,12 @@
             const getPreviousWorkoutForExercise = (exerciseId) => {
                 const todayDate = new Date(todayWorkout.date);
 
-                console.log('Looking for previous workout for:', exerciseId, 'Current day type:', currentDay);
-
-                // Find all previous workouts of the same day type with this exercise, most recent first
+                // Find all previous workouts with this exercise, most recent first
                 const candidates = [];
                 const sortedWorkouts = workoutHistory
                     .filter(w => {
                         const workoutDate = new Date(w.date);
-                        return w.day === currentDay && workoutDate < todayDate;
+                        return workoutDate < todayDate;
                     })
                     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -153,7 +149,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">{currentDay === 1 ? 'Torso' : 'Limbs'} Day Breakdown</div>
+                        <div className="modal-title">Full Body Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}

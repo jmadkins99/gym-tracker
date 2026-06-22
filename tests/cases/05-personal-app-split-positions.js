@@ -1,17 +1,14 @@
 // What this test covers
 // ----------------------
-// Locks in the canonical Torso/Limbs exercise order for the personal app.
-// If someone (or a migration) accidentally moves an exercise to the wrong
-// day or shuffles the order, this test screams.
+// Locks in the canonical Full Body exercise order for the personal app.
+// If someone (or a migration) accidentally shuffles or drops an exercise,
+// this test screams.
 //
-// Torso (Day 1): Chest Flies, Incline Chest Flies, Seated Row Machine,
-//                Weighted Dips, Lateral Raises, Frontal Plane Pulldowns,
-//                Upper Back Row Machine, Kelso Shrugs, Shoulder Press Machine
-//
-// Limbs (Day 2): Preacher Curls, Cuffed Tricep Pushdown, Reverse Wrist
-//                Curls, Cable Wrist Curls, Ab Crunch Machine, Seated Calf
-//                Raise Machine, Hip Adduction, Stiff Legged Deadlifts,
-//                Pendulum Squats
+// Full Body (single day): lateral raises, reverse wrist curls, cable
+//   wrist curls, preacher curls, tricep extensions, chest flies, incline
+//   chest press, sagittal plane pulldowns, frontal plane pulldowns,
+//   transverse plane rows, kelso shrugs, shoulder press, ab crunches,
+//   calf raises, hip adduction, stiff legged deadlifts, pendulum squats.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -21,25 +18,21 @@ const { eq } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-const EXPECTED_TORSO = [
-    'Chest Flies',
-    'Incline Chest Flies',
-    'Seated Row Machine',
-    'Weighted Dips',
+const EXPECTED_FULL_BODY = [
     'Lateral Raises',
-    'Frontal Plane Pulldowns',
-    'Upper Back Row Machine',
-    'Kelso Shrugs',
-    'Shoulder Press Machine',
-];
-
-const EXPECTED_LIMBS = [
-    'Preacher Curls',
-    'Cuffed Tricep Pushdown',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    'Ab Crunch Machine',
-    'Seated Calf Raise Machine',
+    'Preacher Curls',
+    'Tricep Extensions',
+    'Chest Flies',
+    'Incline Chest Press',
+    'Sagittal Plane Pulldowns',
+    'Frontal Plane Pulldowns',
+    'Transverse Plane Rows',
+    'Kelso Shrugs',
+    'Shoulder Press',
+    'Ab Crunches',
+    'Calf Raises',
     'Hip Adduction',
     'Stiff Legged Deadlifts',
     'Pendulum Squats',
@@ -56,23 +49,18 @@ const EXPECTED_LIMBS = [
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // Read Torso (the app defaults to Day 1).
-        const torsoNames = (await readCards(page)).map(c => c.name);
-        eq(torsoNames, EXPECTED_TORSO, 'Torso (Day 1) exercises in canonical order');
+        const names = (await readCards(page)).map(c => c.name);
+        eq(names, EXPECTED_FULL_BODY, 'Full Body exercises render in canonical order');
 
-        // Switch to Limbs and read again.
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.day-btn'))
-                .find(b => b.textContent.trim() === 'Limbs');
-            btn?.click();
-        });
-        await new Promise(r => setTimeout(r, 300));
-        const limbsNames = (await readCards(page)).map(c => c.name);
-        eq(limbsNames, EXPECTED_LIMBS, 'Limbs (Day 2) exercises in canonical order');
+        // The Full Body program has no day selector — confirm none rendered.
+        const dayBtnCount = await page.evaluate(() =>
+            document.querySelectorAll('.day-btn').length
+        );
+        eq(dayBtnCount, 0, 'no day-btn selectors visible in Full Body mode');
 
         eq(errors, [], 'no console errors during load');
 
-        console.log('PASS: Torso and Limbs render in canonical order.');
+        console.log('PASS: Full Body renders in canonical order with no day selector.');
     } finally {
         await browser.close();
         await server.stop();

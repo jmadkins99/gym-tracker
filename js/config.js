@@ -1,21 +1,22 @@
         // Week 1 default weights
         const WEEK_1_DEFAULTS = {
-            'chest-flies': '165',
-            'incline-chest-press': '110',
-            'shoulder-press': '126.25',
+            'lateral-raises': '27.5',
+            'reverse-wrist-curls': '30',
+            'cable-wrist-curls': '90',
             'preacher-curls': '56.25',
             'tricep-pushdown': '36.25',
-            'lateral-raises': '27.5',
-            'overhead-tricep': '27.5',
+            'chest-flies': '165',
+            'incline-chest-press': '110',
+            'hammer-row': '117.5',
+            'frontal-pulldowns': '180',
             'upper-back-row': '190',
             'kelso-shrugs': '190',
-            'frontal-pulldowns': '180',
-            'hammer-row': '117.5',
-            'leg-extensions': '240',
-            'leg-curls': '150',
-            'hip-adduction': '120',
+            'shoulder-press': '126.25',
+            'ab-crunch': '140',
             'calf-raise': '180',
-            'ab-crunch': '140'
+            'leg-extensions': '120',
+            'leg-curls': '150',
+            'hip-adduction': '240'
         };
 
         // Tracking mode: only one should be true at a time
@@ -34,7 +35,6 @@
             'preacher-curls': 2.5,
             'tricep-pushdown': 2.5,
             'lateral-raises': 2.5,
-            'overhead-tricep': 2.5,
             'frontal-pulldowns': 2.5,
             'upper-back-row': 2.5,
             'kelso-shrugs': 2.5,
@@ -56,8 +56,7 @@
             'leg-curls': { type: 'two-sided', machineWeight: 0 },
             'hip-adduction': { type: 'one-sided', machineWeight: 0 },
             'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
-            'hammer-row': { type: 'one-sided', machineWeight: 0 },
-            'overhead-tricep': { type: 'two-sided', machineWeight: 0 }
+            'hammer-row': { type: 'one-sided', machineWeight: 0 }
         };
 
         // Pin-stack exercises configuration
@@ -82,32 +81,22 @@
             'reverse-wrist-curls': true
         };
 
-        const DEFAULT_DAY_1_EXERCISES = [
-            // Torso
-            { id: 'chest-flies', name: 'Chest Flies', category: 'Torso', type: 'standard', order: 0 },
-            { id: 'incline-chest-press', name: 'Incline Chest Flies', category: 'Torso', type: 'standard', order: 1 },
-            { id: 'hammer-row', name: 'Seated Row Machine', category: 'Torso', type: 'standard', order: 2 },
-            { id: 'overhead-tricep', name: 'Weighted Dips', category: 'Torso', type: 'standard', order: 3 },
-            { id: 'lateral-raises', name: 'Lateral Raises', category: 'Torso', type: 'standard', order: 4 },
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', category: 'Torso', type: 'standard', order: 5 },
-            { id: 'upper-back-row', name: 'Upper Back Row Machine', category: 'Torso', type: 'standard', order: 6 },
-            { id: 'kelso-shrugs', name: 'Kelso Shrugs', category: 'Torso', type: 'standard', order: 7 },
-            { id: 'shoulder-press', name: 'Shoulder Press Machine', category: 'Torso', type: 'standard', order: 8 },
-            // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
-        ];
-
-        const DEFAULT_DAY_2_EXERCISES = [
-            // Limbs
-            { id: 'preacher-curls', name: 'Preacher Curls', category: 'Limbs', type: 'standard', order: 0 },
-            { id: 'tricep-pushdown', name: 'Cuffed Tricep Pushdown', category: 'Limbs', type: 'standard', order: 1 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', category: 'Limbs', type: 'standard', order: 2 },
-            { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', category: 'Limbs', type: 'standard', order: 3 },
-            { id: 'ab-crunch', name: 'Ab Crunch Machine', category: 'Limbs', type: 'standard', order: 4 },
-            { id: 'calf-raise', name: 'Seated Calf Raise Machine', category: 'Limbs', type: 'standard', order: 5 },
-            { id: 'leg-extensions', name: 'Hip Adduction', category: 'Limbs', type: 'standard', order: 6 },
-            { id: 'leg-curls', name: 'Stiff Legged Deadlifts', category: 'Limbs', type: 'standard', order: 7 },
-            { id: 'hip-adduction', name: 'Pendulum Squats', category: 'Limbs', type: 'standard', order: 8 },
-            // Cardio
-            // { id: 'stairmaster', name: 'Stairmaster', category: 'Cardio', type: 'stairmaster', order: 9 },
+        const DEFAULT_EXERCISES = [
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', type: 'standard', order: 0 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Full Body', type: 'standard', order: 1 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Full Body', type: 'standard', order: 2 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Full Body', type: 'standard', order: 3 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', type: 'standard', order: 4 },
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', type: 'standard', order: 5 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', type: 'standard', order: 6 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Full Body', type: 'standard', order: 7 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', type: 'standard', order: 8 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', type: 'standard', order: 9 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', type: 'standard', order: 10 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', type: 'standard', order: 11 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', type: 'standard', order: 12 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Full Body', type: 'standard', order: 13 },
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Full Body', type: 'standard', order: 14 },
+            { id: 'leg-curls',           name: 'Stiff Legged Deadlifts',   category: 'Full Body', type: 'standard', order: 15 },
+            { id: 'hip-adduction',       name: 'Pendulum Squats',          category: 'Full Body', type: 'standard', order: 16 }
         ];

@@ -66,7 +66,6 @@ async function readCard(page, exerciseName) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // Day 1 is the default open day; no need to switch.
         const clicked = await clickBreakdown(page, 'Kelso Shrugs');
         ok(clicked, 'Kelso Shrugs card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));

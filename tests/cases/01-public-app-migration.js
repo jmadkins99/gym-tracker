@@ -1,19 +1,22 @@
 // What this test covers
 // ----------------------
 // Jessi's public_gym_app holds her exercise list entirely in localStorage.
-// When we change the split (e.g. moving ab-crunch from Torso to Limbs),
-// the `migrateJessiToTorsoLimbs` migration is the thing that actually
-// reshuffles her saved data into the new canonical layout.
+// When we change her split, the `migrateJessiToFullBody` migration is the
+// thing that actually reshuffles her saved data into the new canonical
+// single-day layout.
 //
-// Without this test, a future revision could accidentally leave the
-// migration out of sync with the personal-app program — Jessi's app
-// would silently disagree with mine.
+// Without this test, a future revision could leave the migration out of
+// sync with the personal-app program — Jessi's app would silently
+// disagree.
 //
 // What we assert:
-//   - Day 1 (Torso) ends with the canonical Torso order, including
-//     Lateral Raises right after Weighted Dips and NO Ab Crunch.
-//   - Day 2 (Limbs) ends with the canonical Limbs order, including
-//     Ab Crunch right before Calf Raise and NO Lateral Raises.
+//   - exerciseConfig collapses to a single day (days[1]) in canonical
+//     Full Body order.
+//   - Categories array becomes ['Full Body'].
+//   - The 3 dropped exercises (Lateral Raises, Reverse Wrist Curls,
+//     Cable Wrist Curls) are removed.
+//   - Schedule.workoutDays all remap to dayNumber 1, totalWorkoutDays=1.
+//   - jessiFullBodyMigrationApplied1 flag is set so migration won't re-run.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -30,8 +33,6 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         const page = await browser.newPage();
         const errors = attachConsole(page);
 
-        // First load to establish the page context, then seed + reload so
-        // the app's mount-time migration sees our injected state.
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPublicApp(page, {
             exerciseConfig: jessiPreMigrationConfig(),
@@ -40,38 +41,51 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1500));
 
-        // Read what the migration produced.
         const after = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
-            const flag5 = localStorage.getItem('gym-local:jessiTLMigrationApplied5');
+            const sched = JSON.parse(localStorage.getItem('gym-local:gymScheduleConfig'));
+            const flag = localStorage.getItem('gym-local:jessiFullBodyMigrationApplied1');
             return {
                 day1: (cfg.days[1] || []).map(e => e.name),
-                day2: (cfg.days[2] || []).map(e => e.name),
-                day1Cats: [...new Set((cfg.days[1] || []).map(e => e.category))],
-                day2Cats: [...new Set((cfg.days[2] || []).map(e => e.category))],
-                flag5Set: flag5 === 'true',
+                day2Exists: !!cfg.days[2],
+                categories: cfg.categories,
+                scheduleDays: sched.workoutDays.map(d => d.workoutDayNumber),
+                scheduleTotal: sched.totalWorkoutDays,
+                flagSet: flag === 'true',
             };
         });
 
-        const expectedTorso = [
-            'Chest Flies', 'Incline Chest Press', 'Seated Row', 'Weighted Dips',
-            'Lateral Raises', 'Frontal Plane Pulldowns', 'Upper Back Row',
-            'Kelso Shrugs', 'Shoulder Press',
-        ];
-        const expectedLimbs = [
-            'Preacher Curls', 'Tricep Pushdown', 'Reverse Wrist Curls',
-            'Cable Wrist Curls', 'Ab Crunch', 'Seated Calf Raise',
-            'Hip Adduction', 'Stiff Legged Deadlifts', 'Pendulum Squats',
+        // Canonical Full Body order for Jessi (mirrors personal-app minus the
+        // 3 dropped exercises plus retained pre-existing names like "Seated
+        // Row" rather than "Sagittal Plane Pulldowns" because the fixture
+        // uses Seated Row as its display name).
+        const expectedOrder = [
+            'Preacher Curls',
+            'Tricep Pushdown',
+            'Chest Flies',
+            'Incline Chest Press',
+            'Seated Row',
+            'Frontal Plane Pulldowns',
+            'Upper Back Row',
+            'Kelso Shrugs',
+            'Shoulder Press',
+            'Ab Crunch',
+            'Seated Calf Raise',
+            'Hip Adduction',
+            'Stiff Legged Deadlifts',
+            'Pendulum Squats',
+            'Weighted Dips',
         ];
 
-        eq(after.day1, expectedTorso, 'Torso (Day 1) exercise order after migration');
-        eq(after.day2, expectedLimbs, 'Limbs (Day 2) exercise order after migration');
-        eq(after.day1Cats, ['Torso'], 'all Day 1 exercises tagged Torso');
-        eq(after.day2Cats, ['Limbs'], 'all Day 2 exercises tagged Limbs');
-        ok(after.flag5Set, 'jessiTLMigrationApplied5 flag is set so migration does not re-run');
+        eq(after.day1, expectedOrder, 'Full Body day exercise order after migration');
+        eq(after.day2Exists, false, 'no day 2 — single Full Body day only');
+        eq(after.categories, ['Full Body'], 'categories collapsed to ["Full Body"]');
+        eq(after.scheduleDays, [1, 1, 1, 1], 'all schedule weekdays remapped to dayNumber 1');
+        eq(after.scheduleTotal, 1, 'totalWorkoutDays = 1');
+        ok(after.flagSet, 'jessiFullBodyMigrationApplied1 flag is set so migration does not re-run');
         eq(errors, [], 'no console errors during load');
 
-        console.log('PASS: Jessi migration reshuffled exercises into canonical Torso/Limbs layout.');
+        console.log('PASS: Jessi migration collapsed exercises into single Full Body day.');
     } finally {
         await browser.close();
         await server.stop();

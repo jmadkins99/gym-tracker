@@ -2,14 +2,12 @@
 
         function App() {
             const [currentView, setCurrentView] = useState('workout');
-            const [currentDay, setCurrentDay] = useState(getTodayDay());
             const [workoutData, setWorkoutData] = useState({});
             const [loggedExercises, setLoggedExercises] = useState({});
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
             const [successMessage, setSuccessMessage] = useState('');
-            const [day1Exercises, setDay1Exercises] = useState(DEFAULT_DAY_1_EXERCISES);
-            const [day2Exercises, setDay2Exercises] = useState(DEFAULT_DAY_2_EXERCISES);
+            const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
             const [showSettings, setShowSettings] = useState(false);
             const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
@@ -19,12 +17,6 @@
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
-
-            // Wrapper to change day and save to localStorage (sticky session)
-            const handleDayChange = (day) => {
-                setCurrentDay(day);
-                saveActiveDay(day);
-            };
 
             useEffect(() => {
                 // Migrate existing data to namespaced storage (one-time for existing users)
@@ -37,37 +29,30 @@
                     setWorkoutHistory(history);
                 }
 
-                // Load custom exercise configurations
-                // Check if we need to migrate to Torso/Limbs split
-                const hasMigratedToTL = storage.getItem('migratedToTorsoLimbs2');
-                if (!hasMigratedToTL) {
-                    // Clear old exercise config and use new defaults
+                // Full Body migration: wipe old day1/day2 exercise config so users
+                // pick up the new single-list defaults.
+                const hasMigratedToFB = storage.getItem('migratedToFullBody');
+                if (!hasMigratedToFB) {
                     storage.removeItem('gymExerciseConfig');
-                    storage.setItem('migratedToTorsoLimbs2', 'true');
+                    storage.removeItem('migratedToTorsoLimbs2');
+                    storage.removeItem('activeDay');
+                    storage.setItem('migratedToFullBody', 'true');
                 }
 
                 // Clean up stale migration flag
                 storage.removeItem('removedStairmaster');
 
                 // Check if exercise config needs migration (new exercises added/removed)
-                // This runs after AP migration and handles ongoing exercise list changes
                 const migratedConfig = migrateExerciseConfig();
 
-                // Load the exercise config (either migrated or existing)
                 if (migratedConfig) {
-                    // Use the freshly migrated config
-                    setDay1Exercises(migratedConfig.day1.sort((a, b) => a.order - b.order));
-                    setDay2Exercises(migratedConfig.day2.sort((a, b) => a.order - b.order));
+                    setExercises(migratedConfig.exercises.sort((a, b) => a.order - b.order));
                 } else {
-                    // Load from storage if no migration occurred
                     const savedExercises = storage.getItem('gymExerciseConfig');
                     if (savedExercises) {
                         const config = JSON.parse(savedExercises);
-                        if (config.day1) {
-                            setDay1Exercises(config.day1.sort((a, b) => a.order - b.order));
-                        }
-                        if (config.day2) {
-                            setDay2Exercises(config.day2.sort((a, b) => a.order - b.order));
+                        if (config.exercises) {
+                            setExercises(config.exercises.sort((a, b) => a.order - b.order));
                         }
                     }
                 }
@@ -82,19 +67,15 @@
                 }
             }, []);
 
-            // Update viewing week and migrate workout history when it loads
             useEffect(() => {
                 if (workoutHistory.length > 0 && !hasMigratedWeeks.current) {
-                    // Clear the cached first workout Monday to recalculate based on actual data
                     storage.removeItem('firstWorkoutMonday');
 
-                    // Recalculate week numbers for all workouts
                     const migratedHistory = workoutHistory.map(workout => ({
                         ...workout,
                         week: getWeekNumber(workout.date, workoutHistory)
                     }));
 
-                    // Only update if week numbers changed
                     const hasChanges = migratedHistory.some((workout, idx) =>
                         workout.week !== workoutHistory[idx].week
                     );
@@ -104,15 +85,12 @@
                         storage.setItem('gymWorkoutHistory', JSON.stringify(migratedHistory));
                     }
 
-                    // Set viewing week to current week
                     setViewingWeek(currentWeek);
-
-                    // Mark migration as complete
                     hasMigratedWeeks.current = true;
                 }
-            }, [workoutHistory.length, currentWeek]); // Run when history loads or length changes
+            }, [workoutHistory.length, currentWeek]);
 
-            // Restore logged state and workout data from today's workout
+            // Restore logged state and workout data from today's unsubmitted workout
             useEffect(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -120,18 +98,14 @@
                 const todayWorkout = workoutHistory.find(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    const isSameDay = workoutDate.getTime() === today.getTime();
-                    const isSameWorkoutDay = w.day === currentDay;
-                    return isSameDay && isSameWorkoutDay;
+                    return workoutDate.getTime() === today.getTime();
                 });
 
                 if (todayWorkout && !todayWorkout.submitted) {
-                    // Only restore state if workout hasn't been submitted yet
                     const newLoggedExercises = {};
                     const newWorkoutData = {};
 
                     todayWorkout.exercises.forEach(exercise => {
-                        // Check if exercise has actual data (not just defaults or empty values)
                         let hasData = false;
                         if (exercise.type === 'assault-bike') {
                             hasData = exercise.watts && exercise.watts !== '' && exercise.watts !== 'NA';
@@ -165,15 +139,12 @@
                     setLoggedExercises(newLoggedExercises);
                     setWorkoutData(newWorkoutData);
                 } else {
-                    // Clear logged state if switching to a day with no workout or if workout is submitted
                     setLoggedExercises({});
                     setWorkoutData({});
                 }
-            }, [workoutHistory, currentDay]);
+            }, [workoutHistory]);
 
-            const getCurrentExercises = () => {
-                return currentDay === 1 ? day1Exercises : day2Exercises;
-            };
+            const getCurrentExercises = () => exercises;
 
             const getTodayWorkout = () => {
                 const today = new Date();
@@ -181,9 +152,7 @@
                 return workoutHistory.find(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    const isSameDay = workoutDate.getTime() === today.getTime();
-                    const isSameWorkoutDay = w.day === currentDay;
-                    return isSameDay && isSameWorkoutDay;
+                    return workoutDate.getTime() === today.getTime();
                 });
             };
 
@@ -192,36 +161,21 @@
                 return todayWorkout && todayWorkout.submitted;
             };
 
-            const saveExerciseConfig = (updatedDay1 = day1Exercises, updatedDay2 = day2Exercises) => {
-                const config = {
-                    day1: updatedDay1,
-                    day2: updatedDay2
-                };
-                storage.setItem('gymExerciseConfig', JSON.stringify(config));
+            const saveExerciseConfig = (updated = exercises) => {
+                storage.setItem('gymExerciseConfig', JSON.stringify({ exercises: updated }));
             };
 
-            const updateExerciseName = (day, exerciseId, newName) => {
-                if (day === 1) {
-                    setDay1Exercises(prev => {
-                        const updated = prev.map(ex =>
-                            ex.id === exerciseId ? { ...ex, name: newName } : ex
-                        );
-                        saveExerciseConfig(updated, day2Exercises);
-                        return updated;
-                    });
-                } else {
-                    setDay2Exercises(prev => {
-                        const updated = prev.map(ex =>
-                            ex.id === exerciseId ? { ...ex, name: newName } : ex
-                        );
-                        saveExerciseConfig(day1Exercises, updated);
-                        return updated;
-                    });
-                }
+            const updateExerciseName = (exerciseId, newName) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, name: newName } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
             };
 
-            const moveExercise = (day, exerciseId, direction) => {
-                const exercises = day === 1 ? day1Exercises : day2Exercises;
+            const moveExercise = (exerciseId, direction) => {
                 const currentIndex = exercises.findIndex(ex => ex.id === exerciseId);
 
                 if (direction === 'up' && currentIndex === 0) return;
@@ -231,16 +185,9 @@
                 const reordered = [...exercises];
                 [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
 
-                // Update order values
                 const updated = reordered.map((ex, idx) => ({ ...ex, order: idx }));
-
-                if (day === 1) {
-                    setDay1Exercises(updated);
-                    saveExerciseConfig(updated, day2Exercises);
-                } else {
-                    setDay2Exercises(updated);
-                    saveExerciseConfig(day1Exercises, updated);
-                }
+                setExercises(updated);
+                saveExerciseConfig(updated);
             };
 
             const getPreviousWorkout = (exerciseId) => {
@@ -249,14 +196,13 @@
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Find all previous workouts with this exercise (excluding today's unsubmitted workout)
                 const candidates = [];
                 for (let workout of workoutHistory) {
                     const workoutDate = new Date(workout.date);
                     workoutDate.setHours(0, 0, 0, 0);
 
                     // Skip today's workout only if it's not submitted yet
-                    if (workoutDate.getTime() === today.getTime() && workout.day === currentDay && !workout.submitted) {
+                    if (workoutDate.getTime() === today.getTime() && !workout.submitted) {
                         continue;
                     }
 
@@ -266,29 +212,16 @@
                     }
                 }
 
-                // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
                 for (let candidate of candidates) {
-                    // For assault bike, check watts
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.watts && candidate.watts !== 'NA') {
-                            return candidate;
-                        }
-                    }
-                    // For stairmaster, check time
-                    else if (candidate.type === 'stairmaster') {
-                        if (candidate.time && candidate.time !== 'NA') {
-                            return candidate;
-                        }
-                    }
-                    // For standard/bodyweight exercises, check reps
-                    else {
-                        if (candidate.reps && candidate.reps !== 'NA') {
-                            return candidate;
-                        }
+                        if (candidate.watts && candidate.watts !== 'NA') return candidate;
+                    } else if (candidate.type === 'stairmaster') {
+                        if (candidate.time && candidate.time !== 'NA') return candidate;
+                    } else {
+                        if (candidate.reps && candidate.reps !== 'NA') return candidate;
                     }
                 }
 
-                // If all candidates have NA values (or no valid candidates), return the most recent one
                 return candidates.length > 0 ? candidates[0] : null;
             };
 
@@ -306,7 +239,6 @@
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
                 let data = workoutData[exerciseId] || {};
 
-                // Capture auto-filled weight if user didn't manually enter it
                 if (exercise.type === 'standard' && !data.weight && data.reps) {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
                     if (exerciseCard) {
@@ -316,7 +248,6 @@
                         }
                     }
                 }
-                // For stairmaster, capture displayed time from dropdown if user didn't interact with it
                 if (exercise.type === 'stairmaster' && !data.time) {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
                     const timeSelect = exerciseCard?.querySelector('select');
@@ -327,7 +258,6 @@
 
                 if (!data || Object.keys(data).length === 0) return;
 
-                // Validate data based on exercise type
                 if (exercise.type === 'assault-bike' && !data.watts) return;
                 if (exercise.type === 'stairmaster' && !data.time) return;
                 if (exercise.type === 'bodyweight' && !data.reps) return;
@@ -337,10 +267,6 @@
                 const timestamp = new Date().toISOString();
                 finalData.timestamp = timestamp;
 
-                // Save current day as active day (sticky session)
-                saveActiveDay(currentDay);
-
-                // Find if there's already a workout for today (that hasn't been submitted)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const todayWeek = getWeekNumber(today, workoutHistory);
@@ -348,13 +274,9 @@
                 let existingWorkoutIndex = workoutHistory.findIndex(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    const isSameDay = workoutDate.getTime() === today.getTime();
-                    const isSameWorkoutDay = w.day === currentDay;
-                    const isNotSubmitted = !w.submitted;
-                    return isSameDay && isSameWorkoutDay && isNotSubmitted;
+                    return workoutDate.getTime() === today.getTime() && !w.submitted;
                 });
 
-                // Create exercise object to save
                 let exerciseToSave;
                 if (exercise.type === 'assault-bike') {
                     exerciseToSave = {
@@ -371,7 +293,7 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        level: 'Level 10',  // Hardcoded level
+                        level: 'Level 10',
                         time: finalData.time || ''
                     };
                 } else if (exercise.type === 'bodyweight') {
@@ -396,7 +318,6 @@
 
                 let updatedHistory;
                 if (existingWorkoutIndex !== -1) {
-                    // Update existing workout
                     updatedHistory = [...workoutHistory];
                     const workout = updatedHistory[existingWorkoutIndex];
                     const exerciseIndex = workout.exercises.findIndex(e => e.id === exerciseId);
@@ -407,57 +328,27 @@
                         workout.exercises.push(exerciseToSave);
                     }
 
-                    workout.date = timestamp; // Update to latest timestamp
+                    workout.date = timestamp;
                 } else {
-                    // Create new workout with all exercises initialized to NA
                     const allExercises = getCurrentExercises().map(ex => {
                         if (ex.id === exerciseId) {
                             return exerciseToSave;
                         } else {
-                            // Initialize as NA
                             if (ex.type === 'assault-bike') {
-                                return {
-                                    id: ex.id,
-                                    name: ex.name,
-                                    category: ex.category,
-                                    type: ex.type,
-                                    intensity: '10/20',
-                                    watts: ''
-                                };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '10/20', watts: '' };
                             } else if (ex.type === 'stairmaster') {
-                                return {
-                                    id: ex.id,
-                                    name: ex.name,
-                                    category: ex.category,
-                                    type: ex.type,
-                                    level: 'Level 10',  // Hardcoded level
-                                    time: ''
-                                };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 10', time: '' };
                             } else if (ex.type === 'bodyweight') {
-                                return {
-                                    id: ex.id,
-                                    name: ex.name,
-                                    category: ex.category,
-                                    type: ex.type,
-                                    weight: 'Body Weight',
-                                    reps: ''
-                                };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'Body Weight', reps: '' };
                             } else {
-                                return {
-                                    id: ex.id,
-                                    name: ex.name,
-                                    category: ex.category,
-                                    type: ex.type,
-                                    weight: '',
-                                    reps: ''
-                                };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: '', reps: '' };
                             }
                         }
                     });
 
                     const newWorkout = {
                         date: timestamp,
-                        day: currentDay,
+                        day: 1,
                         week: todayWeek,
                         exercises: allExercises,
                         submitted: false,
@@ -481,7 +372,6 @@
             };
 
             const completeDay = () => {
-                // Find today's workout
                 const todayWorkout = getTodayWorkout();
 
                 if (!todayWorkout) {
@@ -489,24 +379,16 @@
                     return;
                 }
 
-                // Helper to find previous valid workout data for an exercise (up to 5 sessions back, skipping NA)
                 const findPreviousValidExercise = (exerciseId) => {
-                    // Get previous workouts of the same day type, sorted by date descending
-                    // Exclude the current workout being submitted (compare by date string to handle same-day workouts)
                     const previousWorkouts = workoutHistory
                         .filter(w => {
-                            // Same day type
-                            if (w.day !== currentDay) return false;
-                            // Exclude the current workout being submitted
                             if (w.date === todayWorkout.date) return false;
-                            // Must be submitted
                             if (!w.submitted) return false;
                             return true;
                         })
                         .sort((a, b) => new Date(b.date) - new Date(a.date))
-                        .slice(0, 5); // Check up to 5 sessions back
+                        .slice(0, 5);
 
-                    // Find first workout with valid (non-NA) data for this exercise
                     for (const workout of previousWorkouts) {
                         const exercise = workout.exercises.find(e => e.id === exerciseId);
                         if (exercise && exercise.reps && exercise.reps !== 'NA' &&
@@ -517,35 +399,24 @@
                     return null;
                 };
 
-                // Detect exercises for plateau busting
-                // Rules:
-                // - reps < 4: ALWAYS plateau buster
-                // - reps 4-5: plateau buster IF weight <= previous weight AND reps <= previous reps
-                // - reps 6+: no plateau buster (PR system handles this)
                 const plateauBusters = [];
                 console.log('[completeDay] Checking for plateau busters in:', todayWorkout);
                 todayWorkout.exercises.forEach(exercise => {
-                    // Only check standard and bodyweight exercises (those with reps)
                     if ((exercise.type === 'standard' || exercise.type === 'bodyweight') && exercise.reps && exercise.reps !== 'NA') {
                         const reps = parseInt(exercise.reps);
                         console.log('[completeDay] Exercise:', exercise.name, 'Reps:', reps);
 
                         if (isNaN(reps)) return;
 
-                        // Rule 1: Less than 4 reps ALWAYS triggers plateau buster
                         if (reps < 4) {
                             console.log('[completeDay] PLATEAU BUSTER (< 4 reps) detected for:', exercise.name);
                             plateauBusters.push(exercise.id);
                             return;
                         }
 
-                        // Rule 2: 4-5 reps triggers plateau buster only if weight AND reps are not improving
-                        // BUT skip if already in plateau buster recovery (previous session had this as plateau buster)
                         if (reps >= 4 && reps <= 5) {
-                            // Check if previous session already had this as a plateau buster
                             const previousWorkoutWithPlateau = workoutHistory
                                 .filter(w => {
-                                    if (w.day !== currentDay) return false;
                                     if (w.date === todayWorkout.date) return false;
                                     if (!w.submitted) return false;
                                     const ex = w.exercises.find(e => e.id === exercise.id);
@@ -555,7 +426,7 @@
 
                             if (previousWorkoutWithPlateau?.plateauBusters?.includes(exercise.id)) {
                                 console.log('[completeDay] Already in plateau buster recovery, skipping chain for:', exercise.name);
-                                return; // Don't chain - retry system handles this
+                                return;
                             }
 
                             const previousExercise = findPreviousValidExercise(exercise.id);
@@ -563,13 +434,10 @@
                             if (previousExercise) {
                                 const previousReps = parseInt(previousExercise.reps) || 0;
 
-                                // For bodyweight exercises, trigger plateau buster only if reps didn't improve
                                 if (exercise.type === 'bodyweight') {
                                     if (reps <= previousReps) {
                                         console.log('[completeDay] PLATEAU BUSTER (bodyweight 4-5 reps, no rep improvement) detected for:', exercise.name);
                                         plateauBusters.push(exercise.id);
-                                    } else {
-                                        console.log('[completeDay] Neutral (bodyweight 4-5 reps but reps improved) for:', exercise.name);
                                     }
                                     return;
                                 }
@@ -577,28 +445,16 @@
                                 const currentWeight = parseFloat(exercise.weight) || 0;
                                 const previousWeight = parseFloat(previousExercise.weight) || 0;
 
-                                // Plateau buster only if: weight not increased AND reps not increased
                                 if (currentWeight <= previousWeight && reps <= previousReps) {
                                     console.log('[completeDay] PLATEAU BUSTER (4-5 reps, no progress) detected for:', exercise.name);
-                                    console.log('[completeDay] Current:', currentWeight, 'lbs ×', reps, '| Previous:', previousWeight, 'lbs ×', previousReps);
                                     plateauBusters.push(exercise.id);
-                                } else if (currentWeight > previousWeight) {
-                                    console.log('[completeDay] Neutral (4-5 reps but weight increased) for:', exercise.name);
-                                } else {
-                                    console.log('[completeDay] Neutral (4-5 reps but reps improved) for:', exercise.name);
                                 }
-                            } else {
-                                // No previous data - treat 4-5 reps as neutral (not enough history to compare)
-                                console.log('[completeDay] No previous data for comparison, treating as neutral:', exercise.name);
                             }
                         }
-
-                        // Rule 3: 6+ reps - no plateau buster (PR system handles this)
                     }
                 });
                 console.log('[completeDay] Total plateau busters:', plateauBusters);
 
-                // Mark workout as submitted (immutable) and add plateau busters
                 const updatedHistory = workoutHistory.map(w => {
                     if (w === todayWorkout) {
                         return { ...w, submitted: true, plateauBusters };
@@ -609,10 +465,8 @@
                 setWorkoutHistory(updatedHistory);
                 storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
-                // Automatically backup to Downloads folder
                 autoBackup();
 
-                // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
                 setWorkoutData({});
 
@@ -629,63 +483,28 @@
                 today.setHours(0, 0, 0, 0);
                 const todayWeek = getWeekNumber(today, workoutHistory);
 
-                // Get all exercises for the current day
                 const currentDayExercises = getCurrentExercises();
 
-                // Create NA entries for all exercises based on their type
                 const naExercises = currentDayExercises.map(ex => {
                     if (ex.type === 'assault-bike') {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            intensity: '10/20',
-                            watts: 'NA'
-                        };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '10/20', watts: 'NA' };
                     } else if (ex.type === 'stairmaster') {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            level: 'Level 10',  // Hardcoded level
-                            time: 'NA'
-                        };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 10', time: 'NA' };
                     } else if (ex.type === 'bodyweight') {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            weight: 'Body Weight',
-                            reps: 'NA'
-                        };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'Body Weight', reps: 'NA' };
                     } else {
-                        return {
-                            id: ex.id,
-                            name: ex.name,
-                            category: ex.category,
-                            type: ex.type,
-                            weight: 'NA',
-                            reps: 'NA'
-                        };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'NA', reps: 'NA' };
                     }
                 });
 
-                // Find if there's already a workout for today with the same day number (that hasn't been submitted)
                 let existingWorkoutIndex = workoutHistory.findIndex(w => {
                     const workoutDate = new Date(w.date);
                     workoutDate.setHours(0, 0, 0, 0);
-                    const isSameDay = workoutDate.getTime() === today.getTime();
-                    const isSameWorkoutDay = w.day === currentDay;
-                    const isNotSubmitted = !w.submitted;
-                    return isSameDay && isSameWorkoutDay && isNotSubmitted;
+                    return workoutDate.getTime() === today.getTime() && !w.submitted;
                 });
 
                 let updatedHistory;
                 if (existingWorkoutIndex !== -1) {
-                    // Update existing workout with NA values and mark as submitted
                     updatedHistory = [...workoutHistory];
                     updatedHistory[existingWorkoutIndex] = {
                         ...updatedHistory[existingWorkoutIndex],
@@ -695,10 +514,9 @@
                         plateauBusters: []
                     };
                 } else {
-                    // Create new workout and mark as submitted
                     const newWorkout = {
                         date: timestamp,
-                        day: currentDay,
+                        day: 1,
                         week: todayWeek,
                         exercises: naExercises,
                         submitted: true,
@@ -710,14 +528,11 @@
                 setWorkoutHistory(updatedHistory);
                 storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
 
-                // Automatically backup to Downloads folder
                 autoBackup();
 
-                // Reset all log states so exercises act like a fresh day
                 setLoggedExercises({});
                 setWorkoutData({});
 
-                // Show the breakdown modal
                 setShowDayBreakdown(true);
             };
 
@@ -739,10 +554,7 @@
             const exportData = () => {
                 const exportObj = {
                     workoutHistory,
-                    exerciseConfig: {
-                        day1: day1Exercises,
-                        day2: day2Exercises
-                    },
+                    exerciseConfig: { exercises },
                     exportDate: new Date().toISOString()
                 };
                 const dataStr = JSON.stringify(exportObj, null, 2);
@@ -758,10 +570,7 @@
             const autoBackup = () => {
                 const exportObj = {
                     workoutHistory,
-                    exerciseConfig: {
-                        day1: day1Exercises,
-                        day2: day2Exercises
-                    },
+                    exerciseConfig: { exercises },
                     exportDate: new Date().toISOString()
                 };
                 const dataStr = JSON.stringify(exportObj, null, 2);
@@ -784,28 +593,31 @@
                     try {
                         const imported = JSON.parse(e.target.result);
 
-                        // Handle old format (just workout history array) or new format (object with configs)
                         if (Array.isArray(imported)) {
-                            // Old format
                             setWorkoutHistory(imported);
                             storage.setItem('gymWorkoutHistory', JSON.stringify(imported));
                         } else {
-                            // New format
                             if (imported.workoutHistory) {
                                 setWorkoutHistory(imported.workoutHistory);
                                 storage.setItem('gymWorkoutHistory', JSON.stringify(imported.workoutHistory));
                             }
                             if (imported.exerciseConfig) {
-                                if (imported.exerciseConfig.day1) {
-                                    setDay1Exercises(imported.exerciseConfig.day1.sort((a, b) => a.order - b.order));
+                                // New Full Body shape: { exercises: [...] }
+                                if (imported.exerciseConfig.exercises) {
+                                    const sorted = imported.exerciseConfig.exercises.sort((a, b) => a.order - b.order);
+                                    setExercises(sorted);
+                                    storage.setItem('gymExerciseConfig', JSON.stringify({ exercises: sorted }));
+                                } else if (imported.exerciseConfig.day1 || imported.exerciseConfig.day2) {
+                                    // Legacy split shape: merge day1+day2 into a single list, then
+                                    // let the next migrateExerciseConfig pass reconcile against DEFAULT_EXERCISES.
+                                    const merged = [
+                                        ...(imported.exerciseConfig.day1 || []),
+                                        ...(imported.exerciseConfig.day2 || [])
+                                    ];
+                                    const reindexed = merged.map((ex, idx) => ({ ...ex, order: idx, category: 'Full Body' }));
+                                    setExercises(reindexed);
+                                    storage.setItem('gymExerciseConfig', JSON.stringify({ exercises: reindexed }));
                                 }
-                                if (imported.exerciseConfig.day2) {
-                                    setDay2Exercises(imported.exerciseConfig.day2.sort((a, b) => a.order - b.order));
-                                }
-                                storage.setItem('gymExerciseConfig', JSON.stringify({
-                                    day1: imported.exerciseConfig.day1,
-                                    day2: imported.exerciseConfig.day2
-                                }));
                             }
                         }
 
@@ -829,8 +641,7 @@
                         setWorkoutHistory([]);
                         setWorkoutData({});
                         setLoggedExercises({});
-                        setDay1Exercises(DEFAULT_DAY_1_EXERCISES);
-                        setDay2Exercises(DEFAULT_DAY_2_EXERCISES);
+                        setExercises(DEFAULT_EXERCISES);
                         setShowSettings(false);
                         setSuccessMessage('All data has been reset');
                         setShowSuccess(true);
@@ -861,8 +672,7 @@
                             onExport={exportData}
                             onImport={importData}
                             onReset={resetData}
-                            day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
+                            exercises={exercises}
                             updateExerciseName={updateExerciseName}
                             moveExercise={moveExercise}
                         />
@@ -872,7 +682,6 @@
                         <DayBreakdownModal
                             onClose={() => setShowDayBreakdown(false)}
                             workoutHistory={workoutHistory}
-                            currentDay={currentDay}
                             getCurrentExercises={getCurrentExercises}
                             getPreviousWorkout={getPreviousWorkout}
                         />
@@ -886,8 +695,7 @@
                                 setEditingWorkout(null);
                             }}
                             onSave={updateWorkout}
-                            day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
+                            exercises={exercises}
                         />
                     )}
 
@@ -915,8 +723,6 @@
 
                     <div className="content">
                         {currentView === 'workout' && <WorkoutView
-                            currentDay={currentDay}
-                            setCurrentDay={handleDayChange}
                             workoutData={workoutData}
                             loggedExercises={loggedExercises}
                             handleInputChange={handleInputChange}
@@ -935,8 +741,7 @@
                             viewingWeek={viewingWeek}
                             setViewingWeek={setViewingWeek}
                             currentWeek={currentWeek}
-                            day1Exercises={day1Exercises}
-                            day2Exercises={day2Exercises}
+                            exercises={exercises}
                             onEditWorkout={(workout) => {
                                 setEditingWorkout(workout);
                                 setShowEditWorkout(true);

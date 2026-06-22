@@ -61,21 +61,13 @@ async function readCard(page, exerciseName) {
         // three set entries should appear and warmup 2 + top set should overflow.
         const workoutHistory = [
             workoutEntry({
-                date: '2026-05-27T20:00:00Z', day: 2,
+                date: '2026-05-27T20:00:00Z', day: 1,
                 exercises: [{ id: 'cable-wrist-curls', name: 'Cable Wrist Curls', weight: '115', reps: '5' }],
             }),
         ];
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-
-        // Switch to Limbs day (where Cable Wrist Curls lives).
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.day-btn'))
-                .find(b => b.textContent.trim() === 'Limbs');
-            btn?.click();
-        });
-        await new Promise(r => setTimeout(r, 300));
 
         const clicked = await clickBreakdown(page, 'Cable Wrist Curls');
         ok(clicked, 'Cable Wrist Curls card has a Weight Breakdown button');

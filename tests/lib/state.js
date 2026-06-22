@@ -13,6 +13,7 @@ async function seedPersonalApp(page, { workoutHistory, ns = DEFAULT_NS } = {}) {
         if (hist) localStorage.setItem(ns + 'gymWorkoutHistory', JSON.stringify(hist));
         localStorage.removeItem(ns + 'gymExerciseConfig');
         localStorage.removeItem(ns + 'migratedToTorsoLimbs2');
+        localStorage.removeItem(ns + 'migratedToFullBody');
     }, ns, workoutHistory || null);
 }
 
@@ -26,12 +27,13 @@ async function seedPublicApp(page, { exerciseConfig, workoutHistory, schedule, n
         if (sched) localStorage.setItem(ns + 'gymScheduleConfig', JSON.stringify(sched));
         // Bypass the new-user wizard.
         localStorage.setItem(ns + 'gymSetupCompleted', JSON.stringify({ version: 1, completed: true }));
-        // Force the Jessi TL migration to re-run.
+        // Force the Jessi Full Body migration to re-run.
+        localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied1');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied5');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied4');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied3');
         localStorage.removeItem(ns + 'jessiAPMigrationApplied');
-        // Auto-enable of gympinMode for AP/TL configs is its own one-shot.
+        // Auto-enable of gympinMode for AP/TL/FB configs is its own one-shot.
         localStorage.removeItem(ns + 'jessiGympinEnabled');
     }, ns, exerciseConfig || null, workoutHistory || null, schedule || null);
 }

@@ -3,39 +3,31 @@
             const keysToMigrate = ['gymWorkoutHistory', 'gymExerciseConfig', 'lastBackupReminder'];
 
             keysToMigrate.forEach(key => {
-                // Check if data exists in the old location (without namespace)
                 const oldData = localStorage.getItem(key);
-                // Check if data already exists in the new location (with namespace)
                 const newData = storage.getItem(key);
 
-                // Only migrate if old data exists and new location is empty
                 if (oldData && !newData) {
                     storage.setItem(key, oldData);
-                    // Optionally remove the old data to clean up
-                    // Commenting this out to be safe - users can manually clear old data later
-                    // localStorage.removeItem(key);
                 }
             });
         }
 
-        // Migrate exercise config when exercises are added/removed from defaults
-        // This ensures new exercises show up for existing users
+        // Reconcile saved exercise config against DEFAULT_EXERCISES.
+        // - Adds new defaults the user doesn't have.
+        // - Drops saved exercises that are no longer in defaults.
+        // - Preserves user-renamed display names by id.
+        // Returns the reconciled config, or null if no changes are needed.
         function migrateExerciseConfig() {
             const savedConfig = storage.getItem('gymExerciseConfig');
-            if (!savedConfig) return null; // No saved config, will use defaults
+            if (!savedConfig) return null;
 
             try {
                 const config = JSON.parse(savedConfig);
-                const savedDay1 = config.day1 || [];
-                const savedDay2 = config.day2 || [];
+                const savedExercises = config.exercises || [];
 
-                const savedDay1ById = new Map(savedDay1.map(e => [e.id, e]));
-                const savedDay2ById = new Map(savedDay2.map(e => [e.id, e]));
-
-                const savedDay1Ids = new Set(savedDay1.map(e => e.id));
-                const savedDay2Ids = new Set(savedDay2.map(e => e.id));
-                const defaultDay1Ids = new Set(DEFAULT_DAY_1_EXERCISES.map(e => e.id));
-                const defaultDay2Ids = new Set(DEFAULT_DAY_2_EXERCISES.map(e => e.id));
+                const savedById = new Map(savedExercises.map(e => [e.id, e]));
+                const savedIds = new Set(savedExercises.map(e => e.id));
+                const defaultIds = new Set(DEFAULT_EXERCISES.map(e => e.id));
 
                 const setsEqual = (a, b) => {
                     if (a.size !== b.size) return false;
@@ -45,41 +37,34 @@
                     return true;
                 };
 
-                const day1Match = setsEqual(savedDay1Ids, defaultDay1Ids);
-                const day2Match = setsEqual(savedDay2Ids, defaultDay2Ids);
-
-                if (day1Match && day2Match) {
+                if (setsEqual(savedIds, defaultIds)) {
                     return null; // No migration needed
                 }
 
                 console.log('[Exercise Config Migration] Changes detected, migrating...');
 
-                const migrateDay = (savedById, defaultExercises, dayName) => {
-                    const result = [];
-                    for (const defaultEx of defaultExercises) {
-                        if (savedById.has(defaultEx.id)) {
-                            const saved = savedById.get(defaultEx.id);
-                            result.push({ ...defaultEx, name: saved.name });
-                        } else {
-                            result.push({ ...defaultEx });
-                            console.log(`[${dayName}] Added new exercise: ${defaultEx.name}`);
-                        }
+                const result = [];
+                for (const defaultEx of DEFAULT_EXERCISES) {
+                    if (savedById.has(defaultEx.id)) {
+                        const saved = savedById.get(defaultEx.id);
+                        // Preserve the user's renamed display name; everything else
+                        // (category, type, order) comes from defaults.
+                        result.push({ ...defaultEx, name: saved.name });
+                    } else {
+                        result.push({ ...defaultEx });
+                        console.log(`[Migration] Added new exercise: ${defaultEx.name}`);
                     }
-                    for (const [id, saved] of savedById) {
-                        if (!defaultExercises.some(d => d.id === id)) {
-                            console.log(`[${dayName}] Removed exercise: ${saved.name} (id: ${id})`);
-                        }
+                }
+                for (const [id, saved] of savedById) {
+                    if (!defaultIds.has(id)) {
+                        console.log(`[Migration] Removed exercise: ${saved.name} (id: ${id})`);
                     }
-                    return result;
-                };
+                }
 
-                const newDay1 = migrateDay(savedDay1ById, DEFAULT_DAY_1_EXERCISES, 'Day 1 (Torso)');
-                const newDay2 = migrateDay(savedDay2ById, DEFAULT_DAY_2_EXERCISES, 'Day 2 (Limbs)');
-
-                const newConfig = { day1: newDay1, day2: newDay2 };
+                const newConfig = { exercises: result };
                 storage.setItem('gymExerciseConfig', JSON.stringify(newConfig));
 
-                console.log('[Exercise Config Migration] Complete! Exercise list updated to match defaults.');
+                console.log('[Exercise Config Migration] Complete!');
 
                 return newConfig;
             } catch (e) {

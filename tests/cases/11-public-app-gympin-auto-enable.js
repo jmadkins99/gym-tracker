@@ -1,17 +1,17 @@
 // What this test covers
 // ----------------------
 // Jessi shouldn't need to load the app with ?gympin=on. Any user whose
-// exerciseConfig has Anterior/Posterior or Torso/Limbs categories (the
-// signal we already use to identify Jessi-shaped installs in the TL
-// migration) gets gympinMode auto-enabled once.
+// exerciseConfig has Anterior/Posterior or Torso/Limbs or Full Body
+// categories (the signal we use to identify Jessi-shaped installs) gets
+// gympinMode auto-enabled once.
 //
 // What we assert:
 //   - After loading a Jessi-shaped config WITHOUT any URL param,
 //     gympinMode persists to exerciseConfig as true.
 //   - The one-shot flag `jessiGympinEnabled` gets set so it doesn't
 //     re-run on every page load.
-//   - Cable Wrist Curls renders the Weight Breakdown button without
-//     the user doing anything.
+//   - After the Full Body migration runs, Kelso Shrugs (still in her
+//     program) renders the Weight Breakdown button without any URL param.
 //
 // To verify this test is real: remove the `enableGympinForJessi()` call
 // from the App mount useEffect. Test should fail.
@@ -63,29 +63,22 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         eq(state.flagSet, 'true',
             'jessiGympinEnabled flag is set so the one-shot does not re-run');
 
-        // Switch to Limbs day and confirm the breakdown button now renders
-        // without any URL param having been used.
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.day-btn'))
-                .find(b => b.textContent.trim() === 'Limbs');
-            btn?.click();
-        });
-        await new Promise(r => setTimeout(r, 400));
-
+        // Kelso Shrugs stays in Jessi's Full Body program — confirm the
+        // breakdown button is visible without any URL param.
         const hasButton = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Cable Wrist Curls') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Kelso Shrugs') {
                     return !!Array.from(c.querySelectorAll('button'))
                         .find(b => b.textContent.includes('Weight Breakdown'));
                 }
             }
             return false;
         });
-        ok(hasButton, 'Cable Wrist Curls card shows the Weight Breakdown button after auto-enable');
+        ok(hasButton, 'Kelso Shrugs card shows the Weight Breakdown button after auto-enable');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: AP/TL-shaped install auto-enables gympinMode without ?gympin param.');
+        console.log('PASS: AP/TL/FB-shaped install auto-enables gympinMode without ?gympin param.');
     } finally {
         await browser.close();
         await server.stop();
