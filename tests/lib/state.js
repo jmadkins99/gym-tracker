@@ -14,6 +14,7 @@ async function seedPersonalApp(page, { workoutHistory, ns = DEFAULT_NS } = {}) {
         localStorage.removeItem(ns + 'gymExerciseConfig');
         localStorage.removeItem(ns + 'migratedToTorsoLimbs2');
         localStorage.removeItem(ns + 'migratedToFullBody');
+        localStorage.removeItem(ns + 'migratedToFullBody2');
     }, ns, workoutHistory || null);
 }
 
@@ -28,6 +29,7 @@ async function seedPublicApp(page, { exerciseConfig, workoutHistory, schedule, n
         // Bypass the new-user wizard.
         localStorage.setItem(ns + 'gymSetupCompleted', JSON.stringify({ version: 1, completed: true }));
         // Force the Jessi Full Body migration to re-run.
+        localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied4');
         localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied3');
         localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied2');
         localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied1');

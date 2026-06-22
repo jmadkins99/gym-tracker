@@ -73,7 +73,7 @@ const DROPPED_NAMES = [
             const cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
             return {
                 gympinMode: cfg.gympinMode,
-                fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied3'),
+                fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied4'),
                 gympinFlag: localStorage.getItem('gym-local:jessiGympinEnabled'),
                 day1: (cfg.days?.[1] || []).map(e => e.name),
                 day2Exists: !!cfg.days?.[2],
@@ -82,7 +82,7 @@ const DROPPED_NAMES = [
         });
         eq(state.gympinMode, true, 'gympinMode auto-enabled on Jessi-shaped install');
         eq(state.gympinFlag, 'true', 'jessiGympinEnabled flag set so auto-enable does not re-fire');
-        eq(state.fbFlag, 'true',     'Full Body migration ran (flag3 set)');
+        eq(state.fbFlag, 'true',     'Full Body migration ran (flag4 set)');
         eq(state.day2Exists, false,  'no day 2 — single Full Body day only');
         eq(state.categories, ['Full Body'], 'categories collapsed to ["Full Body"]');
 

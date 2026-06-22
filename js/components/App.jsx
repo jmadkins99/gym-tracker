@@ -31,12 +31,13 @@
 
                 // Full Body migration: wipe old day1/day2 exercise config so users
                 // pick up the new single-list defaults.
-                const hasMigratedToFB = storage.getItem('migratedToFullBody');
+                const hasMigratedToFB = storage.getItem('migratedToFullBody2');
                 if (!hasMigratedToFB) {
                     storage.removeItem('gymExerciseConfig');
+                    storage.removeItem('migratedToFullBody');
                     storage.removeItem('migratedToTorsoLimbs2');
                     storage.removeItem('activeDay');
-                    storage.setItem('migratedToFullBody', 'true');
+                    storage.setItem('migratedToFullBody2', 'true');
                 }
 
                 // Clean up stale migration flag
