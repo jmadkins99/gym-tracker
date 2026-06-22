@@ -28,6 +28,7 @@ async function seedPublicApp(page, { exerciseConfig, workoutHistory, schedule, n
         // Bypass the new-user wizard.
         localStorage.setItem(ns + 'gymSetupCompleted', JSON.stringify({ version: 1, completed: true }));
         // Force the Jessi Full Body migration to re-run.
+        localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied2');
         localStorage.removeItem(ns + 'jessiFullBodyMigrationApplied1');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied5');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied4');

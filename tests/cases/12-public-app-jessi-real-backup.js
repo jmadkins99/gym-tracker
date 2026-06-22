@@ -40,16 +40,16 @@ const EXPECTED_BREAKDOWN_NAMES = [
     'Shoulder Press Machine',
     'Ab Crunch Machine',
     'Calf Raises',
-    'Leg Extensions',
+    'Hip Adduction',
     'Stiff Legged Deadlifts',
     'Pendulum Squats',
-    'Dips',
 ];
 
 const DROPPED_NAMES = [
     'Cable Lateral Raises',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
+    'Dips',
 ];
 
 (async () => {
@@ -73,7 +73,7 @@ const DROPPED_NAMES = [
             const cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
             return {
                 gympinMode: cfg.gympinMode,
-                fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied1'),
+                fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied2'),
                 gympinFlag: localStorage.getItem('gym-local:jessiGympinEnabled'),
                 day1: (cfg.days?.[1] || []).map(e => e.name),
                 day2Exists: !!cfg.days?.[2],
@@ -82,7 +82,7 @@ const DROPPED_NAMES = [
         });
         eq(state.gympinMode, true, 'gympinMode auto-enabled on Jessi-shaped install');
         eq(state.gympinFlag, 'true', 'jessiGympinEnabled flag set so auto-enable does not re-fire');
-        eq(state.fbFlag, 'true',     'Full Body migration ran (flag1 set)');
+        eq(state.fbFlag, 'true',     'Full Body migration ran (flag2 set)');
         eq(state.day2Exists, false,  'no day 2 — single Full Body day only');
         eq(state.categories, ['Full Body'], 'categories collapsed to ["Full Body"]');
 
@@ -90,9 +90,10 @@ const DROPPED_NAMES = [
             ok(!state.day1.includes(dropped),
                 `"${dropped}" must be dropped from the new Full Body program`);
         }
-        ok(state.day1.includes('Dips'), 'Dips preserved in Full Body program');
         ok(state.day1.includes('Transverse Plane Rows'),
             'Transverse Plane Rows preserved in Full Body program');
+        ok(state.day1.includes('Hip Adduction'),
+            'Leg Extensions renamed to "Hip Adduction" to match personal-app display');
 
         // Every classified exercise has a Weight Breakdown button.
         const namesWithButton = await page.evaluate(() => {

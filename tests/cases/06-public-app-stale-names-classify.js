@@ -51,13 +51,12 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
             'Shoulder Press Machine',
             'Ab Crunch Machine',
             'Calf Raises',
-            'Leg Extensions',
+            'Hip Adduction',
             'Stiff Legged Deadlifts',
             'Pendulum Squats',
-            'Dips',
         ];
         eq(after.day1, expectedOrder,
-            'Jessi Full Body order preserves stale "Dips"/"Transverse" names in canonical slots');
+            'Jessi Full Body order preserves stale "Transverse" name, drops Dips, renames Leg Extensions → Hip Adduction');
 
         ok(!after.day1.includes('Cable Lateral Raises'),
             'Cable Lateral Raises dropped from new Full Body program');
@@ -65,6 +64,10 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
             'Reverse Wrist Curls dropped from new Full Body program');
         ok(!after.day1.includes('Cable Wrist Curls'),
             'Cable Wrist Curls dropped from new Full Body program');
+        ok(!after.day1.includes('Dips'),
+            'Dips dropped from new Full Body program (matches the overhead-tricep drop on personal)');
+        ok(!after.day1.includes('Leg Extensions'),
+            'Leg Extensions renamed to "Hip Adduction" to match personal-app display');
         eq(after.day2Exists, false, 'no day 2 after Full Body migration');
 
         eq(errors, [], 'no console errors during load');

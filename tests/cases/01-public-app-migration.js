@@ -44,7 +44,7 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         const after = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
             const sched = JSON.parse(localStorage.getItem('gym-local:gymScheduleConfig'));
-            const flag = localStorage.getItem('gym-local:jessiFullBodyMigrationApplied1');
+            const flag = localStorage.getItem('gym-local:jessiFullBodyMigrationApplied2');
             return {
                 day1: (cfg.days[1] || []).map(e => e.name),
                 day2Exists: !!cfg.days[2],
@@ -74,7 +74,6 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
             'Hip Adduction',
             'Stiff Legged Deadlifts',
             'Pendulum Squats',
-            'Weighted Dips',
         ];
 
         eq(after.day1, expectedOrder, 'Full Body day exercise order after migration');
@@ -82,7 +81,7 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         eq(after.categories, ['Full Body'], 'categories collapsed to ["Full Body"]');
         eq(after.scheduleDays, [1, 1, 1, 1], 'all schedule weekdays remapped to dayNumber 1');
         eq(after.scheduleTotal, 1, 'totalWorkoutDays = 1');
-        ok(after.flagSet, 'jessiFullBodyMigrationApplied1 flag is set so migration does not re-run');
+        ok(after.flagSet, 'jessiFullBodyMigrationApplied2 flag is set so migration does not re-run');
         eq(errors, [], 'no console errors during load');
 
         console.log('PASS: Jessi migration collapsed exercises into single Full Body day.');
