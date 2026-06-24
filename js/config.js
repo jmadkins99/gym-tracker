@@ -29,22 +29,22 @@
         // 5 lbs for two-sided plate-loaded (= 2.5/side per move); 2.5 lbs for everything else.
         const PR_WEIGHT_INCREMENTS = {
             'chest-flies': 1.25,
-            'incline-chest-press': 5,
-            'leg-curls': 5,
-            'shoulder-press': 2.5,
-            'preacher-curls': 2.5,
-            'tricep-pushdown': 2.5,
-            'lateral-raises': 2.5,
-            'frontal-pulldowns': 2.5,
-            'upper-back-row': 2.5,
-            'kelso-shrugs': 2.5,
-            'hammer-row': 2.5,
-            'leg-extensions': 2.5,
-            'hip-adduction': 2.5,
-            'calf-raise': 2.5,
-            'ab-crunch': 2.5,
-            'cable-wrist-curls': 2.5,
-            'reverse-wrist-curls': 2.5
+            'incline-chest-press': 2.5,
+            'leg-curls': 10,
+            'shoulder-press': 1.25,
+            'preacher-curls': 1.25,
+            'tricep-pushdown': 1.25,
+            'lateral-raises': 1.25,
+            'frontal-pulldowns': 1.25,
+            'upper-back-row': 1.25,
+            'kelso-shrugs': 1.25,
+            'hammer-row': 1.25,
+            'leg-extensions': 1.25,
+            'hip-adduction': 1.25,
+            'calf-raise': 1.25,
+            'ab-crunch': 1.25,
+            'cable-wrist-curls': 1.25,
+            'reverse-wrist-curls': 1.25
         };
 
         // Plate-loaded exercises configuration
