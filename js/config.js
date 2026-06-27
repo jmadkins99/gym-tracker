@@ -69,6 +69,8 @@
         //   weights above `maxPin` show "pin at max + plate breakdown" for the
         //   excess. overflowPlateMode is 'one-sided' or 'two-sided'.
         const PIN_STACK_EXERCISES = {
+            'curls-shoulder-extension': true,
+            'overhead-tricep-extensions': true,
             'chest-flies': true,
             'shoulder-press': true,
             'tricep-pushdown': true,
