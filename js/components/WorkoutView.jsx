@@ -304,7 +304,11 @@
                         </div>
                         {isBreakdownExpanded && (() => {
                             // Get current weight from input field (same logic as the input field's value)
-                            const displayedWeight = data.weight !== undefined ? data.weight : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || defaultWeight || '');
+                            // Fall back to the configured default weight even when this
+                            // isn't Week 1, so the breakdown renders before the very first
+                            // log of an exercise (otherwise currentWeight is 0 and the whole
+                            // breakdown returns null below).
+                            const displayedWeight = data.weight !== undefined ? data.weight : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || defaultWeight || WEEK_1_DEFAULTS[exercise.id] || '');
                             const currentWeight = parseFloat(displayedWeight) || 0;
 
                             if (currentWeight === 0) return null;

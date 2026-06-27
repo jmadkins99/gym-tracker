@@ -1,5 +1,7 @@
         // Week 1 default weights
         const WEEK_1_DEFAULTS = {
+            'curls-shoulder-extension': '25',
+            'overhead-tricep-extensions': '47.5',
             'lateral-raises': '27.5',
             'reverse-wrist-curls': '30',
             'cable-wrist-curls': '90',
