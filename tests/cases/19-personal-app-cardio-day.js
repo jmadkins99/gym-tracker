@@ -10,7 +10,7 @@
 //      Assault Bike — in that order.
 //   3. First-session defaults: squats reps pre-fill 50 with weight locked to
 //      "BW"; stairmaster defaults to Level 7 / 10:00; assault bike intensity
-//      locked at 10/20 with an editable watts field.
+//      locked at 20/40 with an editable watts field.
 //   4. Switching back to Full Body restores the full-body list.
 
 const path = require('path');
@@ -88,7 +88,7 @@ async function cardNames(page) {
 
         const bike = await readCardioCard(page, 'Assault Bike');
         ok(bike, 'assault bike card present');
-        ok(bike.lockedInputs.includes('10/20'), 'assault bike intensity locked at 10/20');
+        ok(bike.lockedInputs.includes('20/40'), 'assault bike intensity locked at 20/40');
         ok(bike.hasNumber, 'assault bike has an editable watts input');
 
         // 4. Back to Full Body.

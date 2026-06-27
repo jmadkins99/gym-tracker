@@ -66,7 +66,7 @@
                                     <input
                                         type="text"
                                         className="input-field"
-                                        value="10/20"
+                                        value="20/40"
                                         disabled
                                     />
                                 </div>

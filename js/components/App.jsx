@@ -303,7 +303,7 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        intensity: '10/20',
+                        intensity: '20/40',
                         watts: finalData.watts || ''
                     };
                 } else if (exercise.type === 'stairmaster') {
@@ -354,7 +354,7 @@
                             return exerciseToSave;
                         } else {
                             if (ex.type === 'assault-bike') {
-                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '10/20', watts: '' };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', watts: '' };
                             } else if (ex.type === 'stairmaster') {
                                 return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: '' };
                             } else if (ex.type === 'bodyweight') {
@@ -506,7 +506,7 @@
 
                 const naExercises = currentDayExercises.map(ex => {
                     if (ex.type === 'assault-bike') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '10/20', watts: 'NA' };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', watts: 'NA' };
                     } else if (ex.type === 'stairmaster') {
                         return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: 'NA' };
                     } else if (ex.type === 'bodyweight') {

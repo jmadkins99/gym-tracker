@@ -102,7 +102,7 @@
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <input
                                                 type="text"
-                                                value="10/20"
+                                                value="20/40"
                                                 disabled
                                                 style={{
                                                     flex: 1,
