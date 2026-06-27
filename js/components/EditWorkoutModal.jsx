@@ -2,7 +2,12 @@
 
         function EditWorkoutModal({ workout, onClose, onSave, exercises }) {
             const [editedExercises, setEditedExercises] = useState(workout.exercises);
-            const allExercises = exercises;
+            // Use the full-body config only for full-body-era workouts; otherwise
+            // (e.g. a Cardio-day workout) edit the exercises stored on the workout
+            // itself, so cardio sessions render their own cards. Mirrors WeeklyView.
+            const fbExerciseIds = new Set(exercises.map(e => e.id));
+            const isFullBodyEra = workout.exercises.every(e => fbExerciseIds.has(e.id));
+            const allExercises = isFullBodyEra ? exercises : workout.exercises;
 
             const handleExerciseChange = (exerciseId, field, value) => {
                 setEditedExercises(prev => {
@@ -68,7 +73,7 @@
             } else if (workoutDate < fbSplitDate) {
                 dayName = workout.day === 1 ? 'Torso' : 'Limbs';
             } else {
-                dayName = 'Full Body';
+                dayName = workout.day === 'cardio' ? 'Cardio' : 'Full Body';
             }
 
             return (
@@ -111,6 +116,7 @@
                                             <input
                                                 type="number"
                                                 placeholder="Watts"
+                                                data-field="watts"
                                                 value={editedExercise?.watts || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'watts', e.target.value)}
                                                 style={{
@@ -125,10 +131,10 @@
                                         </div>
                                     ) : exercise.type === 'stairmaster' ? (
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                            <input
-                                                type="text"
-                                                value="Level 10"
-                                                disabled
+                                            <select
+                                                data-field="level"
+                                                value={editedExercise?.level || 'Level 7'}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'level', e.target.value)}
                                                 style={{
                                                     flex: 1,
                                                     padding: '8px',
@@ -137,8 +143,13 @@
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
-                                            />
+                                            >
+                                                {['Level 7', 'Level 8', 'Level 9', 'Level 10'].map(level => (
+                                                    <option key={level} value={level}>{level}</option>
+                                                ))}
+                                            </select>
                                             <select
+                                                data-field="time"
                                                 value={editedExercise?.time || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'time', e.target.value)}
                                                 style={{
@@ -153,8 +164,8 @@
                                                 <option value="">Select time</option>
                                                 {(() => {
                                                     const timeOptions = [];
-                                                    for (let minutes = 5; minutes <= 20; minutes++) {
-                                                        for (let seconds = 0; seconds < 60; seconds += 15) {
+                                                    for (let minutes = 10; minutes <= 20; minutes++) {
+                                                        for (let seconds = 0; seconds < 60; seconds += 30) {
                                                             if (minutes === 20 && seconds > 0) break;
                                                             const time = formatSecondsToTime(minutes * 60 + seconds);
                                                             timeOptions.push(<option key={time} value={time}>{time}</option>);
@@ -168,7 +179,7 @@
                                         <div style={{ display: 'flex', gap: '8px' }}>
                                             <input
                                                 type="text"
-                                                value="Body Weight"
+                                                value="BW"
                                                 disabled
                                                 style={{
                                                     flex: 1,
@@ -182,6 +193,7 @@
                                             <input
                                                 type="number"
                                                 placeholder="Reps"
+                                                data-field="reps"
                                                 value={editedExercise?.reps || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
                                                 style={{

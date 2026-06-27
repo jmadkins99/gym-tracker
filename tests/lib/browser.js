@@ -67,6 +67,19 @@ async function waitForApp(page, timeoutMs = 8000) {
     await new Promise(r => setTimeout(r, 250));
 }
 
+// Selects the Full Body / Cardio day type via the in-app toggle, so tests are
+// independent of the real weekday (the view otherwise defaults to cardio on
+// Tue/Thu). No-op on the public app, which has no toggle.
+async function selectDayType(page, type) {
+    const clicked = await page.evaluate((t) => {
+        const btn = document.querySelector(`[data-day-type="${t}"]`);
+        if (btn) { btn.click(); return true; }
+        return false;
+    }, type);
+    if (clicked) await new Promise(r => setTimeout(r, 150));
+    return clicked;
+}
+
 // Reads exercise cards from the current view. Each card describes what
 // the user actually sees: name, "Last:" text, default weight value, etc.
 async function readCards(page) {
@@ -88,4 +101,4 @@ async function readCards(page) {
     });
 }
 
-module.exports = { launch, attachConsole, waitForApp, readCards };
+module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType };

@@ -12,7 +12,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -41,6 +41,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
+        await selectDayType(page, 'fullbody');
 
         const cards = await readCards(page);
         const frontal = cards.find(c => c.name === 'Frontal Plane Pulldowns');

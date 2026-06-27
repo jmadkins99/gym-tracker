@@ -15,7 +15,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -46,6 +46,7 @@ const TARGET_NAME = 'Curls with Shoulder Extension';
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
+        await selectDayType(page, 'fullbody');
 
         // Confirm we're genuinely past Week 1 (otherwise the week-gated
         // defaultWeight would mask the bug this test guards against).

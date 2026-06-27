@@ -307,11 +307,17 @@
             return null;
         }
 
-        // Helper function for stairmaster time suggestion (+15 seconds from last workout, cap at 20:00)
+        // Helper function for stairmaster suggestion.
+        // Time: +30 seconds from last session, capped at 20:00, default 10:00 on the
+        // first session. Level: carried over from last session (so "use whatever was
+        // last session"), defaulting to Level 7 when there's no prior data.
         // exerciseId parameter allows independent tracking per day
         function getStairmasterSuggestion(exerciseId = 'stairmaster', workoutHistory) {
+            const DEFAULT_TIME = '10:00';
+            const DEFAULT_LEVEL = 'Level 7';
+
             if (!workoutHistory || workoutHistory.length === 0) {
-                return { time: '5:00', isFirstSession: true };
+                return { time: DEFAULT_TIME, level: DEFAULT_LEVEL, isFirstSession: true };
             }
 
             const today = new Date();
@@ -331,23 +337,65 @@
                 .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
             if (!previousWorkout) {
-                return { time: '5:00', isFirstSession: true };
+                return { time: DEFAULT_TIME, level: DEFAULT_LEVEL, isFirstSession: true };
             }
 
             const lastStairmaster = previousWorkout.exercises.find(e => e.type === 'stairmaster');
 
             if (lastStairmaster && lastStairmaster.time) {
                 const lastSeconds = parseTimeToSeconds(lastStairmaster.time);
-                const newSeconds = Math.min(lastSeconds + 15, 20 * 60); // Cap at 20:00
+                const newSeconds = Math.min(lastSeconds + 30, 20 * 60); // +30s, cap at 20:00
 
                 return {
                     time: formatSecondsToTime(newSeconds),
+                    level: lastStairmaster.level || DEFAULT_LEVEL,
                     lastTime: lastStairmaster.time,
                     isFirstSession: false
                 };
             }
 
-            return { time: '5:00', isFirstSession: true };
+            return { time: DEFAULT_TIME, level: DEFAULT_LEVEL, isFirstSession: true };
+        }
+
+        // Helper for bodyweight rep progression (e.g. Body Weight Squats).
+        // Suggests last session's reps + a fixed increment every session, or a
+        // configured first-session default when there's no prior history.
+        // Returns { reps, lastReps, isFirstSession } or null if the exercise has
+        // no BODYWEIGHT_REP_DEFAULTS entry.
+        function getBodyweightPR(exerciseId, workoutHistory) {
+            const config = BODYWEIGHT_REP_DEFAULTS[exerciseId];
+            if (!config) return null;
+
+            const firstSession = { reps: String(config.firstSession), isFirstSession: true };
+
+            if (!workoutHistory || workoutHistory.length === 0) return firstSession;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const previousWorkout = workoutHistory
+                .filter(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (workoutDate > today) return false;
+                    if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+
+                    const exercise = w.exercises.find(e => e.id === exerciseId);
+                    return exercise && exercise.reps && exercise.reps !== 'NA';
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+            if (!previousWorkout) return firstSession;
+
+            const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
+            const prevReps = parseInt(previousExercise.reps);
+            if (isNaN(prevReps)) return firstSession;
+
+            return {
+                reps: String(prevReps + config.increment),
+                lastReps: previousExercise.reps,
+                isFirstSession: false
+            };
         }
 
         // Helper function for plateau buster weight decrement

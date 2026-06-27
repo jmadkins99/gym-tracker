@@ -87,9 +87,9 @@
                                                             completedExercise.type === 'assault-bike'
                                                                 ? (completedExercise.watts ? `${completedExercise.watts} watts` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
-                                                                ? (completedExercise.time ? `${completedExercise.time} / Level 10` : <span style={{ color: '#555' }}>NA</span>)
+                                                                ? (completedExercise.time ? `${completedExercise.time} / ${completedExercise.level || 'Level 7'}` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : (completedExercise.weight && completedExercise.reps
-                                                                    ? `${completedExercise.weight}${completedExercise.weight === 'Body Weight' ? '' : 'lbs'} × ${completedExercise.reps}`
+                                                                    ? `${completedExercise.weight === 'Body Weight' ? 'BW' : completedExercise.weight + 'lbs'} × ${completedExercise.reps}`
                                                                     : <span style={{ color: '#555' }}>NA</span>)
                                                         ) : (
                                                             <span style={{ color: '#555' }}>NA</span>

@@ -10,7 +10,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -34,6 +34,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
+        await selectDayType(page, 'fullbody');
 
         // Click the Weight Breakdown button on Chest Flies.
         const clicked = await page.evaluate(() => {

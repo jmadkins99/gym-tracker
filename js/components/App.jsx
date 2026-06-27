@@ -15,6 +15,9 @@
             const [editingWorkout, setEditingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
+            // Which day type the workout view shows. Defaults by weekday (Tue/Thu =
+            // cardio) on every load; a manual toggle only lasts for the session.
+            const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
 
@@ -145,7 +148,7 @@
                 }
             }, [workoutHistory]);
 
-            const getCurrentExercises = () => exercises;
+            const getCurrentExercises = () => activeDayType === 'cardio' ? CARDIO_EXERCISES : exercises;
 
             const getTodayWorkout = () => {
                 const today = new Date();
@@ -249,11 +252,26 @@
                         }
                     }
                 }
-                if (exercise.type === 'stairmaster' && !data.time) {
+                if (exercise.type === 'stairmaster') {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-                    const timeSelect = exerciseCard?.querySelector('select');
-                    if (timeSelect && timeSelect.value) {
-                        data = { ...data, time: timeSelect.value };
+                    if (!data.time) {
+                        const timeSelect = exerciseCard?.querySelector('select[data-field="time"]');
+                        if (timeSelect && timeSelect.value) {
+                            data = { ...data, time: timeSelect.value };
+                        }
+                    }
+                    if (!data.level) {
+                        const levelSelect = exerciseCard?.querySelector('select[data-field="level"]');
+                        if (levelSelect && levelSelect.value) {
+                            data = { ...data, level: levelSelect.value };
+                        }
+                    }
+                }
+                if (exercise.type === 'bodyweight' && !data.reps) {
+                    const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+                    const repsInput = exerciseCard?.querySelector('input[type="number"]');
+                    if (repsInput && repsInput.value) {
+                        data = { ...data, reps: repsInput.value };
                     }
                 }
 
@@ -294,7 +312,7 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        level: 'Level 10',
+                        level: finalData.level || 'Level 7',
                         time: finalData.time || ''
                     };
                 } else if (exercise.type === 'bodyweight') {
@@ -338,7 +356,7 @@
                             if (ex.type === 'assault-bike') {
                                 return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '10/20', watts: '' };
                             } else if (ex.type === 'stairmaster') {
-                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 10', time: '' };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: '' };
                             } else if (ex.type === 'bodyweight') {
                                 return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'Body Weight', reps: '' };
                             } else {
@@ -349,7 +367,7 @@
 
                     const newWorkout = {
                         date: timestamp,
-                        day: 1,
+                        day: activeDayType,
                         week: todayWeek,
                         exercises: allExercises,
                         submitted: false,
@@ -490,7 +508,7 @@
                     if (ex.type === 'assault-bike') {
                         return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '10/20', watts: 'NA' };
                     } else if (ex.type === 'stairmaster') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 10', time: 'NA' };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: 'NA' };
                     } else if (ex.type === 'bodyweight') {
                         return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'Body Weight', reps: 'NA' };
                     } else {
@@ -517,7 +535,7 @@
                 } else {
                     const newWorkout = {
                         date: timestamp,
-                        day: 1,
+                        day: activeDayType,
                         week: todayWeek,
                         exercises: naExercises,
                         submitted: true,
@@ -736,6 +754,8 @@
                             workoutHistory={workoutHistory}
                             expandedWeightBreakdown={expandedWeightBreakdown}
                             setExpandedWeightBreakdown={setExpandedWeightBreakdown}
+                            activeDayType={activeDayType}
+                            setActiveDayType={setActiveDayType}
                         />}
                         {currentView === 'weekly' && <WeeklyView
                             workoutHistory={workoutHistory}

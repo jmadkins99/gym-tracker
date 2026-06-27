@@ -76,6 +76,12 @@
             return getConsecutiveWeek(new Date(), workoutHistory);
         }
 
+        // Which day type the app should default to for a given date: 'cardio' on
+        // the configured CARDIO_DAYS (Tue/Thu), otherwise 'fullbody'.
+        function getDefaultDayType(date = new Date()) {
+            return CARDIO_DAYS.includes(date.getDay()) ? 'cardio' : 'fullbody';
+        }
+
         // Get week number for a specific date
         function getWeekNumber(date, workoutHistory) {
             return getConsecutiveWeek(date, workoutHistory);

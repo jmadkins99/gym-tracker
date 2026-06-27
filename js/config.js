@@ -108,3 +108,22 @@
             { id: 'leg-curls',           name: 'Stiff Legged Deadlifts',   category: 'Full Body', type: 'standard', order: 17 },
             { id: 'hip-adduction',       name: 'Pendulum Squats',          category: 'Full Body', type: 'standard', order: 18 }
         ];
+
+        // Cardio day exercises (fixed in code, not user-customizable).
+        // Rendered in order: Body Weight Squats, then Stairmaster, then Assault Bike.
+        const CARDIO_EXERCISES = [
+            { id: 'body-weight-squats', name: 'Body Weight Squats', category: 'Cardio', type: 'bodyweight',   order: 0 },
+            { id: 'stairmaster',        name: 'Stairmaster',        category: 'Cardio', type: 'stairmaster',  order: 1 },
+            { id: 'assault-bike',       name: 'Assault Bike',       category: 'Cardio', type: 'assault-bike', order: 2 }
+        ];
+
+        // Which weekdays default to the Cardio day (Date.getDay(): Sun=0 … Sat=6).
+        // Tuesday (2) and Thursday (4) are cardio; every other day is Full Body.
+        const CARDIO_DAYS = [2, 4];
+
+        // Bodyweight rep-progression defaults, keyed by exercise id.
+        //   increment    — green "+N reps" suggestion added each session
+        //   firstSession — suggested reps when there's no prior history
+        const BODYWEIGHT_REP_DEFAULTS = {
+            'body-weight-squats': { increment: 25, firstSession: 50 }
+        };

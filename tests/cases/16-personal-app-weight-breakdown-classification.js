@@ -14,7 +14,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -62,6 +62,7 @@ function extractLiteral(source, name, open, close) {
         await seedPersonalApp(page, { workoutHistory: [] });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
+        await selectDayType(page, 'fullbody');
 
         const cards = await readCards(page);
         ok(cards.length === DEFAULT_EXERCISES.length,

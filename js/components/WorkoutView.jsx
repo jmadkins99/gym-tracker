@@ -1,4 +1,4 @@
-        function WorkoutView({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown }) {
+        function WorkoutView({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown, activeDayType, setActiveDayType }) {
             const exercises = getCurrentExercises();
             const mainExercises = exercises.filter(e => e.category !== 'Cardio');
             const cardioExercises = exercises.filter(e => e.category === 'Cardio');
@@ -30,11 +30,8 @@
                 const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
 
                 /* ============================================
-                   ASSAULT BIKE DISPLAY - COMMENTED OUT
-                   To switch back: uncomment this block and comment out stairmaster below
-                   Also update DEFAULT_DAY_2_EXERCISES to use assault-bike instead of stairmaster
+                   ASSAULT BIKE DISPLAY (cardio day, logged last)
                    ============================================ */
-                /*
                 if (exercise.type === 'assault-bike') {
                     const assaultBikePR = getAssaultBikePR(workoutHistory);
 
@@ -99,22 +96,24 @@
                         </div>
                     );
                 }
-                */
                 /* END ASSAULT BIKE DISPLAY */
 
-                /* STAIRMASTER DISPLAY - To switch back to assault bike, comment out this block */
+                /* STAIRMASTER DISPLAY */
                 if (exercise.type === 'stairmaster') {
-                    // Generate time options from 5:00 to 20:00 in 15-second increments
+                    // Generate time options from 10:00 to 20:00 in 30-second increments
                     const timeOptions = [];
-                    for (let minutes = 5; minutes <= 20; minutes++) {
-                        for (let seconds = 0; seconds < 60; seconds += 15) {
+                    for (let minutes = 10; minutes <= 20; minutes++) {
+                        for (let seconds = 0; seconds < 60; seconds += 30) {
                             if (minutes === 20 && seconds > 0) break; // Stop at 20:00
                             timeOptions.push(formatSecondsToTime(minutes * 60 + seconds));
                         }
                     }
 
+                    const levelOptions = ['Level 7', 'Level 8', 'Level 9', 'Level 10'];
+
                     const stairmasterSuggestion = getStairmasterSuggestion(exercise.id, workoutHistory);
-                    const suggestedTime = stairmasterSuggestion?.time || '5:00';
+                    const suggestedTime = stairmasterSuggestion?.time || '10:00';
+                    const suggestedLevel = stairmasterSuggestion?.level || 'Level 7';
                     const showSuggestion = !stairmasterSuggestion?.isFirstSession;
 
                     return (
@@ -125,7 +124,7 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: Level 10 - {previous.time}
+                                        Last: {previous.level || 'Level 7'} - {previous.time}
                                     </div>
                                 )}
                             </div>
@@ -137,23 +136,29 @@
                                     marginBottom: '8px',
                                     marginTop: '-4px'
                                 }}>
-                                    +15 seconds
+                                    +30 seconds
                                 </div>
                             )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Level</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         className="input-field"
-                                        value="Level 10"
-                                        disabled
-                                    />
+                                        data-field="level"
+                                        value={data.level || suggestedLevel}
+                                        onChange={(e) => handleInputChange(exercise.id, 'level', e.target.value)}
+                                        disabled={isLogged}
+                                    >
+                                        {levelOptions.map(level => (
+                                            <option key={level} value={level}>{level}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="input-group">
                                     <label className="input-label">Time</label>
                                     <select
                                         className="input-field"
+                                        data-field="time"
                                         value={data.time || suggestedTime}
                                         onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
                                         disabled={isLogged}
@@ -180,6 +185,10 @@
                 /* END STAIRMASTER DISPLAY */
 
                 if (exercise.type === 'bodyweight') {
+                    // Rep progression: suggest last reps + increment (e.g. +25 squats),
+                    // or a first-session default when there's no history.
+                    const bodyweightPR = getBodyweightPR(exercise.id, workoutHistory);
+                    const showBodyweightSuggestion = bodyweightPR && !bodyweightPR.isFirstSession;
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
@@ -190,6 +199,17 @@
                                     </div>
                                 )}
                             </div>
+                            {showBodyweightSuggestion && (
+                                <div style={{
+                                    color: '#4CAF50',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    marginBottom: '8px',
+                                    marginTop: '-4px'
+                                }}>
+                                    +{BODYWEIGHT_REP_DEFAULTS[exercise.id].increment} reps
+                                </div>
+                            )}
                             {prWeightRecovery ? (
                                 <div style={{
                                     color: '#4CAF50',
@@ -221,7 +241,7 @@
                                     <input
                                         type="text"
                                         className="input-field"
-                                        value="Body Weight"
+                                        value="BW"
                                         disabled
                                     />
                                 </div>
@@ -243,11 +263,11 @@
                                         type="number"
                                         inputMode="numeric"
                                         className="input-field"
-                                        value={data.reps || ''}
+                                        value={data.reps !== undefined ? data.reps : (bodyweightPR?.reps || '')}
                                         onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                        placeholder={prWeightRecovery?.reps || previous?.reps || ''}
+                                        placeholder={prWeightRecovery?.reps || bodyweightPR?.reps || previous?.reps || ''}
                                         disabled={isLogged}
-                                        style={prWeightRecovery ? {
+                                        style={(prWeightRecovery || showBodyweightSuggestion) ? {
                                             border: '2px solid #4CAF50'
                                         } : {}}
                                     />
@@ -553,9 +573,9 @@
                                     type="number"
                                     inputMode="decimal"
                                     className="input-field"
-                                    value={data.weight !== undefined ? data.weight : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || '')}
+                                    value={data.weight !== undefined ? data.weight : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight || prAutoRegulation?.weight || plateauBusterDecrement?.weight || previous?.weight || defaultWeight || WEEK_1_DEFAULTS[exercise.id] || '')}
                                     onChange={(e) => handleInputChange(exercise.id, 'weight', e.target.value)}
-                                    placeholder={previous?.weight || ''}
+                                    placeholder={previous?.weight || WEEK_1_DEFAULTS[exercise.id] || ''}
                                     disabled={isLogged}
                                     style={simplePR || prWeightRecovery || prAutoRegulation ? {
                                         border: '2px solid #4CAF50'
@@ -591,8 +611,34 @@
                 );
             };
 
+            const dayTypeButton = (type, label) => (
+                <button
+                    data-day-type={type}
+                    onClick={() => setActiveDayType(type)}
+                    style={{
+                        flex: 1,
+                        padding: '12px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        background: activeDayType === type ? '#3a2a5a' : '#1a1a2a',
+                        border: activeDayType === type ? '1px solid #4a3a6a' : '1px solid #2a2a3a',
+                        color: activeDayType === type ? '#b8b8d0' : '#8a8aa0'
+                    }}
+                >
+                    {label}
+                </button>
+            );
+
             return (
                 <>
+                    <div data-day-type-toggle style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        {dayTypeButton('fullbody', 'Full Body')}
+                        {dayTypeButton('cardio', 'Cardio')}
+                    </div>
+
                     {mainExercises.map(renderExercise)}
 
                     {cardioExercises.length > 0 && <>

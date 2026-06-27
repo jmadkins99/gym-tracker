@@ -12,7 +12,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq } = require('../lib/assert');
 
@@ -50,6 +50,7 @@ const EXPECTED_FULL_BODY = [
         await seedPersonalApp(page, { workoutHistory: [] });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
+        await selectDayType(page, 'fullbody');
 
         const names = (await readCards(page)).map(c => c.name);
         eq(names, EXPECTED_FULL_BODY, 'Full Body exercises render in canonical order');
