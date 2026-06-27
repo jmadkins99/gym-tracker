@@ -28,6 +28,8 @@
         // PR Auto-Regulation: Weight increments when you hit 6+ reps (top of 4-6 range)
         // 5 lbs for two-sided plate-loaded (= 2.5/side per move); 2.5 lbs for everything else.
         const PR_WEIGHT_INCREMENTS = {
+            'curls-shoulder-extension': 1.25,
+            'overhead-tricep-extensions': 1.25,
             'chest-flies': 1.25,
             'incline-chest-press': 2.5,
             'leg-curls': 10,
@@ -82,21 +84,23 @@
         };
 
         const DEFAULT_EXERCISES = [
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', type: 'standard', order: 0 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Full Body', type: 'standard', order: 1 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Full Body', type: 'standard', order: 2 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Full Body', type: 'standard', order: 3 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', type: 'standard', order: 4 },
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', type: 'standard', order: 5 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', type: 'standard', order: 6 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Full Body', type: 'standard', order: 7 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', type: 'standard', order: 8 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', type: 'standard', order: 9 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', type: 'standard', order: 10 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', type: 'standard', order: 11 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', type: 'standard', order: 12 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Full Body', type: 'standard', order: 13 },
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Full Body', type: 'standard', order: 14 },
-            { id: 'leg-curls',           name: 'Stiff Legged Deadlifts',   category: 'Full Body', type: 'standard', order: 15 },
-            { id: 'hip-adduction',       name: 'Pendulum Squats',          category: 'Full Body', type: 'standard', order: 16 }
+            { id: 'curls-shoulder-extension', name: 'Curls with Shoulder Extension', category: 'Full Body', type: 'standard', order: 0 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Full Body', type: 'standard', order: 1 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', type: 'standard', order: 2 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Full Body', type: 'standard', order: 3 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Full Body', type: 'standard', order: 4 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Full Body', type: 'standard', order: 5 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', type: 'standard', order: 6 },
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', type: 'standard', order: 7 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', type: 'standard', order: 8 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Full Body', type: 'standard', order: 9 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', type: 'standard', order: 10 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', type: 'standard', order: 11 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', type: 'standard', order: 12 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', type: 'standard', order: 13 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', type: 'standard', order: 14 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Full Body', type: 'standard', order: 15 },
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Full Body', type: 'standard', order: 16 },
+            { id: 'leg-curls',           name: 'Stiff Legged Deadlifts',   category: 'Full Body', type: 'standard', order: 17 },
+            { id: 'hip-adduction',       name: 'Pendulum Squats',          category: 'Full Body', type: 'standard', order: 18 }
         ];

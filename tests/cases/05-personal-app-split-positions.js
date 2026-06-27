@@ -19,6 +19,8 @@ const { eq } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 const EXPECTED_FULL_BODY = [
+    'Curls with Shoulder Extension',
+    'Overhead Tricep Extensions',
     'Lateral Raises',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
