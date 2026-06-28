@@ -34,6 +34,7 @@
                    ============================================ */
                 if (exercise.type === 'assault-bike') {
                     const assaultBikePR = getAssaultBikePR(workoutHistory);
+                    const showAssaultBikeSuggestion = assaultBikePR && !assaultBikePR.isFirstSession;
 
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -45,11 +46,11 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: {previous.watts} watts
+                                        Last: {previous.rounds} rounds
                                     </div>
                                 )}
                             </div>
-                            {assaultBikePR && (
+                            {showAssaultBikeSuggestion && (
                                 <div style={{
                                     color: '#4CAF50',
                                     fontSize: '12px',
@@ -57,7 +58,7 @@
                                     marginBottom: '8px',
                                     marginTop: '-4px'
                                 }}>
-                                    +25 watts
+                                    +1 round
                                 </div>
                             )}
                             <div className="input-row">
@@ -71,16 +72,16 @@
                                     />
                                 </div>
                                 <div className="input-group">
-                                    <label className="input-label">Watts</label>
+                                    <label className="input-label">Rounds</label>
                                     <input
                                         type="number"
                                         inputMode="numeric"
                                         className="input-field"
-                                        value={data.watts || ''}
-                                        onChange={(e) => handleInputChange(exercise.id, 'watts', e.target.value)}
-                                        placeholder={assaultBikePR ? assaultBikePR.watts : (previous?.watts || '')}
+                                        value={data.rounds !== undefined ? data.rounds : (assaultBikePR?.rounds || '')}
+                                        onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
+                                        placeholder={assaultBikePR?.rounds || previous?.rounds || ''}
                                         disabled={isLogged}
-                                        style={assaultBikePR ? {
+                                        style={showAssaultBikeSuggestion ? {
                                             border: '2px solid #4CAF50'
                                         } : {}}
                                     />

@@ -37,10 +37,10 @@
 
                 // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
                 for (let candidate of candidates) {
-                    // For assault bike, check watts
+                    // For assault bike, check rounds
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.watts && candidate.watts !== 'NA') {
-                            console.log('Returning valid assault-bike workout with watts:', candidate.watts);
+                        if (candidate.rounds && candidate.rounds !== 'NA') {
+                            console.log('Returning valid assault-bike workout with rounds:', candidate.rounds);
                             return candidate;
                         }
                     }
@@ -72,7 +72,7 @@
             // Calculate PRs (just count them)
             let prCount = 0;
             currentDayWorkoutExercises.forEach(exercise => {
-                if (!exercise.weight && !exercise.reps && !exercise.watts && !exercise.time) {
+                if (!exercise.weight && !exercise.reps && !exercise.rounds && !exercise.time) {
                     return; // Skip NA exercises
                 }
 
@@ -85,7 +85,7 @@
                 let isPR = false;
 
                 if (exercise.type === 'assault-bike') {
-                    if (parseInt(exercise.watts) > parseInt(previous.watts || 0)) {
+                    if (parseInt(exercise.rounds) > parseInt(previous.rounds || 0)) {
                         isPR = true;
                     }
                 } else if (exercise.type === 'stairmaster') {
@@ -127,7 +127,7 @@
             const completedCount = currentDayWorkoutExercises.filter(e => {
                 // Check if exercise has valid data (not NA)
                 if (e.type === 'assault-bike') {
-                    return e.watts && e.watts !== 'NA';
+                    return e.rounds && e.rounds !== 'NA';
                 } else if (e.type === 'stairmaster') {
                     return e.time && e.time !== 'NA';
                 } else if (e.type === 'bodyweight') {

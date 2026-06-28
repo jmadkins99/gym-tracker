@@ -28,7 +28,13 @@
                 // Load workout history
                 const saved = storage.getItem('gymWorkoutHistory');
                 if (saved) {
-                    const history = JSON.parse(saved);
+                    let history = JSON.parse(saved);
+                    // One-time: rename assault bike `watts` -> `rounds`.
+                    const migrated = migrateAssaultBikeWattsToRounds(history);
+                    if (migrated.changed) {
+                        history = migrated.history;
+                        storage.setItem('gymWorkoutHistory', JSON.stringify(history));
+                    }
                     setWorkoutHistory(history);
                 }
 
@@ -112,7 +118,7 @@
                     todayWorkout.exercises.forEach(exercise => {
                         let hasData = false;
                         if (exercise.type === 'assault-bike') {
-                            hasData = exercise.watts && exercise.watts !== '' && exercise.watts !== 'NA';
+                            hasData = exercise.rounds && exercise.rounds !== '' && exercise.rounds !== 'NA';
                         } else if (exercise.type === 'stairmaster') {
                             hasData = exercise.time && exercise.time !== '' && exercise.time !== 'NA';
                         } else if (exercise.type === 'bodyweight') {
@@ -126,7 +132,7 @@
                             newLoggedExercises[exercise.id] = true;
 
                             if (exercise.type === 'assault-bike') {
-                                newWorkoutData[exercise.id] = { watts: exercise.watts };
+                                newWorkoutData[exercise.id] = { rounds: exercise.rounds };
                             } else if (exercise.type === 'stairmaster') {
                                 newWorkoutData[exercise.id] = { time: exercise.time, level: exercise.level || 'Level 7' };
                             } else if (exercise.type === 'bodyweight') {
@@ -218,7 +224,7 @@
 
                 for (let candidate of candidates) {
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.watts && candidate.watts !== 'NA') return candidate;
+                        if (candidate.rounds && candidate.rounds !== 'NA') return candidate;
                     } else if (candidate.type === 'stairmaster') {
                         if (candidate.time && candidate.time !== 'NA') return candidate;
                     } else {
@@ -274,10 +280,17 @@
                         data = { ...data, reps: repsInput.value };
                     }
                 }
+                if (exercise.type === 'assault-bike' && !data.rounds) {
+                    const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
+                    const roundsInput = exerciseCard?.querySelector('input[type="number"]');
+                    if (roundsInput && roundsInput.value) {
+                        data = { ...data, rounds: roundsInput.value };
+                    }
+                }
 
                 if (!data || Object.keys(data).length === 0) return;
 
-                if (exercise.type === 'assault-bike' && !data.watts) return;
+                if (exercise.type === 'assault-bike' && !data.rounds) return;
                 if (exercise.type === 'stairmaster' && !data.time) return;
                 if (exercise.type === 'bodyweight' && !data.reps) return;
                 if (exercise.type === 'standard' && !data.weight && !data.reps) return;
@@ -304,7 +317,7 @@
                         category: exercise.category,
                         type: exercise.type,
                         intensity: '20/40',
-                        watts: finalData.watts || ''
+                        rounds: finalData.rounds || ''
                     };
                 } else if (exercise.type === 'stairmaster') {
                     exerciseToSave = {
@@ -354,7 +367,7 @@
                             return exerciseToSave;
                         } else {
                             if (ex.type === 'assault-bike') {
-                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', watts: '' };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', rounds: '' };
                             } else if (ex.type === 'stairmaster') {
                                 return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: '' };
                             } else if (ex.type === 'bodyweight') {
@@ -506,7 +519,7 @@
 
                 const naExercises = currentDayExercises.map(ex => {
                     if (ex.type === 'assault-bike') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', watts: 'NA' };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', rounds: 'NA' };
                     } else if (ex.type === 'stairmaster') {
                         return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: 'NA' };
                     } else if (ex.type === 'bodyweight') {

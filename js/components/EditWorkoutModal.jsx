@@ -115,10 +115,10 @@
                                             />
                                             <input
                                                 type="number"
-                                                placeholder="Watts"
-                                                data-field="watts"
-                                                value={editedExercise?.watts || ''}
-                                                onChange={(e) => handleExerciseChange(exercise.id, 'watts', e.target.value)}
+                                                placeholder="Rounds"
+                                                data-field="rounds"
+                                                value={editedExercise?.rounds || ''}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'rounds', e.target.value)}
                                                 style={{
                                                     flex: 1,
                                                     padding: '8px',

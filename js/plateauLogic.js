@@ -265,11 +265,14 @@
             return null;
         }
 
-        // Helper function for assault bike PR detection (+25 watts from last workout)
+        // Helper function for assault bike progression: +1 round from last session,
+        // or a first-session default of 3 rounds when there's no prior history.
+        // Returns { rounds, lastRounds, isFirstSession }.
         function getAssaultBikePR(workoutHistory) {
-            if (!workoutHistory || workoutHistory.length === 0) {
-                return null;
-            }
+            const DEFAULT_ROUNDS = '3';
+            const firstSession = { rounds: DEFAULT_ROUNDS, isFirstSession: true };
+
+            if (!workoutHistory || workoutHistory.length === 0) return firstSession;
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -286,25 +289,26 @@
 
                     // Check if this workout has valid assault bike data
                     const assaultBike = w.exercises.find(e => e.id === 'assault-bike');
-                    return assaultBike && assaultBike.watts && assaultBike.watts !== 'NA';
+                    return assaultBike && assaultBike.rounds && assaultBike.rounds !== 'NA';
                 })
                 .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
-            if (!previousWorkout) return null;
+            if (!previousWorkout) return firstSession;
 
             const lastAssaultBike = previousWorkout.exercises.find(e => e.id === 'assault-bike');
 
-            if (lastAssaultBike && lastAssaultBike.watts) {
-                const lastWatts = parseInt(lastAssaultBike.watts);
-                const newWatts = lastWatts + 25;
+            if (lastAssaultBike && lastAssaultBike.rounds) {
+                const lastRounds = parseInt(lastAssaultBike.rounds);
+                if (isNaN(lastRounds)) return firstSession;
 
                 return {
-                    watts: newWatts.toString(),
-                    lastWatts: lastAssaultBike.watts
+                    rounds: (lastRounds + 1).toString(),
+                    lastRounds: lastAssaultBike.rounds,
+                    isFirstSession: false
                 };
             }
 
-            return null;
+            return firstSession;
         }
 
         // Helper function for stairmaster suggestion.

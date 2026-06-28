@@ -12,6 +12,26 @@
             });
         }
 
+        // One-time rename of the assault bike's tracked field from `watts` to
+        // `rounds` (the metric changed from +25 watts/session to +1 round/session).
+        // Renames the field on any historical assault-bike entries, preserving the
+        // logged number. Returns { history, changed }.
+        function migrateAssaultBikeWattsToRounds(workoutHistory) {
+            let changed = false;
+            const history = workoutHistory.map(workout => {
+                const exercises = workout.exercises.map(ex => {
+                    if (ex.type === 'assault-bike' && ex.rounds === undefined && ex.watts !== undefined) {
+                        changed = true;
+                        const { watts, ...rest } = ex;
+                        return { ...rest, rounds: watts };
+                    }
+                    return ex;
+                });
+                return changed ? { ...workout, exercises } : workout;
+            });
+            return { history, changed };
+        }
+
         // Reconcile saved exercise config against DEFAULT_EXERCISES.
         // - Adds new defaults the user doesn't have.
         // - Drops saved exercises that are no longer in defaults.

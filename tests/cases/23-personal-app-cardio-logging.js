@@ -40,9 +40,7 @@ async function logCard(page, exerciseId) {
         await logCard(page, 'body-weight-squats');
         // Stairmaster: level/time pre-fill to Level 7 / 10:00 -> log as-is.
         await logCard(page, 'stairmaster');
-        // Assault bike: no default watts, so type a value first.
-        await page.click('[data-exercise-id="assault-bike"] input[type="number"]');
-        await page.type('[data-exercise-id="assault-bike"] input[type="number"]', '200');
+        // Assault bike: rounds pre-fill to first-session default of 3 -> log as-is.
         await logCard(page, 'assault-bike');
 
         // Submit the day.
@@ -66,7 +64,7 @@ async function logCard(page, exerciseId) {
         eq(squat.reps, '50', 'squats logged 50 reps (not NA/empty)');
         eq(stair.time, '10:00', 'stairmaster logged time 10:00 (not NA)');
         eq(stair.level, 'Level 7', 'stairmaster logged Level 7');
-        eq(bike.watts, '200', 'assault bike logged 200 watts (not NA)');
+        eq(bike.rounds, '3', 'assault bike logged 3 rounds default (not NA)');
 
         eq(errors, [], 'no console errors during logging');
         console.log('PASS: all three cardio exercises log and persist real values.');

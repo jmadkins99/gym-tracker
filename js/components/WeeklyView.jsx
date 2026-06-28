@@ -85,7 +85,7 @@
                                                     <div className="history-exercise-data">
                                                         {completedExercise ? (
                                                             completedExercise.type === 'assault-bike'
-                                                                ? (completedExercise.watts ? `${completedExercise.watts} watts` : <span style={{ color: '#555' }}>NA</span>)
+                                                                ? (completedExercise.rounds ? `${completedExercise.rounds} rounds` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : completedExercise.type === 'stairmaster'
                                                                 ? (completedExercise.time ? `${completedExercise.time} / ${completedExercise.level || 'Level 7'}` : <span style={{ color: '#555' }}>NA</span>)
                                                                 : (completedExercise.weight && completedExercise.reps
