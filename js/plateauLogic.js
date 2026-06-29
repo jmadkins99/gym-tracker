@@ -72,7 +72,7 @@
             return null;
         }
 
-        // Simple stagnation detection: same weight + same reps for 3 consecutive sessions
+        // Simple stagnation detection: same weight + same reps for 6 consecutive sessions
         function getStagnationWarning(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
@@ -90,9 +90,9 @@
                     return isValidExercise(exercise);
                 })
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(0, 3);
+                .slice(0, 6);
 
-            if (recentWorkouts.length < 3) return null;
+            if (recentWorkouts.length < 6) return null;
 
             const exercises = recentWorkouts.map(w => w.exercises.find(e => e.id === exerciseId));
             const firstWeight = exercises[0].weight;
