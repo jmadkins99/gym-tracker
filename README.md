@@ -1,64 +1,52 @@
 # Gym Tracker App
 
-A personalized workout tracking web app. 
+A personal workout tracking web app. All data lives in your browser's local storage — no account, no server.
 
-## Features
+## Days
 
-### Workout Tracking
-- **Torso-Limbs Routine**: Manually select between Torso and Limbs days
-- **Weekly Tracker**: Displays current ISO week number (weeks start on Monday)
-- **Sequential Day Counter**: Weekly view shows newest workouts first (Day 5, Day 4, Day 3...) for easy access
-- **Instant Save**: LOG button immediately saves to Weekly tab - no page refresh needed
-- **Smart Initialization**: First LOG creates the day entry with all other exercises marked as NA
-- **Live Updates**: Each LOG updates that specific exercise in the Weekly view
-- **Previous Workout Data**: See your last weight/reps for each exercise above the input fields
-- **Input Hints**: Placeholder text shows values from your last workout (e.g., "50" for weight, "8" for reps)
-- **Visual Feedback**: Logged exercises show checkmark and persist across page refreshes
-- **Manual Entry**: All inputs are blank by default - you choose what weight and reps to use
-- **Weight Breakdown**: Click the "Weight Breakdown" button on any exercise to see warmup set recommendations
-  - **Plate-Loaded Machines**: Shows 2 warmup sets (70%, 90%) with exact plate breakdown per side
-  - **Pin-Stack Machines**: Shows 2 warmup sets (70%, 90%) rounded to achievable weights (5 lb increments + micro-plates)
+Toggle between two day types at the top of the workout view. It defaults by weekday (Tue/Thu → Cardio, otherwise Full Body).
 
-### PR Tracking (Two Modes)
-- **Simple PR Tracking** (default): If you hit 6 reps (top of 4-6 range) last session, weight auto-increments and the weight box highlights green with target of 4 reps
-- **Stagnation Detection**: If same weight and reps for 3 consecutive sessions, gold "2 Sets Recommended" indicator appears until the streak breaks
-- **Advanced PR Tracking** (optional): Full plateau buster + PR auto-regulation system with weight recovery and trial of strength mechanics
-- **Day Breakdown**: "Submit Day and View Breakdown" shows completed exercises count and PRs smashed
-- **PR Detection**: Counts as a PR if weight OR reps increased (reps >= 4 threshold)
+- **Full Body**: weighted machine/cable exercises tracked by weight × reps.
+- **Cardio**: Body Weight Squats, Stairmaster, Assault Bike.
 
-### Data Safety
-- **Automatic Backup**: App downloads the backup .json file on every day submission
-- **Export Data**: Download JSON backup file to your phone via Settings gear icon
-- **Import Data**: Restore from backup if you switch devices or clear browser data
-- **Reset Data**: Nuclear option in Settings with double confirmation to wipe everything
-- **Local Storage**: All data stays on your device - completely private
+## Logging
 
-### Progress Tracking
-- **Weekly View**: Navigate through your workout history week by week
-- **Sequential Day Numbers**: See Day 1, Day 2, Day 3, etc. (total workouts completed)
+- **Per-exercise LOG**: each exercise saves instantly to the Weekly tab; the first LOG of a day creates the entry with everything else marked NA.
+- **Last session shown**: each card displays your previous values, and fields pre-fill to them.
+- **Weight Breakdown**: button on weighted exercises shows two warmup sets (~70% / ~90%) — exact plate breakdown per side for plate-loaded machines, achievable pin/micro-plate weights for pin-stacks.
+
+## Progression
+
+- **Full Body (Simple PR Tracking)**: hit 6 reps (top of the 4–6 range) last session and the weight auto-increments with a green highlight. Three identical sessions in a row shows a gold "2 Sets Recommended" hint. (An advanced plateau-buster mode exists but is off by default.)
+- **Cardio**: no PR suggestions — every field just carries over last session's value (first-session defaults: squats 50, Stairmaster Level 7 / 10:00, Assault Bike 25W / 20/40).
+- **Day Breakdown**: "Submit Day" shows completed-exercise count and PRs (weight or reps up, reps ≥ 4). Cardio never counts as a PR.
+
+## Data
+
+- Auto-downloads a JSON backup on every day submission.
+- Export / import / reset from the Settings gear.
+- Weekly view browses history by week (counting up from your first workout) and is editable via the pencil button.
 
 ## Tech Stack
 
-- React 18 (via CDN)
-- Babel standalone for JSX transpilation
-- Local Storage API for data persistence
-- Modular file structure - no build process needed
+React 18 + Babel standalone (via CDN), localStorage for persistence. No build step.
 
 ## File Structure
 
 ```
 index.html              # Entry point - loads all scripts
 css/styles.css          # App styles
-js/config.js            # Exercise defaults, weight increments, tracking mode flags
+js/config.js            # Exercise defaults, increments, tracking-mode flags, day setup
 js/utils.js             # Storage helpers, date/week utilities
 js/migrations.js        # localStorage migration logic
-js/plateauLogic.js      # PR tracking, plateau buster, stagnation detection
+js/plateauLogic.js      # PR tracking + per-exercise suggestion/carry-over helpers
 js/components/
-  App.jsx               # Main app component, state management, data persistence
+  App.jsx               # State management and data persistence
   WorkoutView.jsx       # Active workout UI with exercise cards
   WeeklyView.jsx        # Historical workout browser
   SettingsModal.jsx     # Settings, exercise management, import/export
   EditWorkoutModal.jsx  # Edit historical workout data
   DayBreakdownModal.jsx # Post-workout summary with PR count
   BackupReminderModal.jsx # Monthly backup reminder
+tests/                  # Puppeteer end-to-end test cases (run via tests/run.sh)
 ```
