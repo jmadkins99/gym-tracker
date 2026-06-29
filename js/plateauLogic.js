@@ -265,17 +265,14 @@
             return null;
         }
 
-        // Helper function for assault bike progression.
-        // Two tracked fields:
-        //   - Intensity ("work/rest" seconds): progresses +1 work / -1 rest each
-        //     session, starting 20/40 and capping at 40/20 (work + rest always 60).
-        //   - Watts (effort level): carried over from last session (use whatever
-        //     was last session), defaulting to 25 with no prior history.
-        // Returns { intensity, watts, lastIntensity, isFirstSession }.
-        function getAssaultBikeSuggestion(workoutHistory) {
+        // Helper for the assault bike's two fields. Both are simply carried over
+        // from last session (no progression / no PR suggestion):
+        //   - Intensity ("work/rest" seconds): defaults to 20/40 with no history.
+        //   - Watts (effort level): defaults to 25 with no history.
+        // Returns { intensity, watts, isFirstSession }.
+        function getAssaultBikeLast(workoutHistory) {
             const DEFAULT_INTENSITY = '20/40';
             const DEFAULT_WATTS = '25';
-            const MAX_WORK = 40;
             const firstSession = { intensity: DEFAULT_INTENSITY, watts: DEFAULT_WATTS, isFirstSession: true };
 
             if (!workoutHistory || workoutHistory.length === 0) return firstSession;
@@ -303,29 +300,16 @@
 
             const lastAssaultBike = previousWorkout.exercises.find(e => e.id === 'assault-bike');
             const watts = (lastAssaultBike && lastAssaultBike.watts) || DEFAULT_WATTS;
+            const intensity = (lastAssaultBike && lastAssaultBike.intensity) || DEFAULT_INTENSITY;
 
-            if (lastAssaultBike && lastAssaultBike.intensity) {
-                const lastWork = parseInt(lastAssaultBike.intensity);
-                if (isNaN(lastWork)) return { ...firstSession, watts, isFirstSession: false };
-
-                const nextWork = Math.min(lastWork + 1, MAX_WORK);
-                return {
-                    intensity: `${nextWork}/${60 - nextWork}`,
-                    watts,
-                    lastIntensity: lastAssaultBike.intensity,
-                    isFirstSession: false
-                };
-            }
-
-            return { ...firstSession, watts, isFirstSession: false };
+            return { intensity, watts, isFirstSession: false };
         }
 
-        // Helper function for stairmaster suggestion.
-        // Time: +30 seconds from last session, capped at 20:00, default 10:00 on the
-        // first session. Level: carried over from last session (so "use whatever was
-        // last session"), defaulting to Level 7 when there's no prior data.
+        // Helper for the stairmaster. Both fields are carried over from last
+        // session (no progression / no PR suggestion): Time defaults to 10:00 and
+        // Level to Level 7 when there's no prior data.
         // exerciseId parameter allows independent tracking per day
-        function getStairmasterSuggestion(exerciseId = 'stairmaster', workoutHistory) {
+        function getStairmasterLast(exerciseId = 'stairmaster', workoutHistory) {
             const DEFAULT_TIME = '10:00';
             const DEFAULT_LEVEL = 'Level 7';
 
@@ -356,13 +340,9 @@
             const lastStairmaster = previousWorkout.exercises.find(e => e.type === 'stairmaster');
 
             if (lastStairmaster && lastStairmaster.time) {
-                const lastSeconds = parseTimeToSeconds(lastStairmaster.time);
-                const newSeconds = Math.min(lastSeconds + 30, 20 * 60); // +30s, cap at 20:00
-
                 return {
-                    time: formatSecondsToTime(newSeconds),
+                    time: lastStairmaster.time,
                     level: lastStairmaster.level || DEFAULT_LEVEL,
-                    lastTime: lastStairmaster.time,
                     isFirstSession: false
                 };
             }
@@ -370,12 +350,12 @@
             return { time: DEFAULT_TIME, level: DEFAULT_LEVEL, isFirstSession: true };
         }
 
-        // Helper for bodyweight rep progression (e.g. Body Weight Squats).
-        // Suggests last session's reps + a fixed increment every session, or a
-        // configured first-session default when there's no prior history.
-        // Returns { reps, lastReps, isFirstSession } or null if the exercise has
-        // no BODYWEIGHT_REP_DEFAULTS entry.
-        function getBodyweightPR(exerciseId, workoutHistory) {
+        // Helper for bodyweight reps (e.g. Body Weight Squats). Carries over last
+        // session's reps (no progression / no PR suggestion), or a configured
+        // first-session default when there's no prior history.
+        // Returns { reps, isFirstSession } or null if the exercise has no
+        // BODYWEIGHT_REP_DEFAULTS entry.
+        function getBodyweightLast(exerciseId, workoutHistory) {
             const config = BODYWEIGHT_REP_DEFAULTS[exerciseId];
             if (!config) return null;
 
@@ -405,8 +385,7 @@
             if (isNaN(prevReps)) return firstSession;
 
             return {
-                reps: String(prevReps + config.increment),
-                lastReps: previousExercise.reps,
+                reps: String(prevReps),
                 isFirstSession: false
             };
         }

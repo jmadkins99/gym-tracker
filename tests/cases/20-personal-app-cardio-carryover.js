@@ -1,13 +1,12 @@
 // What this test covers
 // ----------------------
-// Cardio-day session-over-session progression, driven off a seeded prior
+// Cardio-day fields carry over last session's values verbatim — no
+// progression and no green suggestion hints — driven off a seeded prior
 // cardio workout:
-//   - Body Weight Squats: +25 reps (50 -> 75), green "+25 reps" badge.
-//   - Stairmaster: time +30s (12:00 -> 12:30) and Level carried over from
-//     last session (Level 9, NOT reset to 7), green "+30 seconds" badge.
-//   - Assault Bike: intensity +1 work / -1 rest (25/35 -> 26/34) pre-filled,
-//     watts carried over from last session (30, NOT reset to 25), green
-//     "→ 26/34" badge.
+//   - Body Weight Squats: reps stay at last session (50, NOT 75).
+//   - Stairmaster: time and Level stay at last session (12:00 / Level 9).
+//   - Assault Bike: intensity and watts stay at last session (25/35 / 30).
+//   - No green "+reps" / "+seconds" / "→" badges anywhere.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -60,23 +59,23 @@ async function readCardioCard(page, name) {
 
         const squats = await readCardioCard(page, 'Body Weight Squats');
         ok(squats, 'squats card present');
-        eq(squats.numberValue, '75', 'squats suggests last reps + 25 (50 -> 75)');
-        contains(squats.text, '+25 reps', 'squats shows green +25 reps badge');
+        eq(squats.numberValue, '50', 'squats carries over last reps (50, not +25)');
+        ok(!squats.text.includes('+25 reps'), 'squats shows no green +reps badge');
 
         const stair = await readCardioCard(page, 'Stairmaster');
         ok(stair, 'stairmaster card present');
-        eq(stair.selects.level, 'Level 9', 'stairmaster carries over last session level (9, not 7)');
-        eq(stair.selects.time, '12:30', 'stairmaster suggests last time + 30s (12:00 -> 12:30)');
-        contains(stair.text, '+30 seconds', 'stairmaster shows green +30 seconds badge');
+        eq(stair.selects.level, 'Level 9', 'stairmaster carries over last session level (9)');
+        eq(stair.selects.time, '12:00', 'stairmaster carries over last time (12:00, not +30s)');
+        ok(!stair.text.includes('+30 seconds'), 'stairmaster shows no green +seconds badge');
 
         const bike = await readCardioCard(page, 'Assault Bike');
         ok(bike, 'assault bike card present');
-        eq(bike.selects.watts, '30', 'assault bike carries over last session watts (30, not 25)');
-        eq(bike.selects.intensity, '26/34', 'assault bike suggests next intensity (25/35 -> 26/34)');
-        contains(bike.text, '→ 26/34', 'assault bike shows green → 26/34 badge');
+        eq(bike.selects.watts, '30', 'assault bike carries over last session watts (30)');
+        eq(bike.selects.intensity, '25/35', 'assault bike carries over last intensity (25/35, not +1)');
+        ok(!bike.text.includes('→'), 'assault bike shows no green → badge');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: cardio progression (+25 reps / +30s / level carryover / +1 round).');
+        console.log('PASS: cardio fields carry over last session (no progression, no green hints).');
     } finally {
         await browser.close();
         await server.stop();

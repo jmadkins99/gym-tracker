@@ -76,6 +76,12 @@
                     return; // Skip NA exercises
                 }
 
+                // Cardio exercises (assault bike, stairmaster, bodyweight squats)
+                // just carry over last session — they never count as PRs.
+                if (exercise.type === 'assault-bike' || exercise.type === 'stairmaster' || exercise.type === 'bodyweight') {
+                    return;
+                }
+
                 const previous = getPreviousWorkoutForExercise(exercise.id);
                 if (!previous) {
                     console.log('No previous data for:', exercise.name);
@@ -84,41 +90,16 @@
 
                 let isPR = false;
 
-                if (exercise.type === 'assault-bike') {
-                    // Intensity climbs by work-seconds (20/40 -> 40/20); more work
-                    // (or more watts at the same intensity) counts as a PR.
-                    const currentWork = parseInt(exercise.intensity);
-                    const previousWork = parseInt(previous.intensity || 0);
-                    const currentWatts = parseInt(exercise.watts || 0);
-                    const previousWatts = parseInt(previous.watts || 0);
-                    if (currentWork > previousWork || (currentWork === previousWork && currentWatts > previousWatts)) {
-                        isPR = true;
-                    }
-                } else if (exercise.type === 'stairmaster') {
-                    const currentSeconds = parseTimeToSeconds(exercise.time);
-                    const previousSeconds = parseTimeToSeconds(previous.time);
-                    if (currentSeconds > previousSeconds) {
-                        isPR = true;
-                    }
-                } else if (exercise.type === 'bodyweight') {
-                    const currentReps = parseInt(exercise.reps);
-                    const previousReps = parseInt(previous.reps || 0);
-                    console.log('Bodyweight comparison:', exercise.name, 'Current:', currentReps, 'Previous:', previousReps);
-                    if (currentReps > previousReps && currentReps >= 4) {
-                        isPR = true;
-                    }
-                } else {
-                    // Standard exercise - PR if weight OR reps increased (and reps >= 4)
-                    const currentWeight = parseFloat(exercise.weight);
-                    const previousWeight = parseFloat(previous.weight);
-                    const currentReps = parseInt(exercise.reps);
-                    const previousReps = parseInt(previous.reps);
+                // Standard exercise - PR if weight OR reps increased (and reps >= 4)
+                const currentWeight = parseFloat(exercise.weight);
+                const previousWeight = parseFloat(previous.weight);
+                const currentReps = parseInt(exercise.reps);
+                const previousReps = parseInt(previous.reps);
 
-                    console.log('Standard comparison:', exercise.name, 'Current:', currentWeight, 'lbs x', currentReps, 'Previous:', previousWeight, 'lbs x', previousReps);
+                console.log('Standard comparison:', exercise.name, 'Current:', currentWeight, 'lbs x', currentReps, 'Previous:', previousWeight, 'lbs x', previousReps);
 
-                    if ((currentWeight > previousWeight || currentReps > previousReps) && currentReps >= 4) {
-                        isPR = true;
-                    }
+                if ((currentWeight > previousWeight || currentReps > previousReps) && currentReps >= 4) {
+                    isPR = true;
                 }
 
                 if (isPR) {

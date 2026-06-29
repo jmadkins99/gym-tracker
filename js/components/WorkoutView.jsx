@@ -33,10 +33,9 @@
                    ASSAULT BIKE DISPLAY (cardio day, logged last)
                    ============================================ */
                 if (exercise.type === 'assault-bike') {
-                    const assaultBikeSuggestion = getAssaultBikeSuggestion(workoutHistory);
-                    const showAssaultBikeSuggestion = assaultBikeSuggestion && !assaultBikeSuggestion.isFirstSession;
-                    const suggestedWatts = assaultBikeSuggestion?.watts || '25';
-                    const suggestedIntensity = assaultBikeSuggestion?.intensity || '20/40';
+                    const assaultBikeLast = getAssaultBikeLast(workoutHistory);
+                    const suggestedWatts = assaultBikeLast?.watts || '25';
+                    const suggestedIntensity = assaultBikeLast?.intensity || '20/40';
 
                     // Intensity options: work from 20s up to 40s, rest is the
                     // remainder of a 60s interval (20/40 -> 40/20).
@@ -60,17 +59,6 @@
                                     </div>
                                 )}
                             </div>
-                            {showAssaultBikeSuggestion && (
-                                <div style={{
-                                    color: '#4CAF50',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    marginBottom: '8px',
-                                    marginTop: '-4px'
-                                }}>
-                                    → {suggestedIntensity}
-                                </div>
-                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Watts</label>
@@ -94,9 +82,6 @@
                                         value={data.intensity || suggestedIntensity}
                                         onChange={(e) => handleInputChange(exercise.id, 'intensity', e.target.value)}
                                         disabled={isLogged}
-                                        style={showAssaultBikeSuggestion ? {
-                                            border: '2px solid #4CAF50'
-                                        } : {}}
                                     >
                                         {intensityOptions.map(opt => (
                                             <option key={opt} value={opt}>{opt}</option>
@@ -129,10 +114,9 @@
 
                     const levelOptions = ['Level 7', 'Level 8', 'Level 9', 'Level 10'];
 
-                    const stairmasterSuggestion = getStairmasterSuggestion(exercise.id, workoutHistory);
-                    const suggestedTime = stairmasterSuggestion?.time || '10:00';
-                    const suggestedLevel = stairmasterSuggestion?.level || 'Level 7';
-                    const showSuggestion = !stairmasterSuggestion?.isFirstSession;
+                    const stairmasterLast = getStairmasterLast(exercise.id, workoutHistory);
+                    const suggestedTime = stairmasterLast?.time || '10:00';
+                    const suggestedLevel = stairmasterLast?.level || 'Level 7';
 
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -146,17 +130,6 @@
                                     </div>
                                 )}
                             </div>
-                            {showSuggestion && (
-                                <div style={{
-                                    color: '#4CAF50',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    marginBottom: '8px',
-                                    marginTop: '-4px'
-                                }}>
-                                    +30 seconds
-                                </div>
-                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Level</label>
@@ -180,9 +153,6 @@
                                         value={data.time || suggestedTime}
                                         onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
                                         disabled={isLogged}
-                                        style={showSuggestion ? {
-                                            border: '2px solid #4CAF50'
-                                        } : {}}
                                     >
                                         {timeOptions.map(time => (
                                             <option key={time} value={time}>{time}</option>
@@ -203,10 +173,9 @@
                 /* END STAIRMASTER DISPLAY */
 
                 if (exercise.type === 'bodyweight') {
-                    // Rep progression: suggest last reps + increment (e.g. +25 squats),
+                    // Carry over last session's reps (no progression / no PR hint),
                     // or a first-session default when there's no history.
-                    const bodyweightPR = getBodyweightPR(exercise.id, workoutHistory);
-                    const showBodyweightSuggestion = bodyweightPR && !bodyweightPR.isFirstSession;
+                    const bodyweightLast = getBodyweightLast(exercise.id, workoutHistory);
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
                             <div className="exercise-header">
@@ -217,42 +186,6 @@
                                     </div>
                                 )}
                             </div>
-                            {showBodyweightSuggestion && (
-                                <div style={{
-                                    color: '#4CAF50',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    marginBottom: '8px',
-                                    marginTop: '-4px'
-                                }}>
-                                    +{BODYWEIGHT_REP_DEFAULTS[exercise.id].increment} reps
-                                </div>
-                            )}
-                            {prWeightRecovery ? (
-                                <div style={{
-                                    color: '#4CAF50',
-                                    padding: '8px 12px',
-                                    borderRadius: '6px',
-                                    marginBottom: '12px',
-                                    fontWeight: '600',
-                                    fontSize: '14px',
-                                    textAlign: 'center'
-                                }}>
-                                    Trial of Strength
-                                </div>
-                            ) : (showPlateauBuster && !failedPlateauBusterRetry) ? (
-                                <div style={{
-                                    color: '#ff9500',
-                                    padding: '8px 12px',
-                                    borderRadius: '6px',
-                                    marginBottom: '12px',
-                                    fontWeight: '600',
-                                    fontSize: '14px',
-                                    textAlign: 'center'
-                                }}>
-                                    Plateau Buster - Hit 2 Sets
-                                </div>
-                            ) : null}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Weight</label>
@@ -263,31 +196,16 @@
                                         disabled
                                     />
                                 </div>
-                                <div className="input-group" style={{ position: 'relative' }}>
-                                    {prWeightRecovery && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: '-20px',
-                                            left: '0',
-                                            color: '#4CAF50',
-                                            fontSize: '12px',
-                                            fontWeight: '600'
-                                        }}>
-                                            PR Reps to Beat
-                                        </div>
-                                    )}
+                                <div className="input-group">
                                     <label className="input-label">Reps</label>
                                     <input
                                         type="number"
                                         inputMode="numeric"
                                         className="input-field"
-                                        value={data.reps !== undefined ? data.reps : (bodyweightPR?.reps || '')}
+                                        value={data.reps !== undefined ? data.reps : (bodyweightLast?.reps || '')}
                                         onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                        placeholder={prWeightRecovery?.reps || bodyweightPR?.reps || previous?.reps || ''}
+                                        placeholder={bodyweightLast?.reps || previous?.reps || ''}
                                         disabled={isLogged}
-                                        style={(prWeightRecovery || showBodyweightSuggestion) ? {
-                                            border: '2px solid #4CAF50'
-                                        } : {}}
                                     />
                                 </div>
                             </div>
