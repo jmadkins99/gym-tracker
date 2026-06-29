@@ -87,16 +87,6 @@
             return getConsecutiveWeek(date, workoutHistory);
         }
 
-        // Parse MM:SS to total seconds
-        function parseTimeToSeconds(timeStr) {
-            if (!timeStr) return 0;
-            const parts = timeStr.split(':');
-            if (parts.length !== 2) return 0;
-            const minutes = parseInt(parts[0]) || 0;
-            const seconds = parseInt(parts[1]) || 0;
-            return minutes * 60 + seconds;
-        }
-
         // Format seconds to MM:SS
         function formatSecondsToTime(totalSeconds) {
             const minutes = Math.floor(totalSeconds / 60);
