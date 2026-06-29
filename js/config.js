@@ -113,17 +113,19 @@
         // Rendered in order: Body Weight Squats, then Stairmaster, then Assault Bike.
         const CARDIO_EXERCISES = [
             { id: 'body-weight-squats', name: 'Body Weight Squats', category: 'Cardio', type: 'bodyweight',   order: 0 },
-            { id: 'stairmaster',        name: 'Stairmaster',        category: 'Cardio', type: 'stairmaster',  order: 1 },
-            { id: 'assault-bike',       name: 'Assault Bike',       category: 'Cardio', type: 'assault-bike', order: 2 }
+            { id: 'burpee-jump-tucks',  name: 'Burpee Jump Tucks',  category: 'Cardio', type: 'bodyweight',   order: 1 },
+            { id: 'stairmaster',        name: 'Stairmaster',        category: 'Cardio', type: 'stairmaster',  order: 2 },
+            { id: 'assault-bike',       name: 'Assault Bike',       category: 'Cardio', type: 'assault-bike', order: 3 }
         ];
 
         // Which weekdays default to the Cardio day (Date.getDay(): Sun=0 … Sat=6).
         // Tuesday (2) and Thursday (4) are cardio; every other day is Full Body.
         const CARDIO_DAYS = [2, 4];
 
-        // Bodyweight rep-progression defaults, keyed by exercise id.
-        //   increment    — green "+N reps" suggestion added each session
-        //   firstSession — suggested reps when there's no prior history
+        // Bodyweight rep config, keyed by exercise id. Reps carry over from the
+        // last session (no progression); the field is a dropdown over [min, max]
+        // stepped by `step`. firstSession (= min) is used when there's no history.
         const BODYWEIGHT_REP_DEFAULTS = {
-            'body-weight-squats': { increment: 25, firstSession: 50 }
+            'body-weight-squats': { firstSession: 50, min: 50, max: 500, step: 25 },
+            'burpee-jump-tucks':  { firstSession: 10, min: 10, max: 50,  step: 2 }
         };

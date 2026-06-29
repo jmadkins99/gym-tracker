@@ -59,7 +59,7 @@ async function readCardioCard(page, name) {
 
         const squats = await readCardioCard(page, 'Body Weight Squats');
         ok(squats, 'squats card present');
-        eq(squats.numberValue, '50', 'squats carries over last reps (50, not +25)');
+        eq(squats.selects.reps, '50', 'squats carries over last reps (50, not +25)');
         ok(!squats.text.includes('+25 reps'), 'squats shows no green +reps badge');
 
         const stair = await readCardioCard(page, 'Stairmaster');

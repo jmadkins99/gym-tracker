@@ -249,12 +249,20 @@
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
                 let data = workoutData[exerciseId] || {};
 
-                if (exercise.type === 'standard' && !data.weight && data.reps) {
+                if (exercise.type === 'standard') {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-                    if (exerciseCard) {
-                        const weightInput = exerciseCard.querySelector('input[type="number"][inputmode="decimal"]');
+                    // Capture pre-filled (untouched) values so one-tap LOG works:
+                    // the weight from its input, the reps from the 4/5/6 dropdown.
+                    if (!data.weight) {
+                        const weightInput = exerciseCard?.querySelector('input[type="number"][inputmode="decimal"]');
                         if (weightInput && weightInput.value) {
                             data = { ...data, weight: weightInput.value };
+                        }
+                    }
+                    if (!data.reps) {
+                        const repsSelect = exerciseCard?.querySelector('select[data-field="reps"]');
+                        if (repsSelect && repsSelect.value) {
+                            data = { ...data, reps: repsSelect.value };
                         }
                     }
                 }
@@ -275,9 +283,9 @@
                 }
                 if (exercise.type === 'bodyweight' && !data.reps) {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-                    const repsInput = exerciseCard?.querySelector('input[type="number"]');
-                    if (repsInput && repsInput.value) {
-                        data = { ...data, reps: repsInput.value };
+                    const repsSelect = exerciseCard?.querySelector('select[data-field="reps"]');
+                    if (repsSelect && repsSelect.value) {
+                        data = { ...data, reps: repsSelect.value };
                     }
                 }
                 if (exercise.type === 'assault-bike') {

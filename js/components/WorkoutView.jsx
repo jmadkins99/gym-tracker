@@ -198,15 +198,17 @@
                                 </div>
                                 <div className="input-group">
                                     <label className="input-label">Reps</label>
-                                    <input
-                                        type="number"
-                                        inputMode="numeric"
+                                    <select
                                         className="input-field"
+                                        data-field="reps"
                                         value={data.reps !== undefined ? data.reps : (bodyweightLast?.reps || '')}
                                         onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                        placeholder={bodyweightLast?.reps || previous?.reps || ''}
                                         disabled={isLogged}
-                                    />
+                                    >
+                                        {(getBodyweightRepOptions(exercise.id) || []).map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <button
@@ -225,6 +227,21 @@
                 const isPinStack = PIN_STACK_EXERCISES[exercise.id];
                 const hasWeightBreakdown = isPlateLoaded || isPinStack;
                 const isBreakdownExpanded = expandedWeightBreakdown === exercise.id;
+
+                // Reps dropdown default (options are 4/5/6): after a weight bump
+                // (hit 6 last time -> simplePR) reset to 4; otherwise carry over
+                // last session's reps (clamped to 4-6); default 4 on a first session.
+                const clampReps = (r) => {
+                    const n = parseInt(r);
+                    if (isNaN(n)) return null;
+                    return String(Math.min(6, Math.max(4, n)));
+                };
+                const repsDefault = simplePR ? '4'
+                    : (prWeightRecovery?.reps
+                        || failedPlateauBusterRetry?.targetReps
+                        || (prAutoRegulation ? '4'
+                            : plateauBusterDecrement ? '6'
+                            : (clampReps(previous?.reps) || '4')));
 
                 return (
                     <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -522,18 +539,20 @@
                             </div>
                             <div className="input-group">
                                 <label className="input-label">Reps</label>
-                                <input
-                                    type="number"
-                                    inputMode="numeric"
+                                <select
                                     className="input-field"
-                                    value={data.reps || ''}
+                                    data-field="reps"
+                                    value={data.reps !== undefined ? data.reps : repsDefault}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
-                                    placeholder={simplePR ? '4' : (prWeightRecovery?.reps || (failedPlateauBusterRetry?.targetReps) || (prAutoRegulation ? '4' : (plateauBusterDecrement ? '6' : (showPlateauBuster && previous?.reps ? String(parseInt(previous.reps)) : (previous?.reps ? String(parseInt(previous.reps) + 1) : '')))))}
                                     disabled={isLogged}
                                     style={stagnation ? {
                                         border: '2px solid #ff9500'
                                     } : {}}
-                                />
+                                >
+                                    {['4', '5', '6'].map(r => (
+                                        <option key={r} value={r}>{r}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                         <button

@@ -202,9 +202,7 @@
                                                     color: '#666'
                                                 }}
                                             />
-                                            <input
-                                                type="number"
-                                                placeholder="Reps"
+                                            <select
                                                 data-field="reps"
                                                 value={editedExercise?.reps || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
@@ -216,7 +214,12 @@
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
-                                            />
+                                            >
+                                                <option value="">Reps</option>
+                                                {(getBodyweightRepOptions(exercise.id) || []).map(r => (
+                                                    <option key={r} value={r}>{r}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                     ) : (
                                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -234,9 +237,8 @@
                                                     color: '#b8b8d0'
                                                 }}
                                             />
-                                            <input
-                                                type="number"
-                                                placeholder="Reps"
+                                            <select
+                                                data-field="reps"
                                                 value={editedExercise?.reps || ''}
                                                 onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
                                                 style={{
@@ -247,7 +249,12 @@
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
-                                            />
+                                            >
+                                                <option value="">Reps</option>
+                                                {[...new Set(['4', '5', '6', editedExercise?.reps].filter(Boolean))]
+                                                    .sort((a, b) => parseInt(a) - parseInt(b))
+                                                    .map(r => <option key={r} value={r}>{r}</option>)}
+                                            </select>
                                         </div>
                                     )}
                                 </div>

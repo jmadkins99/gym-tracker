@@ -6,8 +6,8 @@
 // Checks:
 //   1. On load (no toggle interaction) the active day type matches the
 //      weekday rule (CARDIO_DAYS from config + today's getDay()).
-//   2. Switching to Cardio renders exactly Body Weight Squats, Stairmaster,
-//      Assault Bike — in that order.
+//   2. Switching to Cardio renders Body Weight Squats, Burpee Jump Tucks,
+//      Stairmaster, Assault Bike — in that order.
 //   3. First-session defaults: squats reps pre-fill 50 with weight locked to
 //      "BW"; stairmaster defaults to Level 7 / 10:00; assault bike Watts
 //      defaults to 25 and Intensity defaults to 20/40 (both dropdowns).
@@ -40,8 +40,13 @@ async function readCardioCard(page, name) {
         const lockedInputs = Array.from(card.querySelectorAll('input[type="text"]')).map(i => i.value);
         const numberInput = card.querySelector('input[type="number"]');
         const selects = {};
-        card.querySelectorAll('select[data-field]').forEach(s => { selects[s.getAttribute('data-field')] = s.value; });
-        return { lockedInputs, numberValue: numberInput ? numberInput.value : null, hasNumber: !!numberInput, selects };
+        const options = {};
+        card.querySelectorAll('select[data-field]').forEach(s => {
+            const f = s.getAttribute('data-field');
+            selects[f] = s.value;
+            options[f] = Array.from(s.options).map(o => o.value);
+        });
+        return { lockedInputs, numberValue: numberInput ? numberInput.value : null, hasNumber: !!numberInput, selects, options };
     }, name);
 }
 
@@ -73,13 +78,26 @@ async function cardNames(page) {
         // 2 + 3. Switch to Cardio and verify the three cards + defaults.
         ok(await selectDayType(page, 'cardio'), 'Cardio toggle exists and is clickable');
         const cardio = await cardNames(page);
-        eq(cardio, ['Body Weight Squats', 'Stairmaster', 'Assault Bike'],
-            'cardio day renders the three cards in order');
+        eq(cardio, ['Body Weight Squats', 'Burpee Jump Tucks', 'Stairmaster', 'Assault Bike'],
+            'cardio day renders the four cards in order');
 
         const squats = await readCardioCard(page, 'Body Weight Squats');
         ok(squats, 'squats card present');
         ok(squats.lockedInputs.includes('BW'), 'squats weight locked to "BW"');
-        eq(squats.numberValue, '50', 'squats reps pre-fill first-session default of 50');
+        eq(squats.selects.reps, '50', 'squats reps dropdown defaults to first-session 50');
+        eq(squats.options.reps[0], '50', 'squats reps dropdown starts at 50');
+        eq(squats.options.reps[squats.options.reps.length - 1], '500', 'squats reps dropdown ends at 500');
+        eq(squats.options.reps.length, 19, 'squats reps dropdown is 50..500 step 25 (19 options)');
+        ok(squats.options.reps.includes('75') && squats.options.reps.includes('100'), 'squats reps stepped by 25');
+
+        const burpees = await readCardioCard(page, 'Burpee Jump Tucks');
+        ok(burpees, 'burpee jump tucks card present');
+        ok(burpees.lockedInputs.includes('BW'), 'burpees weight locked to "BW"');
+        eq(burpees.selects.reps, '10', 'burpees reps dropdown defaults to first-session 10');
+        eq(burpees.options.reps[0], '10', 'burpees reps dropdown starts at 10');
+        eq(burpees.options.reps[burpees.options.reps.length - 1], '50', 'burpees reps dropdown ends at 50');
+        eq(burpees.options.reps.length, 21, 'burpees reps dropdown is 10..50 step 2 (21 options)');
+        ok(burpees.options.reps.includes('12') && burpees.options.reps.includes('14'), 'burpees reps stepped by 2');
 
         const stair = await readCardioCard(page, 'Stairmaster');
         ok(stair, 'stairmaster card present');

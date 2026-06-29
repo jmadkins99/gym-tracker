@@ -350,9 +350,29 @@
             return { time: DEFAULT_TIME, level: DEFAULT_LEVEL, isFirstSession: true };
         }
 
+        // The list of dropdown options ['min', ..., 'max'] for a bodyweight
+        // exercise, or null if it has no range configured.
+        function getBodyweightRepOptions(exerciseId) {
+            const config = BODYWEIGHT_REP_DEFAULTS[exerciseId];
+            if (!config || config.min === undefined) return null;
+            const opts = [];
+            for (let v = config.min; v <= config.max; v += config.step) opts.push(String(v));
+            return opts;
+        }
+
+        // Snap a rep count to the nearest valid grid value within [min, max].
+        function snapBodyweightReps(exerciseId, reps) {
+            const config = BODYWEIGHT_REP_DEFAULTS[exerciseId];
+            if (!config || config.min === undefined) return String(reps);
+            const n = parseInt(reps);
+            if (isNaN(n)) return String(config.firstSession);
+            const snapped = Math.round((n - config.min) / config.step) * config.step + config.min;
+            return String(Math.min(config.max, Math.max(config.min, snapped)));
+        }
+
         // Helper for bodyweight reps (e.g. Body Weight Squats). Carries over last
-        // session's reps (no progression / no PR suggestion), or a configured
-        // first-session default when there's no prior history.
+        // session's reps (no progression / no PR suggestion), snapped to the rep
+        // grid, or a configured first-session default when there's no history.
         // Returns { reps, isFirstSession } or null if the exercise has no
         // BODYWEIGHT_REP_DEFAULTS entry.
         function getBodyweightLast(exerciseId, workoutHistory) {
@@ -385,7 +405,7 @@
             if (isNaN(prevReps)) return firstSession;
 
             return {
-                reps: String(prevReps),
+                reps: snapBodyweightReps(exerciseId, prevReps),
                 isFirstSession: false
             };
         }

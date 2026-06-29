@@ -83,7 +83,7 @@ async function setNumber(page, selector, value) {
         // Edit every field, then save.
         await page.select('.modal select[data-field="level"]', 'Level 10');
         await page.select('.modal select[data-field="time"]', '15:00');
-        await setNumber(page, '.modal input[data-field="reps"]', '99');
+        await page.select('.modal select[data-field="reps"]', '75');
         await page.select('.modal select[data-field="watts"]', '35');
         await page.select('.modal select[data-field="intensity"]', '32/28');
         await page.evaluate(() => {
@@ -94,7 +94,7 @@ async function setNumber(page, selector, value) {
 
         // Weekly view should now reflect all of the edits.
         const weeklyText = await page.evaluate(() => document.querySelector('.content')?.textContent || '');
-        contains(weeklyText, 'BW × 99', 'squats reps updated to 99');
+        contains(weeklyText, 'BW × 75', 'squats reps updated to 75');
         contains(weeklyText, '15:00 / Level 10', 'stairmaster time + level updated');
         contains(weeklyText, '32/28 @ 35W', 'assault bike intensity + watts updated');
 
