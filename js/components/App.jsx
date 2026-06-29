@@ -29,8 +29,8 @@
                 const saved = storage.getItem('gymWorkoutHistory');
                 if (saved) {
                     let history = JSON.parse(saved);
-                    // One-time: rename assault bike `watts` -> `rounds`.
-                    const migrated = migrateAssaultBikeWattsToRounds(history);
+                    // One-time: discard the abandoned assault bike `rounds` metric.
+                    const migrated = migrateAssaultBikeRoundsToIntensity(history);
                     if (migrated.changed) {
                         history = migrated.history;
                         storage.setItem('gymWorkoutHistory', JSON.stringify(history));
@@ -118,7 +118,7 @@
                     todayWorkout.exercises.forEach(exercise => {
                         let hasData = false;
                         if (exercise.type === 'assault-bike') {
-                            hasData = exercise.rounds && exercise.rounds !== '' && exercise.rounds !== 'NA';
+                            hasData = exercise.intensity && exercise.intensity !== '' && exercise.intensity !== 'NA';
                         } else if (exercise.type === 'stairmaster') {
                             hasData = exercise.time && exercise.time !== '' && exercise.time !== 'NA';
                         } else if (exercise.type === 'bodyweight') {
@@ -132,7 +132,7 @@
                             newLoggedExercises[exercise.id] = true;
 
                             if (exercise.type === 'assault-bike') {
-                                newWorkoutData[exercise.id] = { rounds: exercise.rounds };
+                                newWorkoutData[exercise.id] = { intensity: exercise.intensity, watts: exercise.watts || '25' };
                             } else if (exercise.type === 'stairmaster') {
                                 newWorkoutData[exercise.id] = { time: exercise.time, level: exercise.level || 'Level 7' };
                             } else if (exercise.type === 'bodyweight') {
@@ -224,7 +224,7 @@
 
                 for (let candidate of candidates) {
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.rounds && candidate.rounds !== 'NA') return candidate;
+                        if (candidate.intensity && candidate.intensity !== 'NA') return candidate;
                     } else if (candidate.type === 'stairmaster') {
                         if (candidate.time && candidate.time !== 'NA') return candidate;
                     } else {
@@ -280,17 +280,25 @@
                         data = { ...data, reps: repsInput.value };
                     }
                 }
-                if (exercise.type === 'assault-bike' && !data.rounds) {
+                if (exercise.type === 'assault-bike') {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
-                    const roundsInput = exerciseCard?.querySelector('input[type="number"]');
-                    if (roundsInput && roundsInput.value) {
-                        data = { ...data, rounds: roundsInput.value };
+                    if (!data.intensity) {
+                        const intensitySelect = exerciseCard?.querySelector('select[data-field="intensity"]');
+                        if (intensitySelect && intensitySelect.value) {
+                            data = { ...data, intensity: intensitySelect.value };
+                        }
+                    }
+                    if (!data.watts) {
+                        const wattsSelect = exerciseCard?.querySelector('select[data-field="watts"]');
+                        if (wattsSelect && wattsSelect.value) {
+                            data = { ...data, watts: wattsSelect.value };
+                        }
                     }
                 }
 
                 if (!data || Object.keys(data).length === 0) return;
 
-                if (exercise.type === 'assault-bike' && !data.rounds) return;
+                if (exercise.type === 'assault-bike' && !data.intensity) return;
                 if (exercise.type === 'stairmaster' && !data.time) return;
                 if (exercise.type === 'bodyweight' && !data.reps) return;
                 if (exercise.type === 'standard' && !data.weight && !data.reps) return;
@@ -316,8 +324,8 @@
                         name: exercise.name,
                         category: exercise.category,
                         type: exercise.type,
-                        intensity: '20/40',
-                        rounds: finalData.rounds || ''
+                        watts: finalData.watts || '25',
+                        intensity: finalData.intensity || '20/40'
                     };
                 } else if (exercise.type === 'stairmaster') {
                     exerciseToSave = {
@@ -367,7 +375,7 @@
                             return exerciseToSave;
                         } else {
                             if (ex.type === 'assault-bike') {
-                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', rounds: '' };
+                                return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, watts: '', intensity: '' };
                             } else if (ex.type === 'stairmaster') {
                                 return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: '' };
                             } else if (ex.type === 'bodyweight') {
@@ -519,7 +527,7 @@
 
                 const naExercises = currentDayExercises.map(ex => {
                     if (ex.type === 'assault-bike') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: '20/40', rounds: 'NA' };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, watts: '25', intensity: 'NA' };
                     } else if (ex.type === 'stairmaster') {
                         return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: 'NA' };
                     } else if (ex.type === 'bodyweight') {

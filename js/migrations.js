@@ -12,22 +12,25 @@
             });
         }
 
-        // One-time rename of the assault bike's tracked field from `watts` to
-        // `rounds` (the metric changed from +25 watts/session to +1 round/session).
-        // Renames the field on any historical assault-bike entries, preserving the
-        // logged number. Returns { history, changed }.
-        function migrateAssaultBikeWattsToRounds(workoutHistory) {
+        // One-time cleanup of the assault bike's abandoned `rounds` metric. The
+        // bike is now tracked by `intensity` (work/rest seconds, 20/40 -> 40/20)
+        // plus a `watts` effort level; the brief rounds-per-session experiment is
+        // discarded. Any historical entry that still carries `rounds` is reset to a
+        // clean no-data state so progression restarts fresh at 20/40.
+        // Returns { history, changed }.
+        function migrateAssaultBikeRoundsToIntensity(workoutHistory) {
             let changed = false;
             const history = workoutHistory.map(workout => {
+                let workoutChanged = false;
                 const exercises = workout.exercises.map(ex => {
-                    if (ex.type === 'assault-bike' && ex.rounds === undefined && ex.watts !== undefined) {
+                    if (ex.type === 'assault-bike' && ex.rounds !== undefined) {
+                        workoutChanged = true;
                         changed = true;
-                        const { watts, ...rest } = ex;
-                        return { ...rest, rounds: watts };
+                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, intensity: 'NA' };
                     }
                     return ex;
                 });
-                return changed ? { ...workout, exercises } : workout;
+                return workoutChanged ? { ...workout, exercises } : workout;
             });
             return { history, changed };
         }

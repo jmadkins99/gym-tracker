@@ -5,8 +5,9 @@
 //   - Body Weight Squats: +25 reps (50 -> 75), green "+25 reps" badge.
 //   - Stairmaster: time +30s (12:00 -> 12:30) and Level carried over from
 //     last session (Level 9, NOT reset to 7), green "+30 seconds" badge.
-//   - Assault Bike: rounds +1 (5 -> 6) pre-filled as the value, green
-//     "+1 round" badge.
+//   - Assault Bike: intensity +1 work / -1 rest (25/35 -> 26/34) pre-filled,
+//     watts carried over from last session (30, NOT reset to 25), green
+//     "→ 26/34" badge.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -48,7 +49,7 @@ async function readCardioCard(page, name) {
                 exercises: [
                     { id: 'body-weight-squats', name: 'Body Weight Squats', type: 'bodyweight', weight: 'BW', reps: '50' },
                     { id: 'stairmaster', name: 'Stairmaster', type: 'stairmaster', level: 'Level 9', time: '12:00' },
-                    { id: 'assault-bike', name: 'Assault Bike', type: 'assault-bike', intensity: '20/40', rounds: '5' },
+                    { id: 'assault-bike', name: 'Assault Bike', type: 'assault-bike', watts: '30', intensity: '25/35' },
                 ],
             }),
         ];
@@ -70,8 +71,9 @@ async function readCardioCard(page, name) {
 
         const bike = await readCardioCard(page, 'Assault Bike');
         ok(bike, 'assault bike card present');
-        eq(bike.numberValue, '6', 'assault bike suggests last rounds + 1 (5 -> 6)');
-        contains(bike.text, '+1 round', 'assault bike shows green +1 round badge');
+        eq(bike.selects.watts, '30', 'assault bike carries over last session watts (30, not 25)');
+        eq(bike.selects.intensity, '26/34', 'assault bike suggests next intensity (25/35 -> 26/34)');
+        contains(bike.text, '→ 26/34', 'assault bike shows green → 26/34 badge');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: cardio progression (+25 reps / +30s / level carryover / +1 round).');

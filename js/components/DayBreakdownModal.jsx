@@ -37,10 +37,10 @@
 
                 // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
                 for (let candidate of candidates) {
-                    // For assault bike, check rounds
+                    // For assault bike, check intensity
                     if (candidate.type === 'assault-bike') {
-                        if (candidate.rounds && candidate.rounds !== 'NA') {
-                            console.log('Returning valid assault-bike workout with rounds:', candidate.rounds);
+                        if (candidate.intensity && candidate.intensity !== 'NA') {
+                            console.log('Returning valid assault-bike workout with intensity:', candidate.intensity);
                             return candidate;
                         }
                     }
@@ -72,7 +72,7 @@
             // Calculate PRs (just count them)
             let prCount = 0;
             currentDayWorkoutExercises.forEach(exercise => {
-                if (!exercise.weight && !exercise.reps && !exercise.rounds && !exercise.time) {
+                if (!exercise.weight && !exercise.reps && !exercise.intensity && !exercise.time) {
                     return; // Skip NA exercises
                 }
 
@@ -85,7 +85,13 @@
                 let isPR = false;
 
                 if (exercise.type === 'assault-bike') {
-                    if (parseInt(exercise.rounds) > parseInt(previous.rounds || 0)) {
+                    // Intensity climbs by work-seconds (20/40 -> 40/20); more work
+                    // (or more watts at the same intensity) counts as a PR.
+                    const currentWork = parseInt(exercise.intensity);
+                    const previousWork = parseInt(previous.intensity || 0);
+                    const currentWatts = parseInt(exercise.watts || 0);
+                    const previousWatts = parseInt(previous.watts || 0);
+                    if (currentWork > previousWork || (currentWork === previousWork && currentWatts > previousWatts)) {
                         isPR = true;
                     }
                 } else if (exercise.type === 'stairmaster') {
@@ -127,7 +133,7 @@
             const completedCount = currentDayWorkoutExercises.filter(e => {
                 // Check if exercise has valid data (not NA)
                 if (e.type === 'assault-bike') {
-                    return e.rounds && e.rounds !== 'NA';
+                    return e.intensity && e.intensity !== 'NA';
                 } else if (e.type === 'stairmaster') {
                     return e.time && e.time !== 'NA';
                 } else if (e.type === 'bodyweight') {

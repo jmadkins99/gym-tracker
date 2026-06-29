@@ -100,25 +100,10 @@
                                     </div>
                                     {exercise.type === 'assault-bike' ? (
                                         <div style={{ display: 'flex', gap: '8px' }}>
-                                            <input
-                                                type="text"
-                                                value="20/40"
-                                                disabled
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '8px',
-                                                    background: '#0d0d1a',
-                                                    border: '1px solid #2a2a3a',
-                                                    borderRadius: '4px',
-                                                    color: '#666'
-                                                }}
-                                            />
-                                            <input
-                                                type="number"
-                                                placeholder="Rounds"
-                                                data-field="rounds"
-                                                value={editedExercise?.rounds || ''}
-                                                onChange={(e) => handleExerciseChange(exercise.id, 'rounds', e.target.value)}
+                                            <select
+                                                data-field="watts"
+                                                value={editedExercise?.watts || '25'}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'watts', e.target.value)}
                                                 style={{
                                                     flex: 1,
                                                     padding: '8px',
@@ -127,7 +112,34 @@
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
-                                            />
+                                            >
+                                                {['25', '30', '35'].map(w => (
+                                                    <option key={w} value={w}>{w}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                data-field="intensity"
+                                                value={editedExercise?.intensity || '20/40'}
+                                                onChange={(e) => handleExerciseChange(exercise.id, 'intensity', e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '8px',
+                                                    background: '#0d0d1a',
+                                                    border: '1px solid #3a2a5a',
+                                                    borderRadius: '4px',
+                                                    color: '#b8b8d0'
+                                                }}
+                                            >
+                                                {(() => {
+                                                    const opts = [];
+                                                    for (let work = 20; work <= 40; work++) {
+                                                        opts.push(`${work}/${60 - work}`);
+                                                    }
+                                                    return opts.map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ));
+                                                })()}
+                                            </select>
                                         </div>
                                     ) : exercise.type === 'stairmaster' ? (
                                         <div style={{ display: 'flex', gap: '8px' }}>

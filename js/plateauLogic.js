@@ -265,12 +265,18 @@
             return null;
         }
 
-        // Helper function for assault bike progression: +1 round from last session,
-        // or a first-session default of 3 rounds when there's no prior history.
-        // Returns { rounds, lastRounds, isFirstSession }.
-        function getAssaultBikePR(workoutHistory) {
-            const DEFAULT_ROUNDS = '3';
-            const firstSession = { rounds: DEFAULT_ROUNDS, isFirstSession: true };
+        // Helper function for assault bike progression.
+        // Two tracked fields:
+        //   - Intensity ("work/rest" seconds): progresses +1 work / -1 rest each
+        //     session, starting 20/40 and capping at 40/20 (work + rest always 60).
+        //   - Watts (effort level): carried over from last session (use whatever
+        //     was last session), defaulting to 25 with no prior history.
+        // Returns { intensity, watts, lastIntensity, isFirstSession }.
+        function getAssaultBikeSuggestion(workoutHistory) {
+            const DEFAULT_INTENSITY = '20/40';
+            const DEFAULT_WATTS = '25';
+            const MAX_WORK = 40;
+            const firstSession = { intensity: DEFAULT_INTENSITY, watts: DEFAULT_WATTS, isFirstSession: true };
 
             if (!workoutHistory || workoutHistory.length === 0) return firstSession;
 
@@ -289,26 +295,29 @@
 
                     // Check if this workout has valid assault bike data
                     const assaultBike = w.exercises.find(e => e.id === 'assault-bike');
-                    return assaultBike && assaultBike.rounds && assaultBike.rounds !== 'NA';
+                    return assaultBike && assaultBike.intensity && assaultBike.intensity !== 'NA';
                 })
                 .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
             if (!previousWorkout) return firstSession;
 
             const lastAssaultBike = previousWorkout.exercises.find(e => e.id === 'assault-bike');
+            const watts = (lastAssaultBike && lastAssaultBike.watts) || DEFAULT_WATTS;
 
-            if (lastAssaultBike && lastAssaultBike.rounds) {
-                const lastRounds = parseInt(lastAssaultBike.rounds);
-                if (isNaN(lastRounds)) return firstSession;
+            if (lastAssaultBike && lastAssaultBike.intensity) {
+                const lastWork = parseInt(lastAssaultBike.intensity);
+                if (isNaN(lastWork)) return { ...firstSession, watts, isFirstSession: false };
 
+                const nextWork = Math.min(lastWork + 1, MAX_WORK);
                 return {
-                    rounds: (lastRounds + 1).toString(),
-                    lastRounds: lastAssaultBike.rounds,
+                    intensity: `${nextWork}/${60 - nextWork}`,
+                    watts,
+                    lastIntensity: lastAssaultBike.intensity,
                     isFirstSession: false
                 };
             }
 
-            return firstSession;
+            return { ...firstSession, watts, isFirstSession: false };
         }
 
         // Helper function for stairmaster suggestion.

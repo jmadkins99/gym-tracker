@@ -33,8 +33,18 @@
                    ASSAULT BIKE DISPLAY (cardio day, logged last)
                    ============================================ */
                 if (exercise.type === 'assault-bike') {
-                    const assaultBikePR = getAssaultBikePR(workoutHistory);
-                    const showAssaultBikeSuggestion = assaultBikePR && !assaultBikePR.isFirstSession;
+                    const assaultBikeSuggestion = getAssaultBikeSuggestion(workoutHistory);
+                    const showAssaultBikeSuggestion = assaultBikeSuggestion && !assaultBikeSuggestion.isFirstSession;
+                    const suggestedWatts = assaultBikeSuggestion?.watts || '25';
+                    const suggestedIntensity = assaultBikeSuggestion?.intensity || '20/40';
+
+                    // Intensity options: work from 20s up to 40s, rest is the
+                    // remainder of a 60s interval (20/40 -> 40/20).
+                    const intensityOptions = [];
+                    for (let work = 20; work <= 40; work++) {
+                        intensityOptions.push(`${work}/${60 - work}`);
+                    }
+                    const wattsOptions = ['25', '30', '35'];
 
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -46,7 +56,7 @@
                                 </div>
                                 {previous && (
                                     <div className="previous-data">
-                                        Last: {previous.rounds} rounds
+                                        Last: {previous.intensity}{previous.watts ? ` @ ${previous.watts}W` : ''}
                                     </div>
                                 )}
                             </div>
@@ -58,33 +68,40 @@
                                     marginBottom: '8px',
                                     marginTop: '-4px'
                                 }}>
-                                    +1 round
+                                    → {suggestedIntensity}
                                 </div>
                             )}
                             <div className="input-row">
                                 <div className="input-group">
-                                    <label className="input-label">Intensity</label>
-                                    <input
-                                        type="text"
+                                    <label className="input-label">Watts</label>
+                                    <select
                                         className="input-field"
-                                        value="20/40"
-                                        disabled
-                                    />
+                                        data-field="watts"
+                                        value={data.watts || suggestedWatts}
+                                        onChange={(e) => handleInputChange(exercise.id, 'watts', e.target.value)}
+                                        disabled={isLogged}
+                                    >
+                                        {wattsOptions.map(w => (
+                                            <option key={w} value={w}>{w}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="input-group">
-                                    <label className="input-label">Rounds</label>
-                                    <input
-                                        type="number"
-                                        inputMode="numeric"
+                                    <label className="input-label">Intensity</label>
+                                    <select
                                         className="input-field"
-                                        value={data.rounds !== undefined ? data.rounds : (assaultBikePR?.rounds || '')}
-                                        onChange={(e) => handleInputChange(exercise.id, 'rounds', e.target.value)}
-                                        placeholder={assaultBikePR?.rounds || previous?.rounds || ''}
+                                        data-field="intensity"
+                                        value={data.intensity || suggestedIntensity}
+                                        onChange={(e) => handleInputChange(exercise.id, 'intensity', e.target.value)}
                                         disabled={isLogged}
                                         style={showAssaultBikeSuggestion ? {
                                             border: '2px solid #4CAF50'
                                         } : {}}
-                                    />
+                                    >
+                                        {intensityOptions.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <button

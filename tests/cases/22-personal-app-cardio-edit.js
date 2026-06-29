@@ -46,7 +46,7 @@ async function setNumber(page, selector, value) {
                 exercises: [
                     { id: 'body-weight-squats', name: 'Body Weight Squats', type: 'bodyweight', weight: 'Body Weight', reps: '50' },
                     { id: 'stairmaster', name: 'Stairmaster', type: 'stairmaster', level: 'Level 9', time: '12:00' },
-                    { id: 'assault-bike', name: 'Assault Bike', type: 'assault-bike', intensity: '20/40', rounds: '6' },
+                    { id: 'assault-bike', name: 'Assault Bike', type: 'assault-bike', watts: '25', intensity: '20/40' },
                 ],
             }),
         ];
@@ -84,7 +84,8 @@ async function setNumber(page, selector, value) {
         await page.select('.modal select[data-field="level"]', 'Level 10');
         await page.select('.modal select[data-field="time"]', '15:00');
         await setNumber(page, '.modal input[data-field="reps"]', '99');
-        await setNumber(page, '.modal input[data-field="rounds"]', '8');
+        await page.select('.modal select[data-field="watts"]', '35');
+        await page.select('.modal select[data-field="intensity"]', '32/28');
         await page.evaluate(() => {
             const btn = Array.from(document.querySelectorAll('.modal button')).find(b => /save/i.test(b.textContent));
             if (btn) btn.click();
@@ -95,7 +96,7 @@ async function setNumber(page, selector, value) {
         const weeklyText = await page.evaluate(() => document.querySelector('.content')?.textContent || '');
         contains(weeklyText, 'BW × 99', 'squats reps updated to 99');
         contains(weeklyText, '15:00 / Level 10', 'stairmaster time + level updated');
-        contains(weeklyText, '8 rounds', 'assault bike rounds updated to 8');
+        contains(weeklyText, '32/28 @ 35W', 'assault bike intensity + watts updated');
 
         eq(errors, [], 'no console errors during edit');
         console.log('PASS: cardio workout is fully editable from the Weekly pencil button.');

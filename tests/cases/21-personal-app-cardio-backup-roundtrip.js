@@ -45,7 +45,7 @@ async function clickNav(page, label) {
                 exercises: [
                     { id: 'body-weight-squats', name: 'Body Weight Squats', type: 'bodyweight', weight: 'Body Weight', reps: '50' },
                     { id: 'stairmaster', name: 'Stairmaster', type: 'stairmaster', level: 'Level 9', time: '12:00' },
-                    { id: 'assault-bike', name: 'Assault Bike', type: 'assault-bike', intensity: '20/40', rounds: '6' },
+                    { id: 'assault-bike', name: 'Assault Bike', type: 'assault-bike', watts: '25', intensity: '30/30' },
                 ],
             }),
         ];
@@ -66,7 +66,7 @@ async function clickNav(page, label) {
         contains(weeklyText, 'Stairmaster', 'weekly shows stairmaster');
         contains(weeklyText, '12:00 / Level 9', 'weekly shows stairmaster time + actual level (not hardcoded Level 10)');
         contains(weeklyText, 'Assault Bike', 'weekly shows assault bike');
-        contains(weeklyText, '6 rounds', 'weekly shows assault bike rounds');
+        contains(weeklyText, '30/30 @ 25W', 'weekly shows assault bike intensity + watts');
 
         // Edit modal: opens on the cardio workout and renders its own cards.
         await page.evaluate(() => {
