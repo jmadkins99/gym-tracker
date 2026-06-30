@@ -44,7 +44,7 @@
             'kelso-shrugs': 1.25,
             'hammer-row': 1.25,
             'leg-extensions': 1.25,
-            'hip-adduction': 1.25,
+            'hip-adduction': 2.5,
             'calf-raise': 1.25,
             'ab-crunch': 1.25,
             'cable-wrist-curls': 1.25,
@@ -58,7 +58,7 @@
         const PLATE_LOADED_EXERCISES = {
             'preacher-curls': { type: 'one-sided', machineWeight: 0 },
             'leg-curls': { type: 'two-sided', machineWeight: 0 },
-            'hip-adduction': { type: 'one-sided', machineWeight: 0 },
+            'hip-adduction': { type: 'two-sided', machineWeight: 0 },
             'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
             'hammer-row': { type: 'one-sided', machineWeight: 0 }
         };
