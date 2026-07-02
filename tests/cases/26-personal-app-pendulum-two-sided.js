@@ -83,14 +83,16 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
             return '';
         });
 
-        // Two-sided: total is full target, per side is half (snapped to plate-
-        // loadable increments). The "Per side" line only renders when isTwoSided.
-        contains(text, 'Top Set (270 lbs)', 'top set total shown as 270 lbs');
+        // Two-sided: top set is the exact target, per side is half. Warmups round
+        // each per-side to the nearest 10 lb: 70% -> 189/2 = 94.5 -> 90/side (180
+        // total); 90% -> 243/2 = 121.5 -> 120/side (240 total). Top set is never
+        // rounded. The "Per side" line only renders when isTwoSided.
+        contains(text, 'Top Set (270 lbs)', 'top set total shown as 270 lbs (unrounded)');
         contains(text, 'Per side: 135 lbs', 'two-sided: top set per side = 135 lbs (= 270/2)');
-        contains(text, 'Warmup Set #1 (187.5 lbs', 'warmup #1 total = 187.5 lbs');
-        contains(text, 'Per side: 93.75 lbs', 'warmup #1 per side = 93.75 lbs');
-        contains(text, 'Warmup Set #2 (242.5 lbs', 'warmup #2 total = 242.5 lbs');
-        contains(text, 'Per side: 121.25 lbs', 'warmup #2 per side = 121.25 lbs');
+        contains(text, 'Warmup Set #1 (180 lbs', 'warmup #1 total = 180 lbs (94.5 -> 90/side)');
+        contains(text, 'Per side: 90 lbs', 'warmup #1 per side rounded 94.5 -> 90 lbs');
+        contains(text, 'Warmup Set #2 (240 lbs', 'warmup #2 total = 240 lbs (121.5 -> 120/side)');
+        contains(text, 'Per side: 120 lbs', 'warmup #2 per side rounded 121.5 -> 120 lbs');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Pendulum Squats renders two-sided breakdown; josh backup restores cleanly.');

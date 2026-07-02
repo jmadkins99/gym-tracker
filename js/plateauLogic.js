@@ -494,6 +494,16 @@
                 return plates;
             };
 
+            // Warmup per-side weights are rounded to the nearest 10 lb (an exact
+            // halfway value rounds DOWN) so warmups load with clean plates and no
+            // fiddly 5/2.5/1.25 micro-plates. The top set is NEVER rounded — it
+            // always shows the exact working weight.
+            const roundWarmupPerSide = (weight) => {
+                const base = Math.floor(weight / 10) * 10;
+                const remainder = parseFloat((weight - base).toFixed(4));
+                return remainder > 5 ? base + 10 : base;
+            };
+
             // Calculate warmup and top set weights
             const warmup1Weight = totalWeight * 0.7;  // 70%
             const warmup2Weight = totalWeight * 0.9;  // 90%
@@ -502,19 +512,19 @@
             // For two-sided machines, divide by 2 to get per-side weight
             const isTwoSided = config.type === 'two-sided';
 
-            const warmup1PerSide = isTwoSided ? warmup1Weight / 2 : warmup1Weight;
-            const warmup2PerSide = isTwoSided ? warmup2Weight / 2 : warmup2Weight;
+            const warmup1PerSide = roundWarmupPerSide(isTwoSided ? warmup1Weight / 2 : warmup1Weight);
+            const warmup2PerSide = roundWarmupPerSide(isTwoSided ? warmup2Weight / 2 : warmup2Weight);
             const topSetPerSide = isTwoSided ? topSetWeight / 2 : topSetWeight;
 
             return {
                 isTwoSided,
                 warmup1: {
-                    totalWeight: warmup1Weight,
+                    totalWeight: isTwoSided ? warmup1PerSide * 2 : warmup1PerSide,
                     perSideWeight: warmup1PerSide,
                     plates: breakdownWeight(warmup1PerSide)
                 },
                 warmup2: {
-                    totalWeight: warmup2Weight,
+                    totalWeight: isTwoSided ? warmup2PerSide * 2 : warmup2PerSide,
                     perSideWeight: warmup2PerSide,
                     plates: breakdownWeight(warmup2PerSide)
                 },
