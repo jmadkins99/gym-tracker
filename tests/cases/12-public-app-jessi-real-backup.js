@@ -144,14 +144,16 @@ const DROPPED_NAMES = [
             }
             return '';
         });
-        contains(text, 'Warmup Set #1 (~70%): 150 lbs',
-            'Kelso warmup 1 at 215 → 150 (on pin)');
-        contains(text, 'Warmup Set #2 (~90%): 193.75 lbs',
-            'Kelso warmup 2 at 215 → 193.75 (micro-plate, still under cap)');
-        contains(text, 'Top Set: 215 lbs',
-            'Kelso top set 215 shown (overflow)');
-        contains(text, 'Pin: 200 lbs',
-            'Kelso top set "Pin: 200 lbs" line');
+        // Kelso Shrugs is plate-loaded one-sided (no pin cap): "(<total> lbs - ~NN%):"
+        // labels, floor plate breakdown, and no "Pin: X lbs" overflow line.
+        contains(text, 'Warmup Set #1 (150 lbs - ~70%):',
+            'Kelso warmup 1 at 215 → nearest-10 = 150');
+        contains(text, 'Warmup Set #2 (190 lbs - ~90%):',
+            'Kelso warmup 2 at 215 → nearest-10 = 190');
+        contains(text, 'Top Set (215 lbs):',
+            'Kelso top set shows exact 215 lbs');
+        ok(!/Pin: \d/.test(text),
+            'Kelso has no "Pin: N lbs" line (plate-loaded, not a capped pin stack)');
 
         eq(errors, [], 'no console errors during load');
 

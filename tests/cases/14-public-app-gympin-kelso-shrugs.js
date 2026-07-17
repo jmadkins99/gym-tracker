@@ -1,16 +1,18 @@
 // What this test covers
 // ----------------------
-// On the public app (Jessi's app), Kelso Shrugs is a pin-stack machine
-// with a 200 lb cap. Overflow is plates one-sided, identical math to
-// the personal app's kelso-shrugs config. Working weight 215:
-//   - Warmup 1 = 150.5 → 150 on pin (no overflow)
-//   - Warmup 2 = 193.5 → 193.75 via 3.75 micro-plate (still under pin)
-//   - Top set 215 → overflow: 200 pin + 10×1, 5×1 plate = 215 lbs
+// On the public app (Jessi's app), Kelso Shrugs is a PLATE-LOADED one-sided
+// machine (it used to be a pin stack capped at 200 lbs; that was changed to
+// match the personal app's kelso-shrugs config). The breakdown is a plain
+// plate-loaded shape — "(<total> lbs - ~NN%):" labels with a floor plate
+// breakdown and NO "Pin: X lbs" overflow line. Working weight 215:
+//   - Warmup 1 = 70% of 215 = 150.5 → nearest-10 = 150 → 45×3 + 10 + 5
+//   - Warmup 2 = 90% of 215 = 193.5 → nearest-10 = 190 → 45×4 + 10
+//   - Top set  = 215 (never rounded) → 45×4 + 25 + 10
 //
 // To verify this test is real: in public_gym_app/index.html, change the
-// `kelso|shrug` rule in getWeightBreakdownConfig back to plain
-// `{ type: 'pin-stack' }` (no maxPin). Test should fail because Top
-// Set disappears for non-overflow pin-stack sets.
+// `kelso|shrug` rule in getWeightBreakdownConfig back to
+// `{ type: 'pin-stack', maxPin: 200, overflowPlateMode: 'one-sided' }`.
+// The plate-loaded "(150 lbs - ~70%)" labels disappear and the test fails.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -85,23 +87,24 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
             return '';
         });
 
-        contains(text, 'Warmup Set #1 (~70%): 150 lbs',
-            'warmup 1 (150.5) rounds to 150 (no overflow under 200 cap)');
-        contains(text, 'Warmup Set #2 (~90%): 193.75 lbs',
-            'warmup 2 (193.5) rounds to 193.75 via 3.75 micro-plate (still under cap)');
-        contains(text, 'Top Set: 215 lbs',
-            'top set shown at 215 (overflow triggers top-set display)');
-        contains(text, 'Pin: 200 lbs',
-            'top set overflow shows "Pin: 200 lbs" line');
+        contains(text, 'Warmup Set #1 (150 lbs - ~70%):',
+            'warmup 1 (150.5) rounds to nearest-10 = 150 lbs (plate-loaded label shape)');
+        contains(text, 'Warmup Set #2 (190 lbs - ~90%):',
+            'warmup 2 (193.5) rounds to nearest-10 = 190 lbs');
+        contains(text, 'Top Set (215 lbs):',
+            'top set shows exact 215 lbs (plate-loaded label shape)');
 
+        // No pin cap anymore — the pin-stack overflow line must be gone.
+        ok(!/Pin: \d/.test(text),
+            'no "Pin: N lbs" overflow line (Kelso Shrugs is plate-loaded, not a capped pin stack)');
+
+        // Top set 215 one-sided = 45×4 + 25 + 10.
+        ok(/45s - 4/.test(text), 'top set plate breakdown lists four 45 lb plates');
+        ok(/25s - 1/.test(text), 'top set plate breakdown lists a 25 lb plate');
         ok(/10s - 1/.test(text), 'plate breakdown lists a 10 lb plate');
-        ok(/5s - 1/.test(text),  'plate breakdown lists a 5 lb plate');
-
-        const pinCount = (text.match(/Pin: 200 lbs/g) || []).length;
-        eq(pinCount, 1, `expected exactly 1 "Pin: 200 lbs" line (top set only), got ${pinCount}`);
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: public-app gympinMode renders Kelso Shrugs overflow breakdown at 215 lbs.');
+        console.log('PASS: public-app gympinMode renders Kelso Shrugs plate-loaded breakdown at 215 lbs.');
     } finally {
         await browser.close();
         await server.stop();

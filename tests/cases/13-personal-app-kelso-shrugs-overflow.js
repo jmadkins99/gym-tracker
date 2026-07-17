@@ -1,16 +1,20 @@
 // What this test covers
 // ----------------------
-// Kelso Shrugs pin stack maxes at 200 lbs. The overflow shape mirrors
-// Cable Wrist Curls (one-sided plate excess above the pin cap). At a
-// working weight of 215 lbs:
-//   - Warmup 1 = 150.5 → rounds DOWN to 150 (under pin, no overflow)
-//   - Warmup 2 = 193.5 → rounds to 193.75 via micro-plate (still under
-//     the 200 lb pin, so no overflow)
-//   - Top set 215 → overflow → 200 pin + 10×1, 5×1 plate = 215 lbs total
+// Kelso Shrugs is a PLATE-LOADED one-sided exercise (it used to be a pin
+// stack capped at 200 lbs; that was changed to plate-loaded in config.js).
+// The weight breakdown therefore shows the plate-loaded shape — warmup and
+// top-set totals rendered as "(<total> lbs - ~NN%):" with a floor plate
+// breakdown, and NO "Pin: ... lbs" overflow line. At a working weight of 215:
+//   - Warmup 1 = 70% of 215 = 150.5 → nearest-10 (halfway rounds DOWN) = 150
+//     → 45×3 + 10 + 5 = 150 lbs
+//   - Warmup 2 = 90% of 215 = 193.5 → nearest-10 = 190 → 45×4 + 10 = 190 lbs
+//   - Top set  = 215 (never rounded) → 45×4 + 25 + 10 = 215 lbs
 //
-// To verify this test is real: in gym_app/js/config.js, change
-// PIN_STACK_EXERCISES['kelso-shrugs'] back to `true`. Top Set
-// disappears from the breakdown and the test fails.
+// To verify this test is real: in gym_app/js/config.js, move
+// 'kelso-shrugs' back out of PLATE_LOADED_EXERCISES and into
+// PIN_STACK_EXERCISES ({ maxPin: 200, overflowPlateMode: 'one-sided' }).
+// The plate-loaded "(150 lbs - ~70%)" labels disappear (replaced by the
+// pin-stack "(~70%): 150 lbs" form) and the test fails.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -54,8 +58,10 @@ async function readCard(page, exerciseName) {
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
-        // Seed Kelso Shrugs at 215 lbs — 15 over the 200 lb pin cap, so the
-        // top set overflows but both warmups stay on the stack.
+        // Seed Kelso Shrugs at 215 lbs — well above the old 200 lb pin cap, so
+        // if it were still a pin stack the top set would overflow. As a
+        // plate-loaded movement there is no cap: every set is a plain plate
+        // breakdown.
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
@@ -73,29 +79,28 @@ async function readCard(page, exerciseName) {
 
         const text = await readCard(page, 'Kelso Shrugs');
 
-        // Warmup 1 = 150.5 → rounds DOWN to 150 (no micro-plate needed).
-        contains(text, 'Warmup Set #1 (~70%): 150 lbs',
-            'warmup 1 (150.5) rounds to 150 (no overflow under 200 cap)');
+        // Plate-loaded label shape: "(<total> lbs - ~NN%):" — NOT the pin-stack
+        // "(~NN%): <n> lbs" form.
+        contains(text, 'Warmup Set #1 (150 lbs - ~70%):',
+            'warmup 1 (150.5) rounds to nearest-10 = 150 lbs (plate-loaded label shape)');
+        contains(text, 'Warmup Set #2 (190 lbs - ~90%):',
+            'warmup 2 (193.5) rounds to nearest-10 = 190 lbs');
+        contains(text, 'Top Set (215 lbs):',
+            'top set shows exact 215 lbs (plate-loaded label shape)');
 
-        // Warmup 2 = 193.5 → 190 base + 3.75 micro-plate = 193.75 (still under pin).
-        contains(text, 'Warmup Set #2 (~90%): 193.75 lbs',
-            'warmup 2 (193.5) rounds to 193.75 via 3.75 micro-plate (still under cap)');
+        // No pin cap anymore — the pin-stack overflow line must be gone.
+        ok(!/Pin: \d/.test(text),
+            'no "Pin: N lbs" overflow line (Kelso Shrugs is plate-loaded, not a capped pin stack)');
+        ok(!/~70%\): \d+ lbs/.test(text),
+            'does not render the pin-stack "(~70%): N lbs" label form');
 
-        // Top Set 215 → overflow at 200 pin + 15 lbs of plates (10 + 5).
-        contains(text, 'Top Set: 215 lbs',
-            'top set shown at 215 (overflow triggers top-set display)');
-        contains(text, 'Pin: 200 lbs',
-            'top set overflow shows "Pin: 200 lbs" line');
-        ok(/10s - 1/.test(text),  'plate breakdown lists a 10 lb plate');
-        ok(/5s - 1/.test(text),   'plate breakdown lists a 5 lb plate');
-
-        // Exactly one overflow row is expected (top set only), so just one
-        // "Pin: 200 lbs" line should appear — not two like Cable Wrist Curls.
-        const pinCount = (text.match(/Pin: 200 lbs/g) || []).length;
-        eq(pinCount, 1, `expected exactly 1 "Pin: 200 lbs" line (top set only), got ${pinCount}`);
+        // Top set 215 one-sided = 45×4 + 25 + 10. Spot-check the plate lines.
+        ok(/45s - 4/.test(text), 'top set plate breakdown lists four 45 lb plates');
+        ok(/25s - 1/.test(text), 'top set plate breakdown lists a 25 lb plate');
+        ok(/10s - 1/.test(text), 'plate breakdown lists a 10 lb plate');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Kelso Shrugs renders pin+plate overflow breakdown at 215 lbs.');
+        console.log('PASS: Kelso Shrugs renders plate-loaded one-sided breakdown at 215 lbs.');
     } finally {
         await browser.close();
         await server.stop();
