@@ -60,7 +60,9 @@
             'leg-curls': { type: 'one-sided', machineWeight: 0 },
             'hip-adduction': { type: 'two-sided', machineWeight: 0 },
             'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
-            'hammer-row': { type: 'one-sided', machineWeight: 0 }
+            'hammer-row': { type: 'one-sided', machineWeight: 0 },
+            'upper-back-row': { type: 'one-sided', machineWeight: 0 },
+            'kelso-shrugs': { type: 'one-sided', machineWeight: 0 }
         };
 
         // Pin-stack exercises configuration
@@ -78,8 +80,6 @@
             'tricep-pushdown': true,
             'lateral-raises': true,
             'frontal-pulldowns': true,
-            'upper-back-row': true,
-            'kelso-shrugs': { maxPin: 200, overflowPlateMode: 'one-sided' },
             'leg-extensions': true,
             'calf-raise': true,
             'ab-crunch': true,
