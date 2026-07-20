@@ -17,7 +17,7 @@ The workout view has two day types you switch between with a toggle at the top. 
 
 ## Progression
 
-- **Full Body (Simple PR Tracking)**: if you hit 6 reps (the top of the 4 to 6 range) last session, the weight bumps up and the field highlights green. Three identical sessions in a row show a gold "2 Sets Recommended" hint. An advanced plateau-buster mode exists but is off by default.
+- **Full Body (Simple PR Tracking)**: reps are logged on a 3-to-6 dropdown. Hit 6 (the top of the range) last session and the weight bumps up with the field highlighting green. Log 3 reps and the next session shows a gold "Rest Pause Set Recommended" hint at the same weight; after three 3-rep sessions in a row it escalates to a green "Trial of Strength" that targets 4 reps until you break the streak. Three identical sessions in a row (same weight and reps) show a gold "2 Sets Recommended" hint. An advanced plateau-buster mode exists but is off by default.
 - **Cardio**: no PR suggestions. Every field carries over last session's value. First-session defaults are squats 50, Stairmaster Level 7 / 10:00, and Assault Bike 25W / 20/40.
 - **Day Breakdown**: "Submit Day" shows the completed-exercise count and PRs (weight or reps went up, with reps of at least 4). Cardio does not count toward PRs.
 
