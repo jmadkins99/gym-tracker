@@ -251,7 +251,7 @@
                                                 }}
                                             >
                                                 <option value="">Reps</option>
-                                                {[...new Set(['4', '5', '6', editedExercise?.reps].filter(Boolean))]
+                                                {[...new Set(['3', '4', '5', '6', editedExercise?.reps].filter(Boolean))]
                                                     .sort((a, b) => parseInt(a) - parseInt(b))
                                                     .map(r => <option key={r} value={r}>{r}</option>)}
                                             </select>

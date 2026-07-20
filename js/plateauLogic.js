@@ -72,6 +72,43 @@
             return null;
         }
 
+        // Rest-pause / Trial of Strength tracking (simple mode). Looks at the
+        // trailing streak of consecutive 3-rep sessions for this exercise:
+        //   - 1-2 sessions at 3 reps -> { type: 'restPause' }
+        //     (yellow "Rest Pause Set Recommended"; weight carries over)
+        //   - 3+ sessions at 3 reps  -> { type: 'trial', reps: '4' }
+        //     (green "Trial of Strength"; same weight, target bumps to 4; keeps
+        //      showing until a session breaks the 3-rep streak)
+        // Returns null when the most recent session wasn't 3 reps.
+        function getRestPauseState(exerciseId, workoutHistory) {
+            if (!workoutHistory || workoutHistory.length === 0) return null;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const previousWorkouts = workoutHistory
+                .filter(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (workoutDate > today) return false;
+                    if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+                    const exercise = w.exercises.find(e => e.id === exerciseId);
+                    return isValidExercise(exercise);
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            let streak = 0;
+            for (const workout of previousWorkouts) {
+                const exercise = workout.exercises.find(e => e.id === exerciseId);
+                if (parseInt(exercise.reps) !== 3) break;
+                streak++;
+            }
+
+            if (streak === 0) return null;
+            if (streak >= 3) return { type: 'trial', streak, reps: '4' };
+            return { type: 'restPause', streak };
+        }
+
         // Simple stagnation detection: same weight + same reps for 6 consecutive sessions
         function getStagnationWarning(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;

@@ -252,7 +252,7 @@
                 if (exercise.type === 'standard') {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
                     // Capture pre-filled (untouched) values so one-tap LOG works:
-                    // the weight from its input, the reps from the 4/5/6 dropdown.
+                    // the weight from its input, the reps from the 3/4/5/6 dropdown.
                     if (!data.weight) {
                         const weightInput = exerciseCard?.querySelector('input[type="number"][inputmode="decimal"]');
                         if (weightInput && weightInput.value) {

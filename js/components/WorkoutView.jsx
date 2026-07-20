@@ -13,7 +13,8 @@
                 const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory) : null;
                 const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory) : null;
                 const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory) : null;
-                const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory) : null;
+                const restPause = SIMPLE_PR_TRACKING && !simplePR ? getRestPauseState(exercise.id, workoutHistory) : null;
+                const stagnation = SIMPLE_PR_TRACKING && !simplePR && !restPause ? getStagnationWarning(exercise.id, workoutHistory) : null;
 
                 if (exercise.type === 'standard') {
                     console.log('[renderExercise]', exercise.name, {
@@ -228,19 +229,21 @@
                 const hasWeightBreakdown = isPlateLoaded || isPinStack;
                 const isBreakdownExpanded = expandedWeightBreakdown === exercise.id;
 
-                // Reps dropdown default (options are 4/5/6): after a weight bump
-                // (hit 6 last time -> simplePR) reset to 4; otherwise carry over
-                // last session's reps (clamped to 4-6); default 4 on a first session.
+                // Reps dropdown default (options are 3/4/5/6): after a weight bump
+                // (hit 6 last time -> simplePR) reset to 4; on a Trial of Strength
+                // (3+ sessions stuck at 3 reps) target 4; otherwise carry over
+                // last session's reps (clamped to 3-6); default 4 on a first session.
                 const clampReps = (r) => {
                     const n = parseInt(r);
                     if (isNaN(n)) return null;
-                    return String(Math.min(6, Math.max(4, n)));
+                    return String(Math.min(6, Math.max(3, n)));
                 };
                 const repsDefault = simplePR ? '4'
                     : (prWeightRecovery?.reps
                         || failedPlateauBusterRetry?.targetReps
                         || (prAutoRegulation ? '4'
                             : plateauBusterDecrement ? '6'
+                            : restPause?.type === 'trial' ? restPause.reps
                             : (clampReps(previous?.reps) || '4')));
 
                 return (
@@ -484,6 +487,32 @@
                                 2 Sets Recommended
                             </div>
                         )}
+                        {restPause?.type === 'restPause' && (
+                            <div style={{
+                                color: '#ff9500',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                marginBottom: '12px',
+                                fontWeight: '600',
+                                fontSize: '14px',
+                                textAlign: 'center'
+                            }}>
+                                Rest Pause Set Recommended
+                            </div>
+                        )}
+                        {restPause?.type === 'trial' && (
+                            <div style={{
+                                color: '#4CAF50',
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                marginBottom: '12px',
+                                fontWeight: '600',
+                                fontSize: '14px',
+                                textAlign: 'center'
+                            }}>
+                                Trial of Strength
+                            </div>
+                        )}
                         {!simplePR && prAutoRegulation && !prWeightRecovery && (
                             <div style={{
                                 color: '#4CAF50',
@@ -545,11 +574,13 @@
                                     value={data.reps !== undefined ? data.reps : repsDefault}
                                     onChange={(e) => handleInputChange(exercise.id, 'reps', e.target.value)}
                                     disabled={isLogged}
-                                    style={stagnation ? {
+                                    style={restPause?.type === 'trial' ? {
+                                        border: '2px solid #4CAF50'
+                                    } : (stagnation || restPause) ? {
                                         border: '2px solid #ff9500'
                                     } : {}}
                                 >
-                                    {['4', '5', '6'].map(r => (
+                                    {['3', '4', '5', '6'].map(r => (
                                         <option key={r} value={r}>{r}</option>
                                     ))}
                                 </select>

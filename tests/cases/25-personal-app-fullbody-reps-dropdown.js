@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// Full-body reps are a 4/5/6 dropdown (not a free-type number). Defaulting:
+// Full-body reps are a 3/4/5/6 dropdown (not a free-type number). Defaulting:
 //   - Hit 4 or 5 last session  -> dropdown carries that over (NOT +1).
 //   - Hit 6 last session       -> weight auto-bumps (simplePR) and reps reset
 //                                 to 4 for the new heavier weight.
@@ -59,10 +59,10 @@ async function readStandardCard(page, name) {
         await waitForApp(page);
         await selectDayType(page, 'fullbody');
 
-        // Reps is now a dropdown of exactly 4/5/6.
+        // Reps is now a dropdown of exactly 3/4/5/6.
         const sp = await readStandardCard(page, 'Shoulder Press');
         ok(sp && sp.repsIsSelect, 'Shoulder Press reps is a <select>');
-        eq(sp.repsOptions, ['4', '5', '6'], 'reps dropdown offers exactly 4/5/6');
+        eq(sp.repsOptions, ['3', '4', '5', '6'], 'reps dropdown offers exactly 3/4/5/6');
         eq(sp.repsValue, '5', 'reps carries over last session (5), not +1');
         eq(sp.weightValue, '100', 'weight carries over (no bump after 5 reps)');
 
