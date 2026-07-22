@@ -73,11 +73,11 @@ async function setNumber(page, selector, value) {
         eq(levelInfo.options, ['Level 7', 'Level 8', 'Level 9', 'Level 10'], 'Level options are 7-10');
         eq(levelInfo.value, 'Level 9', 'Level pre-selects the logged value (9)');
 
-        // Time dropdown uses the new 10:00-20:00 / 30s range.
+        // Time dropdown uses the 10:00-20:00 / 10s range.
         const timeOpts = await page.evaluate(() =>
             Array.from(document.querySelector('.modal select[data-field="time"]').options).map(o => o.value));
         ok(timeOpts.includes('10:00') && timeOpts.includes('20:00'), 'time range covers 10:00-20:00');
-        ok(timeOpts.includes('12:30') && !timeOpts.includes('12:15'), 'time uses 30s steps (12:30 yes, 12:15 no)');
+        ok(timeOpts.includes('12:10') && !timeOpts.includes('12:15'), 'time uses 10s steps (12:10 yes, 12:15 no)');
         ok(!timeOpts.includes('5:00'), 'old 5:00 option is gone');
 
         // Edit every field, then save.

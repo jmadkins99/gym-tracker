@@ -87,8 +87,8 @@ async function cardNames(page) {
         eq(squats.selects.reps, '50', 'squats reps dropdown defaults to first-session 50');
         eq(squats.options.reps[0], '50', 'squats reps dropdown starts at 50');
         eq(squats.options.reps[squats.options.reps.length - 1], '500', 'squats reps dropdown ends at 500');
-        eq(squats.options.reps.length, 19, 'squats reps dropdown is 50..500 step 25 (19 options)');
-        ok(squats.options.reps.includes('75') && squats.options.reps.includes('100'), 'squats reps stepped by 25');
+        eq(squats.options.reps.length, 91, 'squats reps dropdown is 50..500 step 5 (91 options)');
+        ok(squats.options.reps.includes('55') && squats.options.reps.includes('60'), 'squats reps stepped by 5');
 
         const burpees = await readCardioCard(page, 'Burpee Jump Tucks');
         ok(burpees, 'burpee jump tucks card present');
@@ -96,8 +96,8 @@ async function cardNames(page) {
         eq(burpees.selects.reps, '10', 'burpees reps dropdown defaults to first-session 10');
         eq(burpees.options.reps[0], '10', 'burpees reps dropdown starts at 10');
         eq(burpees.options.reps[burpees.options.reps.length - 1], '50', 'burpees reps dropdown ends at 50');
-        eq(burpees.options.reps.length, 21, 'burpees reps dropdown is 10..50 step 2 (21 options)');
-        ok(burpees.options.reps.includes('12') && burpees.options.reps.includes('14'), 'burpees reps stepped by 2');
+        eq(burpees.options.reps.length, 41, 'burpees reps dropdown is 10..50 step 1 (41 options)');
+        ok(burpees.options.reps.includes('11') && burpees.options.reps.includes('13'), 'burpees reps stepped by 1');
 
         const stair = await readCardioCard(page, 'Stairmaster');
         ok(stair, 'stairmaster card present');

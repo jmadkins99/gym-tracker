@@ -177,7 +177,7 @@
                                                 {(() => {
                                                     const timeOptions = [];
                                                     for (let minutes = 10; minutes <= 20; minutes++) {
-                                                        for (let seconds = 0; seconds < 60; seconds += 30) {
+                                                        for (let seconds = 0; seconds < 60; seconds += 10) {
                                                             if (minutes === 20 && seconds > 0) break;
                                                             const time = formatSecondsToTime(minutes * 60 + seconds);
                                                             timeOptions.push(<option key={time} value={time}>{time}</option>);

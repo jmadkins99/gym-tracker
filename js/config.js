@@ -126,6 +126,6 @@
         // last session (no progression); the field is a dropdown over [min, max]
         // stepped by `step`. firstSession (= min) is used when there's no history.
         const BODYWEIGHT_REP_DEFAULTS = {
-            'body-weight-squats': { firstSession: 50, min: 50, max: 500, step: 25 },
-            'burpee-jump-tucks':  { firstSession: 10, min: 10, max: 50,  step: 2 }
+            'body-weight-squats': { firstSession: 50, min: 50, max: 500, step: 5 },
+            'burpee-jump-tucks':  { firstSession: 10, min: 10, max: 50,  step: 1 }
         };

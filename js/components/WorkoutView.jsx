@@ -104,10 +104,10 @@
 
                 /* STAIRMASTER DISPLAY */
                 if (exercise.type === 'stairmaster') {
-                    // Generate time options from 10:00 to 20:00 in 30-second increments
+                    // Generate time options from 10:00 to 20:00 in 10-second increments
                     const timeOptions = [];
                     for (let minutes = 10; minutes <= 20; minutes++) {
-                        for (let seconds = 0; seconds < 60; seconds += 30) {
+                        for (let seconds = 0; seconds < 60; seconds += 10) {
                             if (minutes === 20 && seconds > 0) break; // Stop at 20:00
                             timeOptions.push(formatSecondsToTime(minutes * 60 + seconds));
                         }
