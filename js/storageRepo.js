@@ -1,8 +1,8 @@
         // Storage repository seam. All persistence for workout history and
-        // exercise config goes through `repo`, an async interface with (for
-        // now) a single localStorage-backed implementation. A cloud-backed
-        // implementation can slot in behind the same interface without
-        // touching the components.
+        // exercise config goes through `repo`, an async interface with two
+        // implementations: localStorage (tests, signed-out, local dev) and
+        // Firestore (signed in, non-local namespace). Selection happens once
+        // at startup; the components only ever see the interface.
         //
         // NOTE: written in Promise/.then style on purpose — @babel/standalone
         // lowers async/await to regenerator form, which crashes at runtime
@@ -52,9 +52,142 @@
             };
         }
 
-        // Repo selection. For now this is always the localStorage repo; the
-        // cloud implementation will hook in here (auth state decides).
-        const repoReady = Promise.resolve(createLocalStorageRepo()).then((repo) => {
+        // Firestore-backed repo. One document per workout entry at
+        // users/{uid}/workouts/{entryId}; exercise config at
+        // users/{uid}/settings/exerciseConfig. Writes are fire-and-forget —
+        // Firestore's offline queue owns durability — and every save also
+        // mirrors to localStorage so a later signed-out or offline-cold-cache
+        // session still has the data.
+        function createFirestoreRepo(user) {
+            const db = firebase.firestore();
+            const userDoc = db.collection('users').doc(user.uid);
+            const workoutsCol = userDoc.collection('workouts');
+            const configDoc = userDoc.collection('settings').doc('exerciseConfig');
+
+            // entryId -> serialized entry, for diffing saves down to the
+            // documents that actually changed.
+            const lastSaved = new Map();
+            let pendingWrites = 0;
+
+            // Firestore rejects undefined values; a JSON round-trip strips them.
+            const sanitize = (obj) => JSON.parse(JSON.stringify(obj));
+
+            const track = (promise, what) => {
+                pendingWrites++;
+                promise
+                    .then(() => { pendingWrites--; })
+                    .catch((e) => {
+                        pendingWrites--;
+                        console.warn('[repo] ' + what + ' write failed:', e);
+                    });
+            };
+
+            // Workout entries need an identity that survives `date` being
+            // rewritten on every log tap. Assigned in place so the objects
+            // React holds keep their ids across subsequent saves.
+            const ensureEntryIds = (history) => {
+                history.forEach((w) => {
+                    if (!w.entryId) {
+                        const day = String(w.date || new Date().toISOString()).slice(0, 10);
+                        w.entryId = 'w-' + day + '-' + Math.random().toString(36).slice(2, 7);
+                    }
+                });
+            };
+
+            const mirror = createLocalStorageRepo();
+
+            return {
+                mode: 'firestore',
+
+                loadAll: () => Promise.all([
+                    workoutsCol.orderBy('date', 'desc').get(),
+                    configDoc.get(),
+                ]).then(([workoutsSnap, cfgSnap]) => {
+                    const history = workoutsSnap.docs.map((d) => d.data());
+                    history.forEach((w) => lastSaved.set(w.entryId, JSON.stringify(w)));
+                    const config = cfgSnap.exists ? cfgSnap.data() : null;
+
+                    if (history.length > 0) {
+                        mirror.saveHistory(history);
+                    }
+                    if (config) {
+                        mirror.saveExerciseConfig(config);
+                    }
+
+                    // Empty cloud data (e.g. offline cold cache before the
+                    // first sync): fall back to whatever this device has.
+                    if (history.length === 0 || !config) {
+                        return mirror.loadAll().then((local) => ({
+                            workoutHistory: history.length > 0 ? history : local.workoutHistory,
+                            exerciseConfig: config || local.exerciseConfig,
+                        }));
+                    }
+                    return { workoutHistory: history, exerciseConfig: config };
+                }).catch((e) => {
+                    console.warn('[repo] Firestore load failed, using local mirror:', e);
+                    return mirror.loadAll();
+                }),
+
+                saveHistory: (history) => {
+                    ensureEntryIds(history);
+                    const seen = new Set();
+                    history.forEach((w) => {
+                        seen.add(w.entryId);
+                        const serialized = JSON.stringify(w);
+                        if (lastSaved.get(w.entryId) !== serialized) {
+                            lastSaved.set(w.entryId, serialized);
+                            track(workoutsCol.doc(w.entryId).set(sanitize(w)), 'workout');
+                        }
+                    });
+                    Array.from(lastSaved.keys()).forEach((entryId) => {
+                        if (!seen.has(entryId)) {
+                            lastSaved.delete(entryId);
+                            track(workoutsCol.doc(entryId).delete(), 'workout delete');
+                        }
+                    });
+                    mirror.saveHistory(history);
+                },
+
+                saveExerciseConfig: (config) => {
+                    track(configDoc.set(sanitize(config)), 'config');
+                    mirror.saveExerciseConfig(config);
+                },
+
+                clearAll: () => {
+                    const batch = db.batch();
+                    lastSaved.forEach((_, entryId) => batch.delete(workoutsCol.doc(entryId)));
+                    batch.delete(configDoc);
+                    lastSaved.clear();
+                    return batch.commit()
+                        .catch((e) => console.warn('[repo] cloud clear failed:', e))
+                        .then(() => mirror.clearAll());
+                },
+
+                status: () => ({
+                    mode: 'firestore',
+                    signedIn: true,
+                    email: user.email,
+                    pendingWrites,
+                }),
+            };
+        }
+
+        // Repo selection, decided once per page load:
+        // - gym-local namespace / no Firebase / no config -> localStorage.
+        // - otherwise the first auth-state callback decides: signed in ->
+        //   Firestore, signed out -> localStorage. onAuthStateChanged fires
+        //   from IndexedDB-cached credentials, so this works offline too.
+        const repoReady = (function () {
+            if (!window.FIREBASE_READY) {
+                return Promise.resolve(createLocalStorageRepo());
+            }
+            return new Promise((resolve) => {
+                const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                    unsubscribe();
+                    resolve(user ? createFirestoreRepo(user) : createLocalStorageRepo());
+                });
+            });
+        })().then((repo) => {
             window.repo = repo;
             return repo;
         });
