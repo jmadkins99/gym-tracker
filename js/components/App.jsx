@@ -527,8 +527,6 @@
                 setWorkoutHistory(updatedHistory);
                 window.repo.saveHistory(updatedHistory);
 
-                autoBackup();
-
                 setLoggedExercises({});
                 setWorkoutData({});
 
@@ -590,8 +588,6 @@
                 setWorkoutHistory(updatedHistory);
                 window.repo.saveHistory(updatedHistory);
 
-                autoBackup();
-
                 setLoggedExercises({});
                 setWorkoutData({});
 
@@ -625,23 +621,6 @@
                 const link = document.createElement('a');
                 link.href = url;
                 link.download = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                URL.revokeObjectURL(url);
-            };
-
-            const autoBackup = () => {
-                const exportObj = {
-                    workoutHistory,
-                    exerciseConfig: { exercises },
-                    exportDate: new Date().toISOString()
-                };
-                const dataStr = JSON.stringify(exportObj, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                link.download = `gym-tracker-AUTO-BACKUP-${timestamp}.json`;
                 link.click();
                 URL.revokeObjectURL(url);
             };
