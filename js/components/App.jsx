@@ -19,6 +19,7 @@
             // cardio) on every load; a manual toggle only lasts for the session.
             const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
             const [hydrated, setHydrated] = useState(false);
+            const [showSyncPrompt, setShowSyncPrompt] = useState(false);
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
 
@@ -76,6 +77,13 @@
 
                         if (!lastReminder || (now - parseInt(lastReminder)) > oneMonth) {
                             setShowBackupReminder(true);
+                        }
+
+                        // Cloud sync available but signed out: offer sign-in once
+                        // (dismissible, never blocks the workout flow).
+                        if (window.FIREBASE_READY && repo.mode === 'local' &&
+                            !storage.getItem('syncPromptDismissed')) {
+                            setShowSyncPrompt(true);
                         }
 
                         setHydrated(true);
@@ -715,6 +723,43 @@
 
             return (
                 <div className="app">
+                    {showSyncPrompt && (
+                        <div style={{
+                            background: '#1a1a2a',
+                            border: '1px solid #3a2a5a',
+                            borderRadius: '8px',
+                            padding: '10px 12px',
+                            margin: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '14px'
+                        }}>
+                            <span style={{ flex: 1 }}>☁️ Sign in to sync your workouts across devices</span>
+                            <button
+                                onClick={() => window.repoSignIn()}
+                                style={{
+                                    padding: '6px 10px', background: '#3a2a5a', border: 'none',
+                                    borderRadius: '4px', color: '#b8b8d0', cursor: 'pointer'
+                                }}
+                            >
+                                Sign in
+                            </button>
+                            <button
+                                onClick={() => {
+                                    storage.setItem('syncPromptDismissed', 'true');
+                                    setShowSyncPrompt(false);
+                                }}
+                                style={{
+                                    padding: '6px 10px', background: 'transparent',
+                                    border: '1px solid #2a2a3a', borderRadius: '4px',
+                                    color: '#8a8aa0', cursor: 'pointer'
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     {showSuccess && <div className={`success-message ${showBackupReminder ? 'backup-reminder' : ''}`}>{successMessage}</div>}
 
                     {showBackupReminder && (

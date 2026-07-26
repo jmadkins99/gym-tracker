@@ -172,6 +172,25 @@
             };
         }
 
+        // Sign-in/out actions for the Settings UI and sync banner. Popup, not
+        // redirect: signInWithRedirect breaks on browsers that partition
+        // third-party storage when authDomain differs from the app's domain
+        // (github.io). A reload after either action re-runs repo selection.
+        function repoSignIn() {
+            return firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+                .then(() => window.location.reload())
+                .catch((e) => {
+                    if (e && e.code === 'auth/popup-closed-by-user') return;
+                    console.warn('[repo] sign-in failed:', e && e.code);
+                    alert('Sign-in failed: ' + ((e && e.message) || 'unknown error'));
+                });
+        }
+        function repoSignOut() {
+            return firebase.auth().signOut().then(() => window.location.reload());
+        }
+        window.repoSignIn = repoSignIn;
+        window.repoSignOut = repoSignOut;
+
         // Repo selection, decided once per page load:
         // - gym-local namespace / no config / SDK load failure -> localStorage.
         // - otherwise the first auth-state callback decides: signed in ->
