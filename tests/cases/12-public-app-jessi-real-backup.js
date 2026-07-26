@@ -29,7 +29,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'jessi-backup-2026-06-
 // breakdown config. Names not in this list either got dropped (lateral/
 // wrist movements) or never classified in the first place.
 const EXPECTED_BREAKDOWN_NAMES = [
-    'Preacher Curls',
+    'Recline Curls',
     'Tricep Extensions',
     'Chest Flies',
     'Incline Chest Press',
@@ -73,7 +73,7 @@ const DROPPED_NAMES = [
             const cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
             return {
                 gympinMode: cfg.gympinMode,
-                fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied4'),
+                fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied5'),
                 gympinFlag: localStorage.getItem('gym-local:jessiGympinEnabled'),
                 day1: (cfg.days?.[1] || []).map(e => e.name),
                 day2Exists: !!cfg.days?.[2],

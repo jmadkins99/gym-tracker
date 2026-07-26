@@ -16,7 +16,7 @@
 //   - The 3 dropped exercises (Lateral Raises, Reverse Wrist Curls,
 //     Cable Wrist Curls) are removed.
 //   - Schedule.workoutDays all remap to dayNumber 1, totalWorkoutDays=1.
-//   - jessiFullBodyMigrationApplied1 flag is set so migration won't re-run.
+//   - jessiFullBodyMigrationApplied5 flag is set so migration won't re-run.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -44,7 +44,7 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         const after = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
             const sched = JSON.parse(localStorage.getItem('gym-local:gymScheduleConfig'));
-            const flag = localStorage.getItem('gym-local:jessiFullBodyMigrationApplied4');
+            const flag = localStorage.getItem('gym-local:jessiFullBodyMigrationApplied5');
             return {
                 day1: (cfg.days[1] || []).map(e => e.name),
                 day2Exists: !!cfg.days[2],
@@ -60,14 +60,14 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         // Row" rather than "Sagittal Plane Pulldowns" because the fixture
         // uses Seated Row as its display name).
         const expectedOrder = [
-            'Preacher Curls',
-            'Tricep Extensions',
             'Chest Flies',
+            'Recline Curls',
             'Incline Chest Press',
-            'Seated Row',
-            'Frontal Plane Pulldowns',
             'Upper Back Row',
             'Kelso Shrugs',
+            'Seated Row',
+            'Tricep Extensions',
+            'Frontal Plane Pulldowns',
             'Ab Crunches',
             'Shoulder Press',
             'Seated Calf Raise',
@@ -81,7 +81,7 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         eq(after.categories, ['Full Body'], 'categories collapsed to ["Full Body"]');
         eq(after.scheduleDays, [1, 1, 1, 1], 'all schedule weekdays remapped to dayNumber 1');
         eq(after.scheduleTotal, 1, 'totalWorkoutDays = 1');
-        ok(after.flagSet, 'jessiFullBodyMigrationApplied4 flag is set so migration does not re-run');
+        ok(after.flagSet, 'jessiFullBodyMigrationApplied5 flag is set so migration does not re-run');
         eq(errors, [], 'no console errors during load');
 
         console.log('PASS: Jessi migration collapsed exercises into single Full Body day.');

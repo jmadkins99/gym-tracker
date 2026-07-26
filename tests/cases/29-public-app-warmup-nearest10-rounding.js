@@ -24,7 +24,7 @@ function fullBodyConfig() {
         minimalistPrTracking: true,
         days: {
             1: [
-                { id: 'cprea', name: 'Preacher Curls',           category: 'Full Body', order: 0, type: 'standard', minReps: 6, maxReps: 8 },
+                { id: 'cback', name: 'Back Extensions',          category: 'Full Body', order: 0, type: 'standard', minReps: 6, maxReps: 8 },
                 { id: 'cincl', name: 'Incline Chest Press',      category: 'Full Body', order: 1, type: 'standard', minReps: 6, maxReps: 8 },
                 { id: 'csag',  name: 'Sagittal Plane Pulldowns', category: 'Full Body', order: 2, type: 'standard', minReps: 6, maxReps: 8 },
             ],
@@ -90,12 +90,14 @@ async function breakdownText(page, name, weight) {
         contains(incline, 'Top Set (250 lbs)', 'incline top set exact 250 (never rounded)');
         contains(incline, 'Per side: 125 lbs', 'incline top set per side exact 125');
 
-        // Preacher Curls (one-sided) at 67.5: W1 47.25 -> 50 (up), W2 60.75 -> 60, top 67.5 exact
-        const preacher = await breakdownText(page, 'Preacher Curls', 67.5);
-        ok(preacher, 'opened Preacher Curls breakdown');
-        contains(preacher, 'Warmup Set #1 (50 lbs - ~70%)', 'preacher W1 47.25 rounds UP to 50');
-        contains(preacher, 'Warmup Set #2 (60 lbs - ~90%)', 'preacher W2 60.75 rounds DOWN to 60');
-        contains(preacher, 'Top Set (67.5 lbs)', 'preacher top set exact 67.5');
+        // Back Extensions (one-sided) at 67.5: W1 47.25 -> 50 (up), W2 60.75 -> 60, top 67.5 exact.
+        // (Was Preacher Curls until Jessi's station was renamed "Recline Curls" and
+        // reclassified as a pin stack — this test needs a one-sided PLATE-loaded case.)
+        const backExt = await breakdownText(page, 'Back Extensions', 67.5);
+        ok(backExt, 'opened Back Extensions breakdown');
+        contains(backExt, 'Warmup Set #1 (50 lbs - ~70%)', 'back ext W1 47.25 rounds UP to 50');
+        contains(backExt, 'Warmup Set #2 (60 lbs - ~90%)', 'back ext W2 60.75 rounds DOWN to 60');
+        contains(backExt, 'Top Set (67.5 lbs)', 'back ext top set exact 67.5');
 
         // Sagittal Plane Pulldowns (one-sided) at 50: exact-halfway ties round DOWN
         const sagittal = await breakdownText(page, 'Sagittal Plane Pulldowns', 50);

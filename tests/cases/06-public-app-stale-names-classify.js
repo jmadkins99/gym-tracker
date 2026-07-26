@@ -40,14 +40,14 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         });
 
         const expectedOrder = [
-            'Preacher Curls',
-            'Tricep Extensions',
             'Chest Flies',
+            'Recline Curls',
             'Incline Chest Press',
-            'Sagittal Plane Pulldowns',
-            'Frontal Plane Pulldowns',
             'Transverse Plane Rows',
             'Kelso Shrugs',
+            'Sagittal Plane Pulldowns',
+            'Tricep Extensions',
+            'Frontal Plane Pulldowns',
             'Ab Crunches',
             'Shoulder Press',
             'Calf Raises',
