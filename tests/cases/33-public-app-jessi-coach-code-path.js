@@ -127,8 +127,56 @@ const JESSI_CODE = 'D1O9O9M2';
         eq(cfg.repsDropdown, { min: 5, max: 8 },
             'preset carries the 5-8 repsDropdown — no second page load required');
 
+        // The program itself, on load 1. The original version of this test
+        // asserted only the two flags above and walked straight past the fact
+        // that the preset was still Torso/Limbs, so a coach-code install showed
+        // the old two-day split until a refresh.
+        const CANONICAL = [
+            'Chest Flies',
+            'Recline Curls',
+            'Incline Chest Press',
+            'Transverse Plane Rows',
+            'Kelso Shrugs',
+            'Sagittal Plane Pulldowns',
+            'Tricep Extensions',
+            'Frontal Plane Pulldowns',
+            'Ab Crunches',
+            'Shoulder Press',
+            'Calf Raises',
+            'Hip Adduction',
+            'Back Extensions',
+            'Leg Press',
+        ];
+        eq(cfg.categories, ['Full Body'], 'coach code yields a single Full Body day');
+        eq(Object.keys(cfg.days).length, 1, 'no leftover day 2 from the Torso/Limbs preset');
+        eq((cfg.days[1] || []).map(e => e.name), CANONICAL,
+            'coach code yields the canonical 14 in order on the FIRST load');
+
+        const onScreen1 = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('.exercise-name')).map(e => e.textContent.trim()));
+        eq(onScreen1, CANONICAL, 'and that is what actually renders on screen');
+
+        // Drift guard: preset (fresh installs) and migrateJessiToFullBody
+        // (existing devices) are two sources of truth for one program. If they
+        // agree, a refresh is a no-op. Edit either side alone and this fails —
+        // which is exactly the regression that shipped, whichever side rots.
+        await page.reload({ waitUntil: 'networkidle0' });
+        await new Promise(r => setTimeout(r, 1800));
+        const afterRefresh = await page.evaluate((ns) => {
+            const c = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
+            return {
+                categories: c.categories,
+                names: (c.days[1] || []).map(e => e.name),
+                dayCount: Object.keys(c.days).length,
+            };
+        }, NS);
+        eq(afterRefresh.names, CANONICAL,
+            'preset and migration agree — refreshing does not change the program');
+        eq(afterRefresh.categories, ['Full Body'], 'categories stable across the refresh');
+        eq(afterRefresh.dayCount, 1, 'day count stable across the refresh');
+
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: coach code D1O9O9M2 yields gympin + 5-8 reps dropdown on first load.');
+        console.log('PASS: coach code D1O9O9M2 yields the canonical Full Body program on first load.');
     } finally {
         await browser.close();
         await server.stop();
