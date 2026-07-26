@@ -172,6 +172,103 @@
             };
         }
 
+        // One-time import of this device's local data into Firestore, run
+        // during repo selection on the FIRST sign-in for this account (the
+        // settings/meta doc is the "already done" marker). Cloud entries win
+        // for any calendar day they already cover; local entries fill the
+        // gaps. A JSON backup auto-downloads before anything is uploaded.
+        // Failures are non-fatal: the app proceeds on the Firestore repo
+        // (mirror fallback covers display) and the import retries next load
+        // because meta was never written.
+        function migrateLocalToFirestore(user) {
+            const db = firebase.firestore();
+            const userDoc = db.collection('users').doc(user.uid);
+            const workoutsCol = userDoc.collection('workouts');
+            const configDoc = userDoc.collection('settings').doc('exerciseConfig');
+            const metaDoc = userDoc.collection('settings').doc('meta');
+            const local = createLocalStorageRepo();
+            const sanitize = (obj) => JSON.parse(JSON.stringify(obj));
+
+            const downloadPreSyncBackup = (localData) => {
+                try {
+                    const dataStr = JSON.stringify({
+                        workoutHistory: localData.workoutHistory || [],
+                        exerciseConfig: localData.exerciseConfig,
+                        exportDate: new Date().toISOString(),
+                    }, null, 2);
+                    const url = URL.createObjectURL(new Blob([dataStr], { type: 'application/json' }));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'gym-tracker-PRE-SYNC-BACKUP-' +
+                        new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+                    link.click();
+                    URL.revokeObjectURL(url);
+                } catch (e) {
+                    console.warn('[repo] pre-sync backup download failed:', e);
+                }
+            };
+
+            return metaDoc.get().then((meta) => {
+                if (meta.exists && meta.data().importedFromLocalAt) {
+                    return; // import already happened (this or another device)
+                }
+                return Promise.all([local.loadAll(), workoutsCol.get(), configDoc.get()])
+                    .then(([localData, cloudSnap, cloudCfg]) => {
+                        const localHistory = localData.workoutHistory || [];
+                        const dayOf = (w) => String(w.date || '').slice(0, 10);
+                        const cloudDays = new Set(cloudSnap.docs.map((d) => dayOf(d.data())));
+
+                        // Local entries for days the cloud doesn't have; if the
+                        // same local day has duplicates, prefer the submitted one.
+                        const toUpload = [];
+                        const pickedByDay = new Map();
+                        localHistory.forEach((w) => {
+                            if (cloudDays.has(dayOf(w))) return;
+                            const existing = pickedByDay.get(dayOf(w));
+                            if (!existing || (w.submitted && !existing.submitted)) {
+                                pickedByDay.set(dayOf(w), w);
+                            }
+                        });
+                        pickedByDay.forEach((w) => {
+                            if (!w.entryId) {
+                                w.entryId = 'w-' + dayOf(w) + '-' + Math.random().toString(36).slice(2, 7);
+                            }
+                            toUpload.push(w);
+                        });
+
+                        if (toUpload.length > 0) {
+                            downloadPreSyncBackup(localData);
+                        }
+
+                        // Chunked batches (Firestore caps a batch at 500 ops).
+                        let chain = Promise.resolve();
+                        for (let i = 0; i < toUpload.length; i += 400) {
+                            const chunk = toUpload.slice(i, i + 400);
+                            chain = chain.then(() => {
+                                const batch = db.batch();
+                                chunk.forEach((w) => batch.set(workoutsCol.doc(w.entryId), sanitize(w)));
+                                return batch.commit();
+                            });
+                        }
+
+                        return chain.then(() => {
+                            const writes = [];
+                            if (!cloudCfg.exists && localData.exerciseConfig) {
+                                writes.push(configDoc.set(sanitize(localData.exerciseConfig)));
+                            }
+                            writes.push(metaDoc.set({
+                                importedFromLocalAt: new Date().toISOString(),
+                                importedCount: toUpload.length,
+                                schemaVersion: 1,
+                            }));
+                            return Promise.all(writes);
+                        }).then(() => {
+                            console.log('[repo] imported ' + toUpload.length + ' local workouts to Firestore');
+                        });
+                    });
+            });
+        }
+
         // Sign-in/out actions for the Settings UI and sync banner. Popup, not
         // redirect: signInWithRedirect breaks on browsers that partition
         // third-party storage when authDomain differs from the app's domain
@@ -203,7 +300,15 @@
             return new Promise((resolve) => {
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                     unsubscribe();
-                    resolve(user ? createFirestoreRepo(user) : createLocalStorageRepo());
+                    if (!user) {
+                        resolve(createLocalStorageRepo());
+                        return;
+                    }
+                    resolve(
+                        migrateLocalToFirestore(user)
+                            .catch((e) => console.warn('[repo] local import failed (will retry next load):', e))
+                            .then(() => createFirestoreRepo(user))
+                    );
                 });
             });
         }).then((repo) => {
