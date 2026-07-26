@@ -173,13 +173,13 @@
         }
 
         // Repo selection, decided once per page load:
-        // - gym-local namespace / no Firebase / no config -> localStorage.
+        // - gym-local namespace / no config / SDK load failure -> localStorage.
         // - otherwise the first auth-state callback decides: signed in ->
         //   Firestore, signed out -> localStorage. onAuthStateChanged fires
         //   from IndexedDB-cached credentials, so this works offline too.
-        const repoReady = (function () {
-            if (!window.FIREBASE_READY) {
-                return Promise.resolve(createLocalStorageRepo());
+        const repoReady = window.FIREBASE_INIT.then((firebaseReady) => {
+            if (!firebaseReady) {
+                return createLocalStorageRepo();
             }
             return new Promise((resolve) => {
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
@@ -187,7 +187,7 @@
                     resolve(user ? createFirestoreRepo(user) : createLocalStorageRepo());
                 });
             });
-        })().then((repo) => {
+        }).then((repo) => {
             window.repo = repo;
             return repo;
         });
