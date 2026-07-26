@@ -35,63 +35,54 @@
             return { history, changed };
         }
 
-        // Reconcile saved exercise config against DEFAULT_EXERCISES.
+        // Reconcile a loaded exercise config against DEFAULT_EXERCISES.
         // - Adds new defaults the user doesn't have.
         // - Drops saved exercises that are no longer in defaults.
         // - Preserves user-renamed display names by id.
-        // Returns the reconciled config, or null if no changes are needed.
-        function migrateExerciseConfig() {
-            const savedConfig = storage.getItem('gymExerciseConfig');
-            if (!savedConfig) return null;
+        // Pure function: takes the parsed config and returns the reconciled
+        // config, or null if no changes are needed. The caller persists.
+        function migrateExerciseConfig(config) {
+            if (!config) return null;
 
-            try {
-                const config = JSON.parse(savedConfig);
-                const savedExercises = config.exercises || [];
+            const savedExercises = config.exercises || [];
 
-                const savedById = new Map(savedExercises.map(e => [e.id, e]));
-                const savedIds = new Set(savedExercises.map(e => e.id));
-                const defaultIds = new Set(DEFAULT_EXERCISES.map(e => e.id));
+            const savedById = new Map(savedExercises.map(e => [e.id, e]));
+            const savedIds = new Set(savedExercises.map(e => e.id));
+            const defaultIds = new Set(DEFAULT_EXERCISES.map(e => e.id));
 
-                const setsEqual = (a, b) => {
-                    if (a.size !== b.size) return false;
-                    for (const item of a) {
-                        if (!b.has(item)) return false;
-                    }
-                    return true;
-                };
-
-                if (setsEqual(savedIds, defaultIds)) {
-                    return null; // No migration needed
+            const setsEqual = (a, b) => {
+                if (a.size !== b.size) return false;
+                for (const item of a) {
+                    if (!b.has(item)) return false;
                 }
+                return true;
+            };
 
-                console.log('[Exercise Config Migration] Changes detected, migrating...');
-
-                const result = [];
-                for (const defaultEx of DEFAULT_EXERCISES) {
-                    if (savedById.has(defaultEx.id)) {
-                        const saved = savedById.get(defaultEx.id);
-                        // Preserve the user's renamed display name; everything else
-                        // (category, type, order) comes from defaults.
-                        result.push({ ...defaultEx, name: saved.name });
-                    } else {
-                        result.push({ ...defaultEx });
-                        console.log(`[Migration] Added new exercise: ${defaultEx.name}`);
-                    }
-                }
-                for (const [id, saved] of savedById) {
-                    if (!defaultIds.has(id)) {
-                        console.log(`[Migration] Removed exercise: ${saved.name} (id: ${id})`);
-                    }
-                }
-
-                const newConfig = { exercises: result };
-                storage.setItem('gymExerciseConfig', JSON.stringify(newConfig));
-
-                console.log('[Exercise Config Migration] Complete!');
-
-                return newConfig;
-            } catch (e) {
-                console.error('[Exercise Config Migration] Error:', e);
-                return null;
+            if (setsEqual(savedIds, defaultIds)) {
+                return null; // No migration needed
             }
+
+            console.log('[Exercise Config Migration] Changes detected, migrating...');
+
+            const result = [];
+            for (const defaultEx of DEFAULT_EXERCISES) {
+                if (savedById.has(defaultEx.id)) {
+                    const saved = savedById.get(defaultEx.id);
+                    // Preserve the user's renamed display name; everything else
+                    // (category, type, order) comes from defaults.
+                    result.push({ ...defaultEx, name: saved.name });
+                } else {
+                    result.push({ ...defaultEx });
+                    console.log(`[Migration] Added new exercise: ${defaultEx.name}`);
+                }
+            }
+            for (const [id, saved] of savedById) {
+                if (!defaultIds.has(id)) {
+                    console.log(`[Migration] Removed exercise: ${saved.name} (id: ${id})`);
+                }
+            }
+
+            console.log('[Exercise Config Migration] Complete!');
+
+            return { exercises: result };
         }

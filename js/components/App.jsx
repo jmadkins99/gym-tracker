@@ -18,63 +18,69 @@
             // Which day type the workout view shows. Defaults by weekday (Tue/Thu =
             // cardio) on every load; a manual toggle only lasts for the session.
             const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
+            const [hydrated, setHydrated] = useState(false);
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
 
             useEffect(() => {
-                // Migrate existing data to namespaced storage (one-time for existing users)
-                migrateToNamespacedStorage();
+                window.repoReady.then((repo) => {
+                    // Legacy localStorage-era migrations. Only meaningful in
+                    // local mode: cloud data is imported post-migration, and a
+                    // fresh device must not wipe synced config just because its
+                    // own localStorage lacks the sentinel flags. They reshape
+                    // the stored keys, so they run before loadAll reads them.
+                    if (repo.mode === 'local') {
+                        migrateToNamespacedStorage();
 
-                // Load workout history
-                const saved = storage.getItem('gymWorkoutHistory');
-                if (saved) {
-                    let history = JSON.parse(saved);
-                    // One-time: discard the abandoned assault bike `rounds` metric.
-                    const migrated = migrateAssaultBikeRoundsToIntensity(history);
-                    if (migrated.changed) {
-                        history = migrated.history;
-                        storage.setItem('gymWorkoutHistory', JSON.stringify(history));
-                    }
-                    setWorkoutHistory(history);
-                }
-
-                // Full Body migration: wipe old day1/day2 exercise config so users
-                // pick up the new single-list defaults.
-                const hasMigratedToFB = storage.getItem('migratedToFullBody2');
-                if (!hasMigratedToFB) {
-                    storage.removeItem('gymExerciseConfig');
-                    storage.removeItem('migratedToFullBody');
-                    storage.removeItem('migratedToTorsoLimbs2');
-                    storage.removeItem('activeDay');
-                    storage.setItem('migratedToFullBody2', 'true');
-                }
-
-                // Clean up stale migration flag
-                storage.removeItem('removedStairmaster');
-
-                // Check if exercise config needs migration (new exercises added/removed)
-                const migratedConfig = migrateExerciseConfig();
-
-                if (migratedConfig) {
-                    setExercises(migratedConfig.exercises.sort((a, b) => a.order - b.order));
-                } else {
-                    const savedExercises = storage.getItem('gymExerciseConfig');
-                    if (savedExercises) {
-                        const config = JSON.parse(savedExercises);
-                        if (config.exercises) {
-                            setExercises(config.exercises.sort((a, b) => a.order - b.order));
+                        // Full Body migration: wipe old day1/day2 exercise config
+                        // so users pick up the new single-list defaults.
+                        const hasMigratedToFB = storage.getItem('migratedToFullBody2');
+                        if (!hasMigratedToFB) {
+                            storage.removeItem('gymExerciseConfig');
+                            storage.removeItem('migratedToFullBody');
+                            storage.removeItem('migratedToTorsoLimbs2');
+                            storage.removeItem('activeDay');
+                            storage.setItem('migratedToFullBody2', 'true');
                         }
+
+                        // Clean up stale migration flag
+                        storage.removeItem('removedStairmaster');
                     }
-                }
 
-                // Check last backup reminder
-                const lastReminder = storage.getItem('lastBackupReminder');
-                const now = new Date().getTime();
-                const oneMonth = 30 * 24 * 60 * 60 * 1000;
+                    return repo.loadAll().then(({ workoutHistory: savedHistory, exerciseConfig: savedConfig }) => {
+                        if (savedHistory) {
+                            let history = savedHistory;
+                            // One-time: discard the abandoned assault bike `rounds` metric.
+                            const migrated = migrateAssaultBikeRoundsToIntensity(history);
+                            if (migrated.changed) {
+                                history = migrated.history;
+                                repo.saveHistory(history);
+                            }
+                            setWorkoutHistory(history);
+                        }
 
-                if (!lastReminder || (now - parseInt(lastReminder)) > oneMonth) {
-                    setShowBackupReminder(true);
-                }
+                        // Reconcile the loaded config against DEFAULT_EXERCISES
+                        // (new exercises added/removed since it was saved).
+                        const migratedConfig = migrateExerciseConfig(savedConfig);
+                        if (migratedConfig) {
+                            setExercises(migratedConfig.exercises.sort((a, b) => a.order - b.order));
+                            repo.saveExerciseConfig(migratedConfig);
+                        } else if (savedConfig && savedConfig.exercises) {
+                            setExercises(savedConfig.exercises.sort((a, b) => a.order - b.order));
+                        }
+
+                        // Check last backup reminder (device-local, not repo data)
+                        const lastReminder = storage.getItem('lastBackupReminder');
+                        const now = new Date().getTime();
+                        const oneMonth = 30 * 24 * 60 * 60 * 1000;
+
+                        if (!lastReminder || (now - parseInt(lastReminder)) > oneMonth) {
+                            setShowBackupReminder(true);
+                        }
+
+                        setHydrated(true);
+                    });
+                });
             }, []);
 
             useEffect(() => {
@@ -92,7 +98,7 @@
 
                     if (hasChanges) {
                         setWorkoutHistory(migratedHistory);
-                        storage.setItem('gymWorkoutHistory', JSON.stringify(migratedHistory));
+                        window.repo.saveHistory(migratedHistory);
                     }
 
                     setViewingWeek(currentWeek);
@@ -172,7 +178,7 @@
             };
 
             const saveExerciseConfig = (updated = exercises) => {
-                storage.setItem('gymExerciseConfig', JSON.stringify({ exercises: updated }));
+                window.repo.saveExerciseConfig({ exercises: updated });
             };
 
             const updateExerciseName = (exerciseId, newName) => {
@@ -407,7 +413,7 @@
                 }
 
                 setWorkoutHistory(updatedHistory);
-                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                window.repo.saveHistory(updatedHistory);
 
                 setLoggedExercises(prev => ({
                     ...prev,
@@ -511,7 +517,7 @@
                 });
 
                 setWorkoutHistory(updatedHistory);
-                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                window.repo.saveHistory(updatedHistory);
 
                 autoBackup();
 
@@ -574,7 +580,7 @@
                 }
 
                 setWorkoutHistory(updatedHistory);
-                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                window.repo.saveHistory(updatedHistory);
 
                 autoBackup();
 
@@ -593,7 +599,7 @@
                 });
 
                 setWorkoutHistory(updatedHistory);
-                storage.setItem('gymWorkoutHistory', JSON.stringify(updatedHistory));
+                window.repo.saveHistory(updatedHistory);
                 setSuccessMessage('Workout updated!');
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 2000);
@@ -643,18 +649,18 @@
 
                         if (Array.isArray(imported)) {
                             setWorkoutHistory(imported);
-                            storage.setItem('gymWorkoutHistory', JSON.stringify(imported));
+                            window.repo.saveHistory(imported);
                         } else {
                             if (imported.workoutHistory) {
                                 setWorkoutHistory(imported.workoutHistory);
-                                storage.setItem('gymWorkoutHistory', JSON.stringify(imported.workoutHistory));
+                                window.repo.saveHistory(imported.workoutHistory);
                             }
                             if (imported.exerciseConfig) {
                                 // New Full Body shape: { exercises: [...] }
                                 if (imported.exerciseConfig.exercises) {
                                     const sorted = imported.exerciseConfig.exercises.sort((a, b) => a.order - b.order);
                                     setExercises(sorted);
-                                    storage.setItem('gymExerciseConfig', JSON.stringify({ exercises: sorted }));
+                                    window.repo.saveExerciseConfig({ exercises: sorted });
                                 } else if (imported.exerciseConfig.day1 || imported.exerciseConfig.day2) {
                                     // Legacy split shape: merge day1+day2 into a single list, then
                                     // let the next migrateExerciseConfig pass reconcile against DEFAULT_EXERCISES.
@@ -664,7 +670,7 @@
                                     ];
                                     const reindexed = merged.map((ex, idx) => ({ ...ex, order: idx, category: 'Full Body' }));
                                     setExercises(reindexed);
-                                    storage.setItem('gymExerciseConfig', JSON.stringify({ exercises: reindexed }));
+                                    window.repo.saveExerciseConfig({ exercises: reindexed });
                                 }
                             }
                         }
@@ -683,9 +689,7 @@
             const resetData = () => {
                 if (confirm('ARE YOU VERY SURE? This will delete ALL your workout data AND exercise customizations permanently. This cannot be undone!')) {
                     if (confirm('FINAL WARNING: All your progress and custom exercise names/order will be lost forever. Continue?')) {
-                        storage.removeItem('gymWorkoutHistory');
-                        storage.removeItem('gymExerciseConfig');
-                        storage.removeItem('lastBackupReminder');
+                        window.repo.clearAll();
                         setWorkoutHistory([]);
                         setWorkoutData({});
                         setLoggedExercises({});
@@ -702,6 +706,12 @@
                 storage.setItem('lastBackupReminder', new Date().getTime().toString());
                 setShowBackupReminder(false);
             };
+
+            // Storage not read yet: render nothing rather than a flash of
+            // default state (avoids acting on data that is about to change).
+            if (!hydrated) {
+                return <div className="app" />;
+            }
 
             return (
                 <div className="app">
