@@ -185,8 +185,11 @@
                 return todayWorkout && todayWorkout.submitted;
             };
 
+            // Stamp the version so an in-app rename/reorder survives the next
+            // load: migrateExerciseConfig treats a missing version as stale and
+            // would otherwise reset the list to the DEFAULT_EXERCISES order.
             const saveExerciseConfig = (updated = exercises) => {
-                window.repo.saveExerciseConfig({ exercises: updated });
+                window.repo.saveExerciseConfig({ exercises: updated, version: EXERCISE_CONFIG_VERSION });
             };
 
             const updateExerciseName = (exerciseId, newName) => {

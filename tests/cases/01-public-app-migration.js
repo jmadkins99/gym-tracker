@@ -62,12 +62,12 @@ const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_ap
         const expectedOrder = [
             'Chest Flies',
             'Recline Curls',
+            'Frontal Plane Pulldowns',
             'Incline Chest Press',
             'Upper Back Row',
             'Kelso Shrugs',
             'Seated Row',
             'Tricep Extensions',
-            'Frontal Plane Pulldowns',
             'Ab Crunches',
             'Shoulder Press',
             'Seated Calf Raise',

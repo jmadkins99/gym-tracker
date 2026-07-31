@@ -38,9 +38,16 @@
         // Reconcile a loaded exercise config against DEFAULT_EXERCISES.
         // - Adds new defaults the user doesn't have.
         // - Drops saved exercises that are no longer in defaults.
+        // - Applies the canonical order from DEFAULT_EXERCISES.
         // - Preserves user-renamed display names by id.
         // Pure function: takes the parsed config and returns the reconciled
         // config, or null if no changes are needed. The caller persists.
+        //
+        // Runs in BOTH local and Firestore mode (App.jsx calls it outside the
+        // local-mode gate and saves the result through the repo), so a bump of
+        // EXERCISE_CONFIG_VERSION is how a code-side reorder reaches a
+        // signed-in device. Without the version check this returns early
+        // whenever the id set matches, which made pure reorders a silent no-op.
         function migrateExerciseConfig(config) {
             if (!config) return null;
 
@@ -58,8 +65,8 @@
                 return true;
             };
 
-            if (setsEqual(savedIds, defaultIds)) {
-                return null; // No migration needed
+            if (config.version === EXERCISE_CONFIG_VERSION && setsEqual(savedIds, defaultIds)) {
+                return null; // Up to date on both membership and layout
             }
 
             console.log('[Exercise Config Migration] Changes detected, migrating...');
@@ -84,5 +91,5 @@
 
             console.log('[Exercise Config Migration] Complete!');
 
-            return { exercises: result };
+            return { exercises: result, version: EXERCISE_CONFIG_VERSION };
         }

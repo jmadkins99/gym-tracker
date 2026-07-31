@@ -33,7 +33,7 @@ function extractObjectLiteral(source, name) {
     const WEEK_1_DEFAULTS = extractObjectLiteral(configSrc, 'WEEK_1_DEFAULTS');
 
     const NEW_EXERCISES = [
-        { name: 'Curls with Shoulder Extension', id: 'curls-shoulder-extension' },
+        { name: 'Recline Curls', id: 'curls-shoulder-extension' },
         { name: 'Overhead Tricep Extensions', id: 'overhead-tricep-extensions' },
     ];
 

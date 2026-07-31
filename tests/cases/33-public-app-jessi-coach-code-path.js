@@ -134,12 +134,12 @@ const JESSI_CODE = 'D1O9O9M2';
         const CANONICAL = [
             'Chest Flies',
             'Recline Curls',
+            'Frontal Plane Pulldowns',
             'Incline Chest Press',
             'Transverse Plane Rows',
             'Kelso Shrugs',
             'Sagittal Plane Pulldowns',
             'Tricep Extensions',
-            'Frontal Plane Pulldowns',
             'Ab Crunches',
             'Shoulder Press',
             'Calf Raises',

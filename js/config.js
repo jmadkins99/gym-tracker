@@ -87,26 +87,36 @@
             'reverse-wrist-curls': true
         };
 
+        // Bump to push a code-side reorder (or a newly added/removed exercise)
+        // out to devices that already have a saved config. migrateExerciseConfig
+        // otherwise short-circuits when the id set is unchanged, so a *pure*
+        // reorder would silently never reach anyone. Renames are NOT pushed:
+        // the migration always preserves the user's own display names by id.
+        const EXERCISE_CONFIG_VERSION = 2;
+
+        // Display names here are the defaults a fresh install sees. They mirror
+        // the names in use as of July 2026; ids are frozen because workout
+        // history references them.
         const DEFAULT_EXERCISES = [
-            { id: 'curls-shoulder-extension', name: 'Curls with Shoulder Extension', category: 'Full Body', type: 'standard', order: 0 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Full Body', type: 'standard', order: 0 },
             { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Full Body', type: 'standard', order: 1 },
             { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', type: 'standard', order: 2 },
             { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Full Body', type: 'standard', order: 3 },
             { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Full Body', type: 'standard', order: 4 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Full Body', type: 'standard', order: 5 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', type: 'standard', order: 6 },
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', type: 'standard', order: 7 },
+            { id: 'chest-flies',         name: 'Unilateral Chest Flies',   category: 'Full Body', type: 'standard', order: 5 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Full Body', type: 'standard', order: 6 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', type: 'standard', order: 7 },
             { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', type: 'standard', order: 8 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Full Body', type: 'standard', order: 9 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', type: 'standard', order: 10 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', type: 'standard', order: 11 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', type: 'standard', order: 12 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', type: 'standard', order: 9 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', type: 'standard', order: 10 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Full Body', type: 'standard', order: 11 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', type: 'standard', order: 12 },
             { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', type: 'standard', order: 13 },
             { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', type: 'standard', order: 14 },
             { id: 'calf-raise',          name: 'Calf Raises',              category: 'Full Body', type: 'standard', order: 15 },
             { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Full Body', type: 'standard', order: 16 },
-            { id: 'leg-curls',           name: 'Stiff Legged Deadlifts',   category: 'Full Body', type: 'standard', order: 17 },
-            { id: 'hip-adduction',       name: 'Pendulum Squats',          category: 'Full Body', type: 'standard', order: 18 }
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Full Body', type: 'standard', order: 17 },
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Full Body', type: 'standard', order: 18 }
         ];
 
         // Cardio day exercises (fixed in code, not user-customizable).

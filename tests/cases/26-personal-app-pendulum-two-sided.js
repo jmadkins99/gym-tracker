@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// Pendulum Squats (id `hip-adduction`) is a TWO-sided plate-loaded machine:
+// Leg Press (id `hip-adduction`) is a TWO-sided plate-loaded machine:
 // you load matching plates on each side, so the breakdown must split the
 // target in half and show a "Per side" line. This guards the config change
 // from one-sided -> two-sided (PLATE_LOADED_EXERCISES['hip-adduction'].type)
@@ -51,11 +51,11 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
 
         await selectDayType(page, 'fullbody');
 
-        // Open the Pendulum Squats breakdown at 270 lbs.
+        // Open the Leg Press breakdown at 270 lbs.
         const interacted = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Pendulum Squats') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Leg Press') {
                     const input = c.querySelector('input[type="number"]');
                     if (!input) return false;
                     const setter = Object.getOwnPropertyDescriptor(
@@ -70,13 +70,13 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
             }
             return false;
         });
-        ok(interacted, 'set Pendulum Squats weight to 270 and clicked Weight Breakdown');
+        ok(interacted, 'set Leg Press weight to 270 and clicked Weight Breakdown');
         await new Promise(r => setTimeout(r, 300));
 
         const text = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Pendulum Squats') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Leg Press') {
                     return c.textContent;
                 }
             }
@@ -95,7 +95,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         contains(text, 'Per side: 120 lbs', 'warmup #2 per side rounded 121.5 -> 120 lbs');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Pendulum Squats renders two-sided breakdown; josh backup restores cleanly.');
+        console.log('PASS: Leg Press renders two-sided breakdown; josh backup restores cleanly.');
     } finally {
         await browser.close();
         await server.stop();

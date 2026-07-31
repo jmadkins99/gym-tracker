@@ -72,7 +72,7 @@ async function readStandardCard(page, name) {
         eq(ks.weightValue, '191.25', 'after hitting 6, weight auto-bumps by the PR increment');
 
         // A never-logged exercise defaults to 4.
-        const cf = await readStandardCard(page, 'Chest Flies');
+        const cf = await readStandardCard(page, 'Unilateral Chest Flies');
         eq(cf.repsValue, '4', 'no-history exercise defaults reps to 4');
 
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.

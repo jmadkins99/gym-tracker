@@ -79,7 +79,7 @@ function extractLiteral(source, name, open, close) {
 
         // Explicit regression guard for the two pin-loaded exercises that
         // originally shipped unclassified (no button).
-        for (const name of ['Curls with Shoulder Extension', 'Overhead Tricep Extensions']) {
+        for (const name of ['Recline Curls', 'Overhead Tricep Extensions']) {
             const card = cards.find(c => c.name === name);
             ok(card && card.hasWeightBreakdown,
                 `"${name}" (pin-loaded) shows a Weight Breakdown button`);

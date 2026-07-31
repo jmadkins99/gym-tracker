@@ -113,12 +113,12 @@ const HISTORY_WEIGHTS = {
 const EXPECTED_ORDER = [
     'Chest Flies',
     'Recline Curls',
+    'Frontal Plane Pulldowns',
     'Incline Chest Press',
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
     'Tricep Extensions',
-    'Frontal Plane Pulldowns',
     'Ab Crunches',
     'Shoulder Press',
     'Calf Raises',

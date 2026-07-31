@@ -20,7 +20,7 @@ const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
-const TARGET_NAME = 'Curls with Shoulder Extension';
+const TARGET_NAME = 'Recline Curls';
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });

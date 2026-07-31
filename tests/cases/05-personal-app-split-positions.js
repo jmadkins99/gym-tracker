@@ -4,11 +4,12 @@
 // If someone (or a migration) accidentally shuffles or drops an exercise,
 // this test screams.
 //
-// Full Body (single day): lateral raises, reverse wrist curls, cable
-//   wrist curls, preacher curls, tricep extensions, chest flies, incline
-//   chest press, sagittal plane pulldowns, frontal plane pulldowns,
-//   transverse plane rows, kelso shrugs, shoulder press, ab crunches,
-//   calf raises, hip adduction, stiff legged deadlifts, pendulum squats.
+// Full Body (single day), July 2026 order: the five arm/forearm openers,
+//   then the chest/back block, then the trunk and lower-body tail.
+//
+// These are the DEFAULT_EXERCISES names and order — what a fresh install
+// renders. A device with a saved config picks the same order up via
+// EXERCISE_CONFIG_VERSION; test 40 covers that path.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -19,25 +20,25 @@ const { eq } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 const EXPECTED_FULL_BODY = [
-    'Curls with Shoulder Extension',
+    'Preacher Curls',
     'Overhead Tricep Extensions',
     'Lateral Raises',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    'Preacher Curls',
-    'Tricep Extensions',
-    'Chest Flies',
-    'Incline Chest Press',
-    'Sagittal Plane Pulldowns',
+    'Unilateral Chest Flies',
+    'Recline Curls',
     'Frontal Plane Pulldowns',
+    'Incline Chest Press',
     'Transverse Plane Rows',
     'Kelso Shrugs',
+    'Sagittal Plane Pulldowns',
+    'Tricep Extensions',
     'Ab Crunches',
     'Shoulder Press',
     'Calf Raises',
     'Hip Adduction',
-    'Stiff Legged Deadlifts',
-    'Pendulum Squats',
+    'Back Extensions',
+    'Leg Press',
 ];
 
 (async () => {
