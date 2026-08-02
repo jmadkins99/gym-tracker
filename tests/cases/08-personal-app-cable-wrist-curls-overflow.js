@@ -68,7 +68,7 @@ async function readCard(page, exerciseName) {
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'lower');
 
         const clicked = await clickBreakdown(page, 'Cable Wrist Curls');
         ok(clicked, 'Cable Wrist Curls card has a Weight Breakdown button');

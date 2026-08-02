@@ -30,8 +30,17 @@
                         <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
                             <div className="modal-title">Exercises</div>
 
-                            <div style={{ marginBottom: '20px' }}>
-                                {exercises.map((exercise, idx) => (
+                            {/* Grouped by day so the up/down arrows stop at each
+                                day's boundary — moveExercise refuses to swap
+                                across it, so an arrow that looked enabled there
+                                would silently do nothing. */}
+                            {[['upper', 'Upper'], ['lower', 'Lower']].map(([dayKey, dayLabel]) => {
+                              const dayExercises = exercises.filter(e => e.day === dayKey);
+                              if (dayExercises.length === 0) return null;
+                              return (
+                                <div key={dayKey} style={{ marginBottom: '20px' }}>
+                                    <div className="section-title">{dayLabel}</div>
+                                    {dayExercises.map((exercise, idx) => (
                                     <div key={exercise.id} style={{
                                         background: '#1a1a2a',
                                         borderRadius: '8px',
@@ -108,14 +117,14 @@
                                                 </button>
                                                 <button
                                                     onClick={() => moveExercise(exercise.id, 'down')}
-                                                    disabled={idx === exercises.length - 1}
+                                                    disabled={idx === dayExercises.length - 1}
                                                     style={{
                                                         padding: '4px 8px',
-                                                        background: idx === exercises.length - 1 ? '#0d0d1a' : '#1a1a2a',
+                                                        background: idx === dayExercises.length - 1 ? '#0d0d1a' : '#1a1a2a',
                                                         border: '1px solid #2a2a3a',
                                                         borderRadius: '4px',
-                                                        color: idx === exercises.length - 1 ? '#555' : '#8a8aa0',
-                                                        cursor: idx === exercises.length - 1 ? 'not-allowed' : 'pointer'
+                                                        color: idx === dayExercises.length - 1 ? '#555' : '#8a8aa0',
+                                                        cursor: idx === dayExercises.length - 1 ? 'not-allowed' : 'pointer'
                                                     }}
                                                 >
                                                     ↓
@@ -136,8 +145,10 @@
                                             </div>
                                         )}
                                     </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                              );
+                            })}
 
                             <button className="modal-btn" onClick={() => setSettingsView('main')}>
                                 ← Back to Settings

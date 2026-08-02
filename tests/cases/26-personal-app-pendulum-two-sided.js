@@ -49,7 +49,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         eq(restored.byId['chest-flies'], { weight: '192.5', reps: '5' }, 'chest flies filled');
         eq(restored.byId['leg-curls'], { weight: '520', reps: '5' }, 'leg curls filled');
 
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'lower');
 
         // Open the Leg Press breakdown at 270 lbs.
         const interacted = await page.evaluate(() => {

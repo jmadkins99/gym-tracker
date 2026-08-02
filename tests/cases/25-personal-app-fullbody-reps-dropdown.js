@@ -57,7 +57,7 @@ async function readStandardCard(page, name) {
         await page.evaluate(() => localStorage.setItem('gym-local:firstWorkoutMonday', '2026-05-25T00:00:00.000Z'));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         // Reps is now a dropdown of exactly 3/4/5/6.
         const sp = await readStandardCard(page, 'Shoulder Press');
@@ -72,7 +72,7 @@ async function readStandardCard(page, name) {
         eq(ks.weightValue, '191.25', 'after hitting 6, weight auto-bumps by the PR increment');
 
         // A never-logged exercise defaults to 4.
-        const cf = await readStandardCard(page, 'Unilateral Chest Flies');
+        const cf = await readStandardCard(page, 'Chest Flies');
         eq(cf.repsValue, '4', 'no-history exercise defaults reps to 4');
 
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.

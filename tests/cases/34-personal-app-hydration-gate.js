@@ -54,7 +54,7 @@ const NS = 'gym-local:';
         }, NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         const cards = await readCards(page);
         const renamed = cards.find(c => c.name === 'My Custom Pulldowns');

@@ -1,11 +1,11 @@
 // What this test covers
 // ----------------------
-// Unilateral Chest Flies was reclassified from two-sided plate-loaded to plain pin-stack.
+// Chest Flies was reclassified from two-sided plate-loaded to plain pin-stack.
 // The Weight Breakdown popover should now show the pin-stack format
 // (just two warmup percentages as a single number each), NOT the
 // plate-loaded format ("Warmup Set #1 (NNN lbs - ~70%):" + per-plate lines).
 //
-// If we ever accidentally re-add Unilateral Chest Flies to PLATE_LOADED_EXERCISES,
+// If we ever accidentally re-add Chest Flies to PLATE_LOADED_EXERCISES,
 // this test fails.
 
 const path = require('path');
@@ -24,23 +24,23 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
-        // Seed a Unilateral Chest Flies history so the input has a known weight.
+        // Seed a Chest Flies history so the input has a known weight.
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
-                exercises: [{ id: 'chest-flies', name: 'Unilateral Chest Flies', weight: '165', reps: '5' }],
+                exercises: [{ id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '5' }],
             }),
         ];
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
-        // Click the Weight Breakdown button on Unilateral Chest Flies.
+        // Click the Weight Breakdown button on Chest Flies.
         const clicked = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Unilateral Chest Flies') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Chest Flies') {
                     const btn = Array.from(c.querySelectorAll('button'))
                         .find(b => b.textContent.includes('Weight Breakdown'));
                     if (btn) { btn.click(); return true; }
@@ -48,13 +48,13 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             }
             return false;
         });
-        ok(clicked, 'Unilateral Chest Flies card has a Weight Breakdown button');
+        ok(clicked, 'Chest Flies card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));
 
         const breakdownText = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Unilateral Chest Flies') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Chest Flies') {
                     return c.textContent;
                 }
             }
@@ -75,7 +75,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         );
         eq(errors, [], 'no console errors during load');
 
-        console.log('PASS: Unilateral Chest Flies renders pin-stack weight breakdown (not plate-loaded).');
+        console.log('PASS: Chest Flies renders pin-stack weight breakdown (not plate-loaded).');
     } finally {
         await browser.close();
         await server.stop();

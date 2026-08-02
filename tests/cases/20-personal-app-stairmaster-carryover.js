@@ -1,12 +1,17 @@
 // What this test covers
 // ----------------------
-// Cardio-day fields carry over last session's values verbatim — no
-// progression and no green suggestion hints — driven off a seeded prior
-// cardio workout:
-//   - Body Weight Squats: reps stay at last session (50, NOT 75).
-//   - Stairmaster: time and Level stay at last session (12:00 / Level 9).
-//   - Assault Bike: intensity and watts stay at last session (25/35 / 30).
-//   - No green "+reps" / "+seconds" / "→" badges anywhere.
+// Stairmaster carries over last session's values verbatim — no progression
+// and no green suggestion hints — unlike every weighted movement around it on
+// the Lower day, which do progress. Time and Level stay at 12:00 / Level 9.
+//
+// Two things make this worth its own case after the Aug 2026 split:
+//   1. Stairmaster moved out of the code-only CARDIO_EXERCISES constant and
+//      into the user-configurable DEFAULT_EXERCISES list, on Lower. Carryover
+//      is driven off `type === 'stairmaster'`, not off which list it lives in,
+//      and this proves the move didn't quietly switch it to PR tracking.
+//   2. The carryover source here is a *legacy Cardio-day* workout — the last
+//      stairmaster session most real history has. Lookups are by exercise id
+//      and ignore `day`, so a Lower day must still find it.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -55,27 +60,22 @@ async function readCardioCard(page, name) {
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'cardio');
-
-        const squats = await readCardioCard(page, 'Body Weight Squats');
-        ok(squats, 'squats card present');
-        eq(squats.selects.reps, '50', 'squats carries over last reps (50, not +25)');
-        ok(!squats.text.includes('+25 reps'), 'squats shows no green +reps badge');
+        await selectDayType(page, 'lower');
 
         const stair = await readCardioCard(page, 'Stairmaster');
-        ok(stair, 'stairmaster card present');
+        ok(stair, 'stairmaster card present on the Lower day');
         eq(stair.selects.level, 'Level 9', 'stairmaster carries over last session level (9)');
         eq(stair.selects.time, '12:00', 'stairmaster carries over last time (12:00, not +30s)');
         ok(!stair.text.includes('+30 seconds'), 'stairmaster shows no green +seconds badge');
 
-        const bike = await readCardioCard(page, 'Assault Bike');
-        ok(bike, 'assault bike card present');
-        eq(bike.selects.watts, '30', 'assault bike carries over last session watts (30)');
-        eq(bike.selects.intensity, '25/35', 'assault bike carries over last intensity (25/35, not +1)');
-        ok(!bike.text.includes('→'), 'assault bike shows no green → badge');
+        // The retired cardio movements are not on this day (or any other).
+        eq(await readCardioCard(page, 'Body Weight Squats'), null,
+            'Body Weight Squats is retired and does not render on Lower');
+        eq(await readCardioCard(page, 'Assault Bike'), null,
+            'Assault Bike is retired and does not render on Lower');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: cardio fields carry over last session (no progression, no green hints).');
+        console.log('PASS: stairmaster carries over its last session on Lower (no progression, no hints).');
     } finally {
         await browser.close();
         await server.stop();

@@ -63,7 +63,7 @@ async function breakdownText(page, name, weight) {
         await seedPersonalApp(page, {});
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         // --- Incline Chest Press (two-sided) at 247.5 ---
         const incline = await breakdownText(page, 'Incline Chest Press', 247.5);

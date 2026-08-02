@@ -1,5 +1,7 @@
         function WorkoutView({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown, activeDayType, setActiveDayType }) {
             const exercises = getCurrentExercises();
+            // Stairmaster is the only 'Cardio'-category entry left; it renders
+            // under its own heading at the bottom of the Lower day.
             const mainExercises = exercises.filter(e => e.category !== 'Cardio');
             const cardioExercises = exercises.filter(e => e.category === 'Cardio');
 
@@ -621,8 +623,8 @@
             return (
                 <>
                     <div data-day-type-toggle style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                        {dayTypeButton('fullbody', 'Full Body')}
-                        {dayTypeButton('cardio', 'Cardio')}
+                        {dayTypeButton('upper', 'Upper')}
+                        {dayTypeButton('lower', 'Lower')}
                     </div>
 
                     {mainExercises.map(renderExercise)}

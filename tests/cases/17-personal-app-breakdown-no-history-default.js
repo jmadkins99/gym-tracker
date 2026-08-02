@@ -46,7 +46,7 @@ const TARGET_NAME = 'Recline Curls';
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         // Confirm we're genuinely past Week 1 (otherwise the week-gated
         // defaultWeight would mask the bug this test guards against).

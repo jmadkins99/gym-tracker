@@ -92,45 +92,67 @@
         // otherwise short-circuits when the id set is unchanged, so a *pure*
         // reorder would silently never reach anyone. Renames are NOT pushed:
         // the migration always preserves the user's own display names by id.
-        const EXERCISE_CONFIG_VERSION = 2;
+        // Bump on EVERY code-side reorder, including ones that have not shipped
+        // yet. It is tempting to reuse an unreleased number while iterating on
+        // an order, but any device that already loaded the intermediate build —
+        // a localhost test browser counts — has saved a config stamped with it,
+        // and the guard above then reads that stale order as current and leaves
+        // it alone. Version 3 was burned that way; 4 is the Aug 2026 Upper/Lower
+        // split as actually shipped.
+        const EXERCISE_CONFIG_VERSION = 4;
 
         // Display names here are the defaults a fresh install sees. They mirror
-        // the names in use as of July 2026; ids are frozen because workout
+        // the names in use as of August 2026; ids are frozen because workout
         // history references them.
+        //
+        // `day` is which half of the Upper/Lower split the exercise belongs to
+        // (August 2026; replaced the single Full Body list + separate Cardio
+        // day). getCurrentExercises filters on it, so it is what decides which
+        // cards a session shows. Keep each day's entries contiguous and `order`
+        // a dense 0..N run: moveExercise reindexes off it and the load-time
+        // sort is a plain numeric sort over the flat list.
+        //
+        // Upper comes first here, matching the day toggle and the Settings
+        // list. All three orderings are independent — keep them in step.
         const DEFAULT_EXERCISES = [
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Full Body', type: 'standard', order: 0 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Full Body', type: 'standard', order: 1 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', type: 'standard', order: 2 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Full Body', type: 'standard', order: 3 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Full Body', type: 'standard', order: 4 },
-            { id: 'chest-flies',         name: 'Unilateral Chest Flies',   category: 'Full Body', type: 'standard', order: 5 },
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Full Body', type: 'standard', order: 6 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', type: 'standard', order: 7 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', type: 'standard', order: 8 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', type: 'standard', order: 9 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', type: 'standard', order: 10 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Full Body', type: 'standard', order: 11 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', type: 'standard', order: 12 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', type: 'standard', order: 13 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', type: 'standard', order: 14 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Full Body', type: 'standard', order: 15 },
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Full Body', type: 'standard', order: 16 },
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Full Body', type: 'standard', order: 17 },
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Full Body', type: 'standard', order: 18 }
+            // --- Upper (Tue / Thu / Sat, and Sun by default) ---
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Upper', day: 'upper', type: 'standard',    order: 0 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Upper', day: 'upper', type: 'standard',    order: 1 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Upper', day: 'upper', type: 'standard', order: 2 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Upper', day: 'upper', type: 'standard',    order: 3 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Upper', day: 'upper', type: 'standard',    order: 4 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Upper', day: 'upper', type: 'standard',    order: 5 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Upper', day: 'upper', type: 'standard',    order: 6 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Upper', day: 'upper', type: 'standard',    order: 7 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Upper', day: 'upper', type: 'standard',    order: 8 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Upper', day: 'upper', type: 'standard',    order: 9 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Upper', day: 'upper', type: 'standard',    order: 10 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Upper', day: 'upper', type: 'standard',    order: 11 },
+
+            // --- Lower (Mon / Wed / Fri) ---
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 12 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            // Category 'Cardio' is what puts this under its own heading at the
+            // bottom of the day; it also keeps it out of the PR count.
+            { id: 'stairmaster',         name: 'Stairmaster',              category: 'Cardio', day: 'lower', type: 'stairmaster', order: 19 }
         ];
 
-        // Cardio day exercises (fixed in code, not user-customizable).
-        // Rendered in order: Body Weight Squats, then Stairmaster, then Assault Bike.
-        const CARDIO_EXERCISES = [
-            { id: 'body-weight-squats', name: 'Body Weight Squats', category: 'Cardio', type: 'bodyweight',   order: 0 },
-            { id: 'burpee-jump-tucks',  name: 'Burpee Jump Tucks',  category: 'Cardio', type: 'bodyweight',   order: 1 },
-            { id: 'stairmaster',        name: 'Stairmaster',        category: 'Cardio', type: 'stairmaster',  order: 2 },
-            { id: 'assault-bike',       name: 'Assault Bike',       category: 'Cardio', type: 'assault-bike', order: 3 }
-        ];
+        // Retired with the August 2026 Lower/Upper switch: `body-weight-squats`,
+        // `burpee-jump-tucks`, and `assault-bike` are no longer loggable, and
+        // Stairmaster moved into DEFAULT_EXERCISES above. Their rendering
+        // branches stay in WorkoutView / EditWorkoutModal and their rep configs
+        // stay in BODYWEIGHT_REP_DEFAULTS, because workout history still
+        // references all four ids and must keep rendering and editing.
 
-        // Which weekdays default to the Cardio day (Date.getDay(): Sun=0 … Sat=6).
-        // Tuesday (2) and Thursday (4) are cardio; every other day is Full Body.
-        const CARDIO_DAYS = [2, 4];
+        // Which weekdays default to the Lower card (Date.getDay(): Sun=0 … Sat=6).
+        // Mon/Wed/Fri are Lower; every other day — Tue/Thu/Sat, plus Sunday —
+        // defaults to Upper. A manual toggle overrides for the session only.
+        const LOWER_DAYS = [1, 3, 5];
 
         // Bodyweight rep config, keyed by exercise id. Reps carry over from the
         // last session (no progression); the field is a dropdown over [min, max]

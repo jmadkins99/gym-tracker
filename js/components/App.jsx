@@ -15,8 +15,9 @@
             const [editingWorkout, setEditingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
-            // Which day type the workout view shows. Defaults by weekday (Tue/Thu =
-            // cardio) on every load; a manual toggle only lasts for the session.
+            // Which day type the workout view shows. Defaults by weekday
+            // (Mon/Wed/Fri = lower) on every load; a manual toggle only lasts
+            // for the session.
             const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
             const [hydrated, setHydrated] = useState(false);
             const [showSyncPrompt, setShowSyncPrompt] = useState(false);
@@ -168,7 +169,7 @@
                 }
             }, [workoutHistory]);
 
-            const getCurrentExercises = () => activeDayType === 'cardio' ? CARDIO_EXERCISES : exercises;
+            const getCurrentExercises = () => exercises.filter(ex => ex.day === activeDayType);
 
             const getTodayWorkout = () => {
                 const today = new Date();
@@ -202,13 +203,21 @@
                 });
             };
 
+            // Reordering is scoped to the exercise's own day. Swapping across
+            // the Lower/Upper boundary would move a card in the settings list
+            // without changing which day it belongs to, so the arrow would look
+            // like it did nothing.
             const moveExercise = (exerciseId, direction) => {
+                const current = exercises.find(ex => ex.id === exerciseId);
+                if (!current) return;
+
+                const sameDay = exercises.filter(ex => ex.day === current.day);
+                const indexInDay = sameDay.findIndex(ex => ex.id === exerciseId);
+                const targetInDay = direction === 'up' ? indexInDay - 1 : indexInDay + 1;
+                if (targetInDay < 0 || targetInDay >= sameDay.length) return;
+
                 const currentIndex = exercises.findIndex(ex => ex.id === exerciseId);
-
-                if (direction === 'up' && currentIndex === 0) return;
-                if (direction === 'down' && currentIndex === exercises.length - 1) return;
-
-                const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+                const newIndex = exercises.findIndex(ex => ex.id === sameDay[targetInDay].id);
                 const reordered = [...exercises];
                 [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
 

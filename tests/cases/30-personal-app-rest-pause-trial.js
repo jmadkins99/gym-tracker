@@ -53,7 +53,7 @@ async function loadWithHistory(page, server, workoutHistory) {
     await page.evaluate(() => localStorage.setItem('gym-local:firstWorkoutMonday', '2026-04-01T00:00:00.000Z'));
     await page.reload({ waitUntil: 'networkidle0' });
     await waitForApp(page);
-    await selectDayType(page, 'fullbody');
+    await selectDayType(page, 'upper');
     return readStandardCard(page, 'Shoulder Press');
 }
 

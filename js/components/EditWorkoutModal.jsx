@@ -2,12 +2,9 @@
 
         function EditWorkoutModal({ workout, onClose, onSave, exercises }) {
             const [editedExercises, setEditedExercises] = useState(workout.exercises);
-            // Use the full-body config only for full-body-era workouts; otherwise
-            // (e.g. a Cardio-day workout) edit the exercises stored on the workout
-            // itself, so cardio sessions render their own cards. Mirrors WeeklyView.
-            const fbExerciseIds = new Set(exercises.map(e => e.id));
-            const isFullBodyEra = workout.exercises.every(e => fbExerciseIds.has(e.id));
-            const allExercises = isFullBodyEra ? exercises : workout.exercises;
+            // Which fields this workout offers, by era. Mirrors WeeklyView —
+            // see getWorkoutExerciseList in utils.js.
+            const allExercises = getWorkoutExerciseList(workout, exercises);
 
             const handleExerciseChange = (exerciseId, field, value) => {
                 setEditedExercises(prev => {
@@ -49,32 +46,7 @@
                 month: 'long',
                 day: 'numeric'
             });
-            const apSplitDate = new Date(2026, 1, 2); // Feb 2, 2026
-            const pplSplitDate = new Date(2026, 2, 14); // Mar 14, 2026
-            const ap2SplitDate = new Date(2026, 3, 16); // Apr 16, 2026
-            const tlSplitDate = new Date(2026, 5, 1); // Jun 1, 2026
-            const fbSplitDate = new Date(2026, 5, 21); // Jun 21, 2026
-            apSplitDate.setHours(0, 0, 0, 0);
-            pplSplitDate.setHours(0, 0, 0, 0);
-            ap2SplitDate.setHours(0, 0, 0, 0);
-            tlSplitDate.setHours(0, 0, 0, 0);
-            fbSplitDate.setHours(0, 0, 0, 0);
-            const workoutDate = new Date(workout.date);
-            workoutDate.setHours(0, 0, 0, 0);
-            let dayName;
-            if (workoutDate < apSplitDate) {
-                dayName = workout.day === 1 ? 'Upper' : 'Lower';
-            } else if (workoutDate < pplSplitDate) {
-                dayName = workout.day === 1 ? 'Anterior' : 'Posterior';
-            } else if (workoutDate < ap2SplitDate) {
-                dayName = workout.day === 1 ? 'Push' : workout.day === 2 ? 'Pull' : 'Legs';
-            } else if (workoutDate < tlSplitDate) {
-                dayName = workout.day === 1 ? 'Anterior' : 'Posterior';
-            } else if (workoutDate < fbSplitDate) {
-                dayName = workout.day === 1 ? 'Torso' : 'Limbs';
-            } else {
-                dayName = workout.day === 'cardio' ? 'Cardio' : 'Full Body';
-            }
+            const dayName = getWorkoutDayLabel(workout);
 
             return (
                 <div className="modal-overlay" onClick={onClose}>

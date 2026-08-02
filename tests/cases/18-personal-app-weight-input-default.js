@@ -58,7 +58,7 @@ function extractObjectLiteral(source, name) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         const weekText = await page.evaluate(() =>
             document.querySelector('.week-indicator')?.textContent || '');

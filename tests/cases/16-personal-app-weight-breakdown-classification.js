@@ -62,11 +62,17 @@ function extractLiteral(source, name, open, close) {
         await seedPersonalApp(page, { workoutHistory: [] });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
 
-        const cards = await readCards(page);
+        // The rotation is split across two days now, so sweep both — a card
+        // that only appears on Lower would otherwise never be classified.
+        await selectDayType(page, 'lower');
+        const lowerCards = await readCards(page);
+        await selectDayType(page, 'upper');
+        const upperCards = await readCards(page);
+        const cards = [...lowerCards, ...upperCards];
+
         ok(cards.length === DEFAULT_EXERCISES.length,
-            `rendered ${DEFAULT_EXERCISES.length} cards (got ${cards.length})`);
+            `rendered ${DEFAULT_EXERCISES.length} cards across both days (got ${cards.length})`);
 
         // The core invariant, checked for every card: a Weight Breakdown button
         // is present exactly when the exercise is plate- or pin-loaded.

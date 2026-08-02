@@ -15,8 +15,13 @@
 //      in-app reorder via Settings stays put across reloads.
 //
 // Break either and the other looks fine, so both are asserted here.
+//
+// This case stays scoped to the Upper day and to the version mechanism itself.
+// Test 43 covers the Aug 2026 Lower/Upper split as a whole — both days, the
+// `day` assignments, and Stairmaster arriving as a new id.
 
 const path = require('path');
+const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
@@ -24,6 +29,17 @@ const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
+
+// Read the expected version out of config.js rather than hardcoding it. What
+// matters here is that the app stamps *whatever the current version is*, not
+// which number that happens to be — and a hardcoded copy silently rots on the
+// next bump, which is exactly how this test broke once already.
+function currentConfigVersion() {
+    const src = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
+    const m = src.match(/const EXERCISE_CONFIG_VERSION\s*=\s*(\d+)/);
+    if (!m) throw new Error('could not find EXERCISE_CONFIG_VERSION in config.js');
+    return Number(m[1]);
+}
 
 // The order shipped before the July 2026 reorder.
 const OLD_ORDER_IDS = [
@@ -35,26 +51,20 @@ const OLD_ORDER_IDS = [
     'hip-adduction',
 ];
 
+// The canonical Upper day, which is where the renamed exercise below lands.
 const EXPECTED_NEW_ORDER = [
-    'Preacher Curls',
+    'Chest Flies',
+    'Recline Curls',
     'Overhead Tricep Extensions',
     'Lateral Raises',
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
-    'Unilateral Chest Flies',
-    'Recline Curls',
     'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
     'Incline Chest Press',
+    'Shoulder Press',
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
     'Tricep Extensions',
-    'Ab Crunches',
-    'Shoulder Press',
-    'Calf Raises',
-    'Hip Adduction',
-    'Back Extensions',
-    'Leg Press',
+    'Preacher Curls',
 ];
 
 (async () => {
@@ -83,7 +93,7 @@ const EXPECTED_NEW_ORDER = [
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         const names = (await readCards(page)).map(c => c.name);
         eq(names, EXPECTED_NEW_ORDER,
@@ -93,7 +103,8 @@ const EXPECTED_NEW_ORDER = [
             const raw = localStorage.getItem(ns + 'gymExerciseConfig');
             return raw ? JSON.parse(raw).version : null;
         }, NS);
-        eq(stamped, 2, 'reconciled config is persisted with the current version');
+        eq(stamped, currentConfigVersion(),
+            'reconciled config is persisted with the current EXERCISE_CONFIG_VERSION');
 
         // --- 2. An in-app reorder survives a reload -------------------------
         // Driven through the real Settings UI rather than a seeded config, so
@@ -106,25 +117,25 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Ab Crunches" (index 13) up one slot, above "Tricep Extensions".
+        // Move "Tricep Extensions" (Upper index 10) up one, above "Sagittal Plane Pulldowns".
         const moved = await page.evaluate(() => {
             const rows = Array.from(document.querySelectorAll('.modal > div > div'));
-            const row = rows.find(r => r.textContent.trim().startsWith('Ab Crunches'));
+            const row = rows.find(r => r.textContent.trim().startsWith('Tricep Extensions'));
             const up = Array.from(row.querySelectorAll('button'))
                 .find(b => b.textContent.trim() === '↑');
             if (!up) return false;
             up.click();
             return true;
         });
-        ok(moved, 'clicked the up arrow on Ab Crunches in Manage Exercises');
+        ok(moved, 'clicked the up arrow on Tricep Extensions in Manage Exercises');
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'fullbody');
+        await selectDayType(page, 'upper');
 
         const afterReorder = (await readCards(page)).map(c => c.name);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(12, 0, expectedAfter.splice(13, 1)[0]); // Ab Crunches up one
+        expectedAfter.splice(9, 0, expectedAfter.splice(10, 1)[0]); // Tricep Extensions up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 

@@ -76,10 +76,58 @@
             return getConsecutiveWeek(new Date(), workoutHistory);
         }
 
-        // Which day type the app should default to for a given date: 'cardio' on
-        // the configured CARDIO_DAYS (Tue/Thu), otherwise 'fullbody'.
+        // Which day type the app should default to for a given date: 'lower' on
+        // the configured LOWER_DAYS (Mon/Wed/Fri), otherwise 'upper'.
         function getDefaultDayType(date = new Date()) {
-            return CARDIO_DAYS.includes(date.getDay()) ? 'cardio' : 'fullbody';
+            return LOWER_DAYS.includes(date.getDay()) ? 'lower' : 'upper';
+        }
+
+        // Human label for a stored workout's `day`, across every split this app
+        // has shipped. Pre-Feb-2026 workouts used numeric day indexes whose
+        // meaning depended on the split in force at the time, so those need the
+        // date; everything since Jun 2026 stores a self-describing string.
+        function getWorkoutDayLabel(workout) {
+            if (workout.day === 'lower') return 'Lower';
+            if (workout.day === 'upper') return 'Upper';
+            if (workout.day === 'cardio') return 'Cardio';
+            if (typeof workout.day !== 'number') return 'Full Body';
+
+            const d = new Date(workout.date);
+            d.setHours(0, 0, 0, 0);
+            const on = (y, m, day) => { const x = new Date(y, m, day); x.setHours(0, 0, 0, 0); return x; };
+            if (d < on(2026, 1, 2))  return workout.day === 1 ? 'Upper' : 'Lower';
+            if (d < on(2026, 2, 14)) return workout.day === 1 ? 'Anterior' : 'Posterior';
+            if (d < on(2026, 3, 16)) return workout.day === 1 ? 'Push' : workout.day === 2 ? 'Pull' : 'Legs';
+            if (d < on(2026, 5, 1))  return workout.day === 1 ? 'Anterior' : 'Posterior';
+            if (d < on(2026, 5, 21)) return workout.day === 1 ? 'Torso' : 'Limbs';
+            return 'Full Body';
+        }
+
+        // Which exercise definitions a stored workout should render against, in
+        // the Weekly tab and the Edit modal.
+        //
+        // A Lower/Upper workout renders against its own day in the current
+        // config, so renames and reorders show through. Note the day filter is
+        // load-bearing: both days now live in one config, so "are all this
+        // workout's ids in `exercises`?" is true for either day and a day-blind
+        // check pads an Upper session with the whole Lower day as empty rows.
+        //
+        // Anything older — pre-split Full Body, the retired Cardio day, the
+        // numeric-day splits before that — renders the exercises stored on the
+        // workout itself, which preserves its historical layout. Display names
+        // still resolve through the current config by id, so a rename the user
+        // makes today reaches every past workout that movement appears in.
+        function getWorkoutExerciseList(workout, exercises) {
+            const byId = new Map(exercises.map(e => [e.id, e]));
+
+            if (workout.day === 'lower' || workout.day === 'upper') {
+                if (workout.exercises.every(e => byId.get(e.id)?.day === workout.day)) {
+                    return exercises.filter(e => e.day === workout.day);
+                }
+            }
+
+            return workout.exercises.map(e =>
+                byId.has(e.id) ? { ...e, name: byId.get(e.id).name } : e);
         }
 
         // Get week number for a specific date

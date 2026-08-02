@@ -76,8 +76,9 @@
                     return; // Skip NA exercises
                 }
 
-                // Cardio exercises (assault bike, stairmaster, bodyweight squats)
-                // just carry over last session — they never count as PRs.
+                // Cardio movements (stairmaster today; assault bike and the
+                // bodyweight pair on retired Cardio days) just carry over last
+                // session — they never count as PRs.
                 if (exercise.type === 'assault-bike' || exercise.type === 'stairmaster' || exercise.type === 'bodyweight') {
                     return;
                 }
@@ -136,7 +137,7 @@
             return (
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="modal-title">Full Body Day Breakdown</div>
+                        <div className="modal-title">{getWorkoutDayLabel(todayWorkout)} Day Breakdown</div>
 
                         <div style={{ marginBottom: '20px', color: '#888', fontSize: '14px' }}>
                             {formattedDate}

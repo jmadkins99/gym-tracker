@@ -46,15 +46,10 @@
                                     minute: '2-digit'
                                 });
 
-                                // For workouts logged before the Full Body migration, render the
-                                // exercises stored on the workout itself (preserves historical layout).
-                                // For new Full Body workouts (day:1 with the new id set), use the
-                                // current canonical exercise list so renamed/reordered entries display
-                                // correctly.
-                                const fbExerciseIds = new Set(exercises.map(e => e.id));
-                                const isFullBodyEra = workout.exercises.every(e => fbExerciseIds.has(e.id));
-                                const allExercises = isFullBodyEra ? exercises : workout.exercises;
-                                const completedIds = new Set(workout.exercises.map(e => e.id));
+                                // Lower/Upper workouts render against their own day in the
+                                // current config; older eras keep their stored layout. See
+                                // getWorkoutExerciseList in utils.js.
+                                const allExercises = getWorkoutExerciseList(workout, exercises);
 
                                 // Calculate sequential day number - count down from total
                                 const dayNumber = weekWorkouts.length - idx;

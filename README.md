@@ -4,10 +4,12 @@ A personal workout tracking web app. All data is kept in your browser's local st
 
 ## Days
 
-The workout view has two day types you switch between with a toggle at the top. It picks a default based on the weekday: Tuesday and Thursday start on Cardio, every other day starts on Full Body.
+The workout view has two day types you switch between with a toggle at the top. It picks a default based on the weekday: Monday, Wednesday, and Friday start on Lower, every other day starts on Upper.
 
-- **Full Body**: weighted machine and cable exercises tracked by weight and reps.
-- **Cardio**: Body Weight Squats, Stairmaster, and Assault Bike.
+- **Upper**: twelve weighted machine and cable exercises tracked by weight and reps.
+- **Lower**: seven weighted machine and cable exercises tracked by weight and reps, then Stairmaster under its own Cardio heading at the bottom.
+
+Earlier splits — Full Body / Cardio before August 2026, and the Torso/Limbs, Push/Pull/Legs, and Anterior/Posterior rotations before that — are still readable and editable in the Weekly tab. Body Weight Squats, Burpee Jump Tucks, and Assault Bike are retired from logging but their history renders unchanged.
 
 ## Logging
 
@@ -17,8 +19,8 @@ The workout view has two day types you switch between with a toggle at the top. 
 
 ## Progression
 
-- **Full Body (Simple PR Tracking)**: reps are logged on a 3-to-6 dropdown. Hit 6 (the top of the range) last session and the weight bumps up with the field highlighting green. Log 3 reps and the next session shows a gold "Rest Pause Set Recommended" hint at the same weight; after three 3-rep sessions in a row it escalates to a green "Trial of Strength" that targets 4 reps until you break the streak. Three identical sessions in a row (same weight and reps) show a gold "2 Sets Recommended" hint. An advanced plateau-buster mode exists but is off by default.
-- **Cardio**: no PR suggestions. Every field carries over last session's value. First-session defaults are squats 50, Stairmaster Level 7 / 10:00, and Assault Bike 25W / 20/40.
+- **Weighted exercises (Simple PR Tracking)**: reps are logged on a 3-to-6 dropdown. Hit 6 (the top of the range) last session and the weight bumps up with the field highlighting green. Log 3 reps and the next session shows a gold "Rest Pause Set Recommended" hint at the same weight; after three 3-rep sessions in a row it escalates to a green "Trial of Strength" that targets 4 reps until you break the streak. Three identical sessions in a row (same weight and reps) show a gold "2 Sets Recommended" hint. An advanced plateau-buster mode exists but is off by default.
+- **Stairmaster**: no PR suggestions. Time and Level carry over last session's value; the first-session default is Level 7 / 10:00.
 - **Day Breakdown**: "Submit Day" shows the completed-exercise count and PRs (weight or reps went up, with reps of at least 4). Cardio does not count toward PRs.
 
 ## Data
