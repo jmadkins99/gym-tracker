@@ -35,7 +35,7 @@
             'chest-flies': 1.25,
             'incline-chest-press': 2.5,
             'leg-curls': 5,
-            'shoulder-press': 1.25,
+            'shoulder-press': 2.5,
             'preacher-curls': 1.25,
             'tricep-pushdown': 1.25,
             'lateral-raises': 1.25,
@@ -62,7 +62,8 @@
             'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
             'hammer-row': { type: 'one-sided', machineWeight: 0 },
             'upper-back-row': { type: 'one-sided', machineWeight: 0 },
-            'kelso-shrugs': { type: 'one-sided', machineWeight: 0 }
+            'kelso-shrugs': { type: 'one-sided', machineWeight: 0 },
+            'shoulder-press': { type: 'two-sided', machineWeight: 0 }
         };
 
         // Pin-stack exercises configuration
@@ -76,7 +77,6 @@
             'curls-shoulder-extension': true,
             'overhead-tricep-extensions': true,
             'chest-flies': true,
-            'shoulder-press': true,
             'tricep-pushdown': true,
             'lateral-raises': true,
             'frontal-pulldowns': true,
