@@ -6,6 +6,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gym Tracker</title>
+    <!-- Dumbbell mark in the app's accent purple (#6a5a8a — the .section-title
+         colour). Inlined as a data URI rather than a favicon.ico file: no extra
+         request, nothing to cache-bust, and SVG stays crisp at 16px in the tab
+         and at any size a browser asks for. The two variants that lost a
+         legibility test at 16px were thinner plates (vanished) and plates with
+         inner collars (blurred into a smudge) — keep the mass. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='%236a5a8a'%3E%3Crect x='2' y='4' width='7.5' height='24' rx='3'/%3E%3Crect x='22.5' y='4' width='7.5' height='24' rx='3'/%3E%3Crect x='9.5' y='12.5' width='13' height='7' rx='2.5'/%3E%3C/g%3E%3C/svg%3E">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
