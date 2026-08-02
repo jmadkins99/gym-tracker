@@ -131,32 +131,74 @@ const JESSI_CODE = 'D1O9O9M2';
         // asserted only the two flags above and walked straight past the fact
         // that the preset was still Torso/Limbs, so a coach-code install showed
         // the old two-day split until a refresh.
-        const CANONICAL = [
+        const UPPER = [
             'Chest Flies',
             'Recline Curls',
+            'Overhead Tricep Extensions',
+            'Lateral Raises',
             'Frontal Plane Pulldowns',
             'Incline Chest Press',
+            'Shoulder Press',
             'Transverse Plane Rows',
             'Kelso Shrugs',
             'Sagittal Plane Pulldowns',
             'Tricep Extensions',
+            'Preacher Curls',
+        ];
+        const LOWER = [
+            'Reverse Wrist Curls',
+            'Cable Wrist Curls',
             'Ab Crunches',
-            'Shoulder Press',
             'Calf Raises',
             'Hip Adduction',
             'Back Extensions',
             'Leg Press',
         ];
-        eq(cfg.categories, ['Full Body'], 'coach code yields a single Full Body day');
-        eq(Object.keys(cfg.days).length, 1, 'no leftover day 2 from the Torso/Limbs preset');
-        eq((cfg.days[1] || []).map(e => e.name), CANONICAL,
-            'coach code yields the canonical 14 in order on the FIRST load');
+        eq(cfg.categories, ['Upper', 'Lower'], 'coach code yields the Upper/Lower split');
+        eq(Object.keys(cfg.days).length, 2, 'two days, not the old single Full Body day');
+        eq((cfg.days[1] || []).map(e => e.name), UPPER,
+            'coach code yields Upper in order on the FIRST load');
+        eq((cfg.days[2] || []).map(e => e.name), LOWER,
+            'coach code yields Lower in order on the FIRST load');
 
-        const onScreen1 = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('.exercise-name')).map(e => e.textContent.trim()));
-        eq(onScreen1, CANONICAL, 'and that is what actually renders on screen');
+        // The stamp is what stops migrateJessiToUpperLower from treating a
+        // fresh install as an un-split program, and what lets a future
+        // JESSI_SPLIT_REVISION bump reach it. A preset that writes the right
+        // exercises but no stamp looks correct today and goes deaf to every
+        // reorder from here on, which is invisible without this assertion.
+        ok(cfg.splitRevision !== undefined,
+            'preset stamps splitRevision so later revisions still reach this install');
 
-        // Drift guard: preset (fresh installs) and migrateJessiToFullBody
+        // Preacher Curls is the one movement with no history to inherit.
+        const preacher = (cfg.days[1] || []).find(e => e.name === 'Preacher Curls');
+        eq(preacher.id, 'actual-preacher-curls',
+            'preset pins the stable Preacher Curls id, matching the migration');
+        eq(preacher.startingWeight, '50', 'preset seeds the Preacher Curls starting weight');
+
+        // The schedule has to come from scheduleDays, not the round-robin
+        // fallback — Sat and Sun are both Upper, which alternation can't express.
+        const sched = await page.evaluate((ns) =>
+            JSON.parse(localStorage.getItem(ns + 'gymScheduleConfig')), NS);
+        eq(sched.workoutDays.map(d => [d.dayOfWeek, d.workoutDayNumber]), [
+            ['Monday', 2], ['Tuesday', 1], ['Wednesday', 2], ['Thursday', 1],
+            ['Friday', 2], ['Saturday', 1], ['Sunday', 1],
+        ], 'coach code yields the exact weekday map, not an alternating round-robin');
+
+        const onScreen1 = await page.evaluate(async () => {
+            const out = {};
+            const btns = Array.from(document.querySelectorAll('.day-btn'));
+            for (let i = 0; i < btns.length; i++) {
+                btns[i].click();
+                await new Promise(r => setTimeout(r, 250));
+                out[i + 1] = Array.from(document.querySelectorAll('.exercise-name'))
+                    .map(e => e.textContent.trim());
+            }
+            return out;
+        });
+        eq(onScreen1[1], UPPER, 'Upper is what actually renders on screen');
+        eq(onScreen1[2], LOWER, 'Lower is what actually renders on screen');
+
+        // Drift guard: the preset (fresh installs) and migrateJessiToUpperLower
         // (existing devices) are two sources of truth for one program. If they
         // agree, a refresh is a no-op. Edit either side alone and this fails —
         // which is exactly the regression that shipped, whichever side rots.
@@ -166,17 +208,20 @@ const JESSI_CODE = 'D1O9O9M2';
             const c = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
             return {
                 categories: c.categories,
-                names: (c.days[1] || []).map(e => e.name),
+                upper: (c.days[1] || []).map(e => e.name),
+                lower: (c.days[2] || []).map(e => e.name),
                 dayCount: Object.keys(c.days).length,
             };
         }, NS);
-        eq(afterRefresh.names, CANONICAL,
-            'preset and migration agree — refreshing does not change the program');
-        eq(afterRefresh.categories, ['Full Body'], 'categories stable across the refresh');
-        eq(afterRefresh.dayCount, 1, 'day count stable across the refresh');
+        eq(afterRefresh.upper, UPPER,
+            'preset and migration agree on Upper — refreshing does not change the program');
+        eq(afterRefresh.lower, LOWER,
+            'preset and migration agree on Lower — refreshing does not change the program');
+        eq(afterRefresh.categories, ['Upper', 'Lower'], 'categories stable across the refresh');
+        eq(afterRefresh.dayCount, 2, 'day count stable across the refresh');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: coach code D1O9O9M2 yields the canonical Full Body program on first load.');
+        console.log('PASS: coach code D1O9O9M2 yields the Upper/Lower program on first load.');
     } finally {
         await browser.close();
         await server.stop();

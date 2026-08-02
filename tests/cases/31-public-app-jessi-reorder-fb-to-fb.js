@@ -10,18 +10,27 @@
 // 2026-06-09 backup (ids survive every migration via `{ ...ex }`), plus
 // history keyed to those ids, then asserts:
 //
-//   1. The 14 exercises come out in the canonical July 2026 order.
+//   1. The exercises come out in the canonical order.
 //   2. History still resolves by id — each card's default weight is its OWN
 //      last session, so the reorder didn't scramble anyone's data. This is
 //      the assertion we can't get from the config-only backup fixture.
 //   3. "Preacher Curls" renames to "Recline Curls" and classifies as a
 //      PIN STACK (label "Warmup Set #1 (~70%):", no "lbs - ~70%" plate label,
 //      no Top Set line since a plain pin stack never overflows).
-//   4. Every one of the 14 shows a Weight Breakdown button — the regression
+//   4. Every exercise shows a Weight Breakdown button — the regression
 //      from 90028e6, where renamed exercises silently lost theirs.
 //   5. An exercise we don't rank (999 bucket) lands at the BOTTOM rather
 //      than being deleted.
 //   6. Re-running is idempotent: a second reload leaves order untouched.
+//
+// As of the Aug 2026 Upper/Lower split this is a TWO-STAGE path, and the
+// assertions describe the end of it. migrateJessiToFullBody still runs first
+// and still produces the canonical 14-slot Full Body list — that is the
+// branch under test, and stage 3 (the rename) belongs to it — but
+// migrateJessiToUpperLower fires on the same load and reshapes the result
+// into Upper + Lower, restoring four movements and adding Preacher Curls.
+// Full Body is therefore never the stored end state, so the expectations
+// below are the split ones. Test 41 covers the split in isolation.
 //
 // To verify this is real: swap any two returns in getDesiredOrder (e.g. make
 // /kelso|shrug/ return 5 and /sagittal/ return 4). Assertion 1 should fail
@@ -110,28 +119,68 @@ const HISTORY_WEIGHTS = {
     [ID.legPress]: 320,
 };
 
-const EXPECTED_ORDER = [
+// The terminal state. migrateJessiToFullBody still produces the canonical
+// 14-slot Full Body list first — that is the branch under test — but
+// migrateJessiToUpperLower now runs on the same load and re-shapes it, so
+// Full Body is never what ends up stored. Asserting the intermediate would be
+// asserting a value no device can ever hold.
+const EXPECTED_UPPER = [
     'Chest Flies',
     'Recline Curls',
+    'Overhead Tricep Extensions',
+    'Lateral Raises',
     'Frontal Plane Pulldowns',
     'Incline Chest Press',
+    'Shoulder Press',
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
     'Tricep Extensions',
+    'Preacher Curls',
+];
+
+const EXPECTED_LOWER = [
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
     'Ab Crunches',
-    'Shoulder Press',
     'Calf Raises',
     'Hip Adduction',
     'Back Extensions',
     'Leg Press',
-    'Face Pulls', // unranked -> bottom, NOT dropped
+    'Face Pulls', // unranked -> bottom of Lower, NOT dropped
 ];
 
 async function readOrder(page) {
     return page.evaluate(() => {
-        const raw = localStorage.getItem('gym-local:gymExerciseConfig');
-        return (JSON.parse(raw).days[1] || []).map(e => e.name);
+        const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
+        return {
+            upper: (cfg.days[1] || []).map(e => e.name),
+            lower: (cfg.days[2] || []).map(e => e.name),
+        };
+    });
+}
+
+// Walk both day tabs and collect every card, so the assertions below are
+// weekday-independent and see the whole program rather than today's half.
+async function readAllCards(page) {
+    return page.evaluate(async () => {
+        const out = {};
+        const btns = Array.from(document.querySelectorAll('.day-btn'));
+        for (const btn of btns) {
+            btn.click();
+            await new Promise(r => setTimeout(r, 250));
+            for (const c of document.querySelectorAll('.exercise-card')) {
+                const name = c.querySelector('.exercise-name')?.textContent?.trim();
+                if (!name) continue;
+                const input = c.querySelector('input[type="number"]');
+                out[name] = {
+                    weight: input ? input.value : null,
+                    hasBreakdown: Array.from(c.querySelectorAll('button'))
+                        .some(b => b.textContent.includes('Weight Breakdown')),
+                };
+            }
+        }
+        return out;
     });
 }
 
@@ -169,35 +218,31 @@ async function readOrder(page) {
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1500));
 
-        // 1. Canonical order out of the isFB -> isFB re-migration.
-        eq(await readOrder(page), EXPECTED_ORDER,
-            'Full Body order after the FB->FB reorder migration');
+        // 1. The re-migration's canonical order, as reshaped by the split.
+        const order = await readOrder(page);
+        eq(order.upper, EXPECTED_UPPER, 'Upper day after the FB re-migration + split');
+        eq(order.lower, EXPECTED_LOWER, 'Lower day after the FB re-migration + split');
 
         const state = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
             return {
                 flag5: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied5'),
-                ids: (cfg.days[1] || []).map(e => e.id),
-                count: (cfg.days[1] || []).length,
+                lowerIds: (cfg.days[2] || []).map(e => e.id),
+                count: Object.values(cfg.days).flat().length,
             };
         });
         eq(state.flag5, 'true', 'jessiFullBodyMigrationApplied5 set so the reorder does not re-run');
-        eq(state.count, 15, 'all 15 exercises retained — reorder drops nothing');
+        // 15 seeded + Preacher Curls + the 4 movements the split restores.
+        eq(state.count, 20, 'nothing seeded was dropped — 15 in, 20 out');
 
-        // 5. Unranked exercise survives at the bottom.
-        eq(state.ids[state.ids.length - 1], 'jcustom',
+        // 5. Unranked exercise survives at the bottom of Lower.
+        eq(state.lowerIds[state.lowerIds.length - 1], 'jcustom',
             'unranked "Face Pulls" lands at the bottom instead of being deleted');
 
         // 2. History still resolves by id: each card defaults to its OWN weight.
-        const defaults = await page.evaluate(() => {
-            const out = {};
-            for (const c of document.querySelectorAll('.exercise-card')) {
-                const name = c.querySelector('.exercise-name')?.textContent?.trim();
-                const input = c.querySelector('input[type="number"]');
-                if (name && input) out[name] = input.value;
-            }
-            return out;
-        });
+        const cards = await readAllCards(page);
+        const defaults = Object.fromEntries(
+            Object.entries(cards).map(([name, c]) => [name, c.weight]));
         const EXPECTED_DEFAULTS = {
             'Chest Flies': '95',
             'Recline Curls': '67.5',
@@ -219,22 +264,18 @@ async function readOrder(page) {
                 `"${name}" default weight comes from its own id-keyed history, not a neighbour's`);
         }
 
-        // 4. Every ranked exercise still offers a Weight Breakdown button.
-        const withButton = await page.evaluate(() => {
-            const out = [];
-            for (const c of document.querySelectorAll('.exercise-card')) {
-                const name = c.querySelector('.exercise-name')?.textContent?.trim();
-                const has = !!Array.from(c.querySelectorAll('button'))
-                    .find(b => b.textContent.includes('Weight Breakdown'));
-                if (has && name) out.push(name);
-            }
-            return out;
-        });
-        const missing = Object.keys(EXPECTED_DEFAULTS).filter(n => !withButton.includes(n));
+        // 4. Every exercise across BOTH days still offers a Weight Breakdown
+        // button — including the four the split restored and Preacher Curls,
+        // which have no history to classify from.
+        const missing = [...EXPECTED_UPPER, ...EXPECTED_LOWER]
+            .filter(n => n !== 'Face Pulls' && !cards[n]?.hasBreakdown);
         eq(missing, [],
-            `all 14 program exercises must show Weight Breakdown (missing: ${JSON.stringify(missing)})`);
+            `every program exercise must show Weight Breakdown (missing: ${JSON.stringify(missing)})`);
 
-        // 3. Recline Curls renders as a PIN STACK, not plate-loaded.
+        // 3. Recline Curls renders as a PIN STACK, not plate-loaded. It is on
+        // Upper, so select that day before looking for the card.
+        await page.evaluate(() => document.querySelectorAll('.day-btn')[0].click());
+        await new Promise(r => setTimeout(r, 300));
         const recline = await page.evaluate(() => {
             for (const c of document.querySelectorAll('.exercise-card')) {
                 if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Recline Curls') {
@@ -270,11 +311,11 @@ async function readOrder(page) {
         // 6. Idempotent: reload again, order unchanged.
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1200));
-        eq(await readOrder(page), EXPECTED_ORDER,
-            'order is stable across a second load — migration does not re-fire');
+        eq(await readOrder(page), order,
+            'order is stable across a second load — neither migration re-fires');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: FB->FB reorder keeps id-keyed history, drops nothing, and pins Recline Curls.');
+        console.log('PASS: FB re-migration feeds the split, keeps id-keyed history, drops nothing.');
     } finally {
         await browser.close();
         await server.stop();
