@@ -13,6 +13,16 @@
          legibility test at 16px were thinner plates (vanished) and plates with
          inner collars (blurred into a smudge) — keep the mass. -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='%236a5a8a'%3E%3Crect x='2' y='4' width='7.5' height='24' rx='3'/%3E%3Crect x='22.5' y='4' width='7.5' height='24' rx='3'/%3E%3Crect x='9.5' y='12.5' width='13' height='7' rx='2.5'/%3E%3C/g%3E%3C/svg%3E">
+    <!-- Local dev (python3 -m http.server) swaps the accent purple for amber, so
+         a localhost tab is never confused with the live GitHub Pages tab beside
+         it. Colour only — same mark, same 16px legibility. Rewriting the one
+         attribute keeps a single source for the shape above. -->
+    <script>
+        if (['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
+            var devIcon = document.querySelector("link[rel='icon']");
+            if (devIcon) devIcon.setAttribute('href', devIcon.getAttribute('href').replace('%236a5a8a', '%23ff9500'));
+        }
+    </script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
