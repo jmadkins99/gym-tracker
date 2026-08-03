@@ -135,6 +135,16 @@
             return getConsecutiveWeek(date, workoutHistory);
         }
 
+        // Parse MM:SS into total seconds. Returns 0 for anything unparseable.
+        function parseTimeToSeconds(time) {
+            if (!time) return 0;
+            const [minutes, seconds] = String(time).split(':');
+            const m = parseInt(minutes);
+            const s = parseInt(seconds);
+            if (isNaN(m)) return 0;
+            return m * 60 + (isNaN(s) ? 0 : s);
+        }
+
         // Format seconds to MM:SS
         function formatSecondsToTime(totalSeconds) {
             const minutes = Math.floor(totalSeconds / 60);

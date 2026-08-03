@@ -117,9 +117,14 @@
 
                     const levelOptions = ['Level 7', 'Level 8', 'Level 9', 'Level 10'];
 
-                    const stairmasterLast = getStairmasterLast(exercise.id, workoutHistory);
-                    const suggestedTime = stairmasterLast?.time || '10:00';
-                    const suggestedLevel = stairmasterLast?.level || 'Level 7';
+                    const stairmasterSuggestion = getStairmasterSuggestion(exercise.id, workoutHistory);
+                    const suggestedTime = stairmasterSuggestion?.time || '10:00';
+                    const suggestedLevel = stairmasterSuggestion?.level || 'Level 7';
+                    // Hide the hint on the first session, and once the suggestion
+                    // is pinned at the 20:00 cap (nothing left to add).
+                    const showSuggestion = !!stairmasterSuggestion
+                        && !stairmasterSuggestion.isFirstSession
+                        && suggestedTime !== stairmasterSuggestion.lastTime;
 
                     return (
                         <div key={exercise.id} data-exercise-id={exercise.id} className={`exercise-card ${isLogged ? 'logged' : ''}`}>
@@ -133,6 +138,21 @@
                                     </div>
                                 )}
                             </div>
+                            {showSuggestion && (
+                                /* Mirrors .input-row's two flex:1 columns so the hint
+                                   sits over the Time field, not the Level field. */
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '8px', marginTop: '-4px' }}>
+                                    <div style={{ flex: 1 }}></div>
+                                    <div style={{
+                                        flex: 1,
+                                        color: '#4CAF50',
+                                        fontSize: '12px',
+                                        fontWeight: '600'
+                                    }}>
+                                        +10 seconds
+                                    </div>
+                                </div>
+                            )}
                             <div className="input-row">
                                 <div className="input-group">
                                     <label className="input-label">Level</label>
@@ -156,6 +176,9 @@
                                         value={data.time || suggestedTime}
                                         onChange={(e) => handleInputChange(exercise.id, 'time', e.target.value)}
                                         disabled={isLogged}
+                                        style={showSuggestion ? {
+                                            border: '2px solid #4CAF50'
+                                        } : {}}
                                     >
                                         {timeOptions.map(time => (
                                             <option key={time} value={time}>{time}</option>

@@ -342,13 +342,17 @@
             return { intensity, watts, isFirstSession: false };
         }
 
-        // Helper for the stairmaster. Both fields are carried over from last
-        // session (no progression / no PR suggestion): Time defaults to 10:00 and
-        // Level to Level 7 when there's no prior data.
+        // Helper for the stairmaster.
+        // Time: +10 seconds from last session (the dropdown's step), capped at
+        // 20:00, defaulting to 10:00 on the first session. Level: carried over
+        // from last session (use whatever was last session), defaulting to
+        // Level 7 when there's no prior data.
+        // Returns { time, level, lastTime, isFirstSession }.
         // exerciseId parameter allows independent tracking per day
-        function getStairmasterLast(exerciseId = 'stairmaster', workoutHistory) {
+        function getStairmasterSuggestion(exerciseId = 'stairmaster', workoutHistory) {
             const DEFAULT_TIME = '10:00';
             const DEFAULT_LEVEL = 'Level 7';
+            const MAX_SECONDS = 20 * 60; // matches the top of the Time dropdown
 
             if (!workoutHistory || workoutHistory.length === 0) {
                 return { time: DEFAULT_TIME, level: DEFAULT_LEVEL, isFirstSession: true };
@@ -377,9 +381,13 @@
             const lastStairmaster = previousWorkout.exercises.find(e => e.type === 'stairmaster');
 
             if (lastStairmaster && lastStairmaster.time) {
+                const lastSeconds = parseTimeToSeconds(lastStairmaster.time);
+                const newSeconds = Math.min(lastSeconds + 10, MAX_SECONDS); // +10s, cap at 20:00
+
                 return {
-                    time: lastStairmaster.time,
+                    time: formatSecondsToTime(newSeconds),
                     level: lastStairmaster.level || DEFAULT_LEVEL,
+                    lastTime: lastStairmaster.time,
                     isFirstSession: false
                 };
             }

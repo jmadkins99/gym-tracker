@@ -1,15 +1,16 @@
 // What this test covers
 // ----------------------
-// Stairmaster carries over last session's values verbatim — no progression
-// and no green suggestion hints — unlike every weighted movement around it on
-// the Lower day, which do progress. Time and Level stay at 12:00 / Level 9.
+// Stairmaster Time progresses +10 seconds per session (Aug 2026; cardio PRs had
+// been off since June) with the green "+10 seconds" hint on the Time box, while
+// Level is still carried over verbatim. From 12:00 / Level 9 the next session
+// suggests 12:10 / Level 9.
 //
 // Two things make this worth its own case after the Aug 2026 split:
 //   1. Stairmaster moved out of the code-only CARDIO_EXERCISES constant and
-//      into the user-configurable DEFAULT_EXERCISES list, on Lower. Carryover
-//      is driven off `type === 'stairmaster'`, not off which list it lives in,
-//      and this proves the move didn't quietly switch it to PR tracking.
-//   2. The carryover source here is a *legacy Cardio-day* workout — the last
+//      into the user-configurable DEFAULT_EXERCISES list, on Lower. The
+//      suggestion is driven off `type === 'stairmaster'`, not off which list it
+//      lives in, and this proves the move didn't drop its progression.
+//   2. The lookup source here is a *legacy Cardio-day* workout — the last
 //      stairmaster session most real history has. Lookups are by exercise id
 //      and ignore `day`, so a Lower day must still find it.
 
@@ -65,8 +66,8 @@ async function readCardioCard(page, name) {
         const stair = await readCardioCard(page, 'Stairmaster');
         ok(stair, 'stairmaster card present on the Lower day');
         eq(stair.selects.level, 'Level 9', 'stairmaster carries over last session level (9)');
-        eq(stair.selects.time, '12:00', 'stairmaster carries over last time (12:00, not +30s)');
-        ok(!stair.text.includes('+30 seconds'), 'stairmaster shows no green +seconds badge');
+        eq(stair.selects.time, '12:10', 'stairmaster suggests last time + 10s (12:00 -> 12:10)');
+        contains(stair.text, '+10 seconds', 'stairmaster shows the green +10 seconds badge');
 
         // The retired cardio movements are not on this day (or any other).
         eq(await readCardioCard(page, 'Body Weight Squats'), null,
@@ -74,8 +75,28 @@ async function readCardioCard(page, name) {
         eq(await readCardioCard(page, 'Assault Bike'), null,
             'Assault Bike is retired and does not render on Lower');
 
+        // At the 20:00 top of the dropdown the suggestion pins there and the
+        // hint goes away — there is no +10 left to offer.
+        await seedPersonalApp(page, {
+            workoutHistory: [
+                workoutEntry({
+                    date: '2026-06-23T20:00:00Z', day: 'cardio', submitted: true,
+                    exercises: [
+                        { id: 'stairmaster', name: 'Stairmaster', type: 'stairmaster', level: 'Level 10', time: '20:00' },
+                    ],
+                }),
+            ],
+        });
+        await page.reload({ waitUntil: 'networkidle0' });
+        await waitForApp(page);
+        await selectDayType(page, 'lower');
+
+        const capped = await readCardioCard(page, 'Stairmaster');
+        eq(capped.selects.time, '20:00', 'stairmaster suggestion caps at 20:00');
+        ok(!capped.text.includes('+10 seconds'), 'no +10 seconds badge once capped at 20:00');
+
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: stairmaster carries over its last session on Lower (no progression, no hints).');
+        console.log('PASS: stairmaster suggests +10s per session on Lower, capped at 20:00.');
     } finally {
         await browser.close();
         await server.stop();
