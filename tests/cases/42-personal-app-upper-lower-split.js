@@ -36,6 +36,9 @@ const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
     'Ab Crunches',
+    // Added Aug 2026 under the fresh id `actual-leg-extensions` — the
+    // `leg-extensions` id renders as Hip Adduction, two rows down.
+    'Leg Extensions',
     'Calf Raises',
     'Hip Adduction',
     'Back Extensions',
@@ -110,7 +113,7 @@ async function sectionTitles(page) {
         // 2. Lower.
         ok(await selectDayType(page, 'lower'), 'Lower toggle exists and is clickable');
         const lower = (await readCards(page)).map(c => c.name);
-        eq(lower, EXPECTED_LOWER, 'Lower renders its 8 movements in canonical order');
+        eq(lower, EXPECTED_LOWER, 'Lower renders its 9 movements in canonical order');
         eq(await sectionTitles(page), ['Cardio'],
             'Stairmaster sits under its own "Cardio" heading at the bottom of Lower');
 
@@ -140,7 +143,7 @@ async function sectionTitles(page) {
         // 4. Disjoint, and together the whole program.
         const overlap = lower.filter(n => upper.includes(n));
         eq(overlap, [], 'no exercise appears on both days');
-        eq(lower.length + upper.length, 20, 'the two days cover all 20 movements');
+        eq(lower.length + upper.length, 21, 'the two days cover all 21 movements');
 
         // 5b. The three retired cardio movements are unreachable.
         for (const name of RETIRED) {

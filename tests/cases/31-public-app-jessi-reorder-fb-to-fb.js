@@ -143,6 +143,7 @@ const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
     'Ab Crunches',
+    'Leg Extensions', // added by JESSI_NEW_EXERCISES, ranked above Calf Raises
     'Calf Raises',
     'Hip Adduction',
     'Back Extensions',
@@ -232,8 +233,8 @@ async function readAllCards(page) {
             };
         });
         eq(state.flag5, 'true', 'jessiFullBodyMigrationApplied5 set so the reorder does not re-run');
-        // 15 seeded + Preacher Curls + the 4 movements the split restores.
-        eq(state.count, 20, 'nothing seeded was dropped — 15 in, 20 out');
+        // 15 seeded + Preacher Curls + Leg Extensions + the 4 the split restores.
+        eq(state.count, 21, 'nothing seeded was dropped — 15 in, 21 out');
 
         // 5. Unranked exercise survives at the bottom of Lower.
         eq(state.lowerIds[state.lowerIds.length - 1], 'jcustom',

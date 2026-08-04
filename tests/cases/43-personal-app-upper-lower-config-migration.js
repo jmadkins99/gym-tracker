@@ -69,6 +69,10 @@ const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
     'Ab Crunches',
+    // Arrives here purely via migrateExerciseConfig: the saved config below
+    // predates it, so this pins that a newly added default reaches a device
+    // that already has a config — mid-list, not appended at the end.
+    'Leg Extensions',
     'Calf Raises',
     'Hip Adduction',
     'Back Extensions',
@@ -152,9 +156,16 @@ async function readSavedConfig(page) {
         const saved = await readSavedConfig(page);
         eq(saved.version, currentConfigVersion(),
             'reconciled config is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(saved.ids.length, 20, 'stairmaster brings the saved config to 20 exercises');
+        eq(saved.ids.length, 21, 'stairmaster + leg extensions bring the saved config to 21');
         ok(saved.byId['stairmaster'], 'stairmaster was added to the saved config');
         eq(saved.byId['stairmaster'].day, 'lower', 'stairmaster lives on Lower');
+        // The fresh id is what keeps this distinct from `leg-extensions`, which
+        // the same config already holds under the name Hip Adduction.
+        ok(saved.byId['actual-leg-extensions'],
+            'leg extensions was added to the saved config under its own id');
+        eq(saved.byId['actual-leg-extensions'].day, 'lower', 'leg extensions lives on Lower');
+        eq(saved.byId['leg-extensions'].name, 'Hip Adduction',
+            'the old leg-extensions id still renders as Hip Adduction, untouched');
         eq(saved.byId['frontal-pulldowns'].name, 'My Renamed Pulldowns',
             'rename survives the migration in storage, not just on screen');
         eq(saved.byId['chest-flies'].name, 'Unilateral Chest Flies',
@@ -164,15 +175,15 @@ async function readSavedConfig(page) {
 
         // Every exercise is assigned to exactly one of the two days.
         const days = Object.values(saved.byId).map(e => e.day);
-        eq(days.filter(d => d === 'lower').length, 8, '8 exercises on Lower');
+        eq(days.filter(d => d === 'lower').length, 9, '9 exercises on Lower');
         eq(days.filter(d => d === 'upper').length, 12, '12 exercises on Upper');
         eq(days.filter(d => d !== 'lower' && d !== 'upper'), [],
             'no exercise is left without a day');
 
-        // `order` must stay a dense 0..19 run, since moveExercise and the
+        // `order` must stay a dense 0..20 run, since moveExercise and the
         // load-time sort both index off it.
-        eq(saved.orders, Array.from({ length: 20 }, (_, i) => i),
-            'order is a dense 0..19 sequence across both days');
+        eq(saved.orders, Array.from({ length: 21 }, (_, i) => i),
+            'order is a dense 0..20 sequence across both days');
 
         // 5. Second load changes nothing.
         await page.reload({ waitUntil: 'networkidle0' });

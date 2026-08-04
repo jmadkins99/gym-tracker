@@ -75,7 +75,7 @@ async function logCard(page, exerciseId) {
         const w = saved[0];
         eq(w.day, 'lower', 'workout recorded as a lower day');
         ok(w.submitted, 'workout is submitted');
-        eq(w.exercises.length, 8, 'the workout carries all 8 Lower movements');
+        eq(w.exercises.length, 9, 'the workout carries all 9 Lower movements');
         ok(!w.exercises.some(e => e.id === 'chest-flies'),
             'no Upper movements leaked into the Lower workout');
 

@@ -37,6 +37,7 @@
 // explicitly for the same reason.
 
 const path = require('path');
+const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
@@ -44,6 +45,16 @@ const { eq, ok } = require('../lib/assert');
 
 const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_app');
 const NS = 'gym-local:';
+
+// Read from the app so a future revision bump doesn't rot this assertion —
+// what matters is that the stamp matches whatever the migration currently
+// claims, not that it holds any particular number.
+function currentSplitRevision() {
+    const src = fs.readFileSync(path.join(PUBLIC_APP_ROOT, 'index.html'), 'utf8');
+    const m = src.match(/const JESSI_SPLIT_REVISION\s*=\s*(\d+)/);
+    if (!m) throw new Error('could not find JESSI_SPLIT_REVISION in index.html');
+    return Number(m[1]);
+}
 
 // Real ids straight out of his Firestore exerciseConfig doc.
 const ID = {
@@ -109,6 +120,7 @@ const EXPECTED_LOWER = [
     ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
     ['Ab Crunches', ID.abCrunches],
+    ['Leg Extensions', 'actual-leg-extensions'],
     ['Calf Raises', ID.calfRaises],
     ['Hip Adduction', ID.hipAdduction],
     ['Back Extensions', ID.backExtensions],
@@ -215,7 +227,7 @@ async function readSaved(page) {
         eq(saved.upper, EXPECTED_UPPER,
             'Upper holds 12 movements in order, each with the correct id');
         eq(saved.lower, EXPECTED_LOWER,
-            'Lower holds 7 movements in order, each with the correct id');
+            'Lower holds 8 movements in order, each with the correct id');
 
         // Called out separately so a failure names the actual problem.
         for (const [name, id] of [
@@ -229,8 +241,12 @@ async function readSaved(page) {
                 `"${name}" reclaimed its original id from workout history`);
         }
 
-        eq(saved.startingWeights, { 'Preacher Curls': '50' },
-            'Preacher Curls is the only movement carrying a startingWeight');
+        // Only the JESSI_NEW_EXERCISES pair gets one. A restored movement must
+        // NOT — it inherits real logged weight via its reclaimed id, and a
+        // startingWeight would paper over a failed id recovery with a plausible
+        // number instead of an obviously blank field.
+        eq(saved.startingWeights, { 'Preacher Curls': '50', 'Leg Extensions': '50' },
+            'only the two genuinely-new movements carry a startingWeight');
 
         // 5. Schedule.
         eq(saved.schedule.days, [
@@ -246,7 +262,8 @@ async function readSaved(page) {
         eq(saved.minimalist, true, 'minimalistPrTracking survives the split');
 
         // 6. Stamped, and idempotent.
-        eq(saved.splitRevision, 1, 'splitRevision is stamped');
+        eq(saved.splitRevision, currentSplitRevision(),
+            'splitRevision is stamped with the current JESSI_SPLIT_REVISION');
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1500));
         eq(await readSaved(page), saved, 'a second load changes nothing');
@@ -386,9 +403,13 @@ async function readSaved(page) {
             'a stale-revision split config is re-sorted to the current Lower order');
         eq(rerun.lower[EXPECTED_LOWER.length], ['Farmer Carries', 'client-added-1'],
             'a movement the client added themselves is kept, at the bottom of Lower');
-        eq(rerun.startingWeights, { 'Preacher Curls': '50' },
-            'a movement missing from a stale config is re-added with its startingWeight');
-        eq(rerun.splitRevision, 1, 're-run stamps the current splitRevision');
+        // Both of JESSI_NEW_EXERCISES are absent from the seed above, so this
+        // is the assertion that a revision bump actually delivers a newly added
+        // movement to a device that already took an earlier revision.
+        eq(rerun.startingWeights, { 'Preacher Curls': '50', 'Leg Extensions': '50' },
+            'movements missing from a stale config are re-added with their startingWeight');
+        eq(rerun.splitRevision, currentSplitRevision(),
+            're-run stamps the current splitRevision');
         eq(rerun.gympinMode, true, 're-run leaves top-level flags alone');
 
         // The schedule is a calendar, not part of the program. A revision bump

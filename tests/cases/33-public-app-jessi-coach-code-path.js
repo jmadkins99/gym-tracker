@@ -149,6 +149,7 @@ const JESSI_CODE = 'D1O9O9M2';
             'Reverse Wrist Curls',
             'Cable Wrist Curls',
             'Ab Crunches',
+            'Leg Extensions',
             'Calf Raises',
             'Hip Adduction',
             'Back Extensions',
@@ -169,11 +170,20 @@ const JESSI_CODE = 'D1O9O9M2';
         ok(cfg.splitRevision !== undefined,
             'preset stamps splitRevision so later revisions still reach this install');
 
-        // Preacher Curls is the one movement with no history to inherit.
+        // The two movements with no history to inherit. Both carry a stable
+        // literal id rather than a generateUUID() one, because the coach preset
+        // and migrateJessiToUpperLower have to agree on a single key — a UUID
+        // here would mean a fresh install and a migrated install disagree about
+        // what the same movement is called.
         const preacher = (cfg.days[1] || []).find(e => e.name === 'Preacher Curls');
         eq(preacher.id, 'actual-preacher-curls',
             'preset pins the stable Preacher Curls id, matching the migration');
         eq(preacher.startingWeight, '50', 'preset seeds the Preacher Curls starting weight');
+
+        const legExt = (cfg.days[2] || []).find(e => e.name === 'Leg Extensions');
+        eq(legExt.id, 'actual-leg-extensions',
+            'preset pins the stable Leg Extensions id, matching the migration');
+        eq(legExt.startingWeight, '50', 'preset seeds the Leg Extensions starting weight');
 
         // The schedule has to come from scheduleDays, not the round-robin
         // fallback — Sat and Sun are both Upper, which alternation can't express.

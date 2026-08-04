@@ -18,7 +18,8 @@
             'calf-raise': '180',
             'leg-extensions': '120',
             'leg-curls': '150',
-            'hip-adduction': '240'
+            'hip-adduction': '240',
+            'actual-leg-extensions': '100'
         };
 
         // Tracking mode: only one should be true at a time
@@ -48,7 +49,8 @@
             'calf-raise': 1.25,
             'ab-crunch': 1.25,
             'cable-wrist-curls': 1.25,
-            'reverse-wrist-curls': 1.25
+            'reverse-wrist-curls': 1.25,
+            'actual-leg-extensions': 1.25
         };
 
         // Plate-loaded exercises configuration
@@ -84,7 +86,8 @@
             'calf-raise': true,
             'ab-crunch': true,
             'cable-wrist-curls': { maxPin: 97.5, overflowPlateMode: 'one-sided' },
-            'reverse-wrist-curls': true
+            'reverse-wrist-curls': true,
+            'actual-leg-extensions': true
         };
 
         // Bump to push a code-side reorder (or a newly added/removed exercise)
@@ -98,8 +101,8 @@
         // a localhost test browser counts — has saved a config stamped with it,
         // and the guard above then reads that stale order as current and leaves
         // it alone. Version 3 was burned that way; 4 is the Aug 2026 Upper/Lower
-        // split as actually shipped.
-        const EXERCISE_CONFIG_VERSION = 4;
+        // split as actually shipped, and 5 adds Leg Extensions to Lower.
+        const EXERCISE_CONFIG_VERSION = 5;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -133,13 +136,19 @@
             { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 12 },
             { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
             { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            // Genuinely new (Aug 2026) — NOT the `leg-extensions` id below,
+            // which the split left rendering as Hip Adduction. There is no
+            // history to inherit, so this takes a fresh id rather than
+            // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
+            // and the two apps deliberately share this one literal.
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
             // Category 'Cardio' is what puts this under its own heading at the
             // bottom of the day; it also keeps it out of the PR count.
-            { id: 'stairmaster',         name: 'Stairmaster',              category: 'Cardio', day: 'lower', type: 'stairmaster', order: 19 }
+            { id: 'stairmaster',         name: 'Stairmaster',              category: 'Cardio', day: 'lower', type: 'stairmaster', order: 20 }
         ];
 
         // Retired with the August 2026 Lower/Upper switch: `body-weight-squats`,
