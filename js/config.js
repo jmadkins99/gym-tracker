@@ -101,8 +101,11 @@
         // a localhost test browser counts — has saved a config stamped with it,
         // and the guard above then reads that stale order as current and leaves
         // it alone. Version 3 was burned that way; 4 is the Aug 2026 Upper/Lower
-        // split as actually shipped, and 5 adds Leg Extensions to Lower.
-        const EXERCISE_CONFIG_VERSION = 5;
+        // split as actually shipped, 5 adds Leg Extensions to Lower, and 6
+        // drops Stairmaster off Lower. 6 is also what makes that drop reach a
+        // saved config at all: the id-set check alone would catch it, but the
+        // version is what guarantees it on a device that reloads mid-flight.
+        const EXERCISE_CONFIG_VERSION = 6;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -145,18 +148,18 @@
             { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
             { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
             { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
-            // Category 'Cardio' is what puts this under its own heading at the
-            // bottom of the day; it also keeps it out of the PR count.
-            { id: 'stairmaster',         name: 'Stairmaster',              category: 'Cardio', day: 'lower', type: 'stairmaster', order: 20 }
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 19 }
         ];
 
-        // Retired with the August 2026 Lower/Upper switch: `body-weight-squats`,
-        // `burpee-jump-tucks`, and `assault-bike` are no longer loggable, and
-        // Stairmaster moved into DEFAULT_EXERCISES above. Their rendering
-        // branches stay in WorkoutView / EditWorkoutModal and their rep configs
-        // stay in BODYWEIGHT_REP_DEFAULTS, because workout history still
-        // references all four ids and must keep rendering and editing.
+        // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and
+        // `assault-bike` (August 2026 Lower/Upper switch), and `stairmaster`
+        // (dropped off Lower a few days later — it had been the lone 'Cardio'
+        // category entry, so Lower no longer renders a Cardio heading at all).
+        // Every rendering branch stays put — the stairmaster arms in
+        // WorkoutView / EditWorkoutModal / WeeklyView / DayBreakdownModal,
+        // getStairmasterSuggestion in plateauLogic, and the rep configs in
+        // BODYWEIGHT_REP_DEFAULTS — because workout history still references
+        // all four ids and must keep rendering and editing.
 
         // Which weekdays default to the Lower card (Date.getDay(): Sun=0 … Sat=6).
         // Mon/Wed/Fri are Lower; every other day — Tue/Thu/Sat, plus Sunday —

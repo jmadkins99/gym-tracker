@@ -6,14 +6,18 @@
 // renders):
 //   1. The weekday defaulting rule: LOWER_DAYS (Mon/Wed/Fri) open on Lower,
 //      every other weekday — including Sunday — opens on Upper.
-//   2. Lower renders its 7 weighted lifts in canonical order, then Stairmaster
-//      last under its own "Cardio" section heading.
+//   2. Lower renders its 8 weighted lifts in canonical order and nothing else.
 //   3. Upper renders its 12 lifts in canonical order.
 //   4. The two day types are disjoint and together cover the whole program.
 //   5. The retired Cardio day is gone: no 'fullbody'/'cardio' toggle survives,
-//      and Body Weight Squats / Burpee Jump Tucks / Assault Bike are not
-//      loggable on either day. (Their *history* is a separate concern — test
-//      44 covers that it still renders.)
+//      and Body Weight Squats / Burpee Jump Tucks / Assault Bike / Stairmaster
+//      are not loggable on either day. (Their *history* is a separate concern —
+//      test 44 covers that it still renders.)
+//
+// Stairmaster came off Lower in August 2026, a few days after the split. It was
+// the only 'Cardio'-category entry, so NEITHER day renders a section heading
+// now — the empty-heading assertions below are what keep a stray "Cardio" bar
+// from reappearing above nothing.
 //
 // Test 05 was the Full Body equivalent of this and is replaced by it.
 //
@@ -43,7 +47,6 @@ const EXPECTED_LOWER = [
     'Hip Adduction',
     'Back Extensions',
     'Leg Press',
-    'Stairmaster',
 ];
 
 const EXPECTED_UPPER = [
@@ -61,7 +64,7 @@ const EXPECTED_UPPER = [
     'Preacher Curls',
 ];
 
-const RETIRED = ['Body Weight Squats', 'Burpee Jump Tucks', 'Assault Bike'];
+const RETIRED = ['Body Weight Squats', 'Burpee Jump Tucks', 'Assault Bike', 'Stairmaster'];
 
 function extractArrayLiteral(source, name) {
     const start = source.indexOf(`const ${name} =`);
@@ -93,9 +96,10 @@ async function sectionTitles(page) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // 1. Default-by-weekday, with no toggle interaction at all.
+        // 1. Default-by-weekday, with no toggle interaction at all. Leg Press
+        // is the probe: a Lower-only name that survives Stairmaster's removal.
         const defaultNames = (await readCards(page)).map(c => c.name);
-        eq(defaultNames.includes('Stairmaster'), expectedDefaultIsLower,
+        eq(defaultNames.includes('Leg Press'), expectedDefaultIsLower,
             `default day type matches weekday rule (lower=${expectedDefaultIsLower})`);
 
         // 5a. The old day types must not be selectable any more.
@@ -113,25 +117,9 @@ async function sectionTitles(page) {
         // 2. Lower.
         ok(await selectDayType(page, 'lower'), 'Lower toggle exists and is clickable');
         const lower = (await readCards(page)).map(c => c.name);
-        eq(lower, EXPECTED_LOWER, 'Lower renders its 9 movements in canonical order');
-        eq(await sectionTitles(page), ['Cardio'],
-            'Stairmaster sits under its own "Cardio" heading at the bottom of Lower');
-
-        // Stairmaster's first-session defaults, inherited from the retired
-        // Cardio day (old test 19 was the only thing pinning these).
-        const stair = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Stairmaster');
-            if (!card) return null;
-            const selects = {};
-            card.querySelectorAll('select[data-field]').forEach(s => {
-                selects[s.getAttribute('data-field')] = s.value;
-            });
-            return selects;
-        });
-        ok(stair, 'Stairmaster card present on Lower');
-        eq(stair.level, 'Level 7', 'Stairmaster level defaults to Level 7 with no history');
-        eq(stair.time, '10:00', 'Stairmaster time defaults to 10:00 with no history');
+        eq(lower, EXPECTED_LOWER, 'Lower renders its 8 movements in canonical order');
+        eq(await sectionTitles(page), [],
+            'Lower has no Cardio section now that Stairmaster is retired');
 
         // 3. Upper.
         ok(await selectDayType(page, 'upper'), 'Upper toggle exists and is clickable');
@@ -143,9 +131,9 @@ async function sectionTitles(page) {
         // 4. Disjoint, and together the whole program.
         const overlap = lower.filter(n => upper.includes(n));
         eq(overlap, [], 'no exercise appears on both days');
-        eq(lower.length + upper.length, 21, 'the two days cover all 21 movements');
+        eq(lower.length + upper.length, 20, 'the two days cover all 20 movements');
 
-        // 5b. The three retired cardio movements are unreachable.
+        // 5b. The four retired cardio movements are unreachable.
         for (const name of RETIRED) {
             ok(!lower.includes(name) && !upper.includes(name),
                 `"${name}" is retired from the active program`);

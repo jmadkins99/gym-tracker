@@ -1,15 +1,16 @@
 // What this test covers
 // ----------------------
-// Logging a full Lower day through the UI (not by seeding history): a weighted
-// card and the Stairmaster card each get their own LOG tap, then "Submit Day".
+// Logging a full Lower day through the UI (not by seeding history): a typed
+// weight and a no-interaction one-tap card each get their own LOG, then
+// "Submit Day".
 //
-// The mixed-type day is the point. Stairmaster used to be the only thing on
-// its day and lived in a separate code constant; it now sits at the bottom of
-// a day made mostly of standard weight/reps cards, all read out of one config.
-// logExercise branches on `type` to decide which fields to capture, so a day
-// carrying both shapes at once is what proves the branch still picks
-// correctly — a regression there writes an empty time or a missing weight and
-// the Weekly view silently shows NA.
+// Lower was a mixed-type day until August 2026, when Stairmaster was retired
+// and left it all standard weight/reps cards. logExercise still branches on
+// `type` to decide which fields to capture, so what this now pins is that the
+// standard arm is the one every Lower row takes: a regression that falls into
+// a cardio branch writes a time instead of a weight and the Weekly view
+// silently shows NA. The stairmaster arm itself is exercised by tests 21/22,
+// which edit and round-trip real cardio-era history.
 //
 // Also pins that the new workout is stamped `day: 'lower'`, which is what
 // Weekly and the Edit modal key off to choose the right exercise list.
@@ -59,9 +60,6 @@ async function logCard(page, exerciseId) {
         // Leg Press: logged with no interaction at all, to cover the one-tap path.
         await logCard(page, 'hip-adduction');
 
-        // Stairmaster: level/time pre-fill to Level 7 / 10:00 -> log as-is.
-        await logCard(page, 'stairmaster');
-
         // Submit the day.
         await page.evaluate(() => {
             const btn = Array.from(document.querySelectorAll('button')).find(b => /Submit Day/i.test(b.textContent));
@@ -75,25 +73,27 @@ async function logCard(page, exerciseId) {
         const w = saved[0];
         eq(w.day, 'lower', 'workout recorded as a lower day');
         ok(w.submitted, 'workout is submitted');
-        eq(w.exercises.length, 9, 'the workout carries all 9 Lower movements');
+        eq(w.exercises.length, 8, 'the workout carries all 8 Lower movements');
         ok(!w.exercises.some(e => e.id === 'chest-flies'),
             'no Upper movements leaked into the Lower workout');
+        ok(!w.exercises.some(e => e.id === 'stairmaster'),
+            'no stairmaster row is written now that it is retired from Lower');
 
         const crunch = w.exercises.find(e => e.id === 'ab-crunch');
         const legPress = w.exercises.find(e => e.id === 'hip-adduction');
-        const stair = w.exercises.find(e => e.id === 'stairmaster');
 
         eq(crunch.weight, '145', 'ab crunches logged the typed weight');
         eq(crunch.reps, '4', 'ab crunches logged the pre-filled reps (not NA/empty)');
         eq(legPress.weight, '240', 'one-tap LOG captures the pre-filled Week 1 weight');
         eq(legPress.reps, '4', 'one-tap LOG captures the pre-filled reps');
-        eq(stair.time, '10:00', 'stairmaster logged time 10:00 (not NA)');
-        eq(stair.level, 'Level 7', 'stairmaster logged Level 7');
-        ok(stair.weight === undefined && stair.reps === undefined,
-            'stairmaster is stored by time/level, never weight/reps');
+
+        // Every row took the standard arm: no cardio field leaked onto any of
+        // them, and the two logged rows are weight/reps shaped.
+        ok(!w.exercises.some(e => e.time !== undefined || e.level !== undefined),
+            'no Lower row carries a cardio time/level field');
 
         eq(errors, [], 'no console errors during logging');
-        console.log('PASS: a mixed weighted + stairmaster Lower day logs and persists real values.');
+        console.log('PASS: an all-weighted Lower day logs and persists real values.');
     } finally {
         await browser.close();
         await server.stop();
