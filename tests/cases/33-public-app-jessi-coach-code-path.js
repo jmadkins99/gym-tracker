@@ -133,10 +133,10 @@ const JESSI_CODE = 'D1O9O9M2';
         // the old two-day split until a refresh.
         const UPPER = [
             'Chest Flies',
-            'Chest Press',
+            'Incline Chest Press',
             'Recline Curls',
             'Overhead Tricep Extensions',
-            'Incline Chest Press',
+            'Chest Press',
             'Lateral Raises',
             'Shoulder Press',
             'Frontal Plane Pulldowns',

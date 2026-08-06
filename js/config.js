@@ -118,8 +118,10 @@
         // Overhead Tricep Extensions — the move is a pure reorder, so 7 is the
         // only thing that carries it to a device that already has a config.
         // 8 moves Shoulder Press up behind Lateral Raises, likewise a pure
-        // reorder that only the bump can deliver.
-        const EXERCISE_CONFIG_VERSION = 8;
+        // reorder that only the bump can deliver. 9 swaps Chest Press and
+        // Incline Chest Press — same ids, same count, so the bump is the whole
+        // delivery mechanism.
+        const EXERCISE_CONFIG_VERSION = 9;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -137,13 +139,13 @@
         const DEFAULT_EXERCISES = [
             // --- Upper (Tue / Thu / Sat, and Sun by default) ---
             { id: 'chest-flies',         name: 'Chest Flies',              category: 'Upper', day: 'upper', type: 'standard',    order: 0 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Upper', day: 'upper', type: 'standard',    order: 1 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Upper', day: 'upper', type: 'standard',    order: 2 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Upper', day: 'upper', type: 'standard', order: 3 },
             // Genuinely new (Aug 2026). Takes the plain `chest-press` id — no
             // existing id was squatting on it, unlike the leg-extensions case
             // below, so there is no need for an `actual-` prefix here.
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Upper', day: 'upper', type: 'standard',    order: 1 },
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Upper', day: 'upper', type: 'standard',    order: 2 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Upper', day: 'upper', type: 'standard', order: 3 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Upper', day: 'upper', type: 'standard',    order: 4 },
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Upper', day: 'upper', type: 'standard',    order: 4 },
             { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Upper', day: 'upper', type: 'standard',    order: 5 },
             { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Upper', day: 'upper', type: 'standard',    order: 6 },
             { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Upper', day: 'upper', type: 'standard',    order: 7 },

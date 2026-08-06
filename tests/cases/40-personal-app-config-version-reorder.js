@@ -54,10 +54,10 @@ const OLD_ORDER_IDS = [
 // The canonical Upper day, which is where the renamed exercise below lands.
 const EXPECTED_NEW_ORDER = [
     'Chest Flies',
-    'Chest Press',            // added Aug 2026; arrives via the migration
+    'Incline Chest Press',
     'Recline Curls',
     'Overhead Tricep Extensions',
-    'Incline Chest Press',
+    'Chest Press',            // added Aug 2026; arrives via the migration
     'Lateral Raises',
     'Shoulder Press',
     'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below

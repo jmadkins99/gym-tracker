@@ -66,10 +66,10 @@ const EXPECTED_FULL_BODY_ROWS = FULL_BODY_ERA.map(([id, name]) => {
 // The Upper day, in the current DEFAULT_EXERCISES order.
 const UPPER_IDS = [
     ['chest-flies', 'Chest Flies'],
-    ['chest-press', 'Chest Press'],
+    ['incline-chest-press', 'Incline Chest Press'],
     ['curls-shoulder-extension', 'Recline Curls'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
-    ['incline-chest-press', 'Incline Chest Press'],
+    ['chest-press', 'Chest Press'],
     ['lateral-raises', 'Lateral Raises'],
     ['shoulder-press', 'Shoulder Press'],
     ['frontal-pulldowns', 'Frontal Plane Pulldowns'],

@@ -103,12 +103,12 @@ const CURRENT_ROWS = [
 
 const EXPECTED_UPPER = [
     ['Chest Flies', ID.chestFlies],
+    ['Incline Chest Press', ID.inclinePress],
+    ['Recline Curls', ID.reclineCurls],
+    ['Overhead Tricep Extensions', DROPPED_ID.dips],
     // Added Aug 2026. Shares the plain `chest-press` literal with the personal
     // app — no id collision in either, so no `actual-` prefix.
     ['Chest Press', 'chest-press'],
-    ['Recline Curls', ID.reclineCurls],
-    ['Overhead Tricep Extensions', DROPPED_ID.dips],
-    ['Incline Chest Press', ID.inclinePress],
     ['Lateral Raises', DROPPED_ID.lateralRaises],
     ['Shoulder Press', ID.shoulderPress],
     ['Frontal Plane Pulldowns', ID.frontalPulldowns],

@@ -91,14 +91,14 @@ const EXPECTED_UPPER = [
     // migration takes order/day/category from defaults but never the name, so
     // changing a default label can't silently rewrite what a device displays.
     'Unilateral Chest Flies',
-    // Like Leg Extensions above, this arrives purely via migrateExerciseConfig
-    // — the saved config below predates it — and lands mid-list, not appended.
-    'Chest Press',
-    'Recline Curls',
-    'Overhead Tricep Extensions',
     // Pure reorder relative to the saved config: only the version bump carries
     // it, since the id set alone is unchanged by a move.
     'Incline Chest Press',
+    'Recline Curls',
+    'Overhead Tricep Extensions',
+    // Like Leg Extensions above, this arrives purely via migrateExerciseConfig
+    // — the saved config below predates it — and lands mid-list, not appended.
+    'Chest Press',
     'Lateral Raises',
     'Shoulder Press',
     'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below

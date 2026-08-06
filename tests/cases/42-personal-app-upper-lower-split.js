@@ -51,13 +51,12 @@ const EXPECTED_LOWER = [
 
 const EXPECTED_UPPER = [
     'Chest Flies',
+    'Incline Chest Press',
+    'Recline Curls',
+    'Overhead Tricep Extensions',
     // Added Aug 2026 under the plain `chest-press` id — nothing was squatting
     // on it, so unlike Leg Extensions above it needed no `actual-` prefix.
     'Chest Press',
-    'Recline Curls',
-    'Overhead Tricep Extensions',
-    // Moved up behind Overhead Tricep Extensions in the same change.
-    'Incline Chest Press',
     'Lateral Raises',
     'Shoulder Press',
     'Frontal Plane Pulldowns',

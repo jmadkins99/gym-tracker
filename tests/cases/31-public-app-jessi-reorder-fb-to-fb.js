@@ -126,10 +126,10 @@ const HISTORY_WEIGHTS = {
 // asserting a value no device can ever hold.
 const EXPECTED_UPPER = [
     'Chest Flies',
-    'Chest Press',
+    'Incline Chest Press',
     'Recline Curls',
     'Overhead Tricep Extensions',
-    'Incline Chest Press',
+    'Chest Press',
     'Lateral Raises',
     'Shoulder Press',
     'Frontal Plane Pulldowns',
