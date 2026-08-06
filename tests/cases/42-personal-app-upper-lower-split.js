@@ -7,7 +7,7 @@
 //   1. The weekday defaulting rule: LOWER_DAYS (Mon/Wed/Fri) open on Lower,
 //      every other weekday — including Sunday — opens on Upper.
 //   2. Lower renders its 8 weighted lifts in canonical order and nothing else.
-//   3. Upper renders its 12 lifts in canonical order.
+//   3. Upper renders its 13 lifts in canonical order.
 //   4. The two day types are disjoint and together cover the whole program.
 //   5. The retired Cardio day is gone: no 'fullbody'/'cardio' toggle survives,
 //      and Body Weight Squats / Burpee Jump Tucks / Assault Bike / Stairmaster
@@ -51,12 +51,16 @@ const EXPECTED_LOWER = [
 
 const EXPECTED_UPPER = [
     'Chest Flies',
+    // Added Aug 2026 under the plain `chest-press` id — nothing was squatting
+    // on it, so unlike Leg Extensions above it needed no `actual-` prefix.
+    'Chest Press',
     'Recline Curls',
     'Overhead Tricep Extensions',
-    'Lateral Raises',
-    'Frontal Plane Pulldowns',
+    // Moved up behind Overhead Tricep Extensions in the same change.
     'Incline Chest Press',
+    'Lateral Raises',
     'Shoulder Press',
+    'Frontal Plane Pulldowns',
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
@@ -124,14 +128,14 @@ async function sectionTitles(page) {
         // 3. Upper.
         ok(await selectDayType(page, 'upper'), 'Upper toggle exists and is clickable');
         const upper = (await readCards(page)).map(c => c.name);
-        eq(upper, EXPECTED_UPPER, 'Upper renders its 12 movements in canonical order');
+        eq(upper, EXPECTED_UPPER, 'Upper renders its 13 movements in canonical order');
         eq(await sectionTitles(page), [],
             'Upper has no Cardio section');
 
         // 4. Disjoint, and together the whole program.
         const overlap = lower.filter(n => upper.includes(n));
         eq(overlap, [], 'no exercise appears on both days');
-        eq(lower.length + upper.length, 20, 'the two days cover all 20 movements');
+        eq(lower.length + upper.length, 21, 'the two days cover all 21 movements');
 
         // 5b. The four retired cardio movements are unreachable.
         for (const name of RETIRED) {

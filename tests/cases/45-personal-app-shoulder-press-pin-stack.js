@@ -1,21 +1,27 @@
 // What this test covers
 // ----------------------
-// Shoulder Press was reclassified from pin-stack to TWO-sided plate-loaded
-// (Aug 2026). Test 16 only asserts that a Weight Breakdown button exists, so
-// it passes either way — the breakdown *style* needs its own pin, the same way
-// test 26 pins Leg Press.
+// Shoulder Press's breakdown STYLE, which has now changed twice. It was
+// pin-stack, was reclassified to two-sided plate-loaded in Aug 2026, and moved
+// back to pin-stack later the same month. Test 16 only asserts that a Weight
+// Breakdown button exists, so it passes under any classification — the style
+// needs its own pin, the same way test 26 pins Leg Press.
 //
-// Two-sided means the target is split in half with a "Per side" line, and the
-// pin/micro-plate math must no longer be reachable for this id. Warmups round
-// each per-side figure to the nearest 10 lb; the top set is never rounded.
+// A plain (non-overflow) pin stack renders one "<label>: N lbs" row per warmup
+// and NO "Per side" line anywhere. Two absences carry the weight here: no
+// "Per side" proves the plate-splitting branch is unreachable for this id, and
+// no "Pin:" proves it took the plain branch rather than the overflow one —
+// WorkoutView only emits a literal "Pin:" row when a set overflows a capped
+// stack, the way cable wrist curls do above 97.5. There is likewise no top-set
+// row, which the component renders only when overflow is in play.
 //
-// At 200 lbs: per side 100. Warmup 70% = 140 -> 70/side -> 140 total.
-// Warmup 90% = 180 -> 90/side -> 180 total.
+// At 200 lbs: warmup 70% = 140, warmup 90% = 180 — both already land on the
+// 5 lb stack, so no micro-plate is involved.
 //
-// Also guards the matching PR increment. On a two-sided machine 1.25 lb total
-// is 0.625 per side, which is not a real plate; the increment moved to 2.5
-// (= 1.25/side) when the classification changed. Leaving one without the other
-// is the easy mistake, so both are asserted here.
+// Also guards the matching PR increment. 2.5 was chosen back when this was
+// two-sided (= 1.25/side, the smallest real plate); it survives the move back
+// because 2.5 is also a legal pin-stack micro-plate step. The increment and the
+// classification have to be read together — that pairing is why both are
+// asserted here rather than in separate tests.
 
 const path = require('path');
 const fs = require('fs');
@@ -41,12 +47,12 @@ function extractLiteral(source, name) {
     const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS');
 
     // Config-level invariants, before touching the browser.
-    eq(PLATE_LOADED['shoulder-press'], { type: 'two-sided', machineWeight: 0 },
-        'shoulder-press is registered as two-sided plate-loaded');
-    ok(!PIN_STACK['shoulder-press'],
-        'shoulder-press is no longer in PIN_STACK_EXERCISES (would shadow the plate branch)');
+    eq(PIN_STACK['shoulder-press'], true,
+        'shoulder-press is registered as a plain pin stack');
+    ok(!PLATE_LOADED['shoulder-press'],
+        'shoulder-press is no longer in PLATE_LOADED_EXERCISES (would shadow the pin branch)');
     eq(INCREMENTS['shoulder-press'], 2.5,
-        'shoulder-press PR increment is 2.5 total = 1.25/side, the smallest real plate move');
+        'shoulder-press PR increment is 2.5, a legal pin-stack micro-plate step');
 
     // Every two-sided machine must move in steps that halve to a real plate.
     for (const [id, cfg] of Object.entries(PLATE_LOADED)) {
@@ -94,21 +100,21 @@ function extractLiteral(source, name) {
             return card ? card.textContent : '';
         });
 
-        contains(text, 'Top Set (200 lbs)', 'top set total shown as 200 lbs, unrounded');
-        contains(text, 'Per side: 100 lbs', 'two-sided: top set per side = 100 lbs');
-        contains(text, 'Warmup Set #1 (140 lbs', 'warmup #1 total = 140 lbs (70/side)');
-        contains(text, 'Per side: 70 lbs', 'warmup #1 per side = 70 lbs');
-        contains(text, 'Warmup Set #2 (180 lbs', 'warmup #2 total = 180 lbs (90/side)');
-        contains(text, 'Per side: 90 lbs', 'warmup #2 per side = 90 lbs');
+        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
+            'warmup #1 = 70% of 200 = 140, already on the stack');
+        contains(text, 'Warmup Set #2 (~90%): 180 lbs',
+            'warmup #2 = 90% of 200 = 180, already on the stack');
 
-        // The pin-stack branch renders a "Pin:" line and never a "Per side" one.
-        // Its absence is what proves the reclassification actually took effect
-        // rather than both branches somehow rendering.
-        ok(!/\bPin:/.test(text),
-            'no pin-stack rendering remains on Shoulder Press');
+        // The plate-loaded branch is what renders "Per side". Its absence is
+        // what proves the reclassification actually took effect rather than
+        // both branches somehow rendering.
+        ok(!/Per side/.test(text),
+            'no two-sided plate rendering remains on Shoulder Press');
+        ok(!/Pin:/.test(text),
+            'plain pin stack, not the capped-overflow branch');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Shoulder Press renders a two-sided plate breakdown with a matching increment.');
+        console.log('PASS: Shoulder Press renders a pin-stack breakdown with a matching increment.');
     } finally {
         await browser.close();
         await server.stop();

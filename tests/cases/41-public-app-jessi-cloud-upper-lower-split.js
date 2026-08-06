@@ -103,12 +103,15 @@ const CURRENT_ROWS = [
 
 const EXPECTED_UPPER = [
     ['Chest Flies', ID.chestFlies],
+    // Added Aug 2026. Shares the plain `chest-press` literal with the personal
+    // app — no id collision in either, so no `actual-` prefix.
+    ['Chest Press', 'chest-press'],
     ['Recline Curls', ID.reclineCurls],
     ['Overhead Tricep Extensions', DROPPED_ID.dips],
-    ['Lateral Raises', DROPPED_ID.lateralRaises],
-    ['Frontal Plane Pulldowns', ID.frontalPulldowns],
     ['Incline Chest Press', ID.inclinePress],
+    ['Lateral Raises', DROPPED_ID.lateralRaises],
     ['Shoulder Press', ID.shoulderPress],
+    ['Frontal Plane Pulldowns', ID.frontalPulldowns],
     ['Transverse Plane Rows', ID.transverseRows],
     ['Kelso Shrugs', ID.kelsoShrugs],
     ['Sagittal Plane Pulldowns', ID.sagittalPulldowns],
@@ -241,12 +244,13 @@ async function readSaved(page) {
                 `"${name}" reclaimed its original id from workout history`);
         }
 
-        // Only the JESSI_NEW_EXERCISES pair gets one. A restored movement must
-        // NOT — it inherits real logged weight via its reclaimed id, and a
+        // Only JESSI_NEW_EXERCISES gets one. A restored movement must NOT —
+        // it inherits real logged weight via its reclaimed id, and a
         // startingWeight would paper over a failed id recovery with a plausible
         // number instead of an obviously blank field.
-        eq(saved.startingWeights, { 'Preacher Curls': '50', 'Leg Extensions': '50' },
-            'only the two genuinely-new movements carry a startingWeight');
+        eq(saved.startingWeights,
+            { 'Chest Press': '100', 'Preacher Curls': '50', 'Leg Extensions': '50' },
+            'only the genuinely-new movements carry a startingWeight');
 
         // 5. Schedule.
         eq(saved.schedule.days, [
@@ -403,10 +407,11 @@ async function readSaved(page) {
             'a stale-revision split config is re-sorted to the current Lower order');
         eq(rerun.lower[EXPECTED_LOWER.length], ['Farmer Carries', 'client-added-1'],
             'a movement the client added themselves is kept, at the bottom of Lower');
-        // Both of JESSI_NEW_EXERCISES are absent from the seed above, so this
+        // All of JESSI_NEW_EXERCISES are absent from the seed above, so this
         // is the assertion that a revision bump actually delivers a newly added
         // movement to a device that already took an earlier revision.
-        eq(rerun.startingWeights, { 'Preacher Curls': '50', 'Leg Extensions': '50' },
+        eq(rerun.startingWeights,
+            { 'Chest Press': '100', 'Preacher Curls': '50', 'Leg Extensions': '50' },
             'movements missing from a stale config are re-added with their startingWeight');
         eq(rerun.splitRevision, currentSplitRevision(),
             're-run stamps the current splitRevision');

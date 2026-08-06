@@ -8,6 +8,7 @@
             'preacher-curls': '56.25',
             'tricep-pushdown': '36.25',
             'chest-flies': '165',
+            'chest-press': '200',
             'incline-chest-press': '110',
             'hammer-row': '117.5',
             'frontal-pulldowns': '180',
@@ -34,6 +35,7 @@
             'curls-shoulder-extension': 1.25,
             'overhead-tricep-extensions': 1.25,
             'chest-flies': 1.25,
+            'chest-press': 1.25,
             'incline-chest-press': 2.5,
             'leg-curls': 5,
             'shoulder-press': 2.5,
@@ -61,11 +63,9 @@
             'preacher-curls': { type: 'one-sided', machineWeight: 0 },
             'leg-curls': { type: 'one-sided', machineWeight: 0 },
             'hip-adduction': { type: 'two-sided', machineWeight: 0 },
-            'incline-chest-press': { type: 'two-sided', machineWeight: 0 },
             'hammer-row': { type: 'one-sided', machineWeight: 0 },
             'upper-back-row': { type: 'one-sided', machineWeight: 0 },
-            'kelso-shrugs': { type: 'one-sided', machineWeight: 0 },
-            'shoulder-press': { type: 'two-sided', machineWeight: 0 }
+            'kelso-shrugs': { type: 'one-sided', machineWeight: 0 }
         };
 
         // Pin-stack exercises configuration
@@ -79,6 +79,15 @@
             'curls-shoulder-extension': true,
             'overhead-tricep-extensions': true,
             'chest-flies': true,
+            'chest-press': true,
+            // Both moved off PLATE_LOADED_EXERCISES (were two-sided) in Aug
+            // 2026 — the breakdown display changes, logged weights do not.
+            // Their PR increments stay 2.5, a legal micro-plate step. This
+            // leaves Leg Press (`hip-adduction`, on Lower) as the only
+            // two-sided plate-loaded movement in the program; test 28's
+            // per-side rounding coverage moved onto it for that reason.
+            'incline-chest-press': true,
+            'shoulder-press': true,
             'tricep-pushdown': true,
             'lateral-raises': true,
             'frontal-pulldowns': true,
@@ -105,7 +114,12 @@
         // drops Stairmaster off Lower. 6 is also what makes that drop reach a
         // saved config at all: the id-set check alone would catch it, but the
         // version is what guarantees it on a device that reloads mid-flight.
-        const EXERCISE_CONFIG_VERSION = 6;
+        // 7 adds Chest Press to Upper and moves Incline Chest Press up behind
+        // Overhead Tricep Extensions — the move is a pure reorder, so 7 is the
+        // only thing that carries it to a device that already has a config.
+        // 8 moves Shoulder Press up behind Lateral Raises, likewise a pure
+        // reorder that only the bump can deliver.
+        const EXERCISE_CONFIG_VERSION = 8;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -123,32 +137,36 @@
         const DEFAULT_EXERCISES = [
             // --- Upper (Tue / Thu / Sat, and Sun by default) ---
             { id: 'chest-flies',         name: 'Chest Flies',              category: 'Upper', day: 'upper', type: 'standard',    order: 0 },
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Upper', day: 'upper', type: 'standard',    order: 1 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Upper', day: 'upper', type: 'standard', order: 2 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Upper', day: 'upper', type: 'standard',    order: 3 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Upper', day: 'upper', type: 'standard',    order: 4 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Upper', day: 'upper', type: 'standard',    order: 5 },
+            // Genuinely new (Aug 2026). Takes the plain `chest-press` id — no
+            // existing id was squatting on it, unlike the leg-extensions case
+            // below, so there is no need for an `actual-` prefix here.
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Upper', day: 'upper', type: 'standard',    order: 1 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Upper', day: 'upper', type: 'standard',    order: 2 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Upper', day: 'upper', type: 'standard', order: 3 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Upper', day: 'upper', type: 'standard',    order: 4 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Upper', day: 'upper', type: 'standard',    order: 5 },
             { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Upper', day: 'upper', type: 'standard',    order: 6 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Upper', day: 'upper', type: 'standard',    order: 7 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Upper', day: 'upper', type: 'standard',    order: 8 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Upper', day: 'upper', type: 'standard',    order: 9 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Upper', day: 'upper', type: 'standard',    order: 10 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Upper', day: 'upper', type: 'standard',    order: 11 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Upper', day: 'upper', type: 'standard',    order: 7 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Upper', day: 'upper', type: 'standard',    order: 8 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Upper', day: 'upper', type: 'standard',    order: 9 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Upper', day: 'upper', type: 'standard',    order: 10 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Upper', day: 'upper', type: 'standard',    order: 11 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Upper', day: 'upper', type: 'standard',    order: 12 },
 
             // --- Lower (Mon / Wed / Fri) ---
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 12 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
             // Genuinely new (Aug 2026) — NOT the `leg-extensions` id below,
             // which the split left rendering as Hip Adduction. There is no
             // history to inherit, so this takes a fresh id rather than
             // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
             // and the two apps deliberately share this one literal.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 19 }
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

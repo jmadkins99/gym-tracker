@@ -54,12 +54,13 @@ const OLD_ORDER_IDS = [
 // The canonical Upper day, which is where the renamed exercise below lands.
 const EXPECTED_NEW_ORDER = [
     'Chest Flies',
+    'Chest Press',            // added Aug 2026; arrives via the migration
     'Recline Curls',
     'Overhead Tricep Extensions',
-    'Lateral Raises',
-    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
     'Incline Chest Press',
+    'Lateral Raises',
     'Shoulder Press',
+    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
@@ -117,7 +118,7 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Tricep Extensions" (Upper index 10) up one, above "Sagittal Plane Pulldowns".
+        // Move "Tricep Extensions" (Upper index 11) up one, above "Sagittal Plane Pulldowns".
         const moved = await page.evaluate(() => {
             const rows = Array.from(document.querySelectorAll('.modal > div > div'));
             const row = rows.find(r => r.textContent.trim().startsWith('Tricep Extensions'));
@@ -135,7 +136,7 @@ const EXPECTED_NEW_ORDER = [
 
         const afterReorder = (await readCards(page)).map(c => c.name);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(9, 0, expectedAfter.splice(10, 1)[0]); // Tricep Extensions up one
+        expectedAfter.splice(10, 0, expectedAfter.splice(11, 1)[0]); // Tricep Extensions up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 

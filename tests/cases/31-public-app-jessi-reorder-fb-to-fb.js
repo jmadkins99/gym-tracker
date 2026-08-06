@@ -126,12 +126,13 @@ const HISTORY_WEIGHTS = {
 // asserting a value no device can ever hold.
 const EXPECTED_UPPER = [
     'Chest Flies',
+    'Chest Press',
     'Recline Curls',
     'Overhead Tricep Extensions',
-    'Lateral Raises',
-    'Frontal Plane Pulldowns',
     'Incline Chest Press',
+    'Lateral Raises',
     'Shoulder Press',
+    'Frontal Plane Pulldowns',
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
@@ -233,8 +234,9 @@ async function readAllCards(page) {
             };
         });
         eq(state.flag5, 'true', 'jessiFullBodyMigrationApplied5 set so the reorder does not re-run');
-        // 15 seeded + Preacher Curls + Leg Extensions + the 4 the split restores.
-        eq(state.count, 21, 'nothing seeded was dropped — 15 in, 21 out');
+        // 15 seeded + Preacher Curls + Leg Extensions + Chest Press + the 4
+        // the split restores.
+        eq(state.count, 22, 'nothing seeded was dropped — 15 in, 22 out');
 
         // 5. Unranked exercise survives at the bottom of Lower.
         eq(state.lowerIds[state.lowerIds.length - 1], 'jcustom',

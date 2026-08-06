@@ -7,7 +7,7 @@
 // eye.
 //
 //   1. A NEW Lower/Upper workout renders against the matching day of the
-//      current config — 12 rows for Upper, not all 20. The naive check
+//      current config — 13 rows for Upper, not all 21. The naive check
 //      ("are all this workout's ids in the current exercise list?") is true
 //      for BOTH days now that they share one config, so a day-blind
 //      implementation pads every Upper day with 8 bogus "NA" Lower rows.
@@ -22,7 +22,7 @@
 //      program entirely and exist nowhere in the current config.
 //
 // The Edit modal shares the same rule, so it is checked on the Upper workout
-// too: opening it must offer 12 fields, not 20.
+// too: opening it must offer 13 fields, not 21.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -66,12 +66,13 @@ const EXPECTED_FULL_BODY_ROWS = FULL_BODY_ERA.map(([id, name]) => {
 // The Upper day, in the current DEFAULT_EXERCISES order.
 const UPPER_IDS = [
     ['chest-flies', 'Chest Flies'],
+    ['chest-press', 'Chest Press'],
     ['curls-shoulder-extension', 'Recline Curls'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
-    ['lateral-raises', 'Lateral Raises'],
-    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
     ['incline-chest-press', 'Incline Chest Press'],
+    ['lateral-raises', 'Lateral Raises'],
     ['shoulder-press', 'Shoulder Press'],
+    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
     ['upper-back-row', 'Transverse Plane Rows'],
     ['kelso-shrugs', 'Kelso Shrugs'],
     ['hammer-row', 'Sagittal Plane Pulldowns'],
@@ -164,9 +165,9 @@ async function weeklyItems(page) {
         // Newest first: upper (Wed), cardio (Tue), fullbody (Mon).
         const [upperItem, cardioItem, fullBodyItem] = items;
 
-        // 1. New-era Upper: exactly its own 12, not the whole 20-exercise config.
+        // 1. New-era Upper: exactly its own 13, not the whole 21-exercise config.
         eq(upperItem.rows, UPPER_IDS.map(([, name]) => name),
-            'an Upper workout renders exactly the 12 Upper movements');
+            'an Upper workout renders exactly the 13 Upper movements');
         ok(!upperItem.rows.includes('Leg Press') && !upperItem.rows.includes('Stairmaster'),
             'no Lower movements padded onto the Upper workout');
 
@@ -191,7 +192,7 @@ async function weeklyItems(page) {
                 .map(d => d.firstChild?.textContent?.trim())
                 .filter(Boolean));
         eq(editRows, UPPER_IDS.map(([, name]) => name),
-            'the Edit modal offers the 12 Upper fields, not all 20');
+            'the Edit modal offers the 13 Upper fields, not all 21');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Weekly and Edit render Upper, legacy Cardio, and pre-split Full Body correctly.');

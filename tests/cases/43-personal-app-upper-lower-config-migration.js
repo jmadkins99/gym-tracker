@@ -91,12 +91,17 @@ const EXPECTED_UPPER = [
     // migration takes order/day/category from defaults but never the name, so
     // changing a default label can't silently rewrite what a device displays.
     'Unilateral Chest Flies',
+    // Like Leg Extensions above, this arrives purely via migrateExerciseConfig
+    // — the saved config below predates it — and lands mid-list, not appended.
+    'Chest Press',
     'Recline Curls',
     'Overhead Tricep Extensions',
-    'Lateral Raises',
-    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
+    // Pure reorder relative to the saved config: only the version bump carries
+    // it, since the id set alone is unchanged by a move.
     'Incline Chest Press',
+    'Lateral Raises',
     'Shoulder Press',
+    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Sagittal Plane Pulldowns',
@@ -161,7 +166,7 @@ async function readSavedConfig(page) {
         const saved = await readSavedConfig(page);
         eq(saved.version, currentConfigVersion(),
             'reconciled config is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(saved.ids.length, 20, 'leg extensions brings the saved config to 20');
+        eq(saved.ids.length, 21, 'leg extensions + chest press bring the saved config to 21');
         ok(!saved.byId['stairmaster'],
             'stairmaster is not added — it is retired from the active program');
         // The fresh id is what keeps this distinct from `leg-extensions`, which
@@ -181,13 +186,13 @@ async function readSavedConfig(page) {
         // Every exercise is assigned to exactly one of the two days.
         const days = Object.values(saved.byId).map(e => e.day);
         eq(days.filter(d => d === 'lower').length, 8, '8 exercises on Lower');
-        eq(days.filter(d => d === 'upper').length, 12, '12 exercises on Upper');
+        eq(days.filter(d => d === 'upper').length, 13, '13 exercises on Upper');
         eq(days.filter(d => d !== 'lower' && d !== 'upper'), [],
             'no exercise is left without a day');
 
-        // `order` must stay a dense 0..19 run, since moveExercise and the
+        // `order` must stay a dense 0..20 run, since moveExercise and the
         // load-time sort both index off it.
-        eq(saved.orders, Array.from({ length: 20 }, (_, i) => i),
+        eq(saved.orders, Array.from({ length: 21 }, (_, i) => i),
             'order is a dense 0..19 sequence across both days');
 
         // 5. Second load changes nothing.
@@ -221,8 +226,8 @@ async function readSavedConfig(page) {
             'stairmaster is dropped from a saved config that still carried it');
         eq(dropped.version, currentConfigVersion(),
             'the drop is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(dropped.ids.length, 20, 'the saved config is back to 20 ids');
-        eq(dropped.orders, Array.from({ length: 20 }, (_, i) => i),
+        eq(dropped.ids.length, 21, 'the saved config is back to 21 ids');
+        eq(dropped.orders, Array.from({ length: 21 }, (_, i) => i),
             'order stays dense after the removal — no hole where stairmaster sat');
         eq(dropped, saved, 'the dropped config matches the canonical one exactly');
 
