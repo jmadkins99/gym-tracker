@@ -41,12 +41,12 @@ const EXPECTED_LOWER = [
     'Cable Wrist Curls',
     'Ab Crunches',
     // Added Aug 2026 under the fresh id `actual-leg-extensions` — the
-    // `leg-extensions` id renders as Hip Adduction, two rows down.
+    // `leg-extensions` id renders as Hip Adduction, three rows down.
     'Leg Extensions',
+    'Leg Press',
     'Calf Raises',
     'Hip Adduction',
     'Back Extensions',
-    'Leg Press',
 ];
 
 const EXPECTED_UPPER = [

@@ -61,8 +61,15 @@
         // machineWeight: starting weight of the machine (usually 0 for plate-loaded)
         const PLATE_LOADED_EXERCISES = {
             'preacher-curls': { type: 'one-sided', machineWeight: 0 },
-            'leg-curls': { type: 'one-sided', machineWeight: 0 },
-            'hip-adduction': { type: 'two-sided', machineWeight: 0 },
+            // Back Extensions moved from a single-plate station to a two-side
+            // plate-loaded one (Aug 2026), so the logged number is now the
+            // total across both arms and the breakdown halves it. Its PR
+            // increment was already 5 (= 2.5/side, the smallest real plate),
+            // which is the correct two-sided step, so it needs no change.
+            // This is the program's only two-sided plate-loaded movement now
+            // that Leg Press is a pin stack — tests 26 and 28 both run their
+            // per-side coverage against it for that reason.
+            'leg-curls': { type: 'two-sided', machineWeight: 0 },
             'hammer-row': { type: 'one-sided', machineWeight: 0 },
             'upper-back-row': { type: 'one-sided', machineWeight: 0 },
             'kelso-shrugs': { type: 'one-sided', machineWeight: 0 }
@@ -82,10 +89,7 @@
             'chest-press': true,
             // Both moved off PLATE_LOADED_EXERCISES (were two-sided) in Aug
             // 2026 — the breakdown display changes, logged weights do not.
-            // Their PR increments stay 2.5, a legal micro-plate step. This
-            // leaves Leg Press (`hip-adduction`, on Lower) as the only
-            // two-sided plate-loaded movement in the program; test 28's
-            // per-side rounding coverage moved onto it for that reason.
+            // Their PR increments stay 2.5, a legal micro-plate step.
             'incline-chest-press': true,
             'shoulder-press': true,
             'tricep-pushdown': true,
@@ -95,6 +99,14 @@
             'calf-raise': true,
             'ab-crunch': true,
             'cable-wrist-curls': { maxPin: 97.5, overflowPlateMode: 'one-sided' },
+            // Leg Press moved off PLATE_LOADED_EXERCISES (was two-sided) in Aug
+            // 2026 — the gym's plate-loaded sled was replaced by a pin stack.
+            // Its PR increment stays 5, which is exactly one stack step. Plain
+            // `true` for now: the stack DOES cap, but the max is not known yet,
+            // so the breakdown never renders the "pin at max + plates" overflow
+            // rows. Give it { maxPin, overflowPlateMode: 'two-sided' } once the
+            // number is confirmed at the gym.
+            'hip-adduction': true,
             'reverse-wrist-curls': true,
             'actual-leg-extensions': true
         };
@@ -120,8 +132,9 @@
         // 8 moves Shoulder Press up behind Lateral Raises, likewise a pure
         // reorder that only the bump can deliver. 9 swaps Chest Press and
         // Incline Chest Press — same ids, same count, so the bump is the whole
-        // delivery mechanism.
-        const EXERCISE_CONFIG_VERSION = 9;
+        // delivery mechanism. 10 moves Leg Press up behind Leg Extensions on
+        // Lower, another pure reorder that only the bump can deliver.
+        const EXERCISE_CONFIG_VERSION = 10;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -165,10 +178,15 @@
             // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
             // and the two apps deliberately share this one literal.
             { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
+            // Leg Press follows Leg Extensions as of Aug 2026 — the two share a
+            // corner of the gym now that Leg Press is the pin-stack machine.
+            // `hip-adduction` is its frozen id; the `leg-extensions` id two rows
+            // down is the one that renders as Hip Adduction. Neither name
+            // matches its id and neither is safe to rename.
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

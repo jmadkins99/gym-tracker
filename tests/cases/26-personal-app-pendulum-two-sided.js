@@ -1,10 +1,18 @@
 // What this test covers
 // ----------------------
-// Leg Press (id `hip-adduction`) is a TWO-sided plate-loaded machine:
+// Back Extensions (id `leg-curls`) is a TWO-sided plate-loaded machine:
 // you load matching plates on each side, so the breakdown must split the
 // target in half and show a "Per side" line. This guards the config change
-// from one-sided -> two-sided (PLATE_LOADED_EXERCISES['hip-adduction'].type)
-// plus the matching 2.5 lb PR increment (= 1.25/side, smallest real plate).
+// from one-sided -> two-sided (PLATE_LOADED_EXERCISES['leg-curls'].type)
+// plus the matching 5 lb PR increment (= 2.5/side, smallest real plate).
+//
+// This case used to run against Leg Press (`hip-adduction`), which was the
+// program's two-sided station until Aug 2026 replaced it with a pin stack.
+// Back Extensions moved the other way in the same trip — single-plate station
+// to two-side — so it inherits the coverage. It is now the ONLY two-sided
+// plate-loaded movement in the program, so if it is ever retired this needs a
+// new home rather than deletion. The arithmetic below is weight-driven and
+// unchanged from the Leg Press era; only the card it runs against moved.
 //
 // It also exercises a real restored backup: josh-backup-2026-06-30.json is an
 // actual auto-backup whose in-progress top workout had three blank movements
@@ -51,11 +59,11 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
 
         await selectDayType(page, 'lower');
 
-        // Open the Leg Press breakdown at 270 lbs.
+        // Open the Back Extensions breakdown at 270 lbs.
         const interacted = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Leg Press') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Back Extensions') {
                     const input = c.querySelector('input[type="number"]');
                     if (!input) return false;
                     const setter = Object.getOwnPropertyDescriptor(
@@ -70,13 +78,13 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
             }
             return false;
         });
-        ok(interacted, 'set Leg Press weight to 270 and clicked Weight Breakdown');
+        ok(interacted, 'set Back Extensions weight to 270 and clicked Weight Breakdown');
         await new Promise(r => setTimeout(r, 300));
 
         const text = await page.evaluate(() => {
             const cards = document.querySelectorAll('.exercise-card');
             for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Leg Press') {
+                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Back Extensions') {
                     return c.textContent;
                 }
             }
@@ -95,7 +103,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         contains(text, 'Per side: 120 lbs', 'warmup #2 per side rounded 121.5 -> 120 lbs');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Leg Press renders two-sided breakdown; josh backup restores cleanly.');
+        console.log('PASS: Back Extensions renders two-sided breakdown; josh backup restores cleanly.');
     } finally {
         await browser.close();
         await server.stop();

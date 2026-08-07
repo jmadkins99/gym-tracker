@@ -79,10 +79,14 @@ const EXPECTED_LOWER = [
     // predates it, so this pins that a newly added default reaches a device
     // that already has a config — mid-list, not appended at the end.
     'Leg Extensions',
+    // hip-adduction, renamed by the user below. Its position comes from
+    // DEFAULT_EXERCISES, not from the saved config — the migration takes order
+    // from defaults while preserving the user's name, and this row is where
+    // those two rules meet.
+    'My Renamed Leg Press',
     'Calf Raises',
     'Hip Adduction',
     'Back Extensions',
-    'My Renamed Leg Press',   // hip-adduction, renamed by the user below
 ];
 
 const EXPECTED_UPPER = [
