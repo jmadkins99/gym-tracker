@@ -151,10 +151,10 @@ const JESSI_CODE = 'D1O9O9M2';
             'Cable Wrist Curls',
             'Ab Crunches',
             'Leg Extensions',
+            'Leg Press',
             'Calf Raises',
             'Hip Adduction',
             'Back Extensions',
-            'Leg Press',
         ];
         eq(cfg.categories, ['Upper', 'Lower'], 'coach code yields the Upper/Lower split');
         eq(Object.keys(cfg.days).length, 2, 'two days, not the old single Full Body day');

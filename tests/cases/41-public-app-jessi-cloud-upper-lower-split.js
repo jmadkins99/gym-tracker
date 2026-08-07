@@ -124,10 +124,10 @@ const EXPECTED_LOWER = [
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
     ['Ab Crunches', ID.abCrunches],
     ['Leg Extensions', 'actual-leg-extensions'],
+    ['Leg Press', ID.legPress],
     ['Calf Raises', ID.calfRaises],
     ['Hip Adduction', ID.hipAdduction],
     ['Back Extensions', ID.backExtensions],
-    ['Leg Press', ID.legPress],
 ];
 
 function jessiFullBodyConfig() {

@@ -2,15 +2,20 @@
 // ----------------------
 // Jessi swapped his last two Full Body slots to "Back Extensions" and
 // "Leg Press". Both must render the Weight Breakdown button (gympin), and
-// with the right side-count:
+// in the right STYLE. Aug 2026 swapped both styles at once when the gym
+// re-equipped, so the pairing is what this case pins:
 //
-//   - Leg Press       → plate-loaded TWO-sided (renders "Per side:" lines)
-//   - Back Extensions → plate-loaded ONE-sided (plate lines, NO "Per side:")
+//   - Leg Press       → PIN STACK (stack rows, no plate lines, no "Per side:")
+//   - Back Extensions → plate-loaded TWO-sided (renders "Per side:" lines)
 //
-// Before the fix these names classified to null, so no button rendered —
-// which is exactly what Jessi saw on his phone. To verify this test is
-// real: delete the /leg press/ and /back extension/ lines from
+// Before the original fix these names classified to null, so no button
+// rendered — which is exactly what Jessi saw on his phone. To verify this
+// test is real: delete the /leg press/ and /back extension/ lines from
 // getWeightBreakdownConfig. Test should fail (missing buttons).
+//
+// The two assertions are deliberately each other's mirror: Leg Press proves
+// the plate branch is unreachable for that name, Back Extensions proves it IS
+// reachable for the other. A half-applied swap fails one or the other.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -94,34 +99,34 @@ async function readCard(page, name) {
         });
         eq(persisted, true, 'gympinMode auto-enabled for Jessi-shaped install');
 
-        // --- Leg Press: two-sided plate-loaded ---
+        // --- Leg Press: pin stack (was two-sided plate-loaded until Aug 2026) ---
         ok(await clickBreakdown(page, 'Leg Press'),
             'Leg Press card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 200));
         const legText = await readCard(page, 'Leg Press');
-        ok(/\d+(?:\.\d+)?s - \d+/.test(legText),
-            'Leg Press renders plate breakdown lines (not bare pin-stack)');
+        ok(!/\d+(?:\.\d+)?s - \d+/.test(legText),
+            'Leg Press renders NO plate breakdown lines (it is a pin stack now)');
         ok(!/Pin: \d/.test(legText),
-            'Leg Press must NOT render any "Pin: X" line');
+            'plain pin stack, not the capped-overflow branch (no maxPin configured)');
         const legPerSide = (legText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || []).length;
-        eq(legPerSide, 3,
-            'Leg Press two-sided renders 3 "Per side: X lbs" lines (warmup1, warmup2, top)');
+        eq(legPerSide, 0,
+            'Leg Press renders ZERO "Per side: X lbs" lines (two-sided would render 3)');
 
-        // --- Back Extensions: one-sided plate-loaded ---
+        // --- Back Extensions: two-sided plate-loaded (was one-sided) ---
         ok(await clickBreakdown(page, 'Back Extensions'),
             'Back Extensions card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 200));
         const backText = await readCard(page, 'Back Extensions');
         ok(/\d+(?:\.\d+)?s - \d+/.test(backText),
-            'Back Extensions renders plate breakdown lines');
+            'Back Extensions renders plate breakdown lines (not bare pin-stack)');
         ok(!/Pin: \d/.test(backText),
             'Back Extensions must NOT render any "Pin: X" line');
         const backPerSide = (backText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || []).length;
-        eq(backPerSide, 0,
-            'Back Extensions one-sided renders ZERO "Per side: X lbs" lines (two-sided would render 3)');
+        eq(backPerSide, 3,
+            'Back Extensions two-sided renders 3 "Per side: X lbs" lines (warmup1, warmup2, top)');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Jessi Leg Press (two-sided) + Back Extensions (one-sided) render breakdown buttons.');
+        console.log('PASS: Jessi Leg Press (pin stack) + Back Extensions (two-sided) render breakdown buttons.');
     } finally {
         await browser.close();
         await server.stop();

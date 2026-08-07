@@ -25,7 +25,11 @@ function fullBodyConfig() {
         days: {
             1: [
                 { id: 'cback', name: 'Back Extensions',          category: 'Full Body', order: 0, type: 'standard', minReps: 6, maxReps: 8 },
-                { id: 'clegp', name: 'Leg Press',                category: 'Full Body', order: 1, type: 'standard', minReps: 6, maxReps: 8 },
+                // One-sided fixture. This slot was Preacher Curls, then Back
+                // Extensions; Aug 2026 made Back Extensions two-sided, so the
+                // one-sided case moved onto Kelso Shrugs. Any one-sided
+                // plate-loaded name works — the arithmetic is weight-driven.
+                { id: 'ckels', name: 'Kelso Shrugs',             category: 'Full Body', order: 1, type: 'standard', minReps: 6, maxReps: 8 },
                 { id: 'csag',  name: 'Sagittal Plane Pulldowns', category: 'Full Body', order: 2, type: 'standard', minReps: 6, maxReps: 8 },
             ],
         },
@@ -80,26 +84,25 @@ async function breakdownText(page, name, weight) {
         });
         eq(gympin, true, 'gympinMode auto-enabled for Full Body install');
 
-        // Leg Press (two-sided) at 250: W1 87.5 -> 90 (up), W2 112.5 -> 110, top 125 exact.
-        // This was Incline Chest Press until Aug 2026, when it became a pin
-        // stack in both apps; Leg Press is the two-sided fixture now.
-        const incline = await breakdownText(page, 'Leg Press', 250);
-        ok(incline, 'opened Leg Press breakdown');
-        contains(incline, 'Warmup Set #1 (180 lbs - ~70%)', 'two-sided W1 87.5/side rounds UP to 90 (total 180)');
-        contains(incline, 'Per side: 90 lbs', 'two-sided W1 per side = 90');
-        contains(incline, 'Warmup Set #2 (220 lbs - ~90%)', 'two-sided W2 112.5/side rounds DOWN to 110 (total 220)');
-        contains(incline, 'Per side: 110 lbs', 'two-sided W2 per side = 110');
-        contains(incline, 'Top Set (250 lbs)', 'two-sided top set exact 250 (never rounded)');
-        contains(incline, 'Per side: 125 lbs', 'two-sided top set per side exact 125');
-
-        // Back Extensions (one-sided) at 67.5: W1 47.25 -> 50 (up), W2 60.75 -> 60, top 67.5 exact.
-        // (Was Preacher Curls until Jessi's station was renamed "Recline Curls" and
-        // reclassified as a pin stack — this test needs a one-sided PLATE-loaded case.)
-        const backExt = await breakdownText(page, 'Back Extensions', 67.5);
+        // Back Extensions (two-sided) at 250: W1 87.5 -> 90 (up), W2 112.5 -> 110, top 125 exact.
+        // The two-sided fixture was Incline Chest Press, then Leg Press. Aug
+        // 2026 made both pin stacks and made Back Extensions two-sided, so it
+        // holds this case now. The arithmetic is weight-driven and unchanged.
+        const backExt = await breakdownText(page, 'Back Extensions', 250);
         ok(backExt, 'opened Back Extensions breakdown');
-        contains(backExt, 'Warmup Set #1 (50 lbs - ~70%)', 'back ext W1 47.25 rounds UP to 50');
-        contains(backExt, 'Warmup Set #2 (60 lbs - ~90%)', 'back ext W2 60.75 rounds DOWN to 60');
-        contains(backExt, 'Top Set (67.5 lbs)', 'back ext top set exact 67.5');
+        contains(backExt, 'Warmup Set #1 (180 lbs - ~70%)', 'two-sided W1 87.5/side rounds UP to 90 (total 180)');
+        contains(backExt, 'Per side: 90 lbs', 'two-sided W1 per side = 90');
+        contains(backExt, 'Warmup Set #2 (220 lbs - ~90%)', 'two-sided W2 112.5/side rounds DOWN to 110 (total 220)');
+        contains(backExt, 'Per side: 110 lbs', 'two-sided W2 per side = 110');
+        contains(backExt, 'Top Set (250 lbs)', 'two-sided top set exact 250 (never rounded)');
+        contains(backExt, 'Per side: 125 lbs', 'two-sided top set per side exact 125');
+
+        // Kelso Shrugs (one-sided) at 67.5: W1 47.25 -> 50 (up), W2 60.75 -> 60, top 67.5 exact.
+        const kelso = await breakdownText(page, 'Kelso Shrugs', 67.5);
+        ok(kelso, 'opened Kelso Shrugs breakdown');
+        contains(kelso, 'Warmup Set #1 (50 lbs - ~70%)', 'one-sided W1 47.25 rounds UP to 50');
+        contains(kelso, 'Warmup Set #2 (60 lbs - ~90%)', 'one-sided W2 60.75 rounds DOWN to 60');
+        contains(kelso, 'Top Set (67.5 lbs)', 'one-sided top set exact 67.5');
 
         // Sagittal Plane Pulldowns (one-sided) at 50: exact-halfway ties round DOWN
         const sagittal = await breakdownText(page, 'Sagittal Plane Pulldowns', 50);
