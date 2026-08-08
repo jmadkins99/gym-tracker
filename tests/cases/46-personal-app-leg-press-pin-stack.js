@@ -10,15 +10,18 @@
 // deliberate and frozen: ids are never renamed because workout history keys off
 // them. Do not "fix" it.
 //
-// A plain (non-overflow) pin stack renders one "<label>: N lbs" row per warmup
-// and NO "Per side" line anywhere. Two absences carry the weight here: no
-// "Per side" proves the plate-splitting branch is unreachable for this id, and
-// no "Pin:" proves it took the plain branch rather than the overflow one —
-// WorkoutView only emits a literal "Pin:" row when a set overflows a capped
-// stack, the way cable wrist curls do above 97.5. The real machine DOES cap,
-// but the max is not known yet, so `true` (uncapped) is the honest config and
-// the no-"Pin:" assertion below is what will fail loudly once a maxPin is
-// added — at which point this case wants an overflow arm, not a deletion.
+// A pin stack BELOW its cap renders one "<label>: N lbs" row per warmup and NO
+// "Per side" line anywhere. Two absences carry the weight here: no "Per side"
+// proves the plate-splitting branch is unreachable for this id, and no "Pin:"
+// proves it took the plain branch — WorkoutView only emits a literal "Pin:"
+// row when a set actually overflows the cap.
+//
+// The cap is 390, confirmed at the gym in Aug 2026. This case deliberately
+// stays entirely below it: 200 lbs and its warmups exercise the plain branch,
+// which is the path every normal working set takes. The over-390 overflow arm
+// lives in 08-personal-app-pin-stack-overflow, which drives this same exercise
+// at 450. Keep them split — this one pins the classification and increment,
+// that one pins the pin+plate rendering.
 //
 // At 200 lbs: warmup 70% = 140, warmup 90% = 180 — both already land on the
 // 5 lb stack, so no micro-plate is involved.
@@ -52,12 +55,22 @@ function extractLiteral(source, name) {
     const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS');
 
     // Config-level invariants, before touching the browser.
-    eq(PIN_STACK['hip-adduction'], true,
-        'hip-adduction (Leg Press) is registered as a plain pin stack');
+    eq(PIN_STACK['hip-adduction'], { maxPin: 390 },
+        'hip-adduction (Leg Press) is a pin stack capped at 390');
     ok(!PLATE_LOADED['hip-adduction'],
         'hip-adduction is no longer in PLATE_LOADED_EXERCISES (would shadow the pin branch)');
     eq(INCREMENTS['hip-adduction'], 5,
         'hip-adduction PR increment is 5, exactly one pin-stack step');
+
+    // Calf Raises is the other capped stack, and as of Aug 2026 the other one
+    // stepped a full notch at a time (it was 1.25). Asserted here rather than
+    // in test 16 because this is where the cap/increment pairing is checked —
+    // the two have to be read together, and 405 vs Leg Press's 390 is exactly
+    // the kind of near-miss that invites copying one onto the other.
+    eq(PIN_STACK['calf-raise'], { maxPin: 405 },
+        'calf-raise is a pin stack capped at 405, NOT 390 like Leg Press');
+    eq(INCREMENTS['calf-raise'], 5,
+        'calf-raise PR increment is 5, exactly one pin-stack step');
 
     // The counterpart move in the same trip: Back Extensions went single-plate
     // -> two-side. Asserted here because the two changes shipped together and a
@@ -115,7 +128,7 @@ function extractLiteral(source, name) {
         ok(!/Per side/.test(text),
             'no two-sided plate rendering remains on Leg Press');
         ok(!/Pin:/.test(text),
-            'plain pin stack, not the capped-overflow branch');
+            '200 is under the 390 cap, so no overflow row is rendered');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Leg Press renders a pin-stack breakdown with a matching increment.');

@@ -53,6 +53,23 @@ function extractLiteral(source, name, open, close) {
     ok(plateInRotation.length > 0, 'rotation has at least one plate-loaded exercise');
     ok(pinInRotation.length > 0, 'rotation has at least one pin-loaded exercise');
 
+    // Pin-stack caps, asserted straight off the literal. Only Leg Press
+    // (`hip-adduction`) and Calf Raises are capped — at 390 and 405
+    // respectively, two different machines that happen to land close
+    // together; every other pin stack is bare `true`. Cable Wrist Curls in
+    // particular lost its 97.5 cap in Aug 2026 and must stay uncapped. The
+    // overflow *rendering* is covered by 08-personal-app-pin-stack-overflow.
+    eq(PIN_STACK['hip-adduction'], { maxPin: 390 }, 'Leg Press pin stack caps at 390');
+    eq(PIN_STACK['calf-raise'], { maxPin: 405 }, 'Calf Raises pin stack caps at 405');
+    eq(PIN_STACK['cable-wrist-curls'], true, 'Cable Wrist Curls is an uncapped pin stack');
+
+    // `overflowPlateMode` was dropped in Aug 2026 — it was written alongside
+    // maxPin but never read. Guard against it creeping back in unwired.
+    for (const [id, value] of Object.entries(PIN_STACK)) {
+        ok(value === true || (typeof value === 'object' && Object.keys(value).join() === 'maxPin'),
+            `PIN_STACK['${id}'] is either true or exactly { maxPin }`);
+    }
+
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();
     try {

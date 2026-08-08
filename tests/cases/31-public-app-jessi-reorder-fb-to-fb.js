@@ -143,12 +143,12 @@ const EXPECTED_UPPER = [
 const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
+    'Back Extensions', // moved up off the end of Lower, Aug 2026
     'Ab Crunches',
     'Leg Extensions', // added by JESSI_NEW_EXERCISES, ranked above Leg Press
     'Leg Press',
+    'Hip Adduction', // moved ahead of Calf Raises, Aug 2026
     'Calf Raises',
-    'Hip Adduction',
-    'Back Extensions',
     'Face Pulls', // unranked -> bottom of Lower, NOT dropped
 ];
 

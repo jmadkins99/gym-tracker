@@ -30,7 +30,9 @@
         const ADVANCED_PR_TRACKING = false;
 
         // PR Auto-Regulation: Weight increments when you hit 6+ reps (top of 4-6 range)
-        // 5 lbs for two-sided plate-loaded (= 2.5/side per move); 2.5 lbs for everything else.
+        // 5 lbs where a 5 is the natural step — two-sided plate-loaded (= 2.5
+        // per side per move) and pin stacks moved a full stack notch at a time.
+        // 2.5 or 1.25 elsewhere; both are legal micro-plate steps.
         const PR_WEIGHT_INCREMENTS = {
             'curls-shoulder-extension': 1.25,
             'overhead-tricep-extensions': 1.25,
@@ -48,7 +50,10 @@
             'hammer-row': 1.25,
             'leg-extensions': 1.25,
             'hip-adduction': 5,
-            'calf-raise': 1.25,
+            // 5 = exactly one pin-stack step, matching hip-adduction (Leg
+            // Press) above. Was 1.25 — a legal micro-plate, but a finer step
+            // than this machine warrants now that it is capped at 405.
+            'calf-raise': 5,
             'ab-crunch': 1.25,
             'cable-wrist-curls': 1.25,
             'reverse-wrist-curls': 1.25,
@@ -78,10 +83,18 @@
         // Pin-stack exercises configuration
         // These machines use weight stacks with 5 lb increments
         // Can add micro-plates (1.25, 2.5, or 3.75) on top of the pin
-        // Value `true`     — plain pin stack, no cap
-        // Value `{ maxPin, overflowPlateMode }` — pin stack with a hard cap;
-        //   weights above `maxPin` show "pin at max + plate breakdown" for the
-        //   excess. overflowPlateMode is 'one-sided' or 'two-sided'.
+        // Value `true`         — plain pin stack, no cap (or cap not yet known)
+        // Value `{ maxPin }`   — pin stack with a hard cap; weights above
+        //   `maxPin` show "pin at max + plate breakdown" for the excess.
+        //
+        // There is no per-side notion here, unlike PLATE_LOADED_EXERCISES: a
+        // stack is one stack, and the supplemental plates in overflow mode go
+        // in one place on top of it. An `overflowPlateMode` field used to be
+        // written alongside `maxPin`, but no code ever read it, so it was
+        // dropped (Aug 2026) rather than wired up. If a capped machine ever
+        // turns out to have two separate spots to hang overflow plates, that
+        // is the point to reintroduce it — and calculatePinStackBreakdown in
+        // plateauLogic.js is the only place that would need to change.
         const PIN_STACK_EXERCISES = {
             'curls-shoulder-extension': true,
             'overhead-tricep-extensions': true,
@@ -96,17 +109,21 @@
             'lateral-raises': true,
             'frontal-pulldowns': true,
             'leg-extensions': true,
-            'calf-raise': true,
+            'calf-raise': { maxPin: 405 },
             'ab-crunch': true,
-            'cable-wrist-curls': { maxPin: 97.5, overflowPlateMode: 'one-sided' },
+            // Was capped at 97.5 until Aug 2026, when the user moved to a
+            // different cable machine whose working weights are nowhere near
+            // its ceiling. Back to `true`: the new stack's max is unknown and
+            // does not matter until it's approached.
+            'cable-wrist-curls': true,
             // Leg Press moved off PLATE_LOADED_EXERCISES (was two-sided) in Aug
             // 2026 — the gym's plate-loaded sled was replaced by a pin stack.
-            // Its PR increment stays 5, which is exactly one stack step. Plain
-            // `true` for now: the stack DOES cap, but the max is not known yet,
-            // so the breakdown never renders the "pin at max + plates" overflow
-            // rows. Give it { maxPin, overflowPlateMode: 'two-sided' } once the
-            // number is confirmed at the gym.
-            'hip-adduction': true,
+            // Its PR increment stays 5, which is exactly one stack step. Capped
+            // at 390 (confirmed at the gym), so weights past that render the
+            // "pin at max + plates" overflow rows. Calf Raises above is capped
+            // too but at 405 — different machines, close numbers, do not
+            // assume one from the other.
+            'hip-adduction': { maxPin: 390 },
             'reverse-wrist-curls': true,
             'actual-leg-extensions': true
         };
@@ -133,8 +150,11 @@
         // reorder that only the bump can deliver. 9 swaps Chest Press and
         // Incline Chest Press — same ids, same count, so the bump is the whole
         // delivery mechanism. 10 moves Leg Press up behind Leg Extensions on
-        // Lower, another pure reorder that only the bump can deliver.
-        const EXERCISE_CONFIG_VERSION = 10;
+        // Lower, another pure reorder that only the bump can deliver. 11 moves
+        // Back Extensions up behind Cable Wrist Curls and Hip Adduction ahead
+        // of Calf Raises — same ids, same count, so once again the bump is the
+        // entire delivery mechanism.
+        const EXERCISE_CONFIG_VERSION = 11;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -171,22 +191,27 @@
             // --- Lower (Mon / Wed / Fri) ---
             { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
             { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
+            // Back Extensions moved up off the end of Lower to sit right behind
+            // Cable Wrist Curls (Aug 2026). `leg-curls` is its frozen id — it
+            // has not been a leg curl in a long time.
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
             // Genuinely new (Aug 2026) — NOT the `leg-extensions` id below,
             // which the split left rendering as Hip Adduction. There is no
             // history to inherit, so this takes a fresh id rather than
             // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
             // and the two apps deliberately share this one literal.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
             // Leg Press follows Leg Extensions as of Aug 2026 — the two share a
             // corner of the gym now that Leg Press is the pin-stack machine.
-            // `hip-adduction` is its frozen id; the `leg-extensions` id two rows
-            // down is the one that renders as Hip Adduction. Neither name
-            // matches its id and neither is safe to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            // `hip-adduction` is its frozen id; the `leg-extensions` id below
+            // is the one that renders as Hip Adduction. Neither name matches
+            // its id and neither is safe to rename.
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            // Hip Adduction moved ahead of Calf Raises (Aug 2026), so Lower now
+            // closes on Calf Raises instead of Back Extensions.
             { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

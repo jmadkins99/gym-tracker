@@ -587,9 +587,11 @@
         //   { overflow: false, pinWeight, totalWeight }
         //     - The set fits on the pin stack. Display just the pin weight.
         //   { overflow: true, pinWeight, plates, totalWeight }
-        //     - The set exceeds maxPin (cable-wrist-curls is the only such
-        //       exercise today). Display "pin at max + plates" using the
-        //       same plate breakdown shape as plate-loaded exercises.
+        //     - The set exceeds maxPin (Leg Press at 390 and Calf Raises at
+        //       405 are the only capped exercises today). Display "pin at
+        //       max + plates" using the same plate breakdown shape as
+        //       plate-loaded exercises — but always as a single pile, since a
+        //       stack has no per-side split.
         //       Plate weight is rounded DOWN to a clean plate combination,
         //       so totalWeight may be slightly under the target.
         //

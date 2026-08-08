@@ -39,14 +39,17 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
+    // Moved up off the end of Lower (Aug 2026). Its id is `leg-curls`.
+    'Back Extensions',
     'Ab Crunches',
     // Added Aug 2026 under the fresh id `actual-leg-extensions` — the
-    // `leg-extensions` id renders as Hip Adduction, three rows down.
+    // `leg-extensions` id renders as Hip Adduction, two rows down.
     'Leg Extensions',
     'Leg Press',
-    'Calf Raises',
+    // Moved ahead of Calf Raises (Aug 2026), so Lower now closes on Calf
+    // Raises rather than Back Extensions.
     'Hip Adduction',
-    'Back Extensions',
+    'Calf Raises',
 ];
 
 const EXPECTED_UPPER = [

@@ -74,6 +74,8 @@ const FULL_BODY = [
 const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
+    // Moved up off the end of Lower (Aug 2026). Its id is `leg-curls`.
+    'Back Extensions',
     'Ab Crunches',
     // Arrives here purely via migrateExerciseConfig: the saved config below
     // predates it, so this pins that a newly added default reaches a device
@@ -84,9 +86,10 @@ const EXPECTED_LOWER = [
     // from defaults while preserving the user's name, and this row is where
     // those two rules meet.
     'My Renamed Leg Press',
-    'Calf Raises',
+    // Moved ahead of Calf Raises (Aug 2026), so Lower now closes on Calf
+    // Raises rather than Back Extensions.
     'Hip Adduction',
-    'Back Extensions',
+    'Calf Raises',
 ];
 
 const EXPECTED_UPPER = [

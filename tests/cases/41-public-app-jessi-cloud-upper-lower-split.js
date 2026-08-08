@@ -122,12 +122,15 @@ const EXPECTED_UPPER = [
 const EXPECTED_LOWER = [
     ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
+    // Moved up off the end of Lower, Aug 2026. It keeps its recovered id
+    // through the move — the reorder must not mint a fresh one.
+    ['Back Extensions', ID.backExtensions],
     ['Ab Crunches', ID.abCrunches],
     ['Leg Extensions', 'actual-leg-extensions'],
     ['Leg Press', ID.legPress],
-    ['Calf Raises', ID.calfRaises],
+    // Moved ahead of Calf Raises, Aug 2026.
     ['Hip Adduction', ID.hipAdduction],
-    ['Back Extensions', ID.backExtensions],
+    ['Calf Raises', ID.calfRaises],
 ];
 
 function jessiFullBodyConfig() {
