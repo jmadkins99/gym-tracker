@@ -58,7 +58,7 @@
                                                         width: '100%',
                                                         padding: '8px',
                                                         background: '#0d0d1a',
-                                                        border: '1px solid #3a2a5a',
+                                                        border: '1px solid var(--accent)',
                                                         borderRadius: '4px',
                                                         color: '#b8b8d0',
                                                         marginBottom: '8px'
@@ -71,7 +71,7 @@
                                                         style={{
                                                             flex: 1,
                                                             padding: '6px',
-                                                            background: '#3a2a5a',
+                                                            background: 'var(--accent)',
                                                             border: 'none',
                                                             borderRadius: '4px',
                                                             color: '#b8b8d0',

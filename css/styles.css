@@ -1,3 +1,17 @@
+        /* The accent family. js/accentColor.js overwrites these on <html> during
+           head parsing, one palette per calendar day. The values here are the
+           original purple, kept as the fallback for the brief moment before that
+           runs and for anything that loads the stylesheet on its own. Only hue
+           rotates between palettes — lightness and chroma are fixed, so these
+           four shades always relate to each other exactly as they do here. */
+        :root {
+            --accent: #3a2a5a;       /* LOG, Weight Breakdown, active pills, toast */
+            --accent-hi: #4a3a6a;    /* active-pill border */
+            --accent-muted: #6a5a8a; /* section titles, week line, gear, history names */
+            --accent-deep: #2a1a3a;  /* Submit Day */
+            --accent-rgb: 58, 42, 90;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -23,8 +37,8 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            border-bottom: 1px solid #3a2a5a;
-            box-shadow: 0 4px 20px rgba(58, 42, 90, 0.2);
+            border-bottom: 1px solid var(--accent);
+            box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.2);
         }
 
         .header-top {
@@ -40,14 +54,14 @@
 
         .week-indicator {
             font-size: 14px;
-            color: #6a5a8a;
+            color: var(--accent-muted);
             margin-bottom: 15px;
         }
 
         .settings-btn {
             background: none;
             border: none;
-            color: #6a5a8a;
+            color: var(--accent-muted);
             font-size: 24px;
             cursor: pointer;
             padding: 4px;
@@ -72,8 +86,8 @@
         }
 
         .nav-btn.active {
-            background: #3a2a5a;
-            border-color: #4a3a6a;
+            background: var(--accent);
+            border-color: var(--accent-hi);
             color: #b8b8d0;
         }
 
@@ -104,14 +118,14 @@
         }
 
         .day-btn.active {
-            background: #3a2a5a;
-            border-color: #4a3a6a;
+            background: var(--accent);
+            border-color: var(--accent-hi);
             color: #b8b8d0;
         }
 
         .section-title {
             font-size: 14px;
-            color: #6a5a8a;
+            color: var(--accent-muted);
             text-transform: uppercase;
             letter-spacing: 1px;
             margin: 20px 0 10px 0;
@@ -127,7 +141,7 @@
         }
 
         .exercise-card.logged {
-            border-color: #3a2a5a;
+            border-color: var(--accent);
             background: #12121f;
         }
 
@@ -179,7 +193,7 @@
 
         .input-field:focus {
             outline: none;
-            border-color: #3a2a5a;
+            border-color: var(--accent);
         }
 
         .input-field:disabled {
@@ -189,7 +203,7 @@
         .log-btn {
             width: 100%;
             padding: 12px;
-            background: #3a2a5a;
+            background: var(--accent);
             border: none;
             border-radius: 8px;
             color: #b8b8d0;
@@ -205,13 +219,13 @@
 
         .log-btn.logged {
             background: #1a1a2a;
-            color: #6a5a8a;
+            color: var(--accent-muted);
         }
 
         .save-btn {
             width: 100%;
             padding: 16px;
-            background: #2a1a3a;
+            background: var(--accent-deep);
             border: none;
             border-radius: 12px;
             color: #b8b8d0;
@@ -312,7 +326,7 @@
         }
 
         .history-exercise-name {
-            color: #6a5a8a;
+            color: var(--accent-muted);
         }
 
         .history-exercise-data {
@@ -335,7 +349,7 @@
             top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: #3a2a5a;
+            background: var(--accent);
             color: #b8b8d0;
             padding: 12px 24px;
             border-radius: 8px;
@@ -406,8 +420,8 @@
         }
 
         .modal-btn.primary {
-            background: #3a2a5a;
-            border-color: #3a2a5a;
+            background: var(--accent);
+            border-color: var(--accent);
             color: #b8b8d0;
         }
 

@@ -28,6 +28,14 @@ Earlier splits — Full Body / Cardio before August 2026, and the Torso/Limbs, P
 - Export, import, and reset are available from the Settings gear.
 - The Weekly view browses history by week, counting up from your first workout, and each day is editable via the pencil button.
 
+## Appearance
+
+The accent color changes once a day. It is the family the whole UI hangs off — LOG and Weight Breakdown buttons, active day/nav pills, section titles, the gear, Submit Day — and it rotates through a bank of ten, keyed to the calendar date so it is stable all day and flips at local midnight.
+
+Each palette holds the original purple's exact OKLCH lightness and chroma and rotates hue only, so every color reads as equally dark and equally desaturated. Backgrounds never change. Green PRs, gold hints and the red NA button are fixed, since they carry meaning.
+
+The order is reshuffled every cycle rather than being a fixed carousel, with two invariants: all ten appear before any repeats, and the same color never lands two days running. On localhost the UI still rotates but the favicon stays white, so a dev tab is never confused with the live one.
+
 ## Tech Stack
 
 React 18 and Babel standalone loaded from a CDN, with localStorage for persistence. There is no build step.
@@ -37,6 +45,7 @@ React 18 and Babel standalone loaded from a CDN, with localStorage for persisten
 ```
 index.html              # Entry point, loads all scripts
 css/styles.css          # App styles
+js/accentColor.js       # Daily accent rotation; sets the --accent-* custom properties
 js/config.js            # Exercise defaults, increments, tracking-mode flags, day setup
 js/utils.js             # Storage helpers, date/week utilities
 js/migrations.js        # localStorage migration logic

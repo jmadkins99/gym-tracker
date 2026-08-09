@@ -717,7 +717,7 @@
                     {showSyncPrompt && (
                         <div style={{
                             background: '#1a1a2a',
-                            border: '1px solid #3a2a5a',
+                            border: '1px solid var(--accent)',
                             borderRadius: '8px',
                             padding: '10px 12px',
                             margin: '10px',
@@ -730,7 +730,7 @@
                             <button
                                 onClick={() => window.repoSignIn()}
                                 style={{
-                                    padding: '6px 10px', background: '#3a2a5a', border: 'none',
+                                    padding: '6px 10px', background: 'var(--accent)', border: 'none',
                                     borderRadius: '4px', color: '#b8b8d0', cursor: 'pointer'
                                 }}
                             >

@@ -147,7 +147,7 @@
                             <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
                                 Exercises Completed
                             </div>
-                            <div style={{ fontSize: '32px', fontWeight: '700', color: '#3a2a5a' }}>
+                            <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
                                 {completedCount} / {totalCount}
                             </div>
                         </div>
@@ -156,7 +156,7 @@
                             <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
                                 PRs Smashed
                             </div>
-                            <div style={{ fontSize: '32px', fontWeight: '700', color: '#3a2a5a' }}>
+                            <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
                                 {prCount}
                             </div>
                         </div>

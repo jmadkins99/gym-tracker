@@ -63,7 +63,7 @@
                                                 style={{
                                                     background: 'none',
                                                     border: 'none',
-                                                    color: '#6a5a8a',
+                                                    color: 'var(--accent-muted)',
                                                     cursor: 'pointer',
                                                     fontSize: '18px',
                                                     padding: '4px 8px'

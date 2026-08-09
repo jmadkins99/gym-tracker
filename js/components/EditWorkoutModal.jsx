@@ -80,7 +80,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
@@ -97,7 +97,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
@@ -123,7 +123,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
@@ -140,7 +140,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
@@ -182,7 +182,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
@@ -204,7 +204,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}
@@ -217,7 +217,7 @@
                                                     flex: 1,
                                                     padding: '8px',
                                                     background: '#0d0d1a',
-                                                    border: '1px solid #3a2a5a',
+                                                    border: '1px solid var(--accent)',
                                                     borderRadius: '4px',
                                                     color: '#b8b8d0'
                                                 }}

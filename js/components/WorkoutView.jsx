@@ -291,7 +291,7 @@
                                         padding: '6px 12px',
                                         fontSize: '12px',
                                         fontWeight: '600',
-                                        backgroundColor: '#3a2a5a',
+                                        backgroundColor: 'var(--accent)',
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: '6px',
@@ -634,8 +634,8 @@
                         borderRadius: '8px',
                         cursor: 'pointer',
                         transition: 'all 0.3s',
-                        background: activeDayType === type ? '#3a2a5a' : '#1a1a2a',
-                        border: activeDayType === type ? '1px solid #4a3a6a' : '1px solid #2a2a3a',
+                        background: activeDayType === type ? 'var(--accent)' : '#1a1a2a',
+                        border: activeDayType === type ? '1px solid var(--accent-hi)' : '1px solid #2a2a3a',
                         color: activeDayType === type ? '#b8b8d0' : '#8a8aa0'
                     }}
                 >
