@@ -7,7 +7,9 @@
         :root {
             --accent: #3a2a5a;       /* LOG, Weight Breakdown, active pills, toast */
             --accent-hi: #4a3a6a;    /* active-pill border */
+            --accent-soft: #5a4a7a;  /* unused here; public app's gradient hover */
             --accent-muted: #6a5a8a; /* section titles, week line, gear, history names */
+            --accent-pale: #8a7aaa;  /* unused here; public app's italic hint text */
             --accent-deep: #2a1a3a;  /* Submit Day */
             --accent-rgb: 58, 42, 90;
         }

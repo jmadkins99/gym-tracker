@@ -18,25 +18,33 @@
 (function () {
     'use strict';
 
-    // Each palette holds the original purple's exact OKLCH lightness and chroma
-    // — L 25.5/32.9/38.8/50.3%, C 0.061-0.083 — and rotates hue only. That is
-    // what makes every entry read as equally dark and equally desaturated; hues
-    // picked by eye at these lightnesses drift brighter and muddier apart from
-    // each other. Violet (hue 300) is the original #3a2a5a to within a hair.
+    // Six shades on one lightness ramp — deep 25.5%, accent 32.9%, hi 38.8%,
+    // soft 44.6%, muted 50.3%, pale 61.2% — each holding the original purple's
+    // exact OKLCH lightness and chroma (C 0.061-0.083) and rotating hue only.
+    // That is what makes every entry read as equally dark and equally
+    // desaturated: hues picked by eye at these lightnesses drift brighter and
+    // muddier apart from each other. It also means no palette is ever harder to
+    // read than the purple was. Violet (hue 300) is the original #3a2a5a to
+    // within a hair.
+    //
+    // The personal app references four of the six; the public app also uses
+    // `soft` (a gradient hover) and `pale` (italic hint text). Both ship all six
+    // so this module stays identical across the two repos and the banks cannot
+    // drift apart.
     //
     // `rgb` is the accent as a bare triple, for the one place that needs it
     // inside an rgba() — the header's shadow.
     var BANK = [
-        { name: 'Crimson', deep: '#3b1511', accent: '#582023', hi: '#693131', muted: '#8b5250', rgb: '88, 32, 35' },
-        { name: 'Green',   deep: '#002b18', accent: '#09411c', hi: '#1d502d', muted: '#40714e', rgb: '9, 65, 28' },
-        { name: 'Sea',     deep: '#00292a', accent: '#013e3c', hi: '#02504d', muted: '#1e726f', rgb: '1, 62, 60' },
-        { name: 'Teal',    deep: '#002832', accent: '#003d46', hi: '#004e5a', muted: '#216f7f', rgb: '0, 61, 70' },
-        { name: 'Steel',   deep: '#00253e', accent: '#013a53', hi: '#034b69', muted: '#336b8a', rgb: '1, 58, 83' },
-        { name: 'Blue',    deep: '#142140', accent: '#15355f', hi: '#26456f', muted: '#486590', rgb: '21, 53, 95' },
-        { name: 'Indigo',  deep: '#211d3e', accent: '#2c2f5f', hi: '#3c3f6f', muted: '#5b5f8f', rgb: '44, 47, 95' },
-        { name: 'Violet',  deep: '#2b1939', accent: '#3c2959', hi: '#4c3969', muted: '#6c5989', rgb: '60, 41, 89' },
-        { name: 'Plum',    deep: '#331630', accent: '#49254e', hi: '#59355e', muted: '#7a557d', rgb: '73, 37, 78' },
-        { name: 'Orchid',  deep: '#381526', accent: '#522140', hi: '#62314e', muted: '#84526d', rgb: '82, 33, 64' }
+        { name: 'Crimson', deep: '#3b1511', accent: '#582023', hi: '#693131', soft: '#7a4140', muted: '#8b5250', pale: '#ac726f', rgb: '88, 32, 35' },
+        { name: 'Green',   deep: '#002b18', accent: '#09411c', hi: '#1d502d', soft: '#2f613d', muted: '#40714e', pale: '#61916e', rgb: '9, 65, 28' },
+        { name: 'Sea',     deep: '#00292a', accent: '#013e3c', hi: '#02504d', soft: '#02615f', muted: '#1e726f', pale: '#489290', rgb: '1, 62, 60' },
+        { name: 'Teal',    deep: '#002832', accent: '#003d46', hi: '#004e5a', soft: '#015f6e', muted: '#216f7f', pale: '#4a8f9f', rgb: '0, 61, 70' },
+        { name: 'Steel',   deep: '#00253e', accent: '#013a53', hi: '#034b69', soft: '#1f5b7a', muted: '#336b8a', pale: '#568bab', rgb: '1, 58, 83' },
+        { name: 'Blue',    deep: '#142140', accent: '#15355f', hi: '#26456f', soft: '#375580', muted: '#486590', pale: '#6885b0', rgb: '21, 53, 95' },
+        { name: 'Indigo',  deep: '#211d3e', accent: '#2c2f5f', hi: '#3c3f6f', soft: '#4b4f7f', muted: '#5b5f8f', pale: '#7b7fb0', rgb: '44, 47, 95' },
+        { name: 'Violet',  deep: '#2b1939', accent: '#3c2959', hi: '#4c3969', soft: '#5c4979', muted: '#6c5989', pale: '#8c79a9', rgb: '60, 41, 89' },
+        { name: 'Plum',    deep: '#331630', accent: '#49254e', hi: '#59355e', soft: '#69446d', muted: '#7a557d', pale: '#9a759d', rgb: '73, 37, 78' },
+        { name: 'Orchid',  deep: '#381526', accent: '#522140', hi: '#62314e', soft: '#73415e', muted: '#84526d', pale: '#a5728d', rgb: '82, 33, 64' }
     ];
 
     // Days are numbered off the *local* calendar date, not Date.now()/86400000.
@@ -90,7 +98,9 @@
         var s = document.documentElement.style;
         s.setProperty('--accent', palette.accent);
         s.setProperty('--accent-hi', palette.hi);
+        s.setProperty('--accent-soft', palette.soft);
         s.setProperty('--accent-muted', palette.muted);
+        s.setProperty('--accent-pale', palette.pale);
         s.setProperty('--accent-deep', palette.deep);
         s.setProperty('--accent-rgb', palette.rgb);
     }
