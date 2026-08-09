@@ -19,7 +19,7 @@ Earlier splits — Full Body / Cardio before August 2026, and the Torso/Limbs, P
 
 ## Progression
 
-- **Weighted exercises (Simple PR Tracking)**: reps are logged on a 3-to-6 dropdown. Hit 6 (the top of the range) last session and the weight bumps up with the field highlighting green. Log 3 reps and the next session shows a gold "Rest Pause Set Recommended" hint at the same weight; after three 3-rep sessions in a row it escalates to a green "Trial of Strength" that targets 4 reps until you break the streak. Three identical sessions in a row (same weight and reps) show a gold "2 Sets Recommended" hint. An advanced plateau-buster mode exists but is off by default.
+- **Weighted exercises (Simple PR Tracking)**: reps are logged on a 3-to-6 dropdown. Hit 6 (the top of the range) last session and the weight bumps up with the field highlighting green. Six identical sessions in a row (same weight and reps) show a gold "Plateau Detected" hint. Logging 3 reps carries no special meaning on its own — the rest-pause and Trial of Strength escalation that used to key off it was removed, so a run of 3-rep sessions now reaches the plateau check like any other weight/rep pair. An advanced plateau-buster mode exists but is off by default.
 - **Day Breakdown**: "Submit Day" shows the completed-exercise count and PRs (weight or reps went up, with reps of at least 4). Cardio never counted toward PRs.
 
 ## Data
