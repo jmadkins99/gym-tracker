@@ -27,7 +27,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole } = require('../lib/browser');
 const { eq, ok } = require('../lib/assert');
 
-const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_app');
+const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const NS = 'gym-local:';
 const JESSI_CODE = 'D1O9O9M2';
 
@@ -147,9 +147,9 @@ const JESSI_CODE = 'D1O9O9M2';
             'Preacher Curls',
         ];
         const LOWER = [
+            'Back Extensions', // came up off the end of Lower to open the day, Aug 2026
             'Reverse Wrist Curls',
             'Cable Wrist Curls',
-            'Back Extensions', // moved up off the end of Lower, Aug 2026
             'Ab Crunches',
             'Leg Extensions',
             'Leg Press',

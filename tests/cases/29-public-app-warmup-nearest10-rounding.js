@@ -15,7 +15,7 @@ const { launch, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
-const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_app');
+const { PUBLIC_APP_ROOT } = require('../lib/paths');
 
 function fullBodyConfig() {
     return {

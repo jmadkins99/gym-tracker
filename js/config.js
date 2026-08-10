@@ -153,8 +153,10 @@
         // Lower, another pure reorder that only the bump can deliver. 11 moves
         // Back Extensions up behind Cable Wrist Curls and Hip Adduction ahead
         // of Calf Raises — same ids, same count, so once again the bump is the
-        // entire delivery mechanism.
-        const EXERCISE_CONFIG_VERSION = 11;
+        // entire delivery mechanism. 12 takes Back Extensions the rest of the
+        // way to the front of Lower, ahead of both wrist curls; a third pure
+        // reorder, a third bump that is the only way it lands on a device.
+        const EXERCISE_CONFIG_VERSION = 12;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -189,12 +191,13 @@
             { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Upper', day: 'upper', type: 'standard',    order: 12 },
 
             // --- Lower (Mon / Wed / Fri) ---
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
-            // Back Extensions moved up off the end of Lower to sit right behind
-            // Cable Wrist Curls (Aug 2026). `leg-curls` is its frozen id — it
-            // has not been a leg curl in a long time.
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
+            // Back Extensions opens Lower as of Aug 2026 — it came up off the
+            // end of the day in two steps, first to behind Cable Wrist Curls
+            // and then to the front. `leg-curls` is its frozen id — it has not
+            // been a leg curl in a long time.
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
             { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
             // Genuinely new (Aug 2026) — NOT the `leg-extensions` id below,
             // which the split left rendering as Hip Adduction. There is no

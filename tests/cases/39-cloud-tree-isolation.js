@@ -19,11 +19,12 @@
 const fs = require('fs');
 const path = require('path');
 const { ok } = require('../lib/assert');
+const { PUBLIC_APP_ROOT } = require('../lib/paths');
 
 const personalRepo = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'js', 'storageRepo.js'), 'utf8');
 const publicApp = fs.readFileSync(
-    path.resolve(__dirname, '..', '..', '..', 'public_gym_app', 'index.html'), 'utf8');
+    path.join(PUBLIC_APP_ROOT, 'index.html'), 'utf8');
 
 // Personal app: users/ root, and never the public tree.
 ok(personalRepo.includes(".collection('users')"),

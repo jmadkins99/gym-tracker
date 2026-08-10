@@ -43,7 +43,7 @@ const { launch, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
-const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_app');
+const { PUBLIC_APP_ROOT } = require('../lib/paths');
 
 // Real ids from fixtures/jessi-backup-2026-06-09-config.json. Back Extensions
 // and Leg Press keep the ids of the movements they were renamed from on his
@@ -141,9 +141,9 @@ const EXPECTED_UPPER = [
 ];
 
 const EXPECTED_LOWER = [
+    'Back Extensions', // came up off the end of Lower to open the day, Aug 2026
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    'Back Extensions', // moved up off the end of Lower, Aug 2026
     'Ab Crunches',
     'Leg Extensions', // added by JESSI_NEW_EXERCISES, ranked above Leg Press
     'Leg Press',

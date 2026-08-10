@@ -22,7 +22,7 @@ const { launch, attachConsole } = require('../lib/browser');
 const { seedPublicApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
-const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_app');
+const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'jessi-backup-2026-06-09-config.json');
 
 // Names that should be in the new Full Body program AND classify into a

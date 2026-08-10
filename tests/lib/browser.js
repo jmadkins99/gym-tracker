@@ -5,19 +5,31 @@ const path = require('path');
 const puppeteer = require(path.join(__dirname, '..', 'node_modules', 'puppeteer-core'));
 
 // Try a few common chrome locations so this works on different boxes.
+// puppeteer-core (unlike puppeteer) never downloads a browser of its own, so
+// one of these has to exist. Set CHROME_PATH to override on an unusual box.
 const CHROME_CANDIDATES = [
+    process.env.CHROME_PATH,
+    // Linux
     '/usr/bin/google-chrome',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
+    // macOS
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-];
+    // Windows. Both Program Files variants plus the per-user install, which is
+    // where Chrome lands when it is installed without admin rights.
+    process.env.ProgramFiles && process.env.ProgramFiles + '\\Google\\Chrome\\Application\\chrome.exe',
+    process.env['ProgramFiles(x86)'] && process.env['ProgramFiles(x86)'] + '\\Google\\Chrome\\Application\\chrome.exe',
+    process.env.LOCALAPPDATA && process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+].filter(Boolean);
 
 function findChrome() {
     const fs = require('fs');
     for (const p of CHROME_CANDIDATES) {
         try { if (fs.statSync(p)) return p; } catch (_) {}
     }
-    throw new Error(`No Chrome found. Tried: ${CHROME_CANDIDATES.join(', ')}`);
+    throw new Error(
+        'No Chrome found. Set CHROME_PATH, or install Chrome. Tried:\n  ' +
+        CHROME_CANDIDATES.join('\n  '));
 }
 
 async function launch() {

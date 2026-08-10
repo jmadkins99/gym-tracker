@@ -43,7 +43,7 @@ const { launch, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
-const PUBLIC_APP_ROOT = path.resolve(__dirname, '..', '..', '..', 'public_gym_app');
+const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const NS = 'gym-local:';
 
 // Read from the app so a future revision bump doesn't rot this assertion —
@@ -120,11 +120,12 @@ const EXPECTED_UPPER = [
 ];
 
 const EXPECTED_LOWER = [
+    // Opens Lower as of Aug 2026, having come up off the end of the day in two
+    // steps. It keeps its recovered id through both moves — a reorder must not
+    // mint a fresh one.
+    ['Back Extensions', ID.backExtensions],
     ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
-    // Moved up off the end of Lower, Aug 2026. It keeps its recovered id
-    // through the move — the reorder must not mint a fresh one.
-    ['Back Extensions', ID.backExtensions],
     ['Ab Crunches', ID.abCrunches],
     ['Leg Extensions', 'actual-leg-extensions'],
     ['Leg Press', ID.legPress],

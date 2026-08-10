@@ -72,10 +72,11 @@ const FULL_BODY = [
 ];
 
 const EXPECTED_LOWER = [
+    // Opens Lower as of Aug 2026, having come up off the end of the day in two
+    // steps. Its id is `leg-curls`.
+    'Back Extensions',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    // Moved up off the end of Lower (Aug 2026). Its id is `leg-curls`.
-    'Back Extensions',
     'Ab Crunches',
     // Arrives here purely via migrateExerciseConfig: the saved config below
     // predates it, so this pins that a newly added default reaches a device
