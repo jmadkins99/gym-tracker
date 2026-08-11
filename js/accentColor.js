@@ -14,7 +14,7 @@
 //
 // Backgrounds are deliberately NOT part of the family. They stay the same
 // near-black violet on every day, which is what keeps the app recognisable as
-// itself rather than feeling like ten different apps.
+// itself rather than feeling like nine different apps.
 (function () {
     'use strict';
 
@@ -35,7 +35,6 @@
     // `rgb` is the accent as a bare triple, for the one place that needs it
     // inside an rgba() — the header's shadow.
     var BANK = [
-        { name: 'Crimson', deep: '#3b1511', accent: '#582023', hi: '#693131', soft: '#7a4140', muted: '#8b5250', pale: '#ac726f', rgb: '88, 32, 35' },
         { name: 'Green',   deep: '#002b18', accent: '#09411c', hi: '#1d502d', soft: '#2f613d', muted: '#40714e', pale: '#61916e', rgb: '9, 65, 28' },
         { name: 'Sea',     deep: '#00292a', accent: '#013e3c', hi: '#02504d', soft: '#02615f', muted: '#1e726f', pale: '#489290', rgb: '1, 62, 60' },
         { name: 'Teal',    deep: '#002832', accent: '#003d46', hi: '#004e5a', soft: '#015f6e', muted: '#216f7f', pale: '#4a8f9f', rgb: '0, 61, 70' },
@@ -65,7 +64,7 @@
 
     // Deterministic shuffle of the whole bank, one per cycle of BANK.length days.
     // Shuffling a full permutation rather than picking at random is what
-    // guarantees you see all ten before any repeat.
+    // guarantees you see all nine before any repeat.
     function shuffle(cycle, n) {
         var idx = [], rnd = mulberry32(Math.imul(cycle, 2654435761) >>> 0), i, j, t;
         for (i = 0; i < n; i++) idx.push(i);
