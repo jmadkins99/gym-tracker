@@ -87,7 +87,9 @@ async function breakdownText(page, name, weight) {
         // Back Extensions (two-sided) at 250: W1 87.5 -> 90 (up), W2 112.5 -> 110, top 125 exact.
         // The two-sided fixture was Incline Chest Press, then Leg Press. Aug
         // 2026 made both pin stacks and made Back Extensions two-sided, so it
-        // holds this case now. The arithmetic is weight-driven and unchanged.
+        // holds this case now. (Leg Press has since reverted to two-sided and
+        // could hold it again, but there is no reason to move it back — the
+        // arithmetic is weight-driven and identical on either card.)
         const backExt = await breakdownText(page, 'Back Extensions', 250);
         ok(backExt, 'opened Back Extensions breakdown');
         contains(backExt, 'Warmup Set #1 (180 lbs - ~70%)', 'two-sided W1 87.5/side rounds UP to 90 (total 180)');

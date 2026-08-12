@@ -46,11 +46,13 @@ const EXPECTED_LOWER = [
     // Added Aug 2026 under the fresh id `actual-leg-extensions` — the
     // `leg-extensions` id renders as Hip Adduction, two rows down.
     'Leg Extensions',
-    'Leg Press',
-    // Moved ahead of Calf Raises (Aug 2026), so Lower now closes on Calf
-    // Raises rather than Back Extensions.
+    // Moved ahead of Calf Raises (Aug 2026).
     'Hip Adduction',
     'Calf Raises',
+    // Leg Press closes Lower as of Aug 2026, moved down from behind Leg
+    // Extensions. Its id is `hip-adduction` — the row two above, named Hip
+    // Adduction, is `leg-extensions`. Both mismatches are frozen.
+    'Leg Press',
 ];
 
 const EXPECTED_UPPER = [

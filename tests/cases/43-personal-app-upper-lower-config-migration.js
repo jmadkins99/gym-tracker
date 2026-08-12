@@ -82,15 +82,16 @@ const EXPECTED_LOWER = [
     // predates it, so this pins that a newly added default reaches a device
     // that already has a config — mid-list, not appended at the end.
     'Leg Extensions',
-    // hip-adduction, renamed by the user below. Its position comes from
-    // DEFAULT_EXERCISES, not from the saved config — the migration takes order
-    // from defaults while preserving the user's name, and this row is where
-    // those two rules meet.
-    'My Renamed Leg Press',
-    // Moved ahead of Calf Raises (Aug 2026), so Lower now closes on Calf
-    // Raises rather than Back Extensions.
+    // Moved ahead of Calf Raises (Aug 2026).
     'Hip Adduction',
     'Calf Raises',
+    // hip-adduction, renamed by the user below, and moved to the end of Lower
+    // in Aug 2026. Its position comes from DEFAULT_EXERCISES, not from the
+    // saved config — the migration takes order from defaults while preserving
+    // the user's name, and this row is where those two rules meet. The move to
+    // last makes that sharper than before: the saved config still has it
+    // mid-list under the old order, so landing here proves defaults won.
+    'My Renamed Leg Press',
 ];
 
 const EXPECTED_UPPER = [

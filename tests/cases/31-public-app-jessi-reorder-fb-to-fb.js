@@ -145,11 +145,15 @@ const EXPECTED_LOWER = [
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
     'Ab Crunches',
-    'Leg Extensions', // added by JESSI_NEW_EXERCISES, ranked above Leg Press
-    'Leg Press',
+    'Leg Extensions', // added by JESSI_NEW_EXERCISES
     'Hip Adduction', // moved ahead of Calf Raises, Aug 2026
     'Calf Raises',
-    'Face Pulls', // unranked -> bottom of Lower, NOT dropped
+    'Leg Press', // moved to the end of Lower, Aug 2026
+    // Unranked -> bottom of Lower, NOT dropped. Still below Leg Press even
+    // though Leg Press is now last among the RANKED movements: an unranked
+    // client addition sorts after everything with a rank, which is the
+    // distinction this row exists to pin.
+    'Face Pulls',
 ];
 
 async function readOrder(page) {

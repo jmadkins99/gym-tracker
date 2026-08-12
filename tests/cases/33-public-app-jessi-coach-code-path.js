@@ -152,9 +152,9 @@ const JESSI_CODE = 'D1O9O9M2';
             'Cable Wrist Curls',
             'Ab Crunches',
             'Leg Extensions',
-            'Leg Press',
             'Hip Adduction', // moved ahead of Calf Raises, Aug 2026
             'Calf Raises',
+            'Leg Press', // moved to the end of Lower, Aug 2026
         ];
         eq(cfg.categories, ['Upper', 'Lower'], 'coach code yields the Upper/Lower split');
         eq(Object.keys(cfg.days).length, 2, 'two days, not the old single Full Body day');

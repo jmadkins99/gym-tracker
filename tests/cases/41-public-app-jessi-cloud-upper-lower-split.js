@@ -128,10 +128,13 @@ const EXPECTED_LOWER = [
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
     ['Ab Crunches', ID.abCrunches],
     ['Leg Extensions', 'actual-leg-extensions'],
-    ['Leg Press', ID.legPress],
     // Moved ahead of Calf Raises, Aug 2026.
     ['Hip Adduction', ID.hipAdduction],
     ['Calf Raises', ID.calfRaises],
+    // Moved to the end of Lower, Aug 2026. It keeps its recovered id through
+    // the move, same as Back Extensions above — a reorder must not mint a
+    // fresh one, and this row is the second place that rule is checked.
+    ['Leg Press', ID.legPress],
 ];
 
 function jessiFullBodyConfig() {

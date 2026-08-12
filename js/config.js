@@ -167,8 +167,13 @@
         // of Calf Raises — same ids, same count, so once again the bump is the
         // entire delivery mechanism. 12 takes Back Extensions the rest of the
         // way to the front of Lower, ahead of both wrist curls; a third pure
-        // reorder, a third bump that is the only way it lands on a device.
-        const EXERCISE_CONFIG_VERSION = 12;
+        // reorder, a third bump that is the only way it lands on a device. 13
+        // sends Leg Press the other way, from behind Leg Extensions to the very
+        // end of Lower — a fourth pure reorder, so once again the bump is the
+        // entire delivery mechanism. (The plate-loaded revert that shipped just
+        // before it needed no version at all: PLATE_LOADED_EXERCISES is read
+        // live on every render and never touches the saved config.)
+        const EXERCISE_CONFIG_VERSION = 13;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -217,17 +222,19 @@
             // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
             // and the two apps deliberately share this one literal.
             { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            // Leg Press follows Leg Extensions as of Aug 2026. That position is
-            // where the user wants it and is independent of how the machine is
-            // loaded, so it stays put through the revert to plate-loaded.
-            // `hip-adduction` is its frozen id; the `leg-extensions` id below
-            // is the one that renders as Hip Adduction. Neither name matches
-            // its id and neither is safe to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
-            // Hip Adduction moved ahead of Calf Raises (Aug 2026), so Lower now
-            // closes on Calf Raises instead of Back Extensions.
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
+            // Hip Adduction moved ahead of Calf Raises (Aug 2026). `leg-extensions`
+            // is its frozen id — it has not been a leg extension since the split,
+            // and the row above is the one that actually renders Leg Extensions.
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
+            // Leg Press closes Lower as of Aug 2026, moved here from behind Leg
+            // Extensions. Position is independent of how the machine is loaded —
+            // it sat mid-day through both the switch to a pin stack and the
+            // revert to two-side plate-loaded, and this move is its own decision.
+            // `hip-adduction` is its frozen id; the `leg-extensions` id above is
+            // the one that renders as Hip Adduction. Neither name matches its id
+            // and neither is safe to rename.
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

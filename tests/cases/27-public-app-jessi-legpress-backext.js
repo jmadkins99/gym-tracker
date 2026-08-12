@@ -2,10 +2,9 @@
 // ----------------------
 // Jessi swapped his last two Full Body slots to "Back Extensions" and
 // "Leg Press". Both must render the Weight Breakdown button (gympin), and
-// in the right STYLE. Aug 2026 swapped both styles at once when the gym
-// re-equipped, so the pairing is what this case pins:
+// in the right STYLE. Both are plate-loaded TWO-sided as of Aug 2026:
 //
-//   - Leg Press       → PIN STACK (stack rows, no plate lines, no "Per side:")
+//   - Leg Press       → plate-loaded TWO-sided (renders "Per side:" lines)
 //   - Back Extensions → plate-loaded TWO-sided (renders "Per side:" lines)
 //
 // Before the original fix these names classified to null, so no button
@@ -13,9 +12,19 @@
 // test is real: delete the /leg press/ and /back extension/ lines from
 // getWeightBreakdownConfig. Test should fail (missing buttons).
 //
-// The two assertions are deliberately each other's mirror: Leg Press proves
-// the plate branch is unreachable for that name, Back Extensions proves it IS
-// reachable for the other. A half-applied swap fails one or the other.
+// These two used to be each other's mirror — Leg Press spent part of Aug 2026
+// as a pin stack, and the case leaned on the contrast. The revert put both on
+// the same style, so that framing is gone and each name now stands on its own
+// positive assertion instead. The failure this still catches is the one that
+// matters: drop the /leg press/ plate rule and the name falls through the
+// whole plate block to either a resurrected pin rule or `null`, and the three
+// "Per side" lines below disappear either way.
+//
+// Worth knowing for anyone re-adding a pin rule: in getWeightBreakdownConfig
+// the plate-loaded block runs FIRST, unlike the personal app's WorkoutView,
+// which checks pin-stack first. A stray /leg press/ pin rule here is dead code
+// rather than a conflict, so it would NOT fail this test — the classification
+// is only ever as correct as the plate block's copy.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -99,18 +108,18 @@ async function readCard(page, name) {
         });
         eq(persisted, true, 'gympinMode auto-enabled for Jessi-shaped install');
 
-        // --- Leg Press: pin stack (was two-sided plate-loaded until Aug 2026) ---
+        // --- Leg Press: two-sided plate-loaded (a pin stack for part of Aug 2026) ---
         ok(await clickBreakdown(page, 'Leg Press'),
             'Leg Press card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 200));
         const legText = await readCard(page, 'Leg Press');
-        ok(!/\d+(?:\.\d+)?s - \d+/.test(legText),
-            'Leg Press renders NO plate breakdown lines (it is a pin stack now)');
+        ok(/\d+(?:\.\d+)?s - \d+/.test(legText),
+            'Leg Press renders plate breakdown lines (not bare pin-stack)');
         ok(!/Pin: \d/.test(legText),
-            'plain pin stack, not the capped-overflow branch (no maxPin configured)');
+            'Leg Press must NOT render any "Pin: X" line');
         const legPerSide = (legText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || []).length;
-        eq(legPerSide, 0,
-            'Leg Press renders ZERO "Per side: X lbs" lines (two-sided would render 3)');
+        eq(legPerSide, 3,
+            'Leg Press two-sided renders 3 "Per side: X lbs" lines (warmup1, warmup2, top)');
 
         // --- Back Extensions: two-sided plate-loaded (was one-sided) ---
         ok(await clickBreakdown(page, 'Back Extensions'),
@@ -126,7 +135,7 @@ async function readCard(page, name) {
             'Back Extensions two-sided renders 3 "Per side: X lbs" lines (warmup1, warmup2, top)');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Jessi Leg Press (pin stack) + Back Extensions (two-sided) render breakdown buttons.');
+        console.log('PASS: Jessi Leg Press + Back Extensions both render two-sided breakdown buttons.');
     } finally {
         await browser.close();
         await server.stop();
