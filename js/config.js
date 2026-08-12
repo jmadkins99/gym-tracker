@@ -49,10 +49,14 @@
             'kelso-shrugs': 1.25,
             'hammer-row': 1.25,
             'leg-extensions': 1.25,
+            // Leg Press: 5 = 2.5/side on a two-side plate machine. It reads as
+            // one pin-stack notch too, which is why it needed no change when
+            // this was briefly classified as a stack — do not take the shared
+            // number as evidence the two classifications are interchangeable.
             'hip-adduction': 5,
-            // 5 = exactly one pin-stack step, matching hip-adduction (Leg
-            // Press) above. Was 1.25 — a legal micro-plate, but a finer step
-            // than this machine warrants now that it is capped at 405.
+            // 5 = exactly one pin-stack step. Was 1.25 — a legal micro-plate,
+            // but a finer step than this machine warrants now that it is
+            // capped at 405.
             'calf-raise': 5,
             'ab-crunch': 1.25,
             'cable-wrist-curls': 1.25,
@@ -71,10 +75,18 @@
             // total across both arms and the breakdown halves it. Its PR
             // increment was already 5 (= 2.5/side, the smallest real plate),
             // which is the correct two-sided step, so it needs no change.
-            // This is the program's only two-sided plate-loaded movement now
-            // that Leg Press is a pin stack — tests 26 and 28 both run their
-            // per-side coverage against it for that reason.
+            // Tests 26 and 28 run their per-side coverage against it.
             'leg-curls': { type: 'two-sided', machineWeight: 0 },
+            // Leg Press (the id renders as "Leg Press" — see DEFAULT_EXERCISES)
+            // is back to two-side plate-loaded. It was briefly registered as a
+            // pin stack in Aug 2026, when the gym looked to have swapped the
+            // plate sled for a stack machine; that turned out not to hold, so
+            // the classification is reverted here along with the 390 cap that
+            // came with it. Its PR increment stays 5 — that is 2.5/side, the
+            // smallest real plate, which is why the number survived both moves
+            // untouched. Test 46 pins this style; nothing in localStorage
+            // changes, so no config-version bump is involved.
+            'hip-adduction': { type: 'two-sided', machineWeight: 0 },
             'hammer-row': { type: 'one-sided', machineWeight: 0 },
             'upper-back-row': { type: 'one-sided', machineWeight: 0 },
             'kelso-shrugs': { type: 'one-sided', machineWeight: 0 }
@@ -116,14 +128,14 @@
             // its ceiling. Back to `true`: the new stack's max is unknown and
             // does not matter until it's approached.
             'cable-wrist-curls': true,
-            // Leg Press moved off PLATE_LOADED_EXERCISES (was two-sided) in Aug
-            // 2026 — the gym's plate-loaded sled was replaced by a pin stack.
-            // Its PR increment stays 5, which is exactly one stack step. Capped
-            // at 390 (confirmed at the gym), so weights past that render the
-            // "pin at max + plates" overflow rows. Calf Raises above is capped
-            // too but at 405 — different machines, close numbers, do not
-            // assume one from the other.
-            'hip-adduction': { maxPin: 390 },
+            // `hip-adduction` (Leg Press) lived here briefly in Aug 2026, capped
+            // at 390. It is back on PLATE_LOADED_EXERCISES as two-sided, so it
+            // must NOT be listed here as well: WorkoutView branches on
+            // `isPinStack` FIRST, so a stale entry here would silently shadow
+            // the plate-loaded branch and the machine would keep rendering as a
+            // stack. Test 46 asserts its absence for exactly that reason. Calf
+            // Raises above keeps its own 405 cap — that was always a different
+            // machine, close number notwithstanding.
             'reverse-wrist-curls': true,
             'actual-leg-extensions': true
         };
@@ -205,8 +217,9 @@
             // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
             // and the two apps deliberately share this one literal.
             { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            // Leg Press follows Leg Extensions as of Aug 2026 — the two share a
-            // corner of the gym now that Leg Press is the pin-stack machine.
+            // Leg Press follows Leg Extensions as of Aug 2026. That position is
+            // where the user wants it and is independent of how the machine is
+            // loaded, so it stays put through the revert to plate-loaded.
             // `hip-adduction` is its frozen id; the `leg-extensions` id below
             // is the one that renders as Hip Adduction. Neither name matches
             // its id and neither is safe to rename.

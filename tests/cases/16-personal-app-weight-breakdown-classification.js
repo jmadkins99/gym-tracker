@@ -53,15 +53,17 @@ function extractLiteral(source, name, open, close) {
     ok(plateInRotation.length > 0, 'rotation has at least one plate-loaded exercise');
     ok(pinInRotation.length > 0, 'rotation has at least one pin-loaded exercise');
 
-    // Pin-stack caps, asserted straight off the literal. Only Leg Press
-    // (`hip-adduction`) and Calf Raises are capped — at 390 and 405
-    // respectively, two different machines that happen to land close
-    // together; every other pin stack is bare `true`. Cable Wrist Curls in
-    // particular lost its 97.5 cap in Aug 2026 and must stay uncapped. The
-    // overflow *rendering* is covered by 08-personal-app-pin-stack-overflow.
-    eq(PIN_STACK['hip-adduction'], { maxPin: 390 }, 'Leg Press pin stack caps at 390');
+    // Pin-stack caps, asserted straight off the literal. Calf Raises is the
+    // only capped stack; every other pin stack is bare `true`. Cable Wrist
+    // Curls in particular lost its 97.5 cap in Aug 2026 and must stay
+    // uncapped. Leg Press (`hip-adduction`) was briefly capped at 390 while it
+    // was classified as a stack — it is plate-loaded again, so it must be
+    // absent from this map entirely rather than merely uncapped. The overflow
+    // *rendering* is covered by 08-personal-app-pin-stack-overflow.
     eq(PIN_STACK['calf-raise'], { maxPin: 405 }, 'Calf Raises pin stack caps at 405');
     eq(PIN_STACK['cable-wrist-curls'], true, 'Cable Wrist Curls is an uncapped pin stack');
+    ok(!PIN_STACK['hip-adduction'],
+        'Leg Press is not a pin stack (it is two-sided plate-loaded again)');
 
     // `overflowPlateMode` was dropped in Aug 2026 — it was written alongside
     // maxPin but never read. Guard against it creeping back in unwired.

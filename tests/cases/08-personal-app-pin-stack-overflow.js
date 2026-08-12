@@ -3,26 +3,28 @@
 // The pin-stack OVERFLOW path: a capped stack renders "Pin: <max> lbs" plus
 // the largest plate combination that fits the excess (rounded DOWN).
 //
-// This test used to run against Cable Wrist Curls at a 97.5 cap. In Aug 2026
-// the user moved to a different cable machine, far from its ceiling, so that
-// cap was removed and the only capped exercises left are Leg Press
-// (`hip-adduction`) and Calf Raises (`calf-raise`), both at 390. Leg Press
-// carries the overflow coverage now; Calf Raises shares the identical code
-// path. Both are Lower-day, as is Cable Wrist Curls, so one page load covers
-// the overflow case and the un-capped regression guard together.
+// This case has been handed down twice. It first ran against Cable Wrist Curls
+// at a 97.5 cap; in Aug 2026 the user moved to a different cable machine far
+// from its ceiling and it moved onto Leg Press at a 390 cap. Leg Press then
+// went back to two-side plate-loaded, taking its cap with it, which leaves
+// Calf Raises (`calf-raise`, cap 405) as the program's ONLY capped stack and
+// therefore the only place this rendering can be exercised. If Calf Raises is
+// ever retired or uncapped, this coverage needs a new home rather than
+// deletion — losing it means the overflow branch ships untested.
 //
-// Leg Press seeded at 450 lbs (cap 390):
-//   - Warmup 1 = 70% of 450 = 315 → fits on pin → just "315 lbs"
-//   - Warmup 2 = 90% of 450 = 405 → overflow → 390 pin + 10 + 5 = 405 lbs
-//   - Top set  = 450 → overflow → 390 pin + 45 + 10 + 5 = 450 lbs
+// Calf Raises seeded at 500 lbs (cap 405):
+//   - Warmup 1 = 70% of 500 = 350 → fits on pin → just "350 lbs"
+//   - Warmup 2 = 90% of 500 = 450 → overflow → 405 pin + 45 = 450 lbs
+//   - Top set  = 500 → overflow → 405 pin + 45 + 45 + 5 = 500 lbs
 //
 // Top set is shown only in overflow mode (otherwise redundant with the
 // Weight (lbs) input field) — which is also what the Cable Wrist Curls half
-// of this test asserts the absence of.
+// of this test asserts the absence of. Both exercises are Lower-day, so one
+// page load covers the overflow case and the un-capped regression guard.
 //
-// To verify this test is real: in gym_app/js/config.js, change
-// PIN_STACK_EXERCISES['hip-adduction'] back to `true` (no maxPin). Top Set
-// and the "Pin: 390 lbs" lines disappear and the test fails.
+// To verify this test is real: in js/config.js, change
+// PIN_STACK_EXERCISES['calf-raise'] to `true` (no maxPin). Top Set and the
+// "Pin: 405 lbs" lines disappear and the test fails.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -67,20 +69,15 @@ async function readCard(page, exerciseName) {
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
-        // Seed Leg Press at 450 lbs — over the 390 pin cap, so all three set
+        // Seed Calf Raises at 500 lbs — over the 405 pin cap, so all three set
         // entries appear and warmup 2 + top set overflow. Cable Wrist Curls is
         // seeded at 115, the weight that used to overflow its old 97.5 cap, so
         // the guard below is a real regression check rather than a vacuous one.
-        //
-        // NOTE the id/name swap this config warns about: `hip-adduction`
-        // renders as "Leg Press" and `leg-extensions` renders as "Hip
-        // Adduction". The ids below are correct; the names are what the cards
-        // actually show.
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
                 exercises: [
-                    { id: 'hip-adduction', name: 'Leg Press', weight: '450', reps: '5' },
+                    { id: 'calf-raise', name: 'Calf Raises', weight: '500', reps: '5' },
                     { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', weight: '115', reps: '5' },
                 ],
             }),
@@ -90,33 +87,44 @@ async function readCard(page, exerciseName) {
         await waitForApp(page);
         await selectDayType(page, 'lower');
 
-        // --- Capped stack: Leg Press at 450 over a 390 cap ---
-        const clickedLegPress = await clickBreakdown(page, 'Leg Press');
-        ok(clickedLegPress, 'Leg Press card has a Weight Breakdown button');
+        // --- Capped stack: Calf Raises at 500 over a 405 cap ---
+        const clickedCalf = await clickBreakdown(page, 'Calf Raises');
+        ok(clickedCalf, 'Calf Raises card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));
 
-        const legPress = await readCard(page, 'Leg Press');
+        const calfRaises = await readCard(page, 'Calf Raises');
 
-        // Warmup 1 = 315 → under the cap, no overflow.
-        contains(legPress, 'Warmup Set #1 (~70%): 315 lbs',
-            'warmup 1 (315) stays on pin (no overflow)');
+        // Warmup 1 = 350 → under the cap, no overflow.
+        contains(calfRaises, 'Warmup Set #1 (~70%): 350 lbs',
+            'warmup 1 (350) stays on pin (no overflow)');
 
-        // Warmup 2 = 405 → overflow. Excess 15 = 10 + 5. Total = 390 + 15.
-        contains(legPress, 'Warmup Set #2 (~90%): 405 lbs',
-            'warmup 2 (405) overflows to pin 390 + 15 lbs of plates');
+        // Warmup 2 = 450 → overflow. Excess 45 = one 45. Total = 405 + 45.
+        contains(calfRaises, 'Warmup Set #2 (~90%): 450 lbs',
+            'warmup 2 (450) overflows to pin 405 + 45 lbs of plates');
 
-        // Top set 450 → overflow. Excess 60 = 45 + 10 + 5.
-        contains(legPress, 'Top Set: 450 lbs',
-            'top set shown at 450 (overflow mode triggers top-set display)');
+        // Top set 500 → overflow. Excess 95 = 45 + 45 + 5.
+        contains(calfRaises, 'Top Set: 500 lbs',
+            'top set shown at 500 (overflow mode triggers top-set display)');
 
-        // Both overflow rows expose "Pin: 390 lbs" — search for the literal.
-        const pinCount = (legPress.match(/Pin: 390 lbs/g) || []).length;
-        ok(pinCount >= 2, `expected >=2 "Pin: 390 lbs" lines (warmup 2 + top set), got ${pinCount}`);
+        // Both overflow rows expose "Pin: 405 lbs" — search for the literal.
+        const pinCount = (calfRaises.match(/Pin: 405 lbs/g) || []).length;
+        ok(pinCount >= 2, `expected >=2 "Pin: 405 lbs" lines (warmup 2 + top set), got ${pinCount}`);
 
-        // Plate lines across the two overflow sets: 45s, 10s, 5s.
-        ok(/45s - 1/.test(legPress), 'plate breakdown lists a 45 lb plate');
-        ok(/10s - 1/.test(legPress), 'plate breakdown lists a 10 lb plate');
-        ok(/5s - \d/.test(legPress), 'plate breakdown lists at least one 5 lb plate');
+        // Plate lines across the two overflow sets: a single 45 on warmup 2,
+        // two 45s plus a 5 on the top set.
+        ok(/45s - 1/.test(calfRaises), 'warmup 2 plate breakdown lists one 45 lb plate');
+        ok(/45s - 2/.test(calfRaises), 'top set plate breakdown lists two 45 lb plates');
+        // The top set's 5 lb plate gets no regex of its own: each plate line is
+        // its own div, so textContent runs them together as "45s - 25s - 1" and
+        // any pattern for the 5 either collides with the 45 line's count or
+        // depends on that concatenation. It is already covered exactly — the
+        // rendered total is computed as pin + plate total, so a dropped 5 would
+        // print "Top Set: 495 lbs" and fail the assertion above.
+
+        // A stack has no per-side split, so the excess is one pile — the
+        // plate-loaded branch must stay unreachable for a pin-stack id.
+        ok(!/Per side/.test(calfRaises),
+            'overflow plates render as a single pile, never "Per side"');
 
         // --- Un-capped stack: Cable Wrist Curls must NOT overflow at 115 ---
         const clickedCable = await clickBreakdown(page, 'Cable Wrist Curls');
@@ -136,7 +144,7 @@ async function readCard(page, exerciseName) {
             'Cable Wrist Curls warmup 1 (~80.5) rounds to an achievable 80 lb pin');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Leg Press renders pin+plate overflow at 450 over a 390 cap; Cable Wrist Curls no longer overflows.');
+        console.log('PASS: Calf Raises renders pin+plate overflow at 500 over a 405 cap; Cable Wrist Curls no longer overflows.');
     } finally {
         await browser.close();
         await server.stop();

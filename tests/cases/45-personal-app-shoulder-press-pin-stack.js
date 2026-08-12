@@ -4,7 +4,8 @@
 // pin-stack, was reclassified to two-sided plate-loaded in Aug 2026, and moved
 // back to pin-stack later the same month. Test 16 only asserts that a Weight
 // Breakdown button exists, so it passes under any classification — the style
-// needs its own pin, the same way test 26 pins Leg Press.
+// needs its own pin, the same way test 26 pins Back Extensions and test 46
+// pins Leg Press.
 //
 // A plain (non-overflow) pin stack renders one "<label>: N lbs" row per warmup
 // and NO "Per side" line anywhere. Two absences carry the weight here: no
