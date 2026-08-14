@@ -11,8 +11,11 @@
 // always looks like a rep regression on the session right after a bump.
 // getPRStreak treats any weight increase as extending the streak precisely so
 // that bump keeps the run alive; read literally ("reps down breaks it") the
-// badge could never climb past 3 and would mean nothing. Flip the `weight up`
+// badge could never climb past 2 and would mean nothing. Flip the `weight up`
 // branch of extendsStreak to false and round 4 is what catches it.
+//
+// The numbers are improvements, not sessions: round 1 establishes the baseline
+// and carries no badge, and round 2 — the first session that beats it — reads 1.
 //
 // Also pins that the badge never lands inside .exercise-name — roughly twenty
 // other cases compare that node's textContent to the bare exercise name.
@@ -106,11 +109,11 @@ async function readStored(page, exerciseId, daysAgo) {
 
 // weight, reps, days-ago to backdate to, expected badge after the reload.
 const ROUNDS = [
-    { weight: '140', reps: '4', daysAgo: 13, badge: null,   why: 'a streak of 1 is below PR_STREAK_MIN' },
-    { weight: '140', reps: '5', daysAgo: 11, badge: '🔥 2', why: 'reps up at the same weight extends; badge turns on at 2' },
-    { weight: '140', reps: '6', daysAgo: 9,  badge: '🔥 3', why: 'reps up again keeps it climbing' },
-    { weight: '145', reps: '4', daysAgo: 7,  badge: '🔥 4', why: 'weight up with reps down STILL extends (the whole rule)' },
-    { weight: '145', reps: '5', daysAgo: 5,  badge: '🔥 5', why: 'climbing resumes after the bump' },
+    { weight: '140', reps: '4', daysAgo: 13, badge: null,   why: 'the first session is a baseline, not an improvement' },
+    { weight: '140', reps: '5', daysAgo: 11, badge: '🔥 1', why: 'reps up at the same weight is the first improvement; the badge turns on at 1' },
+    { weight: '140', reps: '6', daysAgo: 9,  badge: '🔥 2', why: 'reps up again keeps it climbing' },
+    { weight: '145', reps: '4', daysAgo: 7,  badge: '🔥 3', why: 'weight up with reps down STILL extends (the whole rule)' },
+    { weight: '145', reps: '5', daysAgo: 5,  badge: '🔥 4', why: 'climbing resumes after the bump' },
     { weight: '145', reps: '5', daysAgo: 3,  badge: null,   why: 'an identical session breaks the streak' },
     { weight: '135', reps: '6', daysAgo: 1,  badge: null,   why: 'a weight drop breaks it even though reps rose' },
 ];

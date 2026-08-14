@@ -113,9 +113,13 @@
             return null;
         }
 
-        // The mirror image of getStagnationWarning: how many consecutive sessions
-        // have moved this lift *forward*. Same history walk, no slice — a streak
+        // The mirror image of getStagnationWarning: how many consecutive times
+        // this lift has moved *forward*. Same history walk, no slice — a streak
         // has no ceiling. Surfaces as the green flame pill in the exercise header.
+        //
+        // It counts improvements, not sessions: the oldest session in the run is
+        // the baseline you improved *from*, so a flat stretch capped by one better
+        // session reads 1, not 2.
         //
         // A session extends the streak when the weight went up, or the weight held
         // and the reps went up. It breaks on an identical session, on a weight
@@ -125,7 +129,7 @@
         // 6 reps makes getSimplePR bump the weight and repsDefault reset the
         // dropdown to 4, so the app's own progression always looks like a rep
         // regression on the session after a bump. Counting that as backsliding
-        // would cap every streak at 3 and the badge would never mean anything.
+        // would cap every streak at 2 and the badge would never mean anything.
         function getPRStreak(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
@@ -161,7 +165,8 @@
                 return newReps > oldReps;
             };
 
-            let streak = 1;
+            // Starts at 0: one session on its own is a baseline, not a gain.
+            let streak = 0;
             for (let i = 0; i + 1 < entries.length; i++) {
                 if (!extendsStreak(entries[i], entries[i + 1])) break;
                 streak++;

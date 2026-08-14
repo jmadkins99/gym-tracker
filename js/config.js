@@ -30,11 +30,12 @@
         const ADVANCED_PR_TRACKING = false;
 
         // Streaks: the positive counterpart to the "Plateau Detected" hint. Counts
-        // consecutive sessions that moved a lift forward and shows a green flame
-        // pill in the exercise header. Independent of the tracking mode above,
-        // since it only reads history and suggests nothing.
+        // consecutive improvements — sessions that moved a lift forward, not
+        // counting the baseline you improved from — and shows a green flame pill
+        // in the exercise header. Independent of the tracking mode above, since
+        // it only reads history and suggests nothing.
         const PR_STREAK_TRACKING = true;
-        const PR_STREAK_MIN = 2;   // shortest streak that earns a badge
+        const PR_STREAK_MIN = 1;   // fewest consecutive improvements that earn a badge
 
         // PR Auto-Regulation: Weight increments when you hit 6+ reps (top of 4-6 range)
         // 5 lbs where a 5 is the natural step — two-sided plate-loaded (= 2.5

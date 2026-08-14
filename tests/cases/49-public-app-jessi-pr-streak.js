@@ -13,7 +13,10 @@
 // hit maxReps, and the next session starts back at minReps — on Jessi's 5-8
 // dropdown that is 8 reps down to 5. getPRStreak treats any weight increase as
 // extending the streak precisely so the app's own reward for progressing does
-// not read as backsliding; without that, no streak here could ever exceed 4.
+// not read as backsliding; without that, no streak here could ever exceed 3.
+//
+// The numbers are improvements, not sessions: round 1 is the baseline and
+// carries no badge, and round 2 — the first session that beats it — reads 1.
 //
 // Also pins that the badge stays a sibling of .exercise-name: several public-app
 // cases locate cards by matching that node's textContent exactly, and would all
@@ -113,11 +116,11 @@ async function readBadge(page, name) {
 
 // Jessi's dropdown runs 5-8, and getMinimalistPR bumps once reps hit maxReps (8).
 const ROUNDS = [
-    { weight: '100', reps: '6', daysAgo: 11, badge: null,   why: 'a streak of 1 is below PR_STREAK_MIN' },
-    { weight: '100', reps: '7', daysAgo: 9,  badge: '🔥 2', why: 'reps up at the same weight extends; badge turns on at 2' },
-    { weight: '100', reps: '8', daysAgo: 7,  badge: '🔥 3', why: 'hitting the top of the range keeps it climbing' },
-    { weight: '105', reps: '5', daysAgo: 5,  badge: '🔥 4', why: 'the weight bump extends the streak despite reps resetting' },
-    { weight: '105', reps: '6', daysAgo: 3,  badge: '🔥 5', why: 'climbing resumes after the bump' },
+    { weight: '100', reps: '6', daysAgo: 11, badge: null,   why: 'the first session is a baseline, not an improvement' },
+    { weight: '100', reps: '7', daysAgo: 9,  badge: '🔥 1', why: 'reps up at the same weight is the first improvement; the badge turns on at 1' },
+    { weight: '100', reps: '8', daysAgo: 7,  badge: '🔥 2', why: 'hitting the top of the range keeps it climbing' },
+    { weight: '105', reps: '5', daysAgo: 5,  badge: '🔥 3', why: 'the weight bump extends the streak despite reps resetting' },
+    { weight: '105', reps: '6', daysAgo: 3,  badge: '🔥 4', why: 'climbing resumes after the bump' },
 ];
 
 (async () => {

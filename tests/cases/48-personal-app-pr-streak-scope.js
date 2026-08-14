@@ -13,13 +13,13 @@
 //   Chest Flies          a non-numeric weight ('Body Weight') ends the run
 //                        instead of falling through to a reps-only comparison
 //   Lateral Raises       six identical sessions is a plateau, which by
-//                        construction is a streak of 1 — the gold banner and
+//                        construction is a streak of 0 — the gold banner and
 //                        the green pill can never share a card
 //
 // The Chest Flies case is the one with a wrong answer worth naming: without
 // the isNaN guard, parseFloat('Body Weight') is NaN, both weight comparisons
 // are false, and the walk falls through to `newReps > oldReps` — which is true
-// there, giving 4 instead of 3.
+// there, giving 3 instead of 2.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -109,18 +109,18 @@ async function readBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'upper');
 
-        eq(await readBadge(page, 'chest-press'), '🔥 2',
+        eq(await readBadge(page, 'chest-press'), '🔥 1',
             'an unsubmitted session neither extends nor breaks the streak');
 
-        eq(await readBadge(page, 'incline-chest-press'), '🔥 3',
+        eq(await readBadge(page, 'incline-chest-press'), '🔥 2',
             'an NA session is skipped, not read as a change, so the run spans it');
 
-        eq(await readBadge(page, 'chest-flies'), '🔥 3',
+        eq(await readBadge(page, 'chest-flies'), '🔥 2',
             'a non-numeric weight ends the run rather than falling through to a reps comparison');
 
         // Six identical sessions: the plateau banner, and necessarily no streak.
         eq(await readBadge(page, 'lateral-raises'), null,
-            'six identical sessions is a streak of 1, so no badge');
+            'six identical sessions is a streak of 0, so no badge');
 
         const plateau = await page.evaluate(() => {
             const card = document.querySelector('[data-exercise-id="lateral-raises"]');
