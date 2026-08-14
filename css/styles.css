@@ -164,6 +164,30 @@
             color: #888;
         }
 
+        /* Consecutive sessions that moved a lift forward. British racing green,
+           fixed: like the NA red below, the colour is the meaning, so it must
+           not rotate with the daily palette. It sits at only ~1.7:1 against the
+           card, so the pill reads as a quiet ground rather than a highlight —
+           the white numeral on it carries the signal at ~11.5:1. margin-right:
+           auto pins it beside the name instead of letting space-between float
+           it to the middle, and keeps it there on cards with no breakdown
+           button. */
+        .streak-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-left: 10px;
+            margin-right: auto;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: #004225;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
         .input-row {
             display: flex;
             gap: 10px;

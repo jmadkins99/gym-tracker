@@ -113,6 +113,63 @@
             return null;
         }
 
+        // The mirror image of getStagnationWarning: how many consecutive sessions
+        // have moved this lift *forward*. Same history walk, no slice — a streak
+        // has no ceiling. Surfaces as the green flame pill in the exercise header.
+        //
+        // A session extends the streak when the weight went up, or the weight held
+        // and the reps went up. It breaks on an identical session, on a weight
+        // drop, and on fewer reps at the same weight.
+        //
+        // The weight-up case ignores reps entirely, and that is deliberate: hitting
+        // 6 reps makes getSimplePR bump the weight and repsDefault reset the
+        // dropdown to 4, so the app's own progression always looks like a rep
+        // regression on the session after a bump. Counting that as backsliding
+        // would cap every streak at 3 and the badge would never mean anything.
+        function getPRStreak(exerciseId, workoutHistory) {
+            if (!workoutHistory || workoutHistory.length === 0) return null;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const sessions = workoutHistory
+                .filter(w => {
+                    const workoutDate = new Date(w.date);
+                    workoutDate.setHours(0, 0, 0, 0);
+                    if (workoutDate > today) return false;
+                    if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
+                    if (!w.submitted) return false;
+                    const exercise = w.exercises.find(e => e.id === exerciseId);
+                    return isValidExercise(exercise);
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (sessions.length === 0) return null;
+
+            const entries = sessions.map(w => w.exercises.find(e => e.id === exerciseId));
+
+            // Non-numeric weights (bodyweight rows carry 'Body Weight') can't be
+            // compared, so they end the run rather than being read as a change.
+            const extendsStreak = (newer, older) => {
+                const newWeight = parseFloat(newer.weight);
+                const oldWeight = parseFloat(older.weight);
+                const newReps = parseInt(newer.reps);
+                const oldReps = parseInt(older.reps);
+                if ([newWeight, oldWeight, newReps, oldReps].some(isNaN)) return false;
+                if (newWeight > oldWeight) return true;
+                if (newWeight < oldWeight) return false;
+                return newReps > oldReps;
+            };
+
+            let streak = 1;
+            for (let i = 0; i + 1 < entries.length; i++) {
+                if (!extendsStreak(entries[i], entries[i + 1])) break;
+                streak++;
+            }
+
+            return streak >= PR_STREAK_MIN ? streak : null;
+        }
+
         // Helper function to check if this is a PR Weight Recovery week (week after plateau buster)
         function getPRWeightRecovery(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length < 2) return null;

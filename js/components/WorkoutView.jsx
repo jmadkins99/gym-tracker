@@ -16,6 +16,10 @@
                 const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory) : null;
                 const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory) : null;
                 const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory) : null;
+                // Weighted cards only: cardio has never counted toward PRs, and
+                // bodyweight rows have no numeric weight to compare.
+                const prStreak = PR_STREAK_TRACKING && exercise.type === 'standard'
+                    ? getPRStreak(exercise.id, workoutHistory) : null;
 
                 if (exercise.type === 'standard') {
                     console.log('[renderExercise]', exercise.name, {
@@ -281,6 +285,14 @@
                                     </div>
                                 )}
                             </div>
+                            {/* Sibling of .exercise-name, never a child: a pile of
+                                tests compare that node's textContent to the bare
+                                exercise name. */}
+                            {prStreak && (
+                                <div className="streak-badge" data-streak={prStreak}>
+                                    🔥 {prStreak}
+                                </div>
+                            )}
                             {hasWeightBreakdown && (
                                 <button
                                     onClick={() => setExpandedWeightBreakdown(isBreakdownExpanded ? null : exercise.id)}
