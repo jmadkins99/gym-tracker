@@ -37,7 +37,7 @@ const NS = 'gym-local:';
         await page.evaluate((ns) => localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'posterior');
 
         // Log frontal-pulldowns with its pre-filled weight/reps.
         await page.evaluate(() => {
@@ -56,7 +56,7 @@ const NS = 'gym-local:';
         // Reload: the mid-workout state must come back.
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'posterior');
 
         const restored = await page.evaluate(() => {
             const card = document.querySelector('[data-exercise-id="frontal-pulldowns"]');

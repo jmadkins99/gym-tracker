@@ -1,19 +1,19 @@
 // What this test covers
 // ----------------------
-// How the Lower/Upper split reaches a device that already has a saved
-// exerciseConfig — which is every real device, including the signed-in phone.
-// A fresh install gets the split straight from DEFAULT_EXERCISES (test 42);
-// this is the other half.
+// How a split reaches a device that already has a saved exerciseConfig — which
+// is every real device, including the signed-in phone. A fresh install gets the
+// layout straight from DEFAULT_EXERCISES (test 42); this is the other half.
 //
-// The seed here is deliberately the exact shape of the live config on the day
-// of the switch: version 2, the 19 Full Body ids in the July 2026 order, with
-// the real user renames applied. So this is the actual migration that runs on
-// the user's phone, not a synthetic one.
+// The seed here is a version-2, 19-id Full Body config in the July 2026 order
+// with the real user renames applied. Note that the id set differs from
+// defaults, so migrateExerciseConfig re-runs here on the id-set check ALONE —
+// which means this case would still pass with the version bump reverted. Test
+// 54 is the one that pins the bump itself, seeding a same-id-set v13 config
+// where the version is the only thing that can trigger the migration.
 //
 // What must happen on the next load:
-//   1. A bumped EXERCISE_CONFIG_VERSION makes migrateExerciseConfig re-run
-//      even though 19 of the 20 ids were already there.
-//   2. Every exercise picks up a `day` of 'lower' or 'upper'.
+//   1. migrateExerciseConfig re-runs and reconciles against DEFAULT_EXERCISES.
+//   2. Every exercise picks up a `day` of 'anterior' or 'posterior'.
 //   3. Leg Extensions is ADDED mid-list under its own fresh id.
 //   4. User renames survive by id (they are never overwritten by defaults).
 //   5. The reconciled config is persisted with the current version, and a
@@ -71,51 +71,43 @@ const FULL_BODY = [
     ['hip-adduction', 'My Renamed Leg Press'],
 ];
 
-const EXPECTED_LOWER = [
-    // Opens Lower as of Aug 2026, having come up off the end of the day in two
-    // steps. Its id is `leg-curls`.
-    'Back Extensions',
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
-    'Ab Crunches',
-    // Arrives here purely via migrateExerciseConfig: the saved config below
-    // predates it, so this pins that a newly added default reaches a device
-    // that already has a config — mid-list, not appended at the end.
-    'Leg Extensions',
-    // Moved ahead of Calf Raises (Aug 2026).
-    'Hip Adduction',
-    'Calf Raises',
-    // hip-adduction, renamed by the user below, and moved to the end of Lower
-    // in Aug 2026. Its position comes from DEFAULT_EXERCISES, not from the
-    // saved config — the migration takes order from defaults while preserving
-    // the user's name, and this row is where those two rules meet. The move to
-    // last makes that sharper than before: the saved config still has it
-    // mid-list under the old order, so landing here proves defaults won.
-    'My Renamed Leg Press',
-];
-
-const EXPECTED_UPPER = [
+const EXPECTED_ANTERIOR = [
+    // Arrives purely via migrateExerciseConfig — the saved config below predates
+    // it — and lands at its DEFAULT_EXERCISES position, not appended at the end.
+    'Chest Press',
+    'Incline Chest Press',
     // The saved config below says "Unilateral Chest Flies" while the current
     // DEFAULT_EXERCISES says "Chest Flies". The saved name has to win — the
     // migration takes order/day/category from defaults but never the name, so
     // changing a default label can't silently rewrite what a device displays.
     'Unilateral Chest Flies',
-    // Pure reorder relative to the saved config: only the version bump carries
-    // it, since the id set alone is unchanged by a move.
-    'Incline Chest Press',
-    'Recline Curls',
-    'Overhead Tricep Extensions',
-    // Like Leg Extensions above, this arrives purely via migrateExerciseConfig
-    // — the saved config below predates it — and lands mid-list, not appended.
-    'Chest Press',
-    'Lateral Raises',
     'Shoulder Press',
+    'Lateral Raises',
+    'Overhead Tricep Extensions',
+    'Tricep Extensions',
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
+    'Ab Crunches',
+    // Like Chest Press above, added by the migration under its own fresh id.
+    'Leg Extensions',
+    // hip-adduction, renamed by the user below. Its position comes from
+    // DEFAULT_EXERCISES, not from the saved config — the migration takes order
+    // and day from defaults while preserving the user's name, and this row is
+    // where those two rules meet. The saved config has it mid-list on the old
+    // layout, so landing last on Anterior proves defaults won on both counts.
+    'My Renamed Leg Press',
+];
+
+const EXPECTED_POSTERIOR = [
+    'Recline Curls',
     'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
+    'Sagittal Plane Pulldowns',
     'Transverse Plane Rows',
     'Kelso Shrugs',
-    'Sagittal Plane Pulldowns',
-    'Tricep Extensions',
     'Preacher Curls',
+    'Back Extensions',
+    'Hip Adduction',
+    'Calf Raises',
 ];
 
 async function readSavedConfig(page) {
@@ -163,13 +155,13 @@ async function readSavedConfig(page) {
         await waitForApp(page);
 
         // 1 + 3 + 4. The split applied, leg extensions arrived, renames survived.
-        ok(await selectDayType(page, 'lower'), 'Lower toggle present');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_LOWER,
-            'saved config is split onto Lower in canonical order, renames preserved');
+        ok(await selectDayType(page, 'anterior'), 'Anterior toggle present');
+        eq((await readCards(page)).map(c => c.name), EXPECTED_ANTERIOR,
+            'saved config is split onto Anterior in canonical order, renames preserved');
 
-        ok(await selectDayType(page, 'upper'), 'Upper toggle present');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_UPPER,
-            'saved config is split onto Upper in canonical order, renames preserved');
+        ok(await selectDayType(page, 'posterior'), 'Posterior toggle present');
+        eq((await readCards(page)).map(c => c.name), EXPECTED_POSTERIOR,
+            'saved config is split onto Posterior in canonical order, renames preserved');
 
         // 2 + 5. What actually got persisted.
         const saved = await readSavedConfig(page);
@@ -182,27 +174,34 @@ async function readSavedConfig(page) {
         // the same config already holds under the name Hip Adduction.
         ok(saved.byId['actual-leg-extensions'],
             'leg extensions was added to the saved config under its own id');
-        eq(saved.byId['actual-leg-extensions'].day, 'lower', 'leg extensions lives on Lower');
+        eq(saved.byId['actual-leg-extensions'].day, 'anterior',
+            'leg extensions lives on Anterior');
         eq(saved.byId['leg-extensions'].name, 'Hip Adduction',
             'the old leg-extensions id still renders as Hip Adduction, untouched');
         eq(saved.byId['frontal-pulldowns'].name, 'My Renamed Pulldowns',
             'rename survives the migration in storage, not just on screen');
         eq(saved.byId['chest-flies'].name, 'Unilateral Chest Flies',
             'a changed DEFAULT_EXERCISES label does not overwrite the saved name');
-        eq(saved.byId['hip-adduction'].day, 'lower', 'Leg Press is a Lower movement');
-        eq(saved.byId['chest-flies'].day, 'upper', 'Chest Flies is an Upper movement');
+        // The two frozen-id movements that swapped sides in this switch: Leg
+        // Press came up from Lower to Anterior, Hip Adduction went from Lower
+        // to Posterior. Their ids are each other's names, so pinning both is
+        // what catches a migration that reassigns by name instead of by id.
+        eq(saved.byId['hip-adduction'].day, 'anterior', 'Leg Press is an Anterior movement');
+        eq(saved.byId['leg-extensions'].day, 'posterior', 'Hip Adduction is a Posterior movement');
+        eq(saved.byId['chest-flies'].day, 'anterior', 'Chest Flies is an Anterior movement');
+        eq(saved.byId['leg-curls'].day, 'posterior', 'Back Extensions is a Posterior movement');
 
         // Every exercise is assigned to exactly one of the two days.
         const days = Object.values(saved.byId).map(e => e.day);
-        eq(days.filter(d => d === 'lower').length, 8, '8 exercises on Lower');
-        eq(days.filter(d => d === 'upper').length, 13, '13 exercises on Upper');
-        eq(days.filter(d => d !== 'lower' && d !== 'upper'), [],
+        eq(days.filter(d => d === 'anterior').length, 12, '12 exercises on Anterior');
+        eq(days.filter(d => d === 'posterior').length, 9, '9 exercises on Posterior');
+        eq(days.filter(d => d !== 'anterior' && d !== 'posterior'), [],
             'no exercise is left without a day');
 
         // `order` must stay a dense 0..20 run, since moveExercise and the
         // load-time sort both index off it.
         eq(saved.orders, Array.from({ length: 21 }, (_, i) => i),
-            'order is a dense 0..19 sequence across both days');
+            'order is a dense 0..20 sequence across both days');
 
         // 5. Second load changes nothing.
         await page.reload({ waitUntil: 'networkidle0' });
@@ -210,18 +209,18 @@ async function readSavedConfig(page) {
         const secondLoad = await readSavedConfig(page);
         eq(secondLoad, saved, 'a second load is a no-op — the migration is idempotent');
 
-        await selectDayType(page, 'lower');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_LOWER,
-            'Lower is stable across the reload');
+        await selectDayType(page, 'anterior');
+        eq((await readCards(page)).map(c => c.name), EXPECTED_ANTERIOR,
+            'Anterior is stable across the reload');
 
         // ---- Phase 2: an id the defaults dropped must leave a saved config ----
         // Rebuild the version-5 state every real device was in: the migrated
-        // config above plus Stairmaster appended to Lower at order 20.
+        // config above plus Stairmaster appended at order 21.
         await page.evaluate((ns) => {
             const cfg = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
             cfg.exercises.push({
                 id: 'stairmaster', name: 'Stairmaster', category: 'Cardio',
-                day: 'lower', type: 'stairmaster', order: 20,
+                day: 'posterior', type: 'stairmaster', order: 21,
             });
             cfg.version = 5;
             localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify(cfg));
@@ -240,15 +239,15 @@ async function readSavedConfig(page) {
             'order stays dense after the removal — no hole where stairmaster sat');
         eq(dropped, saved, 'the dropped config matches the canonical one exactly');
 
-        await selectDayType(page, 'lower');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_LOWER,
-            'Lower renders without a Stairmaster card after the drop');
+        await selectDayType(page, 'posterior');
+        eq((await readCards(page)).map(c => c.name), EXPECTED_POSTERIOR,
+            'Posterior renders without a Stairmaster card after the drop');
         eq(await page.evaluate(() =>
             Array.from(document.querySelectorAll('.section-title')).map(e => e.textContent.trim())),
             [], 'the "Cardio" heading goes with it — no empty section is left behind');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: an existing Full Body config splits into Lower/Upper and drops retired ids, idempotently.');
+        console.log('PASS: an existing Full Body config splits into Anterior/Posterior and drops retired ids, idempotently.');
     } finally {
         await browser.close();
         await server.stop();

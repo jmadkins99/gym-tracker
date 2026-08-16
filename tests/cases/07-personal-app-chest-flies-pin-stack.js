@@ -34,7 +34,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
 
         // Click the Weight Breakdown button on Chest Flies.
         const clicked = await page.evaluate(() => {

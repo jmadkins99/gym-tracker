@@ -16,9 +16,11 @@
 //
 // Break either and the other looks fine, so both are asserted here.
 //
-// This case stays scoped to the Upper day and to the version mechanism itself.
-// Test 43 covers the Aug 2026 Lower/Upper split as a whole — both days, the
-// `day` assignments, and Stairmaster arriving as a new id.
+// This case stays scoped to the Anterior day and to the version mechanism
+// itself. Test 43 covers the Anterior/Posterior split as a whole — both days,
+// the `day` assignments, and retired ids being dropped — and test 54 covers the
+// case this one cannot: a saved config whose id set already matches defaults,
+// where the version bump is the only thing that can trigger a migration.
 
 const path = require('path');
 const fs = require('fs');
@@ -51,21 +53,26 @@ const OLD_ORDER_IDS = [
     'hip-adduction',
 ];
 
-// The canonical Upper day, which is where the renamed exercise below lands.
+// The canonical Anterior day, which is where the renamed exercise below lands.
+//
+// The rename probe is chest-flies rather than frontal-pulldowns: this case is
+// about the version mechanism, not the split, and keeping it on one day avoids
+// a toggle hop that would add nothing. frontal-pulldowns moved to Posterior in
+// the Anterior/Posterior switch, and its rename survival is covered by tests
+// 43 and 54 anyway.
 const EXPECTED_NEW_ORDER = [
-    'Chest Flies',
-    'Incline Chest Press',
-    'Recline Curls',
-    'Overhead Tricep Extensions',
     'Chest Press',            // added Aug 2026; arrives via the migration
-    'Lateral Raises',
+    'Incline Chest Press',
+    'My Renamed Flies',       // chest-flies, renamed by the user below
     'Shoulder Press',
-    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
-    'Transverse Plane Rows',
-    'Kelso Shrugs',
-    'Sagittal Plane Pulldowns',
+    'Lateral Raises',
+    'Overhead Tricep Extensions',
     'Tricep Extensions',
-    'Preacher Curls',
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
+    'Ab Crunches',
+    'Leg Extensions',         // added Aug 2026; arrives via the migration
+    'Leg Press',
 ];
 
 (async () => {
@@ -82,8 +89,8 @@ const EXPECTED_NEW_ORDER = [
             const byId = new Map(DEFAULT_EXERCISES.map(e => [e.id, e]));
             const exercises = oldIds.map((id, idx) => {
                 const base = { ...byId.get(id), order: idx };
-                return id === 'frontal-pulldowns'
-                    ? { ...base, name: 'My Renamed Pulldowns' }
+                return id === 'chest-flies'
+                    ? { ...base, name: 'My Renamed Flies' }
                     : base;
             });
             // No `version` key: this is what every pre-July-2026 config looks like.
@@ -94,7 +101,7 @@ const EXPECTED_NEW_ORDER = [
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
 
         const names = (await readCards(page)).map(c => c.name);
         eq(names, EXPECTED_NEW_ORDER,
@@ -118,7 +125,8 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Tricep Extensions" (Upper index 11) up one, above "Sagittal Plane Pulldowns".
+        // Move "Tricep Extensions" (Anterior index 6) up one, above "Overhead
+        // Tricep Extensions".
         const moved = await page.evaluate(() => {
             const rows = Array.from(document.querySelectorAll('.modal > div > div'));
             const row = rows.find(r => r.textContent.trim().startsWith('Tricep Extensions'));
@@ -132,11 +140,11 @@ const EXPECTED_NEW_ORDER = [
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
 
         const afterReorder = (await readCards(page)).map(c => c.name);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(10, 0, expectedAfter.splice(11, 1)[0]); // Tricep Extensions up one
+        expectedAfter.splice(5, 0, expectedAfter.splice(6, 1)[0]); // Tricep Extensions up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 

@@ -1,18 +1,24 @@
 // What this test covers
 // ----------------------
-// Logging a full Lower day through the UI (not by seeding history): a typed
+// Logging a full Anterior day through the UI (not by seeding history): a typed
 // weight and a no-interaction one-tap card each get their own LOG, then
 // "Submit Day".
 //
-// Lower was a mixed-type day until August 2026, when Stairmaster was retired
-// and left it all standard weight/reps cards. logExercise still branches on
-// `type` to decide which fields to capture, so what this now pins is that the
-// standard arm is the one every Lower row takes: a regression that falls into
-// a cardio branch writes a time instead of a weight and the Weekly view
-// silently shows NA. The stairmaster arm itself is exercised by tests 21/22,
-// which edit and round-trip real cardio-era history.
+// Both probes here (Ab Crunches, Leg Press) were Lower-day movements before
+// the Anterior/Posterior switch and are Anterior now, which is why this case
+// moved wholesale rather than splitting. Test 53 is the Posterior mirror —
+// without it, logExercise could hardcode `day: 'anterior'` and this case would
+// stay green.
 //
-// Also pins that the new workout is stamped `day: 'lower'`, which is what
+// The day was mixed-type until August 2026, when Stairmaster was retired and
+// left it all standard weight/reps cards. logExercise still branches on `type`
+// to decide which fields to capture, so what this now pins is that the
+// standard arm is the one every row takes: a regression that falls into a
+// cardio branch writes a time instead of a weight and the Weekly view silently
+// shows NA. The stairmaster arm itself is exercised by tests 21/22, which edit
+// and round-trip real cardio-era history.
+//
+// Also pins that the new workout is stamped `day: 'anterior'`, which is what
 // Weekly and the Edit modal key off to choose the right exercise list.
 
 const path = require('path');
@@ -44,7 +50,7 @@ async function logCard(page, exerciseId) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'lower');
+        await selectDayType(page, 'anterior');
 
         // Ab Crunches: Week 1 default weight 140, reps dropdown pre-fills 4.
         await page.evaluate(() => {
@@ -71,13 +77,18 @@ async function logCard(page, exerciseId) {
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
         ok(saved.length === 1, `one workout saved (got ${saved.length})`);
         const w = saved[0];
-        eq(w.day, 'lower', 'workout recorded as a lower day');
+        eq(w.day, 'anterior', 'workout recorded as an anterior day');
         ok(w.submitted, 'workout is submitted');
-        eq(w.exercises.length, 8, 'the workout carries all 8 Lower movements');
-        ok(!w.exercises.some(e => e.id === 'chest-flies'),
-            'no Upper movements leaked into the Lower workout');
+        eq(w.exercises.length, 12, 'the workout carries all 12 Anterior movements');
+        // The leak probe has to be a POSTERIOR id. Chest Flies was the probe
+        // under Upper/Lower, where it was an Upper movement — it is Anterior
+        // now, so keeping it would turn this into "no Anterior movement leaked
+        // into the Anterior workout", which is true even with the day filter
+        // ripped out entirely.
+        ok(!w.exercises.some(e => e.id === 'kelso-shrugs'),
+            'no Posterior movements leaked into the Anterior workout');
         ok(!w.exercises.some(e => e.id === 'stairmaster'),
-            'no stairmaster row is written now that it is retired from Lower');
+            'no stairmaster row is written now that it is retired');
 
         const crunch = w.exercises.find(e => e.id === 'ab-crunch');
         const legPress = w.exercises.find(e => e.id === 'hip-adduction');
@@ -90,10 +101,10 @@ async function logCard(page, exerciseId) {
         // Every row took the standard arm: no cardio field leaked onto any of
         // them, and the two logged rows are weight/reps shaped.
         ok(!w.exercises.some(e => e.time !== undefined || e.level !== undefined),
-            'no Lower row carries a cardio time/level field');
+            'no Anterior row carries a cardio time/level field');
 
         eq(errors, [], 'no console errors during logging');
-        console.log('PASS: an all-weighted Lower day logs and persists real values.');
+        console.log('PASS: an all-weighted Anterior day logs and persists real values.');
     } finally {
         await browser.close();
         await server.stop();

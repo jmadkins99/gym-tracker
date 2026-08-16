@@ -4,12 +4,14 @@ A personal workout tracking web app. All data is kept in your browser's local st
 
 ## Days
 
-The workout view has two day types you switch between with a toggle at the top. It picks a default based on the weekday: Monday, Wednesday, and Friday start on Lower, every other day starts on Upper.
+The workout view has two day types you switch between with a toggle at the top. It picks a default based on the weekday: Monday, Wednesday, and Friday start on Posterior, every other day starts on Anterior — so the larger push day comes round four times a week.
 
-- **Upper**: twelve weighted machine and cable exercises tracked by weight and reps.
-- **Lower**: eight weighted machine and cable exercises tracked by weight and reps.
+- **Anterior**: twelve weighted machine and cable exercises tracked by weight and reps. Chest, shoulders, triceps, wrist flexors, abs and quads.
+- **Posterior**: nine weighted machine and cable exercises tracked by weight and reps. Back, biceps, wrist extensors, erectors, adductors and calves.
 
-Earlier splits — Full Body / Cardio before August 2026, and the Torso/Limbs, Push/Pull/Legs, and Anterior/Posterior rotations before that — are still readable and editable in the Weekly tab. Body Weight Squats, Burpee Jump Tucks, Assault Bike, and Stairmaster are retired from logging but their history renders unchanged.
+The split is anatomical with a push/pull flavour rather than strict anatomy: the arms are grouped by function, so triceps sit on Anterior and biceps on Posterior.
+
+Earlier splits — Upper/Lower from August 2026, Full Body / Cardio before that, and the Torso/Limbs, Push/Pull/Legs, and numeric-day Anterior/Posterior rotations before that — are still readable and editable in the Weekly tab. Note that those early-2026 Anterior/Posterior rotations were a different program from the current split, and the Weekly tab labels both with the same two words. Body Weight Squats, Burpee Jump Tucks, Assault Bike, and Stairmaster are retired from logging but their history renders unchanged.
 
 ## Logging
 

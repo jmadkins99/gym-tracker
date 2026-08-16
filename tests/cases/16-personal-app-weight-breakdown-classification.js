@@ -84,9 +84,9 @@ function extractLiteral(source, name, open, close) {
 
         // The rotation is split across two days now, so sweep both — a card
         // that only appears on Lower would otherwise never be classified.
-        await selectDayType(page, 'lower');
+        await selectDayType(page, 'posterior');
         const lowerCards = await readCards(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
         const upperCards = await readCards(page);
         const cards = [...lowerCards, ...upperCards];
 

@@ -76,17 +76,32 @@
             return getConsecutiveWeek(new Date(), workoutHistory);
         }
 
-        // Which day type the app should default to for a given date: 'lower' on
-        // the configured LOWER_DAYS (Mon/Wed/Fri), otherwise 'upper'.
+        // Which day type the app should default to for a given date:
+        // 'posterior' on the configured POSTERIOR_DAYS (Mon/Wed/Fri), otherwise
+        // 'anterior'.
         function getDefaultDayType(date = new Date()) {
-            return LOWER_DAYS.includes(date.getDay()) ? 'lower' : 'upper';
+            return POSTERIOR_DAYS.includes(date.getDay()) ? 'posterior' : 'anterior';
         }
 
         // Human label for a stored workout's `day`, across every split this app
         // has shipped. Pre-Feb-2026 workouts used numeric day indexes whose
         // meaning depended on the split in force at the time, so those need the
         // date; everything since Jun 2026 stores a self-describing string.
+        // Note the two words "Anterior" and "Posterior" now reach this function
+        // by three different routes: the current string literals below, and the
+        // numeric Feb-2026 and Apr-2026 rotations further down. That is correct
+        // at the display layer — the user did call all three by those names —
+        // but it does mean the label alone no longer identifies which program a
+        // session came from. The code paths stay distinct; do not "simplify"
+        // them together.
         function getWorkoutDayLabel(workout) {
+            if (workout.day === 'anterior') return 'Anterior';
+            if (workout.day === 'posterior') return 'Posterior';
+            // Aug 2026 Upper/Lower. Stored history is never migrated, so these
+            // two lines are load-bearing forever even though no exercise
+            // carries an 'upper'/'lower' day any more. Delete them and every
+            // workout from that era silently starts rendering as "Full Body",
+            // by falling through the `typeof !== 'number'` check below.
             if (workout.day === 'lower') return 'Lower';
             if (workout.day === 'upper') return 'Upper';
             if (workout.day === 'cardio') return 'Cardio';
@@ -106,21 +121,26 @@
         // Which exercise definitions a stored workout should render against, in
         // the Weekly tab and the Edit modal.
         //
-        // A Lower/Upper workout renders against its own day in the current
-        // config, so renames and reorders show through. Note the day filter is
-        // load-bearing: both days now live in one config, so "are all this
-        // workout's ids in `exercises`?" is true for either day and a day-blind
-        // check pads an Upper session with the whole Lower day as empty rows.
+        // An Anterior/Posterior workout renders against its own day in the
+        // current config, so renames and reorders show through. Note the day
+        // filter is load-bearing: both days now live in one config, so "are all
+        // this workout's ids in `exercises`?" is true for either day and a
+        // day-blind check pads an Anterior session with the whole Posterior day
+        // as empty rows.
         //
-        // Anything older — pre-split Full Body, the retired Cardio day, the
-        // numeric-day splits before that — renders the exercises stored on the
-        // workout itself, which preserves its historical layout. Display names
-        // still resolve through the current config by id, so a rename the user
-        // makes today reaches every past workout that movement appears in.
+        // Anything older — the Aug 2026 Upper/Lower split, pre-split Full Body,
+        // the retired Cardio day, the numeric-day splits before that — renders
+        // the exercises stored on the workout itself, which preserves its
+        // historical layout. That is why 'upper'/'lower' are deliberately absent
+        // from the gate below: those workouts hold a roster that no longer
+        // matches either current day, and must keep showing the 13 or 8 rows
+        // they were actually performed with. Display names still resolve
+        // through the current config by id, so a rename the user makes today
+        // reaches every past workout that movement appears in.
         function getWorkoutExerciseList(workout, exercises) {
             const byId = new Map(exercises.map(e => [e.id, e]));
 
-            if (workout.day === 'lower' || workout.day === 'upper') {
+            if (workout.day === 'anterior' || workout.day === 'posterior') {
                 if (workout.exercises.every(e => byId.get(e.id)?.day === workout.day)) {
                     return exercises.filter(e => e.day === workout.day);
                 }

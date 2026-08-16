@@ -12,10 +12,12 @@
 // then Leg Press. Aug 2026 moved all three to pin stacks. Back Extensions
 // (`leg-curls`) went the other way in the same trip — single-plate station to
 // two-side — and is now the only two-sided plate-loaded movement in the whole
-// program, so this case runs on the Lower day. The arithmetic is weight-driven
-// and unchanged across every one of those moves — only the card it runs
-// against moved. If a future split retires Back Extensions too, this coverage
-// needs a new home rather than deletion.
+// program. The arithmetic is weight-driven and unchanged across every one of
+// those moves — only the card it runs against moved. If a future split retires
+// Back Extensions too, this coverage needs a new home rather than deletion.
+//
+// All three fixtures land on Posterior under the Anterior/Posterior split, so
+// this case needs only one day selection. It used to straddle Upper and Lower.
 //   - one-sided round UP    Preacher Curls 67.5: 70% = 47.25 -> 50 (45+5)
 //   - one-sided round DOWN  Preacher 90% = 60.75 -> 60
 //   - exact halfway -> DOWN  Sagittal Pulldowns 50: 70% = 35.0 -> 30, 90% = 45.0 -> 40
@@ -72,7 +74,7 @@ async function breakdownText(page, name, weight) {
         await seedPersonalApp(page, {});
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'posterior');
 
         // --- Preacher Curls (one-sided) at 67.5 ---
         const preacher = await breakdownText(page, 'Preacher Curls', 67.5);
@@ -88,10 +90,9 @@ async function breakdownText(page, name, weight) {
         contains(sagittal, 'Warmup Set #1 (30 lbs', 'sagittal W1 35.0 (halfway) rounds DOWN to 30');
         contains(sagittal, 'Warmup Set #2 (40 lbs', 'sagittal W2 45.0 (halfway) rounds DOWN to 40');
 
-        // --- Back Extensions (two-sided) at 247.5, on Lower ---
+        // --- Back Extensions (two-sided) at 247.5 ---
         // The program's only two-sided plate-loaded movement; see the header
-        // note. Switching days is what this case costs.
-        await selectDayType(page, 'lower');
+        // note. Same day as the two above, so no toggle hop is needed.
         const backExt = await breakdownText(page, 'Back Extensions', 247.5);
         ok(backExt, 'opened Back Extensions breakdown');
         contains(backExt, 'Top Set (247.5 lbs)', 'two-sided top set exact 247.5 (never rounded)');

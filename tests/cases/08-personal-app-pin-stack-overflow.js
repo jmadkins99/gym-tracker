@@ -19,8 +19,11 @@
 //
 // Top set is shown only in overflow mode (otherwise redundant with the
 // Weight (lbs) input field) — which is also what the Cable Wrist Curls half
-// of this test asserts the absence of. Both exercises are Lower-day, so one
-// page load covers the overflow case and the un-capped regression guard.
+// of this test asserts the absence of. The two exercises sit on opposite days
+// under the Anterior/Posterior split (Calf Raises on Posterior, Cable Wrist
+// Curls on Anterior), so the test hops the toggle between the two halves.
+// They were both Lower-day beforehand, which is why this used to need only
+// one day selection.
 //
 // To verify this test is real: in js/config.js, change
 // PIN_STACK_EXERCISES['calf-raise'] to `true` (no maxPin). Top Set and the
@@ -85,7 +88,7 @@ async function readCard(page, exerciseName) {
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'lower');
+        await selectDayType(page, 'posterior');
 
         // --- Capped stack: Calf Raises at 500 over a 405 cap ---
         const clickedCalf = await clickBreakdown(page, 'Calf Raises');
@@ -127,6 +130,10 @@ async function readCard(page, exerciseName) {
             'overflow plates render as a single pile, never "Per side"');
 
         // --- Un-capped stack: Cable Wrist Curls must NOT overflow at 115 ---
+        // Cable Wrist Curls is a wrist flexor, so it lives on Anterior while
+        // Calf Raises above is Posterior. Hop the toggle.
+        await selectDayType(page, 'anterior');
+
         const clickedCable = await clickBreakdown(page, 'Cable Wrist Curls');
         ok(clickedCable, 'Cable Wrist Curls card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));

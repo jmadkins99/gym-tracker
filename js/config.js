@@ -158,7 +158,16 @@
         // an order, but any device that already loaded the intermediate build —
         // a localhost test browser counts — has saved a config stamped with it,
         // and the guard above then reads that stale order as current and leaves
-        // it alone. Version 3 was burned that way; 4 is the Aug 2026 Upper/Lower
+        // it alone.
+        //
+        // 14 is the Anterior/Posterior switch, and it is the clearest example
+        // yet of why this constant exists: the id set is IDENTICAL to 13 — same
+        // 21 movements, nothing added or removed — so migrateExerciseConfig's
+        // setsEqual check passes and the version is the *entire* delivery
+        // mechanism. Without the bump, not one device with a saved config would
+        // ever see the reassignment. Test 54 is the pin on exactly that.
+        //
+        // Version 3 was burned that way; 4 is the Aug 2026 Upper/Lower
         // split as actually shipped, 5 adds Leg Extensions to Lower, and 6
         // drops Stairmaster off Lower. 6 is also what makes that drop reach a
         // saved config at all: the id-set check alone would catch it, but the
@@ -181,68 +190,77 @@
         // entire delivery mechanism. (The plate-loaded revert that shipped just
         // before it needed no version at all: PLATE_LOADED_EXERCISES is read
         // live on every render and never touches the saved config.)
-        const EXERCISE_CONFIG_VERSION = 13;
+        const EXERCISE_CONFIG_VERSION = 14;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
         // history references them.
         //
-        // `day` is which half of the Upper/Lower split the exercise belongs to
-        // (August 2026; replaced the single Full Body list + separate Cardio
-        // day). getCurrentExercises filters on it, so it is what decides which
-        // cards a session shows. Keep each day's entries contiguous and `order`
-        // a dense 0..N run: moveExercise reindexes off it and the load-time
-        // sort is a plain numeric sort over the flat list.
+        // `day` is which half of the Anterior/Posterior split the exercise
+        // belongs to (August 2026; replaced the Upper/Lower split, which had
+        // itself replaced the Full Body list + separate Cardio day).
+        // getCurrentExercises filters on it, so it is what decides which cards a
+        // session shows. Keep each day's entries contiguous and `order` a dense
+        // 0..N run: moveExercise reindexes off it and the load-time sort is a
+        // plain numeric sort over the flat list.
         //
-        // Upper comes first here, matching the day toggle and the Settings
+        // The split is anatomical with a push/pull flavour rather than strict
+        // anatomy — the arms are grouped by function, so triceps sit on Anterior
+        // and biceps on Posterior. Two movements cross what pure anatomy would
+        // say, both deliberately: Hip Adduction is on Posterior because adductor
+        // magnus is a hip extensor, and Cable Wrist Curls (a flexor, so anterior
+        // forearm) stays on Anterior next to the other pressing work while the
+        // extensors go the other way. 12 Anterior, 9 Posterior — the push side
+        // carries more volume on purpose.
+        //
+        // Anterior comes first here, matching the day toggle and the Settings
         // list. All three orderings are independent — keep them in step.
         const DEFAULT_EXERCISES = [
-            // --- Upper (Tue / Thu / Sat, and Sun by default) ---
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Upper', day: 'upper', type: 'standard',    order: 0 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Upper', day: 'upper', type: 'standard',    order: 1 },
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Upper', day: 'upper', type: 'standard',    order: 2 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Upper', day: 'upper', type: 'standard', order: 3 },
-            // Genuinely new (Aug 2026). Takes the plain `chest-press` id — no
-            // existing id was squatting on it, unlike the leg-extensions case
-            // below, so there is no need for an `actual-` prefix here.
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Upper', day: 'upper', type: 'standard',    order: 4 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Upper', day: 'upper', type: 'standard',    order: 5 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Upper', day: 'upper', type: 'standard',    order: 6 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Upper', day: 'upper', type: 'standard',    order: 7 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Upper', day: 'upper', type: 'standard',    order: 8 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Upper', day: 'upper', type: 'standard',    order: 9 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Upper', day: 'upper', type: 'standard',    order: 10 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Upper', day: 'upper', type: 'standard',    order: 11 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Upper', day: 'upper', type: 'standard',    order: 12 },
+            // --- Anterior (Tue / Thu / Sat, and Sun by default) ---
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Anterior', day: 'anterior', type: 'standard', order: 0 },
+            // Takes the plain `chest-press` id above — no existing id was
+            // squatting on it, unlike the leg-extensions case below, so there is
+            // no need for an `actual-` prefix there.
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Anterior', day: 'anterior', type: 'standard', order: 1 },
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Anterior', day: 'anterior', type: 'standard', order: 2 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', order: 3 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', order: 4 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', order: 5 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', order: 6 },
+            // The wrist pair splits by anatomy: flexors here, extensors on
+            // Posterior. They sat on the same day under Upper/Lower.
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Anterior', day: 'anterior', type: 'standard', order: 7 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Anterior', day: 'anterior', type: 'standard', order: 8 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', order: 9 },
+            // NOT the `leg-extensions` id below, which renders as Hip Adduction.
+            // There was no history to inherit, so this took a fresh id rather
+            // than reclaiming one. `actual-` mirrors Jessi's
+            // `actual-preacher-curls`; the two apps deliberately share the idiom.
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', order: 10 },
+            // Quad-dominant, so it closes the anterior day. `hip-adduction` is
+            // its frozen id; the `leg-extensions` id below is the one that
+            // renders as Hip Adduction. Neither name matches its id and neither
+            // is safe to rename.
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', order: 11 },
 
-            // --- Lower (Mon / Wed / Fri) ---
-            // Back Extensions opens Lower as of Aug 2026 — it came up off the
-            // end of the day in two steps, first to behind Cable Wrist Curls
-            // and then to the front. `leg-curls` is its frozen id — it has not
-            // been a leg curl in a long time.
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Lower', day: 'lower', type: 'standard',    order: 13 },
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Lower', day: 'lower', type: 'standard',    order: 14 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Lower', day: 'lower', type: 'standard',    order: 15 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Lower', day: 'lower', type: 'standard',    order: 16 },
-            // Genuinely new (Aug 2026) — NOT the `leg-extensions` id below,
-            // which the split left rendering as Hip Adduction. There is no
-            // history to inherit, so this takes a fresh id rather than
-            // reclaiming one. `actual-` mirrors Jessi's `actual-preacher-curls`,
-            // and the two apps deliberately share this one literal.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Lower', day: 'lower', type: 'standard',    order: 17 },
-            // Hip Adduction moved ahead of Calf Raises (Aug 2026). `leg-extensions`
-            // is its frozen id — it has not been a leg extension since the split,
-            // and the row above is the one that actually renders Leg Extensions.
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Lower', day: 'lower', type: 'standard',    order: 18 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Lower', day: 'lower', type: 'standard',    order: 19 },
-            // Leg Press closes Lower as of Aug 2026, moved here from behind Leg
-            // Extensions. Position is independent of how the machine is loaded —
-            // it sat mid-day through both the switch to a pin stack and the
-            // revert to two-side plate-loaded, and this move is its own decision.
-            // `hip-adduction` is its frozen id; the `leg-extensions` id above is
-            // the one that renders as Hip Adduction. Neither name matches its id
-            // and neither is safe to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Lower', day: 'lower', type: 'standard',    order: 20 }
+            // --- Posterior (Mon / Wed / Fri) ---
+            // Recline Curls opens Posterior: biceps are grouped with the pulling
+            // work rather than with the other arm movements.
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Posterior', day: 'posterior', type: 'standard', order: 12 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', order: 13 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Posterior', day: 'posterior', type: 'standard', order: 14 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', order: 15 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', order: 16 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', order: 17 },
+            // `leg-curls` is its frozen id — it has not been a leg curl in a
+            // long time.
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Posterior', day: 'posterior', type: 'standard', order: 18 },
+            // Adductor magnus is a hip extensor, which is why this sits with the
+            // posterior chain. `leg-extensions` is its frozen id — it has not
+            // been a leg extension since the Upper/Lower split, and the row on
+            // Anterior above is the one that actually renders Leg Extensions.
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Posterior', day: 'posterior', type: 'standard', order: 19 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Posterior', day: 'posterior', type: 'standard', order: 20 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and
@@ -255,10 +273,12 @@
         // BODYWEIGHT_REP_DEFAULTS — because workout history still references
         // all four ids and must keep rendering and editing.
 
-        // Which weekdays default to the Lower card (Date.getDay(): Sun=0 … Sat=6).
-        // Mon/Wed/Fri are Lower; every other day — Tue/Thu/Sat, plus Sunday —
-        // defaults to Upper. A manual toggle overrides for the session only.
-        const LOWER_DAYS = [1, 3, 5];
+        // Which weekdays default to the Posterior card (Date.getDay(): Sun=0 …
+        // Sat=6). Mon/Wed/Fri are Posterior; every other day — Tue/Thu/Sat,
+        // plus Sunday — defaults to Anterior, so the larger 12-movement push day
+        // comes round four times a week. A manual toggle overrides for the
+        // session only. Consumed by getDefaultDayType in utils.js.
+        const POSTERIOR_DAYS = [1, 3, 5];
 
         // Bodyweight rep config, keyed by exercise id. Reps carry over from the
         // last session (no progression); the field is a dropdown over [min, max]
