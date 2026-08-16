@@ -112,8 +112,10 @@ async function sectionTitles(page) {
             `default day type matches weekday rule (lower=${expectedDefaultIsLower})`);
 
         // 5a. The old day types must not be selectable any more.
-        eq(await selectDayType(page, 'fullbody'), false, 'no "fullbody" toggle remains');
-        eq(await selectDayType(page, 'cardio'), false, 'no "cardio" toggle remains');
+        eq(await selectDayType(page, 'fullbody', { optional: true }), false,
+            'no "fullbody" toggle remains');
+        eq(await selectDayType(page, 'cardio', { optional: true }), false,
+            'no "cardio" toggle remains');
 
         // Upper sits on the left. DEFAULT_EXERCISES and the Settings list are
         // ordered Upper-first to match; nothing enforces that automatically, so
