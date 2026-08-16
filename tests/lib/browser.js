@@ -3,6 +3,7 @@
 
 const path = require('path');
 const puppeteer = require(path.join(__dirname, '..', 'node_modules', 'puppeteer-core'));
+const { installCdnShim } = require('./cdn');
 
 // Try a few common chrome locations so this works on different boxes.
 // puppeteer-core (unlike puppeteer) never downloads a browser of its own, so
@@ -11,6 +12,9 @@ const CHROME_CANDIDATES = [
     process.env.CHROME_PATH,
     // Linux
     '/usr/bin/google-chrome',
+    // Playwright's browser cache, which is what CI containers usually ship
+    // instead of a system Chrome. A symlink, and statSync follows symlinks.
+    '/opt/pw-browsers/chromium',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
     // macOS
@@ -38,6 +42,14 @@ async function launch() {
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
+    // Every case builds its page with browser.newPage(), so wrapping it here
+    // installs the CDN shim suite-wide without touching a single case file.
+    const newPage = browser.newPage.bind(browser);
+    browser.newPage = async (...args) => {
+        const page = await newPage(...args);
+        await installCdnShim(page);
+        return page;
+    };
     return browser;
 }
 
@@ -79,17 +91,37 @@ async function waitForApp(page, timeoutMs = 8000) {
     await new Promise(r => setTimeout(r, 250));
 }
 
-// Selects the Full Body / Cardio day type via the in-app toggle, so tests are
-// independent of the real weekday (the view otherwise defaults to cardio on
-// Tue/Thu). No-op on the public app, which has no toggle.
-async function selectDayType(page, type) {
-    const clicked = await page.evaluate((t) => {
+// Selects a day type via the in-app toggle, so tests are independent of the
+// real weekday (the view otherwise opens on whichever day the weekday rule
+// picks).
+//
+// Throws by default when the toggle is not there. It used to return false and
+// let the caller carry on, but almost every call site ignores the return value,
+// so a renamed day literal would leave ~20 cases silently testing whatever day
+// today happens to default to — passing or failing depending on the weekday,
+// which reads as flakiness rather than a bug. Failing loudly here turns that
+// into one precise message naming the toggles that do exist.
+//
+// Pass { optional: true } when the absence of a toggle is the thing under test
+// (e.g. asserting a retired day type is gone).
+async function selectDayType(page, type, { optional = false } = {}) {
+    const result = await page.evaluate((t) => {
         const btn = document.querySelector(`[data-day-type="${t}"]`);
-        if (btn) { btn.click(); return true; }
-        return false;
+        if (btn) { btn.click(); return { clicked: true, available: [] }; }
+        return {
+            clicked: false,
+            available: Array.from(document.querySelectorAll('[data-day-type]'))
+                .map(b => b.getAttribute('data-day-type')),
+        };
     }, type);
-    if (clicked) await new Promise(r => setTimeout(r, 150));
-    return clicked;
+
+    if (!result.clicked && !optional) {
+        throw new Error(
+            `no day-type toggle for "${type}" ` +
+            `(available: ${result.available.length ? result.available.join(', ') : 'none'})`);
+    }
+    if (result.clicked) await new Promise(r => setTimeout(r, 150));
+    return result.clicked;
 }
 
 // Reads exercise cards from the current view. Each card describes what

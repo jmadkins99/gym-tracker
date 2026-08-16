@@ -7,6 +7,9 @@
     "test": "bash run.sh"
   },
   "devDependencies": {
-    "puppeteer-core": "^22.0.0"
+    "puppeteer-core": "^22.0.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "@babel/standalone": "^7"
   }
 }
