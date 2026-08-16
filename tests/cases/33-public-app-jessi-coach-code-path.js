@@ -131,39 +131,41 @@ const JESSI_CODE = 'D1O9O9M2';
         // asserted only the two flags above and walked straight past the fact
         // that the preset was still Torso/Limbs, so a coach-code install showed
         // the old two-day split until a refresh.
-        const UPPER = [
-            'Chest Flies',
-            'Incline Chest Press',
-            'Recline Curls',
-            'Overhead Tricep Extensions',
+        const ANTERIOR = [
             'Chest Press',
-            'Lateral Raises',
+            'Incline Chest Press',
+            'Chest Flies',
             'Shoulder Press',
-            'Frontal Plane Pulldowns',
-            'Transverse Plane Rows',
-            'Kelso Shrugs',
-            'Sagittal Plane Pulldowns',
+            'Lateral Raises',
+            'Overhead Tricep Extensions',
             'Tricep Extensions',
-            'Preacher Curls',
-        ];
-        const LOWER = [
-            'Back Extensions', // came up off the end of Lower to open the day, Aug 2026
+            // Wrist flexors here, extensors on Posterior — the pair shared a
+            // day under Upper/Lower.
             'Reverse Wrist Curls',
             'Cable Wrist Curls',
             'Ab Crunches',
             'Leg Extensions',
-            'Hip Adduction', // moved ahead of Calf Raises, Aug 2026
-            'Calf Raises',
-            'Leg Press', // moved to the end of Lower, Aug 2026
+            'Leg Press', // quad-dominant, so it closes the anterior day
         ];
-        eq(cfg.categories, ['Upper', 'Lower'], 'coach code yields the Upper/Lower split');
+        const POSTERIOR = [
+            'Recline Curls', // biceps group with the pulling work
+            'Frontal Plane Pulldowns',
+            'Sagittal Plane Pulldowns',
+            'Transverse Plane Rows',
+            'Kelso Shrugs',
+            'Preacher Curls',
+            'Back Extensions',
+            'Hip Adduction', // adductor magnus is a hip extensor
+            'Calf Raises',
+        ];
+        eq(cfg.categories, ['Anterior', 'Posterior'], 'coach code yields the Anterior/Posterior split');
         eq(Object.keys(cfg.days).length, 2, 'two days, not the old single Full Body day');
-        eq((cfg.days[1] || []).map(e => e.name), UPPER,
-            'coach code yields Upper in order on the FIRST load');
-        eq((cfg.days[2] || []).map(e => e.name), LOWER,
-            'coach code yields Lower in order on the FIRST load');
+        eq((cfg.days[1] || []).map(e => e.name), ANTERIOR,
+            'coach code yields Anterior in order on the FIRST load');
+        eq((cfg.days[2] || []).map(e => e.name), POSTERIOR,
+            'coach code yields Posterior in order on the FIRST load');
 
-        // The stamp is what stops migrateJessiToUpperLower from treating a
+        // The stamp is what stops migrateJessiSplit from treating a
         // fresh install as an un-split program, and what lets a future
         // JESSI_SPLIT_REVISION bump reach it. A preset that writes the right
         // exercises but no stamp looks correct today and goes deaf to every
@@ -173,21 +175,29 @@ const JESSI_CODE = 'D1O9O9M2';
 
         // The two movements with no history to inherit. Both carry a stable
         // literal id rather than a generateUUID() one, because the coach preset
-        // and migrateJessiToUpperLower have to agree on a single key — a UUID
+        // and migrateJessiSplit have to agree on a single key — a UUID
         // here would mean a fresh install and a migrated install disagree about
         // what the same movement is called.
-        const preacher = (cfg.days[1] || []).find(e => e.name === 'Preacher Curls');
+        // Searched across both days on purpose: which day each sits on is
+        // already pinned by the ANTERIOR/POSTERIOR arrays above, and hardcoding
+        // a day index here just means this block breaks again on the next
+        // reshuffle for a reason that has nothing to do with ids. (It did
+        // exactly that in the Anterior/Posterior switch — the two swapped days.)
+        const findAnywhere = (name) =>
+            Object.values(cfg.days).flat().find(e => e.name === name);
+
+        const preacher = findAnywhere('Preacher Curls');
         eq(preacher.id, 'actual-preacher-curls',
             'preset pins the stable Preacher Curls id, matching the migration');
         eq(preacher.startingWeight, '50', 'preset seeds the Preacher Curls starting weight');
 
-        const legExt = (cfg.days[2] || []).find(e => e.name === 'Leg Extensions');
+        const legExt = findAnywhere('Leg Extensions');
         eq(legExt.id, 'actual-leg-extensions',
             'preset pins the stable Leg Extensions id, matching the migration');
         eq(legExt.startingWeight, '50', 'preset seeds the Leg Extensions starting weight');
 
         // The schedule has to come from scheduleDays, not the round-robin
-        // fallback — Sat and Sun are both Upper, which alternation can't express.
+        // fallback — Sat and Sun are both Anterior, which alternation can't express.
         const sched = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymScheduleConfig')), NS);
         eq(sched.workoutDays.map(d => [d.dayOfWeek, d.workoutDayNumber]), [
@@ -206,10 +216,10 @@ const JESSI_CODE = 'D1O9O9M2';
             }
             return out;
         });
-        eq(onScreen1[1], UPPER, 'Upper is what actually renders on screen');
-        eq(onScreen1[2], LOWER, 'Lower is what actually renders on screen');
+        eq(onScreen1[1], ANTERIOR, 'Anterior is what actually renders on screen');
+        eq(onScreen1[2], POSTERIOR, 'Posterior is what actually renders on screen');
 
-        // Drift guard: the preset (fresh installs) and migrateJessiToUpperLower
+        // Drift guard: the preset (fresh installs) and migrateJessiSplit
         // (existing devices) are two sources of truth for one program. If they
         // agree, a refresh is a no-op. Edit either side alone and this fails —
         // which is exactly the regression that shipped, whichever side rots.
@@ -219,20 +229,20 @@ const JESSI_CODE = 'D1O9O9M2';
             const c = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
             return {
                 categories: c.categories,
-                upper: (c.days[1] || []).map(e => e.name),
-                lower: (c.days[2] || []).map(e => e.name),
+                anterior: (c.days[1] || []).map(e => e.name),
+                posterior: (c.days[2] || []).map(e => e.name),
                 dayCount: Object.keys(c.days).length,
             };
         }, NS);
-        eq(afterRefresh.upper, UPPER,
-            'preset and migration agree on Upper — refreshing does not change the program');
-        eq(afterRefresh.lower, LOWER,
-            'preset and migration agree on Lower — refreshing does not change the program');
-        eq(afterRefresh.categories, ['Upper', 'Lower'], 'categories stable across the refresh');
+        eq(afterRefresh.anterior, ANTERIOR,
+            'preset and migration agree on Anterior — refreshing does not change the program');
+        eq(afterRefresh.posterior, POSTERIOR,
+            'preset and migration agree on Posterior — refreshing does not change the program');
+        eq(afterRefresh.categories, ['Anterior', 'Posterior'], 'categories stable across the refresh');
         eq(afterRefresh.dayCount, 2, 'day count stable across the refresh');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: coach code D1O9O9M2 yields the Upper/Lower program on first load.');
+        console.log('PASS: coach code D1O9O9M2 yields the Anterior/Posterior program on first load.');
     } finally {
         await browser.close();
         await server.stop();
