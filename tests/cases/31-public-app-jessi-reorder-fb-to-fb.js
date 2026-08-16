@@ -23,12 +23,12 @@
 //      than being deleted.
 //   6. Re-running is idempotent: a second reload leaves order untouched.
 //
-// As of the Aug 2026 Upper/Lower split this is a TWO-STAGE path, and the
+// As of the Aug 2026 Anterior/Posterior split this is a TWO-STAGE path, and the
 // assertions describe the end of it. migrateJessiToFullBody still runs first
 // and still produces the canonical 14-slot Full Body list — that is the
 // branch under test, and stage 3 (the rename) belongs to it — but
-// migrateJessiToUpperLower fires on the same load and reshapes the result
-// into Upper + Lower, restoring four movements and adding Preacher Curls.
+// migrateJessiSplit fires on the same load and reshapes the result
+// into Anterior + Posterior, restoring four movements and adding Preacher Curls.
 // Full Body is therefore never the stored end state, so the expectations
 // below are the split ones. Test 41 covers the split in isolation.
 //
@@ -121,38 +121,38 @@ const HISTORY_WEIGHTS = {
 
 // The terminal state. migrateJessiToFullBody still produces the canonical
 // 14-slot Full Body list first — that is the branch under test — but
-// migrateJessiToUpperLower now runs on the same load and re-shapes it, so
+// migrateJessiSplit now runs on the same load and re-shapes it, so
 // Full Body is never what ends up stored. Asserting the intermediate would be
 // asserting a value no device can ever hold.
-const EXPECTED_UPPER = [
-    'Chest Flies',
-    'Incline Chest Press',
-    'Recline Curls',
-    'Overhead Tricep Extensions',
+const EXPECTED_ANTERIOR = [
     'Chest Press',
-    'Lateral Raises',
+    'Incline Chest Press',
+    'Chest Flies',
     'Shoulder Press',
-    'Frontal Plane Pulldowns',
-    'Transverse Plane Rows',
-    'Kelso Shrugs',
-    'Sagittal Plane Pulldowns',
+    'Lateral Raises',
+    'Overhead Tricep Extensions',
     'Tricep Extensions',
-    'Preacher Curls',
-];
-
-const EXPECTED_LOWER = [
-    'Back Extensions', // came up off the end of Lower to open the day, Aug 2026
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
     'Ab Crunches',
     'Leg Extensions', // added by JESSI_NEW_EXERCISES
-    'Hip Adduction', // moved ahead of Calf Raises, Aug 2026
+    'Leg Press',
+];
+
+const EXPECTED_POSTERIOR = [
+    'Recline Curls',
+    'Frontal Plane Pulldowns',
+    'Sagittal Plane Pulldowns',
+    'Transverse Plane Rows',
+    'Kelso Shrugs',
+    'Preacher Curls',
+    'Back Extensions',
+    'Hip Adduction',
     'Calf Raises',
-    'Leg Press', // moved to the end of Lower, Aug 2026
-    // Unranked -> bottom of Lower, NOT dropped. Still below Leg Press even
-    // though Leg Press is now last among the RANKED movements: an unranked
-    // client addition sorts after everything with a rank, which is the
-    // distinction this row exists to pin.
+    // Unranked -> bottom of POSTERIOR, NOT dropped. Posterior is the shorter
+    // day, which is where migrateJessiSplit appends anything the client added
+    // themselves. An unranked addition sorts after everything with a rank,
+    // which is the distinction this row exists to pin.
     'Face Pulls',
 ];
 
@@ -160,8 +160,8 @@ async function readOrder(page) {
     return page.evaluate(() => {
         const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
         return {
-            upper: (cfg.days[1] || []).map(e => e.name),
-            lower: (cfg.days[2] || []).map(e => e.name),
+            anterior: (cfg.days[1] || []).map(e => e.name),
+            posterior: (cfg.days[2] || []).map(e => e.name),
         };
     });
 }
@@ -226,14 +226,14 @@ async function readAllCards(page) {
 
         // 1. The re-migration's canonical order, as reshaped by the split.
         const order = await readOrder(page);
-        eq(order.upper, EXPECTED_UPPER, 'Upper day after the FB re-migration + split');
-        eq(order.lower, EXPECTED_LOWER, 'Lower day after the FB re-migration + split');
+        eq(order.anterior, EXPECTED_ANTERIOR, 'Anterior day after the FB re-migration + split');
+        eq(order.posterior, EXPECTED_POSTERIOR, 'Posterior day after the FB re-migration + split');
 
         const state = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
             return {
                 flag5: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied5'),
-                lowerIds: (cfg.days[2] || []).map(e => e.id),
+                posteriorIds: (cfg.days[2] || []).map(e => e.id),
                 count: Object.values(cfg.days).flat().length,
             };
         });
@@ -242,8 +242,8 @@ async function readAllCards(page) {
         // the split restores.
         eq(state.count, 22, 'nothing seeded was dropped — 15 in, 22 out');
 
-        // 5. Unranked exercise survives at the bottom of Lower.
-        eq(state.lowerIds[state.lowerIds.length - 1], 'jcustom',
+        // 5. Unranked exercise survives at the bottom of Posterior.
+        eq(state.posteriorIds[state.posteriorIds.length - 1], 'jcustom',
             'unranked "Face Pulls" lands at the bottom instead of being deleted');
 
         // 2. History still resolves by id: each card defaults to its OWN weight.
@@ -274,14 +274,15 @@ async function readAllCards(page) {
         // 4. Every exercise across BOTH days still offers a Weight Breakdown
         // button — including the four the split restored and Preacher Curls,
         // which have no history to classify from.
-        const missing = [...EXPECTED_UPPER, ...EXPECTED_LOWER]
+        const missing = [...EXPECTED_ANTERIOR, ...EXPECTED_POSTERIOR]
             .filter(n => n !== 'Face Pulls' && !cards[n]?.hasBreakdown);
         eq(missing, [],
             `every program exercise must show Weight Breakdown (missing: ${JSON.stringify(missing)})`);
 
-        // 3. Recline Curls renders as a PIN STACK, not plate-loaded. It is on
-        // Upper, so select that day before looking for the card.
-        await page.evaluate(() => document.querySelectorAll('.day-btn')[0].click());
+        // 3. Recline Curls renders as a PIN STACK, not plate-loaded. It moved
+        // to Posterior (day 2) in the Anterior/Posterior switch — it was on
+        // Upper (day 1) before — so select the second day button.
+        await page.evaluate(() => document.querySelectorAll('.day-btn')[1].click());
         await new Promise(r => setTimeout(r, 300));
         const recline = await page.evaluate(() => {
             for (const c of document.querySelectorAll('.exercise-card')) {

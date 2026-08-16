@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// The Aug 2026 Upper/Lower split reaching Jessi now that he is SIGNED IN.
+// The Aug 2026 Anterior/Posterior split reaching Jessi now that she is SIGNED IN.
 //
 // Every program change before 2026-07-26 worked by bumping a sentinel
 // (jessiFullBodyMigrationApplied<N>) so migrateJessiToFullBody would re-run.
@@ -8,14 +8,14 @@
 // device — where repoReady resolves to a Firestore repo on the first load — it
 // never executes and the sentinel lever is disconnected.
 //
-// migrateJessiToUpperLower is applied to the config AFTER loadAll in BOTH
+// migrateJessiSplit is applied to the config AFTER loadAll in BOTH
 // modes, gated on `splitRevision`. The suite has no Firestore emulator, so this
 // exercises the seam in local mode with the sentinel already spent, which
 // reproduces exactly what a cloud device sees: nothing but this function can
 // change his program.
 //
 // Asserted here:
-//   1. The single Full Body day becomes Upper (12) + Lower (7), in order,
+//   1. The single Full Body day becomes Anterior (12) + Posterior (9), in order,
 //      despite the sentinel being spent.
 //   2. Every surviving movement keeps its ORIGINAL id. A split must never hand
 //      a card its neighbour's weight — this is the "don't break Jessi"
@@ -101,40 +101,41 @@ const CURRENT_ROWS = [
     [ID.legPress, 'Leg Press'],
 ];
 
-const EXPECTED_UPPER = [
-    ['Chest Flies', ID.chestFlies],
-    ['Incline Chest Press', ID.inclinePress],
-    ['Recline Curls', ID.reclineCurls],
-    ['Overhead Tricep Extensions', DROPPED_ID.dips],
+const EXPECTED_ANTERIOR = [
     // Added Aug 2026. Shares the plain `chest-press` literal with the personal
     // app — no id collision in either, so no `actual-` prefix.
     ['Chest Press', 'chest-press'],
-    ['Lateral Raises', DROPPED_ID.lateralRaises],
+    ['Incline Chest Press', ID.inclinePress],
+    ['Chest Flies', ID.chestFlies],
     ['Shoulder Press', ID.shoulderPress],
-    ['Frontal Plane Pulldowns', ID.frontalPulldowns],
-    ['Transverse Plane Rows', ID.transverseRows],
-    ['Kelso Shrugs', ID.kelsoShrugs],
-    ['Sagittal Plane Pulldowns', ID.sagittalPulldowns],
+    ['Lateral Raises', DROPPED_ID.lateralRaises],
+    ['Overhead Tricep Extensions', DROPPED_ID.dips],
     ['Tricep Extensions', ID.tricepExt],
-    ['Preacher Curls', 'actual-preacher-curls'],
-];
-
-const EXPECTED_LOWER = [
-    // Opens Lower as of Aug 2026, having come up off the end of the day in two
-    // steps. It keeps its recovered id through both moves — a reorder must not
-    // mint a fresh one.
-    ['Back Extensions', ID.backExtensions],
+    // Wrist flexors here, extensors on Posterior. Both keep the ids they
+    // reclaimed from history when the Aug 2026 split restored them — changing
+    // day must not mint a fresh id any more than reordering may.
     ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
     ['Ab Crunches', ID.abCrunches],
     ['Leg Extensions', 'actual-leg-extensions'],
-    // Moved ahead of Calf Raises, Aug 2026.
+    // Quad-dominant, so it closes the anterior day. It keeps its recovered id
+    // across the move from Lower — the second place that rule is checked.
+    ['Leg Press', ID.legPress],
+];
+
+const EXPECTED_POSTERIOR = [
+    // Biceps group with the pulling work rather than with the other arms.
+    ['Recline Curls', ID.reclineCurls],
+    ['Frontal Plane Pulldowns', ID.frontalPulldowns],
+    ['Sagittal Plane Pulldowns', ID.sagittalPulldowns],
+    ['Transverse Plane Rows', ID.transverseRows],
+    ['Kelso Shrugs', ID.kelsoShrugs],
+    ['Preacher Curls', 'actual-preacher-curls'],
+    // Keeps its recovered id across the move from Lower.
+    ['Back Extensions', ID.backExtensions],
+    // Adductor magnus is a hip extensor, hence the posterior chain.
     ['Hip Adduction', ID.hipAdduction],
     ['Calf Raises', ID.calfRaises],
-    // Moved to the end of Lower, Aug 2026. It keeps its recovered id through
-    // the move, same as Back Extensions above — a reorder must not mint a
-    // fresh one, and this row is the second place that rule is checked.
-    ['Leg Press', ID.legPress],
 ];
 
 function jessiFullBodyConfig() {
@@ -202,8 +203,8 @@ async function readSaved(page) {
             categories: cfg.categories,
             dayCount: Object.keys(cfg.days).length,
             splitRevision: cfg.splitRevision,
-            upper: pick(1),
-            lower: pick(2),
+            anterior: pick(1),
+            posterior: pick(2),
             gympinMode: cfg.gympinMode,
             repsDropdown: cfg.repsDropdown,
             minimalist: cfg.minimalistPrTracking,
@@ -233,11 +234,11 @@ async function readSaved(page) {
 
         // 1 + 2 + 3 + 4. The split, with every id accounted for.
         eq(saved.dayCount, 2, 'the single Full Body day became two days');
-        eq(saved.categories, ['Upper', 'Lower'], 'categories are Upper and Lower');
-        eq(saved.upper, EXPECTED_UPPER,
-            'Upper holds 12 movements in order, each with the correct id');
-        eq(saved.lower, EXPECTED_LOWER,
-            'Lower holds 8 movements in order, each with the correct id');
+        eq(saved.categories, ['Anterior', 'Posterior'], 'categories are Anterior and Posterior');
+        eq(saved.anterior, EXPECTED_ANTERIOR,
+            'Anterior holds 12 movements in order, each with the correct id');
+        eq(saved.posterior, EXPECTED_POSTERIOR,
+            'Posterior holds 9 movements in order, each with the correct id');
 
         // Called out separately so a failure names the actual problem.
         for (const [name, id] of [
@@ -246,7 +247,7 @@ async function readSaved(page) {
             ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
             ['Cable Wrist Curls', DROPPED_ID.cableWrist],
         ]) {
-            const found = [...saved.upper, ...saved.lower].find(([n]) => n === name);
+            const found = [...saved.anterior, ...saved.posterior].find(([n]) => n === name);
             eq(found && found[1], id,
                 `"${name}" reclaimed its original id from workout history`);
         }
@@ -255,15 +256,22 @@ async function readSaved(page) {
         // it inherits real logged weight via its reclaimed id, and a
         // startingWeight would paper over a failed id recovery with a plausible
         // number instead of an obviously blank field.
-        eq(saved.startingWeights,
-            { 'Chest Press': '100', 'Preacher Curls': '50', 'Leg Extensions': '50' },
+        // Compared as sorted pairs rather than as an object: `eq` is a
+        // JSON.stringify deep-compare, so a plain object literal also pins the
+        // insertion order, which here is just "Anterior first, then Posterior".
+        // That made this assertion fail on the Anterior/Posterior switch purely
+        // because Preacher Curls and Leg Extensions swapped days — a false
+        // positive about nothing. Which day each is on is already asserted by
+        // EXPECTED_ANTERIOR / EXPECTED_POSTERIOR above.
+        eq(Object.entries(saved.startingWeights).sort(),
+            [['Chest Press', '100'], ['Leg Extensions', '50'], ['Preacher Curls', '50']],
             'only the genuinely-new movements carry a startingWeight');
 
         // 5. Schedule.
         eq(saved.schedule.days, [
             ['Monday', 2], ['Tuesday', 1], ['Wednesday', 2], ['Thursday', 1],
             ['Friday', 2], ['Saturday', 1], ['Sunday', 1],
-        ], 'weekday map is Lower on Mon/Wed/Fri, Upper on Tue/Thu/Sat and Sunday');
+        ], 'weekday map is Posterior on Mon/Wed/Fri, Anterior on Tue/Thu/Sat and Sunday');
         eq(saved.schedule.total, 2, 'totalWorkoutDays is 2');
         eq(saved.schedule.explicit, true, 'schedule is explicit so the app opens on today\'s day');
 
@@ -291,8 +299,8 @@ async function readSaved(page) {
             }
             return out;
         });
-        eq(onScreen[1], EXPECTED_UPPER.map(([n]) => n), 'day 1 renders Upper on screen');
-        eq(onScreen[2], EXPECTED_LOWER.map(([n]) => n), 'day 2 renders Lower on screen');
+        eq(onScreen[1], EXPECTED_ANTERIOR.map(([n]) => n), 'day 1 renders Anterior on screen');
+        eq(onScreen[2], EXPECTED_POSTERIOR.map(([n]) => n), 'day 2 renders Posterior on screen');
 
         // 4 (cont). The new movement's weight input is seeded with 50.
         const preacherWeight = await page.evaluate(() => {
@@ -302,7 +310,7 @@ async function readSaved(page) {
             const input = card.querySelector('input[type="number"]');
             return input ? input.value : null;
         });
-        // Day 2 (Lower) is selected after the loop; hop back to Upper.
+        // Day 2 (Posterior) is selected after the loop; hop back to Anterior.
         if (preacherWeight === null) {
             await page.evaluate(() => document.querySelectorAll('.day-btn')[0].click());
             await new Promise(r => setTimeout(r, 300));
@@ -323,7 +331,7 @@ async function readSaved(page) {
                 .filter(c => !Array.from(c.querySelectorAll('button'))
                     .some(b => b.textContent.includes('Weight Breakdown')))
                 .map(c => c.querySelector('.exercise-name')?.textContent?.trim()));
-        eq(missingBreakdown, [], 'every Upper movement keeps its Weight Breakdown button');
+        eq(missingBreakdown, [], 'every Anterior movement keeps its Weight Breakdown button');
 
         // 7. A program that is not Jessi's must be untouched.
         const otherConfig = {
@@ -340,7 +348,7 @@ async function readSaved(page) {
         await loadWith(page, server, otherConfig, []);
         const other = await readSaved(page);
         eq(other.dayCount, 1, 'a non-Jessi program is not split');
-        eq(other.upper.map(([n]) => n), ['Bench Press', 'Squat', 'Deadlift'],
+        eq(other.anterior.map(([n]) => n), ['Bench Press', 'Squat', 'Deadlift'],
             'a non-Jessi program keeps its exercises and order');
         eq(other.splitRevision, undefined, 'a non-Jessi program is not stamped');
 
@@ -408,17 +416,17 @@ async function readSaved(page) {
         await new Promise(r => setTimeout(r, 1800));
 
         const rerun = await readSaved(page);
-        eq(rerun.upper, EXPECTED_UPPER,
-            'a stale-revision split config is re-sorted to the current Upper order');
-        eq(rerun.lower.slice(0, EXPECTED_LOWER.length), EXPECTED_LOWER,
-            'a stale-revision split config is re-sorted to the current Lower order');
-        eq(rerun.lower[EXPECTED_LOWER.length], ['Farmer Carries', 'client-added-1'],
-            'a movement the client added themselves is kept, at the bottom of Lower');
+        eq(rerun.anterior, EXPECTED_ANTERIOR,
+            'a stale-revision split config is re-sorted to the current Anterior order');
+        eq(rerun.posterior.slice(0, EXPECTED_POSTERIOR.length), EXPECTED_POSTERIOR,
+            'a stale-revision split config is re-sorted to the current Posterior order');
+        eq(rerun.posterior[EXPECTED_POSTERIOR.length], ['Farmer Carries', 'client-added-1'],
+            'a movement the client added themselves is kept, at the bottom of Posterior');
         // All of JESSI_NEW_EXERCISES are absent from the seed above, so this
         // is the assertion that a revision bump actually delivers a newly added
         // movement to a device that already took an earlier revision.
-        eq(rerun.startingWeights,
-            { 'Chest Press': '100', 'Preacher Curls': '50', 'Leg Extensions': '50' },
+        eq(Object.entries(rerun.startingWeights).sort(),
+            [['Chest Press', '100'], ['Leg Extensions', '50'], ['Preacher Curls', '50']],
             'movements missing from a stale config are re-added with their startingWeight');
         eq(rerun.splitRevision, currentSplitRevision(),
             're-run stamps the current splitRevision');
@@ -430,7 +438,7 @@ async function readSaved(page) {
             're-run does NOT overwrite a schedule the client has customised');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: the Upper/Lower split reaches a signed-in device, ids intact.');
+        console.log('PASS: the Anterior/Posterior split reaches a signed-in device, ids intact.');
     } finally {
         await browser.close();
         await server.stop();
