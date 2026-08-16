@@ -41,7 +41,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'posterior');
 
         const cards = await readCards(page);
         const frontal = cards.find(c => c.name === 'Frontal Plane Pulldowns');

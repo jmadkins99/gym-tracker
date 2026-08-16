@@ -74,7 +74,7 @@ function extractLiteral(source, name) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
 
         const interacted = await page.evaluate(() => {
             const card = Array.from(document.querySelectorAll('.exercise-card'))

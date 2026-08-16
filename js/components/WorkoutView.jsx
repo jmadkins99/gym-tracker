@@ -627,8 +627,8 @@
             return (
                 <>
                     <div data-day-type-toggle style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                        {dayTypeButton('upper', 'Upper')}
-                        {dayTypeButton('lower', 'Lower')}
+                        {dayTypeButton('anterior', 'Anterior')}
+                        {dayTypeButton('posterior', 'Posterior')}
                     </div>
 
                     {mainExercises.map(renderExercise)}

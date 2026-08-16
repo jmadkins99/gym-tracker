@@ -34,7 +34,7 @@
                                 day's boundary — moveExercise refuses to swap
                                 across it, so an arrow that looked enabled there
                                 would silently do nothing. */}
-                            {[['upper', 'Upper'], ['lower', 'Lower']].map(([dayKey, dayLabel]) => {
+                            {[['anterior', 'Anterior'], ['posterior', 'Posterior']].map(([dayKey, dayLabel]) => {
                               const dayExercises = exercises.filter(e => e.day === dayKey);
                               if (dayExercises.length === 0) return null;
                               return (

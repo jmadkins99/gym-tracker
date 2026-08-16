@@ -8,28 +8,52 @@ the user actually sees.
 
 ```bash
 cd tests
-bash run.sh
+bash run.sh                # everything
+bash run.sh 42             # just case 42
+bash run.sh personal-app   # just the personal-app cases
 ```
 
-First run installs `puppeteer-core` (the only dependency) into
-`tests/node_modules`. Subsequent runs skip the install and just execute.
+The argument is a substring match on the case name. A filtered run says
+so in its header and footer, so it can't be mistaken for a full one.
 
-Expected output on a healthy codebase:
-
-```
-▶ 01-public-app-migration ... PASS
-▶ 02-public-app-default-matches-last ... PASS
-▶ 03-personal-app-default-matches-last ... PASS
-▶ 04-weighted-dips-plate-loaded ... PASS
-▶ 05-personal-app-split-positions ... PASS
-
-================================================
-  5 / 5 passed
-================================================
-```
+First run installs the dependencies into `tests/node_modules`.
+Subsequent runs skip the install and just execute.
 
 A failing test dumps its full output indented under the test name so
 you can read the assertion error and stack trace inline.
+
+### Requirements
+
+- **Chrome or Chromium.** `puppeteer-core` never downloads a browser of
+  its own. `lib/browser.js` checks the usual system paths plus
+  Playwright's cache at `/opt/pw-browsers/chromium`; set `CHROME_PATH`
+  if yours is somewhere else.
+- **The public app**, cloned as a sibling of this repo, for the
+  `*-public-app-*` cases:
+  `git clone git@github.com:jmadkins99/public-gym-app.git` next to
+  `gym-tracker`. Without it those cases fail with "Could not find the
+  public app"; the personal-app cases are unaffected, so
+  `bash run.sh personal-app` is the useful run in that state.
+- **No network at run time.** React, ReactDOM and `@babel/standalone`
+  come from `tests/node_modules` — see below.
+
+### Why tests/node_modules holds React
+
+Both apps load React and Babel from `unpkg.com` in a plain `<script>`
+tag. That is fine on a phone, but it makes the suite depend on a
+third-party CDN, and sandboxed CI containers often block that egress —
+in which case every browser case dies at `waitForApp` with nothing but
+a selector timeout to explain it.
+
+`lib/cdn.js` intercepts those three requests and answers them from
+`node_modules`. `index.html` keeps its CDN tags, so production is
+untouched and the suite is hermetic.
+
+The versions in `package.json` must track what `index.html` asks for.
+`react` is pinned to `^18` because React 19 dropped the UMD builds
+entirely; `@babel/standalone` to `^7` because it has since moved to 8.x
+while `index.html` still requests 7. Serving a version the live app
+does not use would make the suite lie about what ships.
 
 ## Auto-run on push
 
@@ -64,13 +88,36 @@ reclassifications) is now locked down by at least one test.
 
 ## What each test covers
 
+Every case file opens with a `// What this test covers` header explaining
+its invariant and, usually, the mutation that proves it real. Read that
+first — it is what tells you whether a failure is a regression or an
+intentional behaviour change. Rather than duplicate all of them here,
+what follows is a map of the ones you are most likely to touch.
+
+**The Anterior/Posterior split** (August 2026, replacing Upper/Lower):
+
 | File | Covers |
 |---|---|
-| `01-public-app-migration.js` | Jessi's `migrateJessiToTorsoLimbs` reshuffles her saved exerciseConfig into the canonical Torso/Limbs layout when bumped. |
-| `02-public-app-default-matches-last.js` | The day-filter regression on Jessi's app — default weight tracks the most-recent session for an exercise, not stale data from a prior split era on the same `day` slot. |
-| `03-personal-app-default-matches-last.js` | Same regression on the personal app. |
-| `04-weighted-dips-plate-loaded.js` | Weighted Dips is classified as plate-loaded, not pin-stack: the Weight Breakdown popover shows per-plate counts, not just two warmup percentages. |
-| `05-personal-app-split-positions.js` | The canonical Torso/Limbs exercise order on the personal app. Catches accidental reordering or day reassignments. |
+| `50-…-anterior-posterior-roster.js` | The canonical roster, parsed straight out of `config.js`. Every id's day, both days' order, `category`/`day` agreement, dense `order`. No browser — run this one first, it takes under a second. |
+| `42-…-anterior-posterior-split.js` | What a **fresh install** renders: 12 Anterior, 9 Posterior, toggle order, weekday default, retired day types gone. |
+| `43-…-anterior-posterior-config-migration.js` | What a **saved config** becomes: a 19-id Full Body config reconciled onto the new layout, renames preserved, retired ids dropped, idempotent. |
+| `54-…-v13-to-v14-day-reassignment.js` | That the **version bump** is what delivers it. The only case that catches a forgotten `EXERCISE_CONFIG_VERSION` bump — 42 and 43 both pass without it. |
+| `51-…-weekday-default-map.js` | All seven weekdays map to the right day type, not just today's. |
+| `52-…-legacy-day-labels.js` | Aug-2026 `day: 'upper'`/`'lower'` history keeps its own labels and rosters. History is never migrated. |
+| `55-…-day-toggle-and-settings-order.js` | The toggle and the Settings grouping agree with the roster, and the reorder arrows stop at the day boundary. |
+| `23` / `53` | Logging a full Anterior / Posterior day through the real UI. The pair is what stops the day stamp being hardcoded. |
+| `44-…-weekly-view-eras.js` | Weekly and Edit render every era at once: current Anterior, a workout predating a day reassignment, legacy Upper, legacy Cardio, pre-split Full Body. |
+| `40-…-config-version-reorder.js` | A code-side reorder reaches a saved config, and an in-app Settings reorder survives reload. |
+
+**Jessi's app** — the `*-public-app-*` cases. Her program is a separate
+codebase in the sibling repo with its own exercise ids and its own
+migration chain; `41` and `33` are the ones that pin her split.
+
+Everything else is per-feature: weight breakdowns and plate/pin
+classification (`07`, `08`, `13`, `16`, `26`, `28`, `45`, `46`), PR
+streaks (`47`, `48`, `49`), cardio-era history (`21`, `22`, `24`),
+storage and hydration (`34`, `35`, `36`, `38`), and the day-filter
+regression that started all this (`02`, `03`).
 
 ## How to add a new test
 

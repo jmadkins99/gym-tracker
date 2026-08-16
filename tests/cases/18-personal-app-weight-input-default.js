@@ -32,9 +32,12 @@ function extractObjectLiteral(source, name) {
         path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
     const WEEK_1_DEFAULTS = extractObjectLiteral(configSrc, 'WEEK_1_DEFAULTS');
 
+    // The two land on opposite days under the Anterior/Posterior split, so each
+    // carries the day its card renders on. They were both Upper beforehand,
+    // which is why this used to be a plain name/id pair.
     const NEW_EXERCISES = [
-        { name: 'Recline Curls', id: 'curls-shoulder-extension' },
-        { name: 'Overhead Tricep Extensions', id: 'overhead-tricep-extensions' },
+        { name: 'Recline Curls', id: 'curls-shoulder-extension', day: 'posterior' },
+        { name: 'Overhead Tricep Extensions', id: 'overhead-tricep-extensions', day: 'anterior' },
     ];
 
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -58,19 +61,19 @@ function extractObjectLiteral(source, name) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
 
         const weekText = await page.evaluate(() =>
             document.querySelector('.week-indicator')?.textContent || '');
         ok(/Week\s+(?:[2-9]|\d\d+)/.test(weekText),
             `app is past Week 1 (indicator: "${weekText}")`);
 
-        const cards = await readCards(page);
-        for (const { name, id } of NEW_EXERCISES) {
+        for (const { name, id, day } of NEW_EXERCISES) {
             const expected = WEEK_1_DEFAULTS[id];
             ok(expected, `${id} has a WEEK_1_DEFAULTS entry to test against`);
-            const card = cards.find(c => c.name === name);
-            ok(card, `card "${name}" is rendered`);
+            await selectDayType(page, day);
+            const card = (await readCards(page)).find(c => c.name === name);
+            ok(card, `card "${name}" is rendered on ${day}`);
             eq(card.weightValue, expected,
                 `"${name}" weight input pre-fills its default (${expected}) with no history`);
         }

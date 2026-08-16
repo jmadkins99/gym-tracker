@@ -57,7 +57,7 @@ async function readStandardCard(page, name) {
         await page.evaluate(() => localStorage.setItem('gym-local:firstWorkoutMonday', '2026-05-25T00:00:00.000Z'));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'upper');
+        await selectDayType(page, 'anterior');
 
         // Reps is now a dropdown of exactly 3/4/5/6.
         const sp = await readStandardCard(page, 'Shoulder Press');
@@ -66,16 +66,22 @@ async function readStandardCard(page, name) {
         eq(sp.repsValue, '5', 'reps carries over last session (5), not +1');
         eq(sp.weightValue, '100', 'weight carries over (no bump after 5 reps)');
 
-        // Kelso Shrugs hit 6 last time -> weight bumps (+1.25 -> 191.25), reps -> 4.
-        const ks = await readStandardCard(page, 'Kelso Shrugs');
-        eq(ks.repsValue, '4', 'after hitting 6, reps reset to 4 for the new weight');
-        eq(ks.weightValue, '191.25', 'after hitting 6, weight auto-bumps by the PR increment');
-
         // A never-logged exercise defaults to 4.
         const cf = await readStandardCard(page, 'Chest Flies');
         eq(cf.repsValue, '4', 'no-history exercise defaults reps to 4');
 
+        // Kelso Shrugs hit 6 last time -> weight bumps (+1.25 -> 191.25), reps -> 4.
+        // It is the one probe here that sits on Posterior, so hop the toggle
+        // for it. Keeping Kelso Shrugs specifically matters: the expected
+        // 190 -> 191.25 bump is its own PR increment, so substituting an
+        // Anterior movement to save the hop would change what is covered.
+        await selectDayType(page, 'posterior');
+        const ks = await readStandardCard(page, 'Kelso Shrugs');
+        eq(ks.repsValue, '4', 'after hitting 6, reps reset to 4 for the new weight');
+        eq(ks.weightValue, '191.25', 'after hitting 6, weight auto-bumps by the PR increment');
+
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.
+        await selectDayType(page, 'anterior');
         await page.evaluate(() => {
             const card = Array.from(document.querySelectorAll('.exercise-card'))
                 .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Shoulder Press');
