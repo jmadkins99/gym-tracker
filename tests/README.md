@@ -11,7 +11,21 @@ cd tests
 bash run.sh                # everything
 bash run.sh 42             # just case 42
 bash run.sh personal-app   # just the personal-app cases
+TEST_JOBS=1 bash run.sh 42 # one at a time (see below)
 ```
+
+Cases run **6 at a time**. The full suite takes about **2 minutes**;
+sequentially it took about 8.5. Results are reported in filename order
+however they finish, so two runs are diffable, and each case's output is
+buffered and printed whole so a failure's diagnostics never interleave
+with another case's.
+
+`TEST_JOBS=n` changes the concurrency. Measured on a 16-core Windows box:
+6 jobs took 121s, 10 took 107s, and 14 took 114s *and* failed a case with
+`net::ERR_NO_BUFFER_SPACE` — socket exhaustion, not a test bug. The
+default is deliberately below that ceiling rather than at it. `TEST_JOBS=1`
+restores strictly sequential behaviour, which is what to reach for if a
+failure looks timing-dependent and you want to rule concurrency out.
 
 The argument is a substring match on the case name. A filtered run says
 so in its header and footer, so it can't be mistaken for a full one.
@@ -232,5 +246,10 @@ of integration tests against a vanilla HTML app, plain Node scripts
 with `process.exit(1)` on failure is simpler, easier to read, and has
 zero magic. You can grep the code to know exactly what it does.
 
-The day this directory has 30+ tests and you need parallelization or
-fancy reporting, swap to a framework. Until then, keep it boring.
+That call still holds at 57 cases. The prediction attached to it — that
+parallelization would be the thing that forced a framework — turned out
+to be wrong: `run.sh` runs cases concurrently in about 30 lines of bash,
+because the suite was already built for it (own server on a free port,
+own Chrome profile, no disk writes, no ordering between cases). Reach
+for a framework when you want something a framework actually gives you,
+like fixtures or sharding across machines.

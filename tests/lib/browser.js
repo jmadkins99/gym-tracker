@@ -37,10 +37,20 @@ function findChrome() {
 }
 
 async function launch() {
+    // Deliberately NO userDataDir. Puppeteer then creates a fresh temp profile
+    // per launch, which is what keeps concurrent cases from sharing the
+    // `gym-local:` localStorage namespace — run.sh runs several at once. Setting
+    // a fixed userDataDir here (a tempting way to shave launch time) would make
+    // parallel runs silently nondeterministic rather than failing outright.
+    // Cases also land on different ports, so they are different origins too;
+    // that is a second layer, not the one to rely on.
     const browser = await puppeteer.launch({
         executablePath: findChrome(),
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        // --disable-dev-shm-usage: containers default /dev/shm to 64 MB SHARED
+        // across every concurrent Chrome, and renderers crash in ways that read
+        // as random flakes. Costs nothing outside a container.
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
     // Every case builds its page with browser.newPage(), so wrapping it here
     // installs the CDN shim suite-wide without touching a single case file.
