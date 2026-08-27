@@ -80,9 +80,9 @@ async function breakdownText(page, name, weight) {
 
         const gympin = await page.evaluate(() => {
             const raw = localStorage.getItem('gym-local:gymExerciseConfig');
-            return raw ? JSON.parse(raw).gympinMode : null;
+            return raw ? !!JSON.parse(raw) : null;
         });
-        eq(gympin, true, 'gympinMode auto-enabled for Full Body install');
+        eq(gympin, true, 'a config is persisted for the Full Body install');
 
         // Back Extensions (two-sided) at 250: W1 87.5 -> 90 (up), W2 112.5 -> 110, top 125 exact.
         // The two-sided fixture was Incline Chest Press, then Leg Press. Aug

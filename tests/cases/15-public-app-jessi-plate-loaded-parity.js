@@ -77,12 +77,12 @@ async function readCard(page, name) {
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1500));
 
-        // Sanity: gympinMode auto-enabled.
+        // Sanity: a config was persisted for this install.
         const persisted = await page.evaluate(() => {
             const raw = localStorage.getItem('gym-local:gymExerciseConfig');
-            return raw ? JSON.parse(raw).gympinMode : null;
+            return raw ? !!JSON.parse(raw) : null;
         });
-        eq(persisted, true, 'gympinMode auto-enabled for Jessi-shaped install');
+        eq(persisted, true, 'a config is persisted for the Jessi-shaped install');
 
         // Full Body program — single day, no selector to click.
 

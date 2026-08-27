@@ -67,7 +67,10 @@ async function seedPublicApp(page, { exerciseConfig, workoutHistory, schedule, n
         localStorage.removeItem(ns + 'jessiTLMigrationApplied4');
         localStorage.removeItem(ns + 'jessiTLMigrationApplied3');
         localStorage.removeItem(ns + 'jessiAPMigrationApplied');
-        // Auto-enable of gympinMode for AP/TL/FB configs is its own one-shot.
+        // jessiGympinEnabled was the one-shot that turned the Weight Breakdown
+        // on for AP/TL/FB configs. The breakdown is unconditional as of Aug
+        // 2026 and the flag is gone; still cleared here so seeding a device
+        // that ran the old build leaves no stale key behind.
         localStorage.removeItem(ns + 'jessiGympinEnabled');
     }, ns, exerciseConfig || null, workoutHistory || null, schedule || null);
 }

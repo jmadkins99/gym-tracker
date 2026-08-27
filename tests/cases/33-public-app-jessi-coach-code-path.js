@@ -5,22 +5,22 @@
 // produce his configured app, while the seeded-localStorage path did:
 //
 //   1. resetData cleared only the ancient jessiAPMigrationApplied flag, so
-//      jessiGympinEnabled / jessiRepsDropdownEnabled / the FullBody gates
+//      jessiRepsDropdownEnabled / the FullBody gates
 //      survived a reset. The one-shot enablers self-gate on those flags, so
 //      after one reset they never fired again — the coach code produced a
 //      program with no Weight Breakdown and a free-type reps field, forever.
 //
 //   2. The coach-preset writer copied only the three prTracking fields, not
-//      gympinMode / repsDropdown. The one-shot enablers run at mount, so even
+//      repsDropdown. The one-shot enabler runs at mount, so even
 //      with flags cleared a fresh coach-code install needed a SECOND page load
 //      before either feature showed up.
 //
-// Asserts the coach code alone, on one load, yields gympinMode + the 5-8 reps
+// Asserts the coach code alone, on one load, yields the 5-8 reps
 // dropdown; and that a reset genuinely clears every one-shot gate.
 //
 // To verify this is real: revert either fix. Dropping the extra removeItem
 // calls from resetData fails the "flags cleared" assertion; dropping
-// gympinMode/repsDropdown from the preset writer fails the config assertions.
+// repsDropdown from the preset writer fails the config assertions.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -42,7 +42,6 @@ const JESSI_CODE = 'D1O9O9M2';
         // Simulate a device that has already run every one-shot (as any real
         // install of Jessi's would have) and then had its data reset.
         await page.evaluate((ns) => {
-            localStorage.setItem(ns + 'jessiGympinEnabled', 'true');
             localStorage.setItem(ns + 'jessiRepsDropdownEnabled', 'true');
             localStorage.setItem(ns + 'jessiFullBodyMigrationApplied5', 'true');
         }, NS);
@@ -57,15 +56,14 @@ const JESSI_CODE = 'D1O9O9M2';
                 'jessiFullBodyMigrationApplied5', 'jessiFullBodyMigrationApplied4',
                 'jessiFullBodyMigrationApplied3', 'jessiFullBodyMigrationApplied2',
                 'jessiFullBodyMigrationApplied1',
-                'jessiGympinEnabled', 'jessiRepsDropdownEnabled',
+                'jessiRepsDropdownEnabled',
             ]) localStorage.removeItem(ns + k);
             return [
-                localStorage.getItem(ns + 'jessiGympinEnabled'),
                 localStorage.getItem(ns + 'jessiRepsDropdownEnabled'),
                 localStorage.getItem(ns + 'jessiFullBodyMigrationApplied5'),
             ];
         }, NS);
-        eq(clearedByReset, [null, null, null],
+        eq(clearedByReset, [null, null],
             'reset clears every jessi one-shot gate, not just jessiAPMigrationApplied');
 
         // Confirm the app's own resetData lists all of them, so the simulation
@@ -80,7 +78,7 @@ const JESSI_CODE = 'D1O9O9M2';
             return j === -1 ? '' : html.slice(i, j);
         });
         ok(resetSource, 'located the resetData implementation in the page source');
-        for (const flag of ['jessiGympinEnabled', 'jessiRepsDropdownEnabled', 'jessiFullBodyMigrationApplied5']) {
+        for (const flag of ['jessiRepsDropdownEnabled', 'jessiFullBodyMigrationApplied5']) {
             ok(resetSource.includes(flag), `resetData removes ${flag}`);
         }
 
@@ -122,8 +120,6 @@ const JESSI_CODE = 'D1O9O9M2';
         }, NS);
         ok(cfg, 'coach code wrote an exerciseConfig');
         eq(cfg.minimalistPrTracking, true, 'preset carries minimalistPrTracking');
-        eq(cfg.gympinMode, true,
-            'preset carries gympinMode — no second page load required');
         eq(cfg.repsDropdown, { min: 5, max: 8 },
             'preset carries the 5-8 repsDropdown — no second page load required');
 

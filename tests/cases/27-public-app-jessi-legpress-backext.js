@@ -101,12 +101,12 @@ async function readCard(page, name) {
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1500));
 
-        // Sanity: gympinMode auto-enabled for the Full Body (Jessi-shaped) install.
+        // Sanity: a config was persisted for the Full Body (Jessi-shaped) install.
         const persisted = await page.evaluate(() => {
             const raw = localStorage.getItem('gym-local:gymExerciseConfig');
-            return raw ? JSON.parse(raw).gympinMode : null;
+            return raw ? !!JSON.parse(raw) : null;
         });
-        eq(persisted, true, 'gympinMode auto-enabled for Jessi-shaped install');
+        eq(persisted, true, 'a config is persisted for the Jessi-shaped install');
 
         // --- Leg Press: two-sided plate-loaded (a pin stack for part of Aug 2026) ---
         ok(await clickBreakdown(page, 'Leg Press'),

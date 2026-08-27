@@ -139,6 +139,20 @@ Note that `16` is weaker than it looks now: with every exercise carrying a
 browser half only catches a card rendering no button at all. Its teeth are
 the source-level check that every entry declares a legal type.
 
+**On Jessi's app** the same setting arrived a few days later, with two
+differences worth knowing. The Weight Breakdown is no longer gated: it used
+to be hidden behind an `exerciseConfig.gympinMode` flag that only she had, and
+that flag, its `?gympin=on` URL toggle and its one-shot enabler are gone —
+`09-…-breakdown-for-everyone.js` now guards the opposite property, including
+that a stale `gympinMode: false` in a restored backup cannot suppress it.
+(`09-…-gympin-gated.js` and `11-…-gympin-auto-enable.js` were deleted; the
+`gympin` still in some filenames and `data-` attributes is vestigial.) And
+because anyone can type their own exercise name, the name-based
+`getWeightBreakdownConfig` survives as the **default** rather than the
+authority — `62-…-load-type-changes-breakdown.js` is the public-app twin of
+`58`, and covers both a movement the rules recognise and one they have never
+seen.
+
 ## How to add a new test
 
 1. Create `cases/06-something-meaningful.js`. Use an existing case as a

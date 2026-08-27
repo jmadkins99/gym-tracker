@@ -50,16 +50,17 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
             schedule: jessiDefaultSchedule(),
         });
 
-        // Auto-enable should flip gympinMode on without any URL param since
+        // The breakdown is unconditional now; this used to check the one-shot
+        // that flipped gympinMode on without a URL param since
         // categories are Torso/Limbs (Jessi-shaped install).
         await page.reload({ waitUntil: 'networkidle0' });
         await new Promise(r => setTimeout(r, 1500));
 
         const persisted = await page.evaluate(() => {
             const raw = localStorage.getItem('gym-local:gymExerciseConfig');
-            return raw ? JSON.parse(raw).gympinMode : null;
+            return raw ? !!JSON.parse(raw) : null;
         });
-        eq(persisted, true, 'gympinMode auto-enabled for Jessi-shaped install');
+        eq(persisted, true, 'a config is persisted for the Jessi-shaped install');
 
         // Day 1 (Torso) should already be the default. Click the Kelso card's
         // Weight Breakdown button.
@@ -74,7 +75,7 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
             }
             return false;
         });
-        ok(clicked, 'Kelso Shrugs card shows the Weight Breakdown button under gympinMode');
+        ok(clicked, 'Kelso Shrugs card shows the Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));
 
         const text = await page.evaluate(() => {
@@ -104,7 +105,7 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
         ok(/10s - 1/.test(text), 'plate breakdown lists a 10 lb plate');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: public-app gympinMode renders Kelso Shrugs plate-loaded breakdown at 215 lbs.');
+        console.log('PASS: public-app renders Kelso Shrugs plate-loaded breakdown at 215 lbs.');
     } finally {
         await browser.close();
         await server.stop();

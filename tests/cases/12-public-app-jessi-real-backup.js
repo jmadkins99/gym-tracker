@@ -9,7 +9,7 @@
 //      Torso/Limbs into a single day.
 //   2. Three dropped movements (Cable Lateral Raises, Reverse Wrist
 //      Curls, Cable Wrist Curls) are gone from the active program.
-//   3. Auto-enable of gympinMode triggers (his categories are now FB).
+//   3. The Weight Breakdown renders (it is unconditional as of Aug 2026).
 //   4. Every retained exercise that we expect to classify shows the
 //      Weight Breakdown button.
 //   5. Kelso Shrugs renders the overflow panel correctly at 215 lbs.
@@ -72,16 +72,12 @@ const DROPPED_NAMES = [
             const cfgRaw = localStorage.getItem('gym-local:gymExerciseConfig');
             const cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
             return {
-                gympinMode: cfg.gympinMode,
                 fbFlag: localStorage.getItem('gym-local:jessiFullBodyMigrationApplied5'),
-                gympinFlag: localStorage.getItem('gym-local:jessiGympinEnabled'),
                 day1: (cfg.days?.[1] || []).map(e => e.name),
                 day2Exists: !!cfg.days?.[2],
                 categories: cfg.categories,
             };
         });
-        eq(state.gympinMode, true, 'gympinMode auto-enabled on Jessi-shaped install');
-        eq(state.gympinFlag, 'true', 'jessiGympinEnabled flag set so auto-enable does not re-fire');
         eq(state.fbFlag, 'true',     'Full Body migration ran (flag4 set)');
         eq(state.day2Exists, false,  'no day 2 — single Full Body day only');
         eq(state.categories, ['Full Body'], 'categories collapsed to ["Full Body"]');
