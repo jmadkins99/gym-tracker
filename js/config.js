@@ -72,81 +72,70 @@
             'actual-leg-extensions': 1.25
         };
 
-        // Plate-loaded exercises configuration
-        // Defines which exercises show the "Weight Breakdown" button
-        // type: 'one-sided' or 'two-sided'
-        // machineWeight: starting weight of the machine (usually 0 for plate-loaded)
-        const PLATE_LOADED_EXERCISES = {
-            'preacher-curls': { type: 'one-sided', machineWeight: 0 },
-            // Back Extensions moved from a single-plate station to a two-side
-            // plate-loaded one (Aug 2026), so the logged number is now the
-            // total across both arms and the breakdown halves it. Its PR
-            // increment was already 5 (= 2.5/side, the smallest real plate),
-            // which is the correct two-sided step, so it needs no change.
-            // Tests 26 and 28 run their per-side coverage against it.
-            'leg-curls': { type: 'two-sided', machineWeight: 0 },
-            // Leg Press (the id renders as "Leg Press" — see DEFAULT_EXERCISES)
-            // is back to two-side plate-loaded. It was briefly registered as a
-            // pin stack in Aug 2026, when the gym looked to have swapped the
-            // plate sled for a stack machine; that turned out not to hold, so
-            // the classification is reverted here along with the 390 cap that
-            // came with it. Its PR increment stays 5 — that is 2.5/side, the
-            // smallest real plate, which is why the number survived both moves
-            // untouched. Test 46 pins this style; nothing in localStorage
-            // changes, so no config-version bump is involved.
-            'hip-adduction': { type: 'two-sided', machineWeight: 0 },
-            'hammer-row': { type: 'one-sided', machineWeight: 0 },
-            'upper-back-row': { type: 'one-sided', machineWeight: 0 },
-            'kelso-shrugs': { type: 'one-sided', machineWeight: 0 }
+        // How a machine is loaded, and therefore which shape the Weight
+        // Breakdown renders. This is a USER setting: every exercise carries a
+        // `loadType` in the saved config (see DEFAULT_EXERCISES below for the
+        // seed values, and the dropdown in Settings > Manage Exercises), because
+        // whether a machine has a pin stack is a fact about Josh's gym, not
+        // about the program.
+        //
+        // It replaced two id-keyed maps, PLATE_LOADED_EXERCISES and
+        // PIN_STACK_EXERCISES (Aug 2026). Those could disagree — WorkoutView
+        // branched on the pin map FIRST, so an id in both silently rendered as a
+        // stack — which is why the old maps needed cross-checking tests. One
+        // enum cannot contradict itself, so those checks are gone rather than
+        // translated. `machineWeight: 0` went with them: it sat on every
+        // plate-loaded entry and no code ever read it, the same way
+        // `overflowPlateMode` was dropped from the pin map.
+        const LOAD_TYPES = ['pin', 'plate-one-sided', 'plate-two-sided'];
+
+        // Hard ceilings on pin stacks, keyed by id. Above the cap the breakdown
+        // renders "pin at max + loose plates" for the excess. Deliberately NOT
+        // part of loadType and NOT user-editable: a cap is a property of one
+        // specific machine, not a way of loading one, and only one machine in
+        // the program has a known ceiling. Applies only when loadType is 'pin';
+        // ignored otherwise, so a cap left behind on a reclassified exercise is
+        // inert rather than wrong. Test 16 fails on a cap naming a non-pin id.
+        //
+        // Cable Wrist Curls was capped at 97.5 until Aug 2026, when the user
+        // moved to a different cable machine whose working weights are nowhere
+        // near its ceiling — uncapped since, and its max does not matter until
+        // it is approached. Leg Press was briefly capped at 390 in the same
+        // period, when the gym looked to have swapped its plate sled for a
+        // stack; that turned out not to hold. Calf Raises has always been a
+        // different machine, close number notwithstanding.
+        const PIN_STACK_CAPS = {
+            'calf-raise': 405
         };
 
-        // Pin-stack exercises configuration
-        // These machines use weight stacks with 5 lb increments
-        // Can add micro-plates (1.25, 2.5, or 3.75) on top of the pin
-        // Value `true`         — plain pin stack, no cap (or cap not yet known)
-        // Value `{ maxPin }`   — pin stack with a hard cap; weights above
-        //   `maxPin` show "pin at max + plate breakdown" for the excess.
+        // The effective loading type for an exercise. Falls back to the code
+        // seed by id, then to 'pin'. The fallback is load-bearing on the import
+        // path: App.jsx sets `exercises` straight from a backup file, so a
+        // backup written before v15 carries no `loadType` at all until the next
+        // reload runs migrateExerciseConfig. Reading `exercise.loadType`
+        // directly would render an empty breakdown for that whole session.
+        function resolveLoadType(exercise) {
+            if (exercise && LOAD_TYPES.includes(exercise.loadType)) return exercise.loadType;
+            const seed = DEFAULT_EXERCISES.find(e => e.id === (exercise && exercise.id));
+            return (seed && seed.loadType) || 'pin';
+        }
+
+        // A two-sided machine splits the increment across both sides, so the
+        // total has to land on a real plate: 1.25 would be 0.625/side, which
+        // does not exist. 2.5 and 5 already halve legally (1.25 and 2.5/side)
+        // and are passed through untouched — the bump is minimal, not a floor.
         //
-        // There is no per-side notion here, unlike PLATE_LOADED_EXERCISES: a
-        // stack is one stack, and the supplemental plates in overflow mode go
-        // in one place on top of it. An `overflowPlateMode` field used to be
-        // written alongside `maxPin`, but no code ever read it, so it was
-        // dropped (Aug 2026) rather than wired up. If a capped machine ever
-        // turns out to have two separate spots to hang overflow plates, that
-        // is the point to reintroduce it — and calculatePinStackBreakdown in
-        // plateauLogic.js is the only place that would need to change.
-        const PIN_STACK_EXERCISES = {
-            'curls-shoulder-extension': true,
-            'overhead-tricep-extensions': true,
-            'chest-flies': true,
-            'chest-press': true,
-            // Both moved off PLATE_LOADED_EXERCISES (were two-sided) in Aug
-            // 2026 — the breakdown display changes, logged weights do not.
-            // Their PR increments stay 2.5, a legal micro-plate step.
-            'incline-chest-press': true,
-            'shoulder-press': true,
-            'tricep-pushdown': true,
-            'lateral-raises': true,
-            'frontal-pulldowns': true,
-            'leg-extensions': true,
-            'calf-raise': { maxPin: 405 },
-            'ab-crunch': true,
-            // Was capped at 97.5 until Aug 2026, when the user moved to a
-            // different cable machine whose working weights are nowhere near
-            // its ceiling. Back to `true`: the new stack's max is unknown and
-            // does not matter until it's approached.
-            'cable-wrist-curls': true,
-            // `hip-adduction` (Leg Press) lived here briefly in Aug 2026, capped
-            // at 390. It is back on PLATE_LOADED_EXERCISES as two-sided, so it
-            // must NOT be listed here as well: WorkoutView branches on
-            // `isPinStack` FIRST, so a stale entry here would silently shadow
-            // the plate-loaded branch and the machine would keep rendering as a
-            // stack. Test 46 asserts its absence for exactly that reason. Calf
-            // Raises above keeps its own 405 cap — that was always a different
-            // machine, close number notwithstanding.
-            'reverse-wrist-curls': true,
-            'actual-leg-extensions': true
-        };
+        // Derived rather than stored on purpose. Persisting a second, adjusted
+        // increment would mean a second user-owned field for migrateExerciseConfig
+        // to preserve, and switching an exercise back to a stack would leave the
+        // coarsened step behind. Computing it per read means the raw number in
+        // PR_WEIGHT_INCREMENTS stays the single source of truth.
+        function getWeightIncrement(exerciseId, loadType) {
+            const base = PR_WEIGHT_INCREMENTS[exerciseId];
+            if (base === undefined) return undefined;
+            if (loadType === 'plate-two-sided' && (base / 2) % 1.25 !== 0) return base * 2;
+            return base;
+        }
 
         // Bump to push a code-side reorder (or a newly added/removed exercise)
         // out to devices that already have a saved config. migrateExerciseConfig
@@ -188,9 +177,20 @@
         // sends Leg Press the other way, from behind Leg Extensions to the very
         // end of Lower — a fourth pure reorder, so once again the bump is the
         // entire delivery mechanism. (The plate-loaded revert that shipped just
-        // before it needed no version at all: PLATE_LOADED_EXERCISES is read
-        // live on every render and never touches the saved config.)
-        const EXERCISE_CONFIG_VERSION = 14;
+        // before it needed no version at all: PLATE_LOADED_EXERCISES was read
+        // live on every render and never touched the saved config.)
+        //
+        // 15 adds `loadType` to every exercise, and it is the bump that reverses
+        // the parenthesis above. Classification used to cost nothing to change
+        // because it lived in code the render read directly; it is saved state
+        // now, so from here on a reclassification is a migration problem and
+        // reaching an existing device needs this constant. The id set is again
+        // identical, so the version is the entire delivery mechanism — but note
+        // the asymmetry with every bump before it: `loadType` is USER-owned like
+        // `name`, so migrateExerciseConfig preserves the saved value instead of
+        // overwriting it from defaults. Seeding it from the old maps is what
+        // makes the upgrade invisible; case 59 is the pin on it surviving.
+        const EXERCISE_CONFIG_VERSION = 15;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -217,50 +217,50 @@
         // list. All three orderings are independent — keep them in step.
         const DEFAULT_EXERCISES = [
             // --- Anterior (Tue / Thu / Sat, and Sun by default) ---
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Anterior', day: 'anterior', type: 'standard', order: 0 },
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 0 },
             // Takes the plain `chest-press` id above — no existing id was
             // squatting on it, unlike the leg-extensions case below, so there is
             // no need for an `actual-` prefix there.
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Anterior', day: 'anterior', type: 'standard', order: 1 },
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Anterior', day: 'anterior', type: 'standard', order: 2 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', order: 3 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', order: 4 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', order: 5 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', order: 6 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 1 },
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 2 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 3 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 5 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
             // The wrist pair splits by anatomy: flexors here, extensors on
             // Posterior. They sat on the same day under Upper/Lower.
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Anterior', day: 'anterior', type: 'standard', order: 7 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Anterior', day: 'anterior', type: 'standard', order: 8 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', order: 9 },
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 8 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 9 },
             // NOT the `leg-extensions` id below, which renders as Hip Adduction.
             // There was no history to inherit, so this took a fresh id rather
             // than reclaiming one. `actual-` mirrors Jessi's
             // `actual-preacher-curls`; the two apps deliberately share the idiom.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', order: 10 },
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 10 },
             // Quad-dominant, so it closes the anterior day. `hip-adduction` is
             // its frozen id; the `leg-extensions` id below is the one that
             // renders as Hip Adduction. Neither name matches its id and neither
             // is safe to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', order: 11 },
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'plate-two-sided', order: 11 },
 
             // --- Posterior (Mon / Wed / Fri) ---
             // Recline Curls opens Posterior: biceps are grouped with the pulling
             // work rather than with the other arm movements.
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Posterior', day: 'posterior', type: 'standard', order: 12 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', order: 13 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Posterior', day: 'posterior', type: 'standard', order: 14 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', order: 15 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', order: 16 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', order: 17 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 12 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 13 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 15 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 16 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 17 },
             // `leg-curls` is its frozen id — it has not been a leg curl in a
             // long time.
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Posterior', day: 'posterior', type: 'standard', order: 18 },
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-two-sided', order: 18 },
             // Adductor magnus is a hip extensor, which is why this sits with the
             // posterior chain. `leg-extensions` is its frozen id — it has not
             // been a leg extension since the Upper/Lower split, and the row on
             // Anterior above is the one that actually renders Leg Extensions.
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Posterior', day: 'posterior', type: 'standard', order: 19 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Posterior', day: 'posterior', type: 'standard', order: 20 }
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 19 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 20 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

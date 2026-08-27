@@ -1,6 +1,6 @@
         const { useState, useRef } = React;
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -41,7 +41,7 @@
                                 <div key={dayKey} style={{ marginBottom: '20px' }}>
                                     <div className="section-title">{dayLabel}</div>
                                     {dayExercises.map((exercise, idx) => (
-                                    <div key={exercise.id} style={{
+                                    <div key={exercise.id} className="exercise-row" data-exercise-id={exercise.id} style={{
                                         background: '#1a1a2a',
                                         borderRadius: '8px',
                                         padding: '12px',
@@ -98,7 +98,7 @@
                                             </div>
                                         ) : (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ flex: 1, fontWeight: '600' }}>
+                                                <div className="exercise-row-name" style={{ flex: 1, fontWeight: '600' }}>
                                                     {exercise.name}
                                                 </div>
                                                 <button
@@ -144,6 +144,29 @@
                                                 </button>
                                             </div>
                                         )}
+
+                                        {/* Which shape the Weight Breakdown renders.
+                                            Its own row rather than a fourth control in
+                                            the flex row above — at phone width the name
+                                            is already competing with three buttons. Sits
+                                            outside the rename branch so it stays put
+                                            while a name is being edited. */}
+                                        <select
+                                            className="input-field"
+                                            data-field="loadType"
+                                            value={resolveLoadType(exercise)}
+                                            onChange={(e) => updateExerciseLoadType(exercise.id, e.target.value)}
+                                            style={{
+                                                marginTop: '8px',
+                                                padding: '8px',
+                                                fontSize: '14px',
+                                                background: '#0d0d1a'
+                                            }}
+                                        >
+                                            <option value="pin">Pin-loaded</option>
+                                            <option value="plate-two-sided">Plate-loaded on both sides</option>
+                                            <option value="plate-one-sided">Plate-loaded on one side</option>
+                                        </select>
                                     </div>
                                     ))}
                                 </div>

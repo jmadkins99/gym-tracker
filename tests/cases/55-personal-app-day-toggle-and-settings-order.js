@@ -84,14 +84,16 @@ const EXPECTED_POSTERIOR = [
             const out = {};
             let current = null;
             const container = document.querySelector('.modal');
-            for (const el of Array.from(container.querySelectorAll('.section-title, .modal > div > div'))) {
+            for (const el of Array.from(container.querySelectorAll('.section-title, .exercise-row'))) {
                 if (el.classList.contains('section-title')) {
                     current = el.textContent.trim();
                     out[current] = [];
                 } else if (current) {
-                    // Each row is "<name>↑↓✏️" — the control glyphs are part of
-                    // the same text node run, so trim them off the end.
-                    const label = el.textContent.trim().replace(/[↑↓✏️️]+$/u, '').trim();
+                    // Read the name off its own element rather than stripping
+                    // control glyphs off the row's textContent: the row also
+                    // holds a <select>, and a select's textContent is every
+                    // option's label, not just the selected one.
+                    const label = el.querySelector('.exercise-row-name')?.textContent.trim();
                     if (label) out[current].push(label);
                 }
             }
@@ -107,8 +109,7 @@ const EXPECTED_POSTERIOR = [
         // the list is grouped. First row of a group cannot go up; last cannot
         // go down.
         const arrowState = await page.evaluate(() => {
-            const rows = Array.from(document.querySelectorAll('.modal > div > div'))
-                .filter(r => Array.from(r.querySelectorAll('button')).some(b => b.textContent.trim() === '↑'));
+            const rows = Array.from(document.querySelectorAll('.exercise-row'));
             const at = (i) => {
                 const btns = Array.from(rows[i].querySelectorAll('button'));
                 return {

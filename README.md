@@ -17,7 +17,7 @@ Earlier splits — Upper/Lower from August 2026, Full Body / Cardio before that,
 
 - **Per-exercise LOG**: each exercise saves straight to the Weekly tab. The first LOG of a day creates the entry and marks everything else NA.
 - **Last session shown**: each card shows your previous values, and the input fields pre-fill to them.
-- **Weight Breakdown**: weighted exercises have a button that shows two warmup sets at roughly 70% and 90%. Plate-loaded machines get an exact per-side plate breakdown; pin-stacks get achievable pin and micro-plate weights.
+- **Weight Breakdown**: every weighted exercise has a button that shows two warmup sets at roughly 70% and 90%. What it shows depends on how that machine is loaded, which you set yourself in Settings → Manage Exercises: each exercise has a dropdown offering **Pin-loaded**, **Plate-loaded on both sides**, and **Plate-loaded on one side**. Pin-loaded gives achievable pin and micro-plate weights; the plate options give an exact plate breakdown, with a per-side split on the two-sided setting. The choice is saved per exercise and rides along in backups. Machines start on whatever they were before the dropdown existed, so nothing changed on upgrade. Calf Raises keeps its 405 lb stack ceiling in code — above it the breakdown shows the pin at max plus loose plates for the excess. Setting a machine to two-sided also rounds its PR step up to the nearest weight that splits onto a real plate, since 1.25 lb would be 0.625 a side.
 
 ## Progression
 

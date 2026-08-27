@@ -33,36 +33,43 @@ const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-function extractLiteral(source, name) {
+// Same 4-arg shape as case 16 — it handles arrays as well as objects, and
+// having one variant across every config-parsing case is worth more than the
+// two characters the old hardcoded-`{` version saved.
+function extractLiteral(source, name, open, close) {
     const start = source.indexOf(`const ${name} =`);
     if (start === -1) throw new Error(`could not find ${name} in config.js`);
-    const openIdx = source.indexOf('{', start);
-    const closeIdx = source.indexOf('};', openIdx);
+    const openIdx = source.indexOf(open, start);
+    const closeIdx = source.indexOf(close + ';', openIdx);
     return new Function(`return ${source.slice(openIdx, closeIdx + 1)}`)();
 }
 
 (async () => {
     const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-    const PLATE_LOADED = extractLiteral(configSrc, 'PLATE_LOADED_EXERCISES');
-    const PIN_STACK = extractLiteral(configSrc, 'PIN_STACK_EXERCISES');
-    const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS');
+    const DEFAULT_EXERCISES = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
+    const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS', '{', '}');
+    const loadTypeById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
 
-    // Config-level invariants, before touching the browser.
-    eq(PIN_STACK['shoulder-press'], true,
-        'shoulder-press is registered as a plain pin stack');
-    ok(!PLATE_LOADED['shoulder-press'],
-        'shoulder-press is no longer in PLATE_LOADED_EXERCISES (would shadow the pin branch)');
+    // Config-level invariants, before touching the browser. Note this is the
+    // SEED, not the classification: loadType is a user setting now, so what
+    // config.js pins is only what a fresh install starts with. The browser half
+    // below really is running against this seed — seedPersonalApp clears
+    // gymExerciseConfig, so there is no saved override in play.
+    eq(loadTypeById['shoulder-press'], 'pin',
+        'shoulder-press seeds as a plain pin stack');
     eq(INCREMENTS['shoulder-press'], 2.5,
         'shoulder-press PR increment is 2.5, a legal pin-stack micro-plate step');
 
-    // Every two-sided machine must move in steps that halve to a real plate.
-    for (const [id, cfg] of Object.entries(PLATE_LOADED)) {
-        if (cfg.type !== 'two-sided') continue;
-        const inc = INCREMENTS[id];
-        if (inc === undefined) continue;
-        ok((inc / 2) % 1.25 === 0,
-            `${id} increment ${inc} halves to ${inc / 2}/side, a multiple of the 1.25 lb plate`);
-    }
+    // The old "not in PLATE_LOADED too" assertion is deleted rather than
+    // translated. Its subject was that two independent maps could disagree,
+    // with the pin branch checked first so a stale entry silently shadowed the
+    // plate one. A single enum cannot contradict itself, so there is nothing
+    // left to guard — do not try to reconstruct it.
+    //
+    // The two-sided increment sweep that used to live here is likewise gone
+    // from this file: any of the 21 can be set two-sided at runtime now, so the
+    // invariant cannot be checked against config source at all. It moved to
+    // case 61, which runs it through getWeightIncrement for all 21.
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();

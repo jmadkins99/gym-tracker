@@ -18,6 +18,35 @@ async function seedPersonalApp(page, { workoutHistory, ns = DEFAULT_NS } = {}) {
     }, ns, workoutHistory || null);
 }
 
+// Seeds a SAVED personal-app exerciseConfig — the state a device that has
+// already run the app is in, as opposed to seedPersonalApp's fresh install.
+//
+// `overrides` maps exercise id -> a partial entry merged over the default, so a
+// case can say `{ 'chest-flies': { loadType: 'plate-two-sided' } }` without
+// rebuilding all 21. Pass `version: undefined` deliberately to model an
+// imported backup, which App.jsx saves with no version at all.
+//
+// The migratedToFullBody2 sentinel is not optional: App.jsx's one-shot Full
+// Body cleanup fires on load and deletes gymExerciseConfig before the migration
+// ever sees it, and seedPersonalApp clears the sentinel. A real device that has
+// a saved config always has it. lastBackupReminder keeps the monthly reminder
+// modal from covering the UI.
+async function seedExerciseConfig(page, { overrides = {}, version, dropFields = [], ns = DEFAULT_NS } = {}) {
+    return page.evaluate((ns, overrides, version, dropFields) => {
+        const exercises = DEFAULT_EXERCISES.map(ex => {
+            const merged = { ...ex, ...(overrides[ex.id] || {}) };
+            for (const f of dropFields) delete merged[f];
+            return merged;
+        });
+        const config = { exercises };
+        if (version !== null && version !== undefined) config.version = version;
+        localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify(config));
+        localStorage.setItem(ns + 'migratedToFullBody2', 'true');
+        localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));
+        return config.exercises.length;
+    }, ns, overrides, version === undefined ? null : version, dropFields);
+}
+
 // Seeds the public app's localStorage with a Jessi-shaped exerciseConfig,
 // schedule, workout history, and clears the migration flag so the TL
 // migration re-runs on next load.
@@ -148,6 +177,7 @@ function jessiDefaultSchedule() {
 module.exports = {
     DEFAULT_NS,
     seedPersonalApp,
+    seedExerciseConfig,
     seedPublicApp,
     workoutEntry,
     jessiPreMigrationConfig,

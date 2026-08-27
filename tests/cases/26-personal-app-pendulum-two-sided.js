@@ -2,9 +2,9 @@
 // ----------------------
 // Back Extensions (id `leg-curls`) is a TWO-sided plate-loaded machine:
 // you load matching plates on each side, so the breakdown must split the
-// target in half and show a "Per side" line. This guards the config change
-// from one-sided -> two-sided (PLATE_LOADED_EXERCISES['leg-curls'].type)
-// plus the matching 5 lb PR increment (= 2.5/side, smallest real plate).
+// target in half and show a "Per side" line. This guards leg-curls's seeded
+// loadType of 'plate-two-sided' in DEFAULT_EXERCISES plus the matching 5 lb PR
+// increment (= 2.5/side, smallest real plate).
 //
 // This case used to run against Leg Press (`hip-adduction`), which was the
 // program's two-sided station until Aug 2026 replaced it with a pin stack.

@@ -75,9 +75,22 @@
             for (const defaultEx of DEFAULT_EXERCISES) {
                 if (savedById.has(defaultEx.id)) {
                     const saved = savedById.get(defaultEx.id);
-                    // Preserve the user's renamed display name; everything else
-                    // (category, type, order) comes from defaults.
-                    result.push({ ...defaultEx, name: saved.name });
+                    // Preserve the two USER-owned fields — the renamed display
+                    // name and the chosen loadType; everything else (category,
+                    // day, type, order) comes from defaults.
+                    //
+                    // loadType has to be listed here or the Settings dropdown
+                    // works right up until the next version bump, which rebuilds
+                    // every entry from DEFAULT_EXERCISES and silently reverts the
+                    // choice. Restoring a backup hits the same path immediately:
+                    // importData saves without a version, so the next load reads
+                    // the config as stale and rebuilds it. The `??` covers a
+                    // config saved before v15, which has no loadType at all.
+                    result.push({
+                        ...defaultEx,
+                        name: saved.name,
+                        loadType: saved.loadType ?? defaultEx.loadType
+                    });
                 } else {
                     result.push({ ...defaultEx });
                     console.log(`[Migration] Added new exercise: ${defaultEx.name}`);

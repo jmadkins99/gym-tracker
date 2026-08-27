@@ -43,25 +43,29 @@ const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-function extractLiteral(source, name) {
+// Same 4-arg shape as case 16 — see the note there.
+function extractLiteral(source, name, open, close) {
     const start = source.indexOf(`const ${name} =`);
     if (start === -1) throw new Error(`could not find ${name} in config.js`);
-    const openIdx = source.indexOf('{', start);
-    const closeIdx = source.indexOf('};', openIdx);
+    const openIdx = source.indexOf(open, start);
+    const closeIdx = source.indexOf(close + ';', openIdx);
     return new Function(`return ${source.slice(openIdx, closeIdx + 1)}`)();
 }
 
 (async () => {
     const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-    const PLATE_LOADED = extractLiteral(configSrc, 'PLATE_LOADED_EXERCISES');
-    const PIN_STACK = extractLiteral(configSrc, 'PIN_STACK_EXERCISES');
-    const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS');
+    const DEFAULT_EXERCISES = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
+    const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS', '{', '}');
+    const PIN_STACK_CAPS = extractLiteral(configSrc, 'PIN_STACK_CAPS', '{', '}');
+    const loadTypeById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
 
-    // Config-level invariants, before touching the browser.
-    eq(PLATE_LOADED['hip-adduction'], { type: 'two-sided', machineWeight: 0 },
-        'hip-adduction (Leg Press) is two-sided plate-loaded');
-    ok(!PIN_STACK['hip-adduction'],
-        'hip-adduction is no longer in PIN_STACK_EXERCISES (the two maps must not disagree)');
+    // Config-level invariants, before touching the browser. These are SEED
+    // values — loadType is a user setting now, and this case runs on a fresh
+    // install, so the seed is what renders. `machineWeight: 0` used to be
+    // asserted here; it went away with the old maps, having never been read by
+    // any code, the same way `overflowPlateMode` did.
+    eq(loadTypeById['hip-adduction'], 'plate-two-sided',
+        'hip-adduction (Leg Press) seeds as two-sided plate-loaded');
     eq(INCREMENTS['hip-adduction'], 5,
         'hip-adduction PR increment is 5, which is 2.5/side');
 
@@ -70,8 +74,8 @@ function extractLiteral(source, name) {
     // 16 because this is where the cap/increment pairing is checked — the two
     // have to be read together, and 405 is exactly the kind of number that
     // invites being copied onto a neighbouring machine.
-    eq(PIN_STACK['calf-raise'], { maxPin: 405 },
-        'calf-raise is a pin stack capped at 405');
+    eq(loadTypeById['calf-raise'], 'pin', 'calf-raise seeds as a pin stack');
+    eq(PIN_STACK_CAPS['calf-raise'], 405, 'calf-raise is capped at 405');
     eq(INCREMENTS['calf-raise'], 5,
         'calf-raise PR increment is 5, exactly one pin-stack step');
 
@@ -79,10 +83,8 @@ function extractLiteral(source, name) {
     // single-plate -> two-side in the same Aug 2026 trip that took Leg Press to
     // a stack, and it does NOT move back — the two changes are independent and
     // reverting both together is the mistake worth catching.
-    eq(PLATE_LOADED['leg-curls'] && PLATE_LOADED['leg-curls'].type, 'two-sided',
-        'leg-curls (Back Extensions) is still two-sided plate-loaded');
-    ok(!PIN_STACK['leg-curls'],
-        'leg-curls is not also registered as a pin stack');
+    eq(loadTypeById['leg-curls'], 'plate-two-sided',
+        'leg-curls (Back Extensions) still seeds as two-sided plate-loaded');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();

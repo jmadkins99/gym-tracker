@@ -10,11 +10,10 @@
 //   - Warmup 2 = 90% of 215 = 193.5 → nearest-10 = 190 → 45×4 + 10 = 190 lbs
 //   - Top set  = 215 (never rounded) → 45×4 + 25 + 10 = 215 lbs
 //
-// To verify this test is real: in gym_app/js/config.js, move
-// 'kelso-shrugs' back out of PLATE_LOADED_EXERCISES and into
-// PIN_STACK_EXERCISES ({ maxPin: 200, overflowPlateMode: 'one-sided' }).
-// The plate-loaded "(150 lbs - ~70%)" labels disappear (replaced by the
-// pin-stack "(~70%): 150 lbs" form) and the test fails.
+// To verify this test is real: in js/config.js, change kelso-shrugs's seeded
+// loadType from 'plate-one-sided' to 'pin' and add 'kelso-shrugs': 200 to
+// PIN_STACK_CAPS. The plate-loaded "(150 lbs - ~70%)" labels disappear
+// (replaced by the pin-stack "(~70%): 150 lbs" form) and the test fails.
 
 const path = require('path');
 const { start } = require('../lib/server');

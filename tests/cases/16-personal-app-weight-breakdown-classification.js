@@ -1,15 +1,26 @@
 // What this test covers
 // ----------------------
-// The Weight Breakdown button must appear on an exercise card if and only if
-// that exercise is classified as plate-loaded (PLATE_LOADED_EXERCISES) or
-// pin-loaded (PIN_STACK_EXERCISES) — the exact condition WorkoutView uses:
-//   hasWeightBreakdown = isPlateLoaded || isPinStack
+// Every exercise declares a legal `loadType`, and every card therefore shows a
+// Weight Breakdown button.
 //
-// This guards against the failure mode where a newly added exercise is left
-// out of BOTH config maps and silently renders with no breakdown button
-// (which is how curls-shoulder-extension / overhead-tricep-extensions first
-// shipped). The expected classification is parsed straight out of config.js
-// so this stays correct as the rotation and the maps evolve.
+// Read the second half of that sentence with care: it is no longer the
+// discriminating assertion it once was. This case used to check the button
+// appeared if and only if the exercise was in one of two config maps, which
+// guarded the failure mode where a new exercise was left out of BOTH and
+// silently rendered no button (how curls-shoulder-extension and
+// overhead-tricep-extensions first shipped). With `loadType` mandatory and
+// 'pin' a legal value, that condition is unconditionally true and the browser
+// half of this case can only catch a card rendering no button at all.
+//
+// The teeth moved to two places:
+//   - the `untyped` assertion below, which is the direct heir of "left out of
+//     both maps" — a missing or misspelled loadType is the same bug wearing a
+//     new spelling, and it is caught here at source level;
+//   - case 58, which is the only place a CHANGED loadType is proven to change
+//     what renders. That is the case to reach for when touching the breakdown.
+//
+// Also pinned here: the shape of PIN_STACK_CAPS, and that a cap only ever
+// names a real, pin-seeded exercise.
 
 const path = require('path');
 const fs = require('fs');
@@ -21,8 +32,8 @@ const { eq, ok } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // Pull an object/array literal out of config.js by name and eval it. The
-// values in these maps are pure literals (true / { maxPin, overflowPlateMode })
-// and the DEFAULT_EXERCISES array elements are plain objects, so this is safe.
+// DEFAULT_EXERCISES array elements are plain objects and PIN_STACK_CAPS holds
+// bare numbers, so this is safe.
 function extractLiteral(source, name, open, close) {
     const start = source.indexOf(`const ${name} =`);
     if (start === -1) throw new Error(`could not find ${name} in config.js`);
@@ -35,41 +46,50 @@ function extractLiteral(source, name, open, close) {
 (async () => {
     const configSrc = fs.readFileSync(
         path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-    const PLATE_LOADED = extractLiteral(configSrc, 'PLATE_LOADED_EXERCISES', '{', '}');
-    const PIN_STACK = extractLiteral(configSrc, 'PIN_STACK_EXERCISES', '{', '}');
     const DEFAULT_EXERCISES = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
+    const PIN_STACK_CAPS = extractLiteral(configSrc, 'PIN_STACK_CAPS', '{', '}');
+    const LOAD_TYPES = ['pin', 'plate-one-sided', 'plate-two-sided'];
 
-    // Build name -> expected-breakdown map from the source of truth.
-    const expectedByName = new Map();
-    for (const ex of DEFAULT_EXERCISES) {
-        const classified = !!(PLATE_LOADED[ex.id] || PIN_STACK[ex.id]);
-        expectedByName.set(ex.name, classified);
-    }
+    // The heir to "in exactly one of the two maps". Listing the offenders
+    // instead of counting them makes the failure message name the id.
+    const untyped = DEFAULT_EXERCISES
+        .filter(e => !LOAD_TYPES.includes(e.loadType))
+        .map(e => `${e.id}: ${JSON.stringify(e.loadType)}`);
+    eq(untyped, [], 'every DEFAULT_EXERCISES entry declares one of the three legal loadTypes');
 
-    // Sanity: the rotation should contain at least one plate-loaded and one
-    // pin-loaded exercise, otherwise the invariant below is vacuous.
-    const plateInRotation = DEFAULT_EXERCISES.filter(e => PLATE_LOADED[e.id]);
-    const pinInRotation = DEFAULT_EXERCISES.filter(e => PIN_STACK[e.id]);
-    ok(plateInRotation.length > 0, 'rotation has at least one plate-loaded exercise');
-    ok(pinInRotation.length > 0, 'rotation has at least one pin-loaded exercise');
+    const loadTypeById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
 
-    // Pin-stack caps, asserted straight off the literal. Calf Raises is the
-    // only capped stack; every other pin stack is bare `true`. Cable Wrist
-    // Curls in particular lost its 97.5 cap in Aug 2026 and must stay
-    // uncapped. Leg Press (`hip-adduction`) was briefly capped at 390 while it
-    // was classified as a stack — it is plate-loaded again, so it must be
-    // absent from this map entirely rather than merely uncapped. The overflow
+    // Sanity: both families are seeded, or the assertions elsewhere that rely
+    // on a seeded plate machine (26, 46) or a seeded stack (07, 45) are vacuous.
+    ok(DEFAULT_EXERCISES.some(e => e.loadType === 'pin'),
+        'rotation seeds at least one pin stack');
+    ok(DEFAULT_EXERCISES.some(e => e.loadType.startsWith('plate-')),
+        'rotation seeds at least one plate-loaded exercise');
+
+    // Every card must show a button — see the header on why this is weak now.
+    const expectedByName = new Map(DEFAULT_EXERCISES.map(e => [e.name, true]));
+
+    // Pin-stack caps. Calf Raises is the only capped machine. Cable Wrist Curls
+    // lost its 97.5 cap in Aug 2026 and must stay uncapped; Leg Press was
+    // briefly capped at 390 while it was classified as a stack. The overflow
     // *rendering* is covered by 08-personal-app-pin-stack-overflow.
-    eq(PIN_STACK['calf-raise'], { maxPin: 405 }, 'Calf Raises pin stack caps at 405');
-    eq(PIN_STACK['cable-wrist-curls'], true, 'Cable Wrist Curls is an uncapped pin stack');
-    ok(!PIN_STACK['hip-adduction'],
-        'Leg Press is not a pin stack (it is two-sided plate-loaded again)');
+    eq(loadTypeById['calf-raise'], 'pin', 'Calf Raises seeds as a pin stack');
+    eq(PIN_STACK_CAPS['calf-raise'], 405, 'Calf Raises caps at 405');
+    ok(!('cable-wrist-curls' in PIN_STACK_CAPS),
+        'Cable Wrist Curls is uncapped');
+    eq(Object.keys(PIN_STACK_CAPS), ['calf-raise'],
+        'Calf Raises is the only capped stack in the program');
 
-    // `overflowPlateMode` was dropped in Aug 2026 — it was written alongside
-    // maxPin but never read. Guard against it creeping back in unwired.
-    for (const [id, value] of Object.entries(PIN_STACK)) {
-        ok(value === true || (typeof value === 'object' && Object.keys(value).join() === 'maxPin'),
-            `PIN_STACK['${id}'] is either true or exactly { maxPin }`);
+    // A cap is keyed by id and read only when loadType is 'pin', so a cap on a
+    // non-pin id — or on an id that does not exist — is dead config that reads
+    // as intent. The `typeof cap === 'number'` half is the heir to the old
+    // `overflowPlateMode` guard: the moment someone writes { maxPin, ... }
+    // again, this fails.
+    for (const [id, cap] of Object.entries(PIN_STACK_CAPS)) {
+        ok(id in loadTypeById, `PIN_STACK_CAPS['${id}'] names a real exercise id`);
+        eq(loadTypeById[id], 'pin', `PIN_STACK_CAPS['${id}'] names a pin-seeded exercise`);
+        ok(typeof cap === 'number' && cap > 0 && cap % 5 === 0,
+            `PIN_STACK_CAPS['${id}'] is a plain number on a 5 lb stack notch (got ${JSON.stringify(cap)})`);
     }
 
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -93,13 +113,12 @@ function extractLiteral(source, name, open, close) {
         ok(cards.length === DEFAULT_EXERCISES.length,
             `rendered ${DEFAULT_EXERCISES.length} cards across both days (got ${cards.length})`);
 
-        // The core invariant, checked for every card: a Weight Breakdown button
-        // is present exactly when the exercise is plate- or pin-loaded.
+        // Every card shows a button, because every exercise carries a loadType.
         for (const card of cards) {
             ok(expectedByName.has(card.name),
                 `card "${card.name}" is a known rotation exercise`);
-            eq(card.hasWeightBreakdown, expectedByName.get(card.name),
-                `"${card.name}" breakdown button presence matches plate/pin classification`);
+            eq(card.hasWeightBreakdown, true,
+                `"${card.name}" shows a Weight Breakdown button`);
         }
 
         // Explicit regression guard for the two pin-loaded exercises that

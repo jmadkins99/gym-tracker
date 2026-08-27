@@ -203,6 +203,20 @@
                 });
             };
 
+            // How the machine is loaded — pin stack, or plate-loaded on one or
+            // both sides. The second user-owned field after `name`, and the
+            // reason migrateExerciseConfig preserves it rather than taking it
+            // from defaults.
+            const updateExerciseLoadType = (exerciseId, loadType) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, loadType } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
             // Reordering is scoped to the exercise's own day. Swapping across
             // the Lower/Upper boundary would move a card in the settings list
             // without changing which day it belongs to, so the arrow would look
@@ -768,6 +782,7 @@
                             onReset={resetData}
                             exercises={exercises}
                             updateExerciseName={updateExerciseName}
+                            updateExerciseLoadType={updateExerciseLoadType}
                             moveExercise={moveExercise}
                         />
                     )}

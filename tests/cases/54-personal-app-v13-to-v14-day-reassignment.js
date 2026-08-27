@@ -155,7 +155,11 @@ async function readSavedConfig(page) {
         // 1. The migration ran and stamped the new version.
         eq(saved.version, currentConfigVersion(),
             'the reconciled config is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(saved.version, 14, 'that version is 14');
+        // Deliberately not `eq(saved.version, 14)`. What this case is about is
+        // that the v13 seed was stale and the bump is what moved it — pinning
+        // the exact number just makes this line rot on the next bump, which is
+        // how it broke once already.
+        ok(saved.version > 13, 'that version is past 13, so the v13 layout really was stale');
 
         // 2. Every one of the 21 ids moved to its v14 day.
         eq(saved.dayById, EXPECTED_DAY_BY_ID,

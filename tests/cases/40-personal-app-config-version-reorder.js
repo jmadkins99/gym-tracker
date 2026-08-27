@@ -128,8 +128,11 @@ const EXPECTED_NEW_ORDER = [
         // Move "Tricep Extensions" (Anterior index 6) up one, above "Overhead
         // Tricep Extensions".
         const moved = await page.evaluate(() => {
-            const rows = Array.from(document.querySelectorAll('.modal > div > div'));
-            const row = rows.find(r => r.textContent.trim().startsWith('Tricep Extensions'));
+            // Match on the name element, not the row's textContent: the row
+            // also holds a <select> whose textContent is every option label.
+            const rows = Array.from(document.querySelectorAll('.exercise-row'));
+            const row = rows.find(r =>
+                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Tricep Extensions');
             const up = Array.from(row.querySelectorAll('button'))
                 .find(b => b.textContent.trim() === '↑');
             if (!up) return false;

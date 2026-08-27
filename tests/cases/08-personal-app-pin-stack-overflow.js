@@ -25,9 +25,10 @@
 // They were both Lower-day beforehand, which is why this used to need only
 // one day selection.
 //
-// To verify this test is real: in js/config.js, change
-// PIN_STACK_EXERCISES['calf-raise'] to `true` (no maxPin). Top Set and the
-// "Pin: 405 lbs" lines disappear and the test fails.
+// To verify this test is real: in js/config.js, delete the 'calf-raise' entry
+// from PIN_STACK_CAPS. Top Set and the "Pin: 405 lbs" lines disappear and the
+// test fails. Caps stayed code-side when classification became a user setting,
+// so this is still a one-line change in config.js.
 
 const path = require('path');
 const { start } = require('../lib/server');

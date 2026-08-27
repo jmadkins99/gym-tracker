@@ -5,8 +5,10 @@
 // (just two warmup percentages as a single number each), NOT the
 // plate-loaded format ("Warmup Set #1 (NNN lbs - ~70%):" + per-plate lines).
 //
-// If we ever accidentally re-add Chest Flies to PLATE_LOADED_EXERCISES,
-// this test fails.
+// To verify this test is real: in js/config.js, change chest-flies's seeded
+// loadType in DEFAULT_EXERCISES from 'pin' to 'plate-two-sided'. This test
+// fails. Note it pins the SEED only — the user can change the setting in
+// Settings > Manage Exercises, and case 58 is what covers that path.
 
 const path = require('path');
 const { start } = require('../lib/server');

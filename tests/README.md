@@ -113,11 +113,31 @@ what follows is a map of the ones you are most likely to touch.
 codebase in the sibling repo with its own exercise ids and its own
 migration chain; `41` and `33` are the ones that pin her split.
 
-Everything else is per-feature: weight breakdowns and plate/pin
-classification (`07`, `08`, `13`, `16`, `26`, `28`, `45`, `46`), PR
+Everything else is per-feature: weight breakdowns and load-type
+classification (`07`, `08`, `13`, `16`, `17`, `18`, `26`, `28`, `45`,
+`46`), the user-chosen load type itself (`57`–`61`, see below), PR
 streaks (`47`, `48`, `49`), cardio-era history (`21`, `22`, `24`),
 storage and hydration (`34`, `35`, `36`, `38`), and the day-filter
 regression that started all this (`02`, `03`).
+
+**Load type** — pin stack vs plate-loaded on one or both sides — became a
+per-exercise user setting in Aug 2026, chosen from a dropdown in Settings >
+Manage Exercises and saved in `exerciseConfig` alongside the display name.
+It replaced two id-keyed maps in `config.js`. The cases split by what they
+can catch:
+
+| Case | What only it catches |
+|---|---|
+| `58-…-load-type-changes-breakdown.js` | That the setting reaches the render at all. Everything else here passes if the value is stored but never read — **start here** when touching the breakdown. |
+| `57-…-load-type-dropdown-persists.js` | The dropdown shows each exercise's own value, writes one exercise, and stamps the config version. |
+| `59-…-load-type-survives-version-bump.js` | The `loadType` line in `migrateExerciseConfig`. `40`, `43` and `54` all stay green without it, then every user choice silently reverts on the next unrelated bump. |
+| `60-…-load-type-survives-backup-restore.js` | The import path, which saves with no version and so always rebuilds — plus the `resolveLoadType` fallback that keeps a pre-v15 backup rendering before its first reload. The only case that drives the file input. |
+| `61-…-two-sided-increment-bump.js` | That a two-sided machine's PR increment lands on a real plate (1.25 → 2.5), and that only 1.25 moves. |
+
+Note that `16` is weaker than it looks now: with every exercise carrying a
+`loadType`, "shows a breakdown button" is unconditionally true, so its
+browser half only catches a card rendering no button at all. Its teeth are
+the source-level check that every entry declares a legal type.
 
 ## How to add a new test
 

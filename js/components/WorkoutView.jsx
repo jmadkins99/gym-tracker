@@ -9,12 +9,17 @@
                 const previous = getPreviousWorkout(exercise.id);
                 const isLogged = loggedExercises[exercise.id];
                 const data = workoutData[exercise.id] || {};
+                // The user's Settings choice, falling back to the code seed —
+                // see resolveLoadType in config.js. Needed this high up because
+                // the PR suggestions below read it too: a two-sided machine
+                // splits its increment across both sides, so the step changes.
+                const loadType = resolveLoadType(exercise);
                 const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory) : false;
                 const prWeightRecovery = ADVANCED_PR_TRACKING ? getPRWeightRecovery(exercise.id, workoutHistory) : null;
                 const failedPlateauBusterRetry = ADVANCED_PR_TRACKING && !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id, workoutHistory) : null;
-                const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory) : null;
-                const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory) : null;
-                const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory) : null;
+                const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory, loadType) : null;
+                const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory, loadType) : null;
+                const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory, loadType) : null;
                 const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory) : null;
                 // Weighted cards only: cardio has never counted toward PRs, and
                 // bodyweight rows have no numeric weight to compare.
@@ -251,10 +256,12 @@
                     );
                 }
 
-                // Standard exercise
-                const isPlateLoaded = PLATE_LOADED_EXERCISES[exercise.id];
-                const isPinStack = PIN_STACK_EXERCISES[exercise.id];
-                const hasWeightBreakdown = isPlateLoaded || isPinStack;
+                // Standard exercise. Every exercise carries a loadType now, so
+                // every one gets a breakdown button — under the old two-map
+                // scheme an id could be absent from both and silently render no
+                // button at all, which is how Recline Curls and Overhead Tricep
+                // Extensions shipped without one.
+                const hasWeightBreakdown = true;
                 const isBreakdownExpanded = expandedWeightBreakdown === exercise.id;
 
                 // Reps dropdown default (options are 3/4/5/6): after a weight bump
@@ -324,7 +331,7 @@
                             if (currentWeight === 0) return null;
 
                             // PIN-STACK EXERCISE
-                            if (isPinStack) {
+                            if (loadType === 'pin') {
                                 const breakdown = calculatePinStackBreakdown(currentWeight, exercise.id);
 
                                 // Render a pin row, optionally with a plate breakdown when the
@@ -385,7 +392,7 @@
                             }
 
                             // PLATE-LOADED EXERCISE
-                            const breakdown = calculatePlateBreakdown(currentWeight, exercise.id);
+                            const breakdown = calculatePlateBreakdown(currentWeight, loadType);
 
                             if (!breakdown) return null;
 

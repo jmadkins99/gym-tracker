@@ -35,9 +35,9 @@
         }
 
         // Simple PR tracking: if last session hit 6+ reps, suggest weight + increment highlighted green
-        function getSimplePR(exerciseId, workoutHistory) {
+        function getSimplePR(exerciseId, workoutHistory, loadType) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
-            if (!PR_WEIGHT_INCREMENTS[exerciseId]) return null;
+            if (!getWeightIncrement(exerciseId, loadType)) return null;
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -60,7 +60,7 @@
 
             if (parseInt(previousExercise.reps) >= 6) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = PR_WEIGHT_INCREMENTS[exerciseId];
+                const increment = getWeightIncrement(exerciseId, loadType);
                 return {
                     weight: (lastWeight + increment).toString(),
                     lastWeight: previousExercise.weight,
@@ -276,7 +276,7 @@
         }
 
         // Helper function to check if this is a PR Auto-Regulation week (after hitting 8+ reps)
-        function getPRAutoRegulation(exerciseId, workoutHistory) {
+        function getPRAutoRegulation(exerciseId, workoutHistory, loadType) {
             console.log('[getPRAutoRegulation] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) {
                 console.log('[getPRAutoRegulation] No workout history');
@@ -314,9 +314,9 @@
 
             // Check if last week hit a PR (6+ reps) and has a weight increment defined
             if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps) >= 6 &&
-                previousExercise.weight && PR_WEIGHT_INCREMENTS[exerciseId]) {
+                previousExercise.weight && getWeightIncrement(exerciseId, loadType)) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = PR_WEIGHT_INCREMENTS[exerciseId];
+                const increment = getWeightIncrement(exerciseId, loadType);
                 const newWeight = (lastWeight + increment).toString();
 
                 console.log('[getPRAutoRegulation] PR DETECTED! Last:', lastWeight, 'lbs x', previousExercise.reps, 'New:', newWeight);
@@ -487,7 +487,7 @@
         }
 
         // Helper function for plateau buster weight decrement
-        function getPlateauBusterDecrement(exerciseId, workoutHistory) {
+        function getPlateauBusterDecrement(exerciseId, workoutHistory, loadType) {
             console.log('[getPlateauBusterDecrement] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
@@ -529,9 +529,9 @@
             }
 
             // Decrease weight by the increment amount (only for < 6 reps)
-            if (previousExercise && previousExercise.weight && PR_WEIGHT_INCREMENTS[exerciseId]) {
+            if (previousExercise && previousExercise.weight && getWeightIncrement(exerciseId, loadType)) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = PR_WEIGHT_INCREMENTS[exerciseId];
+                const increment = getWeightIncrement(exerciseId, loadType);
                 const newWeight = (lastWeight - increment).toString();
 
                 console.log('[getPlateauBusterDecrement] PLATEAU BUSTER! Last:', lastWeight, 'New:', newWeight);
@@ -547,10 +547,11 @@
             return null;
         }
 
-        // Calculate plate breakdown for a given weight
-        function calculatePlateBreakdown(totalWeight, exerciseId) {
-            const config = PLATE_LOADED_EXERCISES[exerciseId];
-            if (!config) return null;
+        // Calculate plate breakdown for a given weight. `loadType` is the
+        // exercise's user setting, resolved by the caller — this used to look
+        // the classification up itself, back when it lived in a code-side map.
+        function calculatePlateBreakdown(totalWeight, loadType) {
+            if (loadType !== 'plate-one-sided' && loadType !== 'plate-two-sided') return null;
 
             const availablePlates = [45, 25, 10, 5, 2.5, 1.25];
 
@@ -586,7 +587,7 @@
             const topSetWeight = totalWeight;
 
             // For two-sided machines, divide by 2 to get per-side weight
-            const isTwoSided = config.type === 'two-sided';
+            const isTwoSided = loadType === 'plate-two-sided';
 
             const warmup1PerSide = roundWarmupPerSide(isTwoSided ? warmup1Weight / 2 : warmup1Weight);
             const warmup2PerSide = roundWarmupPerSide(isTwoSided ? warmup2Weight / 2 : warmup2Weight);
@@ -626,12 +627,14 @@
         //       Plate weight is rounded DOWN to a clean plate combination,
         //       so totalWeight may be slightly under the target.
         //
-        // When the exercise has no `maxPin` configured, no set is ever in
+        // When the exercise has no cap in PIN_STACK_CAPS, no set is ever in
         // overflow mode and the top-set entry can be ignored by the UI
         // (the user already sees their working weight in the input field).
         function calculatePinStackBreakdown(totalWeight, exerciseId) {
-            const config = PIN_STACK_EXERCISES[exerciseId];
-            const maxPin = (config && typeof config === 'object') ? config.maxPin : null;
+            // Caps stay keyed by id in config.js rather than riding on the
+            // user's loadType: a ceiling belongs to one machine, not to a way
+            // of loading one. Callers only reach here when loadType is 'pin'.
+            const maxPin = PIN_STACK_CAPS[exerciseId] ?? null;
             const availablePlates = [45, 25, 10, 5, 2.5, 1.25];
 
             // Round to nearest achievable pin weight (5 lb increments + optional
