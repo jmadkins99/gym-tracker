@@ -139,6 +139,16 @@ Note that `16` is weaker than it looks now: with every exercise carrying a
 browser half only catches a card rendering no button at all. Its teeth are
 the source-level check that every entry declares a legal type.
 
+**Coach presets.** `63-…-ian-coach-code.js` and `64-…-ian-not-clawed-back.js`
+cover Ian's program. `64` is the one that matters: three of the Jessi one-shots
+identify her install by the *shape* of its config — categories of exactly
+Anterior/Posterior — which is also what any other client on that split produces.
+`migrateJessiToFullBody` would drop three of Ian's movements, rename two more,
+and collapse his two days into one, on his **second** load rather than his
+first. A `coachPreset` stamp written by the coach-code path is what holds it
+off; `64` clears the one-shot flags and reloads three times to prove it. Removing
+that guard reddens `64` alone.
+
 **On Jessi's app** the same setting arrived a few days later, with two
 differences worth knowing. The Weight Breakdown is no longer gated: it used
 to be hidden behind an `exerciseConfig.gympinMode` flag that only she had, and
