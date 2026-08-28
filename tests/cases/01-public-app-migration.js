@@ -20,7 +20,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiPreMigrationConfig, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -39,7 +39,7 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
             schedule: jessiDefaultSchedule(),
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         const after = await page.evaluate(() => {
             const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));

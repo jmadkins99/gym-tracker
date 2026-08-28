@@ -11,7 +11,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -76,7 +76,7 @@ async function breakdownText(page, name, weight) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPublicApp(page, { exerciseConfig: fullBodyConfig(), schedule: jessiDefaultSchedule() });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         const gympin = await page.evaluate(() => {
             const raw = localStorage.getItem('gym-local:gymExerciseConfig');

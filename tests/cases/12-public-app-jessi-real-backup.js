@@ -18,7 +18,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -66,7 +66,7 @@ const DROPPED_NAMES = [
             schedule: fixture.schedule,
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         const state = await page.evaluate(() => {
             const cfgRaw = localStorage.getItem('gym-local:gymExerciseConfig');

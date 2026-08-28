@@ -33,7 +33,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiPreMigrationConfig, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -207,7 +207,7 @@ async function savedLoadType(page, exerciseName) {
             schedule: jessiDefaultSchedule(),
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         // === 1. A recognised movement: Kelso Shrugs ========================
         // /kelso|shrug/ makes it one-sided plate-loaded by default.
@@ -248,7 +248,7 @@ async function savedLoadType(page, exerciseName) {
 
         // === 3. It survives a reload ======================================
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
         eq(await savedLoadType(page, CUSTOM), 'plate-two-sided',
             'the custom exercise kept its load type across a reload');
         text = await readBreakdown(page, CUSTOM, '200');

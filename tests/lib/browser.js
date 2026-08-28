@@ -155,4 +155,33 @@ async function readCards(page) {
     });
 }
 
-module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType };
+// Wait for something to become true in the page, instead of sleeping a fixed
+// amount and hoping.
+//
+// A fixed sleep is a bet on how fast the machine is. Too short and the case
+// fails spuriously; too long and every run pays for the worst case forever.
+// Both halves of that bet got worse when run.sh started running six cases at
+// once, because the machine is now busier exactly when a case is waiting.
+//
+// `label` is not decoration: when this throws, it is the only thing that says
+// what the test was waiting for. "timed out waiting for the coach-code config
+// to be written" is a bug report; "waitForFunction timed out" is a puzzle.
+async function waitFor(page, label, fn, ...args) {
+    try {
+        await page.waitForFunction(fn, { timeout: 20000, polling: 50 }, ...args);
+    } catch (err) {
+        throw new Error(`timed out after 20s waiting for ${label}`);
+    }
+}
+
+// The two conditions almost every case waits on.
+const waitForStorageKey = (page, ns, key) =>
+    waitFor(page, `${key} to appear in localStorage`,
+        (ns, key) => !!localStorage.getItem(ns + key), ns, key);
+
+const waitForCards = (page) =>
+    waitFor(page, 'exercise cards to render',
+        () => document.querySelectorAll('.exercise-card').length > 0);
+
+module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType,
+                   waitFor, waitForStorageKey, waitForCards };

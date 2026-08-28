@@ -23,7 +23,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, attachConsole, waitFor, waitForStorageKey } = require('../lib/browser');
 const { eq, ok } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
@@ -58,7 +58,8 @@ async function enterCoachCode(page, code) {
         return 'clicked';
     });
     eq(entered, 'clicked', 'found and clicked the "I Have a Coach" button');
-    await new Promise(r => setTimeout(r, 600));
+    await waitFor(page, 'the coach-code input to appear',
+        () => !!document.querySelector('input[type="text"]'));
 
     const submitted = await page.evaluate((c) => {
         const input = document.querySelector('input[type="text"]');
@@ -75,8 +76,11 @@ async function enterCoachCode(page, code) {
     }, code);
     eq(submitted, 'submitted', 'entered coach code ' + code + ' and submitted');
 
-    // The wizard plays a ~6s welcome animation before writing config.
-    await new Promise(r => setTimeout(r, 9000));
+    // The wizard plays a ~6s welcome animation and only then writes the
+    // config. Waiting for the config itself rather than for the animation means
+    // this returns the moment the work is actually done, and still fails loudly
+    // if it never happens.
+    await waitForStorageKey(page, NS, 'gymExerciseConfig');
 }
 
 (async () => {
@@ -88,7 +92,9 @@ async function enterCoachCode(page, code) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await page.evaluate(() => localStorage.clear());
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1200));
+        await waitFor(page, 'the setup wizard to render',
+            () => Array.from(document.querySelectorAll('button'))
+                .some(b => /have a coach/i.test(b.textContent)));
 
         await enterCoachCode(page, IAN_CODE);
 

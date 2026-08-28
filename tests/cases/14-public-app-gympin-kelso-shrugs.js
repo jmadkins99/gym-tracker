@@ -16,7 +16,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiPreMigrationConfig, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -54,7 +54,7 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
         // that flipped gympinMode on without a URL param since
         // categories are Torso/Limbs (Jessi-shaped install).
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         const persisted = await page.evaluate(() => {
             const raw = localStorage.getItem('gym-local:gymExerciseConfig');

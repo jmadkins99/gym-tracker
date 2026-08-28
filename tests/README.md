@@ -14,18 +14,30 @@ bash run.sh personal-app   # just the personal-app cases
 TEST_JOBS=1 bash run.sh 42 # one at a time (see below)
 ```
 
-Cases run **6 at a time**. The full suite takes about **2 minutes**;
-sequentially it took about 8.5. Results are reported in filename order
-however they finish, so two runs are diffable, and each case's output is
-buffered and printed whole so a failure's diagnostics never interleave
-with another case's.
+Cases run **6 at a time**. The full suite takes about **110 seconds**;
+sequentially it took 8m34s. Results are reported in filename order however
+they finish, so two runs are diffable, and each case's output is buffered
+and printed whole so a failure's diagnostics never interleave with another
+case's.
 
-`TEST_JOBS=n` changes the concurrency. Measured on a 16-core Windows box:
-6 jobs took 121s, 10 took 107s, and 14 took 114s *and* failed a case with
-`net::ERR_NO_BUFFER_SPACE` — socket exhaustion, not a test bug. The
-default is deliberately below that ceiling rather than at it. `TEST_JOBS=1`
-restores strictly sequential behaviour, which is what to reach for if a
-failure looks timing-dependent and you want to rule concurrency out.
+`TEST_JOBS=n` changes the concurrency, but 6 is close to optimal on a
+16-core box and raising it does not help. Measured: 6 jobs 107-110s, 10
+jobs 113s, and 14 jobs both slower *and* failing a case with
+`net::ERR_NO_BUFFER_SPACE` — socket exhaustion from that many concurrent
+Chromes, not a test bug. Past a handful of jobs the bottleneck is Chrome
+startup rather than anything the runner controls. `TEST_JOBS=1` restores
+strictly sequential behaviour, which is what to reach for if a failure
+looks timing-dependent and you want to rule concurrency out.
+
+**Waiting.** Cases wait for conditions, not clocks — `waitForApp`,
+`waitForStorageKey` and `waitFor` in `lib/browser.js`. A fixed
+`setTimeout` is a bet on how fast the machine is, and running six cases at
+once made those bets worse exactly when they mattered. The suite is down
+from 82s of fixed sleeping to about 19s, and what is left is mostly small
+in-page settle ticks. When you add a case, wait for the thing you actually
+need — a card rendering, a key appearing in localStorage — and give
+`waitFor` a label, because that label is the entire error message when it
+times out.
 
 The argument is a substring match on the case name. A filtered run says
 so in its header and footer, so it can't be mistaken for a full one.

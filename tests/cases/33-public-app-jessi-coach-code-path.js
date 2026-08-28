@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor, waitForStorageKey } = require('../lib/browser');
 const { eq, ok } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
@@ -83,7 +83,9 @@ const JESSI_CODE = 'D1O9O9M2';
         }
 
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1200));
+        await waitFor(page, 'the setup wizard to render',
+            () => Array.from(document.querySelectorAll('button'))
+                .some(b => /have a coach/i.test(b.textContent)));
 
         // Drive the wizard: "I Have a Coach" -> code -> submit.
         const entered = await page.evaluate((code) => {
@@ -94,7 +96,8 @@ const JESSI_CODE = 'D1O9O9M2';
             return 'clicked';
         }, JESSI_CODE);
         eq(entered, 'clicked', 'found and clicked the "I Have a Coach" button');
-        await new Promise(r => setTimeout(r, 600));
+        await waitFor(page, 'the coach-code input to appear',
+            () => !!document.querySelector('input[type="text"]'));
 
         const submitted = await page.evaluate((code) => {
             const input = document.querySelector('input[type="text"]');
@@ -111,8 +114,12 @@ const JESSI_CODE = 'D1O9O9M2';
         }, JESSI_CODE);
         eq(submitted, 'submitted', `entered coach code ${JESSI_CODE} and submitted`);
 
-        // The wizard plays a ~6s welcome animation before writing config.
-        await new Promise(r => setTimeout(r, 9000));
+        // Two conditions, not one. The config is written BEFORE the ~6s
+        // welcome animation finishes, so waiting only for it returns while the
+        // animation is still up and the workout view has not rendered — which
+        // is what the on-screen assertions further down need.
+        await waitForStorageKey(page, NS, 'gymExerciseConfig');
+        await waitForApp(page);
 
         const cfg = await page.evaluate((ns) => {
             const raw = localStorage.getItem(ns + 'gymExerciseConfig');
@@ -220,7 +227,7 @@ const JESSI_CODE = 'D1O9O9M2';
         // agree, a refresh is a no-op. Edit either side alone and this fails —
         // which is exactly the regression that shipped, whichever side rots.
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1800));
+        await waitForApp(page);
         const afterRefresh = await page.evaluate((ns) => {
             const c = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
             return {

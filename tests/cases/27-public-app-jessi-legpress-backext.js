@@ -28,7 +28,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -99,7 +99,7 @@ async function readCard(page, name) {
             schedule: jessiDefaultSchedule(),
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         // Sanity: a config was persisted for the Full Body (Jessi-shaped) install.
         const persisted = await page.evaluate(() => {

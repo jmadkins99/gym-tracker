@@ -29,7 +29,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -98,7 +98,7 @@ async function readReps(page, name) {
             localStorage.removeItem('gym-local:jessiRepsDropdownEnabled');
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         // 1. Auto-enable.
         const enabled = await page.evaluate(() => {
@@ -163,7 +163,7 @@ async function readReps(page, name) {
             localStorage.removeItem('gym-local:jessiRepsDropdownEnabled');
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         const other = await readReps(page, 'Chest Flies');
         ok(other && other.isFreeType, 'non-Jessi install keeps the free-type number input');

@@ -39,7 +39,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -191,7 +191,7 @@ async function loadWith(page, server, config, history) {
         localStorage.setItem('gym-local:lastBackupReminder', String(Date.now()));
     });
     await page.reload({ waitUntil: 'networkidle0' });
-    await new Promise(r => setTimeout(r, 1800));
+    await waitForApp(page);
 }
 
 async function readSaved(page) {
@@ -284,7 +284,7 @@ async function readSaved(page) {
         eq(saved.splitRevision, currentSplitRevision(),
             'splitRevision is stamped with the current JESSI_SPLIT_REVISION');
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
         eq(await readSaved(page), saved, 'a second load changes nothing');
 
         // On-screen: drive the day selector explicitly so this is weekday-independent.
@@ -413,7 +413,7 @@ async function readSaved(page) {
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now()));
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1800));
+        await waitForApp(page);
 
         const rerun = await readSaved(page);
         eq(rerun.anterior, EXPECTED_ANTERIOR,

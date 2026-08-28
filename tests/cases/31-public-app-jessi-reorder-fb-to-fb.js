@@ -39,7 +39,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole } = require('../lib/browser');
+const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -222,7 +222,7 @@ async function readAllCards(page) {
             localStorage.setItem('gym-local:jessiFullBodyMigrationApplied4', 'true');
         });
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1500));
+        await waitForApp(page);
 
         // 1. The re-migration's canonical order, as reshaped by the split.
         const order = await readOrder(page);
@@ -318,7 +318,7 @@ async function readAllCards(page) {
 
         // 6. Idempotent: reload again, order unchanged.
         await page.reload({ waitUntil: 'networkidle0' });
-        await new Promise(r => setTimeout(r, 1200));
+        await waitForApp(page);
         eq(await readOrder(page), order,
             'order is stable across a second load — neither migration re-fires');
 
