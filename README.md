@@ -49,7 +49,7 @@ React 18 and Babel standalone loaded from a CDN, with localStorage for persisten
 index.html              # Entry point, loads all scripts
 css/styles.css          # App styles
 js/accentColor.js       # Daily accent rotation; sets the --accent-* custom properties
-js/config.js            # Exercise defaults, increments, tracking-mode flags, day setup
+js/config.js            # Exercise defaults, load types, increments, pin-stack caps, day setup
 js/utils.js             # Storage helpers, date/week utilities
 js/migrations.js        # localStorage migration logic
 js/plateauLogic.js      # PR tracking and per-exercise suggestion/carry-over helpers
@@ -61,5 +61,5 @@ js/components/
   EditWorkoutModal.jsx  # Edit historical workout data
   DayBreakdownModal.jsx # Post-workout summary with PR count
   BackupReminderModal.jsx # Monthly backup reminder
-tests/                  # Puppeteer end-to-end test cases (run via tests/run.sh)
+tests/                  # Puppeteer end-to-end test cases (run via tests/run.sh, ~110s)
 ```

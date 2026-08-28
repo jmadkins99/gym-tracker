@@ -1,6 +1,6 @@
 # Tests
 
-Integration tests for `gym_app` and `../public_gym_app`. They drive both
+Integration tests for `gym-tracker` and `../public-gym-app`. They drive both
 apps in a headless Chrome browser, seed realistic state, and verify what
 the user actually sees.
 
@@ -89,8 +89,19 @@ A pre-push hook lives in `.githooks/`. Wire it up once:
 git config core.hooksPath .githooks
 ```
 
-Same in `../public_gym_app`. After that, every `git push` runs the suite
+Same in `../public-gym-app`. After that, every `git push` runs the suite
 and aborts on failure. Bypass with `--no-verify`.
+
+The hook takes about 110 seconds. That used to be 8m34s, which was long
+enough to cause a failure worth recognising: `git push` opens its SSH
+connection BEFORE running the hook and uploads over that same connection
+afterwards, so GitHub would drop the idle session mid-run and the push
+died with `Connection to github.com closed by remote host` *after* the
+hook had already reported every test passing. If you ever see that line
+appear in the middle of the test output, that is ssh talking, not a test.
+`~/.ssh/config` carries a keepalive for github.com that prevents it; at
+the current runtime it should not be needed, and it is safe to remove if
+the hook ever gets faster still.
 
 ## Recommended workflow
 
