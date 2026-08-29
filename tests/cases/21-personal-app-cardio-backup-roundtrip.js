@@ -58,7 +58,7 @@ async function clickNav(page, label) {
         await waitForApp(page);
 
         // Weekly view: the cardio workout renders its own exercises + values.
-        await clickNav(page, 'Weekly');
+        await clickNav(page, 'History');
         const weeklyText = await page.evaluate(() =>
             document.querySelector('.content')?.textContent || '');
         contains(weeklyText, 'Body Weight Squats', 'weekly shows squats');

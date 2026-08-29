@@ -143,7 +143,7 @@ what follows is a map of the ones you are most likely to touch.
 | `52-…-legacy-day-labels.js` | Aug-2026 `day: 'upper'`/`'lower'` history keeps its own labels and rosters. History is never migrated. |
 | `55-…-day-toggle-and-settings-order.js` | The toggle and the Settings grouping agree with the roster, and the reorder arrows stop at the day boundary. |
 | `23` / `53` | Logging a full Anterior / Posterior day through the real UI. The pair is what stops the day stamp being hardcoded. |
-| `44-…-weekly-view-eras.js` | Weekly and Edit render every era at once: current Anterior, a workout predating a day reassignment, legacy Upper, legacy Cardio, pre-split Full Body. |
+| `44-…-weekly-view-eras.js` | History and Edit render every era at once: current Anterior, a workout predating a day reassignment, legacy Upper, legacy Cardio, pre-split Full Body. |
 | `40-…-config-version-reorder.js` | A code-side reorder reaches a saved config, and an in-app Settings reorder survives reload. |
 
 **Jessi's app** — the `*-public-app-*` cases. Her program is a separate
@@ -176,6 +176,7 @@ can catch:
 | `68-…-revisited-machine-restarts-clock.js` | That the LAST Weight Breakdown tap before a log starts the clock, so walking back to a machine measures the set rather than everything done while away. Also the two anchor resets. |
 | `69-…-timing-survives-cloud-sync.js` | That `startedAt`/`loggedAt` reach Firestore, come back, and survive the one-time first-sign-in import. The only case that drives the cloud repo at all. |
 | `70-…-thirty-minute-ceiling.js` | The 30-minute per-movement ceiling, table-driven over 13 scenarios: the exclusive boundary, all three anchor sources, and that a refused first row is kept out of the session total. |
+| `71-…-history-timing-details.js` | That a session's timing is readable after the day it was logged — the ⏱️ beside a History entry's pencil opens the workout that was TAPPED, not today's, and is absent entirely on a workout carrying no stamps. |
 
 **Session timing.** `65`, `66` and `67` cover the August 2026 breakdown work.
 The split between the first two is deliberate: `65` drives the real gestures and
@@ -185,6 +186,16 @@ strings. Anything that needs a specific foreground stamp — the dash when the
 first movement has no anchor, the 30-minute cap on either side — is a direct
 `getSessionTiming` call in `66`, because staging it through the UI would make
 the case pass or fail depending on the hour it ran at.
+
+`71` is the one that says the stamps are readable at all after midnight. They
+were always *saved* — persistence happens at LOG time, not on Complete Day — but
+`DayBreakdownModal` keys off today's date and returns null for anything else, so
+until the History tab grew a ⏱️ the numbers were written and then never shown
+again. Its fixture is two submitted workouts, one stamped and one not: a modal
+that reached for today's workout renders nothing for either, and a button that
+ignored `getSessionTiming` returning null would offer an empty modal on all ~124
+pre-August-2026 sessions. The row rendering itself is shared with the Day
+Breakdown as `TimingDetails` so the two surfaces cannot drift.
 
 `69` is the only case in the suite that exercises the Firestore repo. Every
 other case runs local-only by design — `gym-local:` never initialises Firebase,

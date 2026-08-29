@@ -31,6 +31,9 @@
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
+            // The history entry whose ⏱️ was tapped, or null. Distinct from
+            // showDayBreakdown, which is always today's session.
+            const [timingWorkout, setTimingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
             // When each exercise's Weight Breakdown panel was first opened
@@ -938,6 +941,14 @@
                         />
                     )}
 
+                    {timingWorkout && (
+                        <TimeDetailsModal
+                            workout={timingWorkout}
+                            foregroundAt={lastForegroundAt}
+                            onClose={() => setTimingWorkout(null)}
+                        />
+                    )}
+
                     <div className="header">
                         <div className="header-top">
                             <h1>Gym Tracker</h1>
@@ -955,7 +966,7 @@
                                 className={`nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
                                 onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); window.scrollTo(0, 0); }}
                             >
-                                Weekly
+                                History
                             </button>
                         </div>
                     </div>
@@ -987,6 +998,8 @@
                                 setEditingWorkout(workout);
                                 setShowEditWorkout(true);
                             }}
+                            onViewTiming={setTimingWorkout}
+                            foregroundAt={lastForegroundAt}
                         />}
                     </div>
                 </div>

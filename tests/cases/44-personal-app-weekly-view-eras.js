@@ -229,7 +229,7 @@ async function weeklyItems(page) {
         }, 'gym-local:');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await clickNav(page, 'Weekly');
+        await clickNav(page, 'History');
 
         const items = await weeklyItems(page);
         eq(items.length, 5, 'all five workouts render in the current week');

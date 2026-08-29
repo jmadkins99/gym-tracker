@@ -1,4 +1,15 @@
-        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, exercises, onEditWorkout }) {
+        // Both buttons in a history entry's header row are bare emoji at the
+        // same weight, so the styling lives in one place.
+        const iconBtnStyle = {
+            background: 'none',
+            border: 'none',
+            color: 'var(--accent-muted)',
+            cursor: 'pointer',
+            fontSize: '18px',
+            padding: '4px 8px'
+        };
+
+        function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, exercises, onEditWorkout, onViewTiming, foregroundAt }) {
             const weekWorkouts = workoutHistory
                 .filter(w => w.week === viewingWeek)
                 .sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort newest to oldest
@@ -54,23 +65,32 @@
                                 // Calculate sequential day number - count down from total
                                 const dayNumber = weekWorkouts.length - idx;
 
+                                // Null for anything logged before August 2026,
+                                // which carries no per-exercise timestamps —
+                                // and that is what hides the ⏱️ on those
+                                // entries rather than offering an empty modal.
+                                const timing = getSessionTiming(workout, foregroundAt);
+
                                 return (
                                     <div key={idx} className="history-item">
                                         <div className="history-date" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span>Day {dayNumber} - {formattedDate}</span>
-                                            <button
-                                                onClick={() => onEditWorkout(workout)}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--accent-muted)',
-                                                    cursor: 'pointer',
-                                                    fontSize: '18px',
-                                                    padding: '4px 8px'
-                                                }}
-                                            >
-                                                ✏️
-                                            </button>
+                                            <span>
+                                                {timing && (
+                                                    <button
+                                                        onClick={() => onViewTiming(workout)}
+                                                        style={iconBtnStyle}
+                                                    >
+                                                        ⏱️
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => onEditWorkout(workout)}
+                                                    style={iconBtnStyle}
+                                                >
+                                                    ✏️
+                                                </button>
+                                            </span>
                                         </div>
                                         {allExercises.map((expectedExercise) => {
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);

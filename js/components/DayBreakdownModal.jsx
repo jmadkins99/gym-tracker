@@ -135,7 +135,6 @@
             // carries none — the whole block is then left out rather than
             // rendering a zero.
             const timing = getSessionTiming(todayWorkout, foregroundAt);
-            const hasEstimatedRow = !!timing && timing.rows.some(r => r.estimated);
 
             const date = new Date(todayWorkout.date);
             const formattedDate = date.toLocaleDateString('en-US', {
@@ -193,36 +192,7 @@
                             </button>
                         )}
 
-                        {timing && showDetails && (
-                            <div data-timing-details style={{ marginBottom: '20px', fontSize: '14px' }}>
-                                {timing.rows.map(row => (
-                                    <div
-                                        key={row.id}
-                                        data-timing-row={row.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            gap: '12px',
-                                            padding: '6px 0',
-                                            borderBottom: '1px solid #2a2a3a'
-                                        }}
-                                    >
-                                        <span>{row.name}</span>
-                                        <span style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
-                                            {row.seconds === null
-                                                ? 'NA'
-                                                : formatSecondsToTime(row.seconds) + (row.estimated ? ' *' : '')}
-                                        </span>
-                                    </div>
-                                ))}
-                                {hasEstimatedRow && (
-                                    <div style={{ marginTop: '10px', color: '#888', fontSize: '12px' }}>
-                                        * estimated — Weight Breakdown was not opened for this movement,
-                                        so it is measured from the previous log
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {timing && showDetails && <TimingDetails timing={timing} />}
 
                         <button className="modal-btn primary" onClick={onClose}>
                             Close

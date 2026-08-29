@@ -119,7 +119,7 @@
         }
 
         // Which exercise definitions a stored workout should render against, in
-        // the Weekly tab and the Edit modal.
+        // the History tab and the Edit modal.
         //
         // An Anterior/Posterior workout renders against its own day in the
         // current config, so renames and reorders show through. Note the day

@@ -111,7 +111,7 @@ async function openEdit(page, index) {
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await clickNav(page, 'Weekly');
+        await clickNav(page, 'History');
 
         const count = await page.evaluate(() => document.querySelectorAll('.history-item').length);
         eq(count, 3, 'all three eras render in the current week');

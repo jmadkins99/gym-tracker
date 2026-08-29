@@ -55,7 +55,7 @@ async function setNumber(page, selector, value) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await clickNav(page, 'Weekly');
+        await clickNav(page, 'History');
         await page.evaluate(() => {
             const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('✏️'));
             if (btn) btn.click();
