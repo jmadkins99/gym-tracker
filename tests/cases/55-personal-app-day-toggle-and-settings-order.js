@@ -27,9 +27,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 const EXPECTED_ANTERIOR = [
     'Chest Press', 'Incline Chest Press', 'Chest Flies', 'Shoulder Press',
-    'Lateral Raises', 'Overhead Tricep Extensions', 'Tricep Extensions',
-    'Reverse Wrist Curls', 'Cable Wrist Curls', 'Ab Crunches',
-    'Leg Extensions', 'Leg Press',
+    'Lateral Raises', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Leg Extensions', 'Tricep Extensions', 'Reverse Wrist Curls',
+    'Cable Wrist Curls', 'Leg Press',
 ];
 
 const EXPECTED_POSTERIOR = [

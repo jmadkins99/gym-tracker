@@ -50,15 +50,17 @@ const EXPECTED_ANTERIOR = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair, Aug 2026, so the
+    // big movements are done before the small isolation work.
+    'Ab Crunches',
+    // Its id is `actual-leg-extensions` — the `leg-extensions` id renders as
+    // Hip Adduction, over on Posterior.
+    'Leg Extensions',
     'Tricep Extensions',
     // The wrist pair splits by anatomy under this program: flexors here,
     // extensors on Posterior. They shared a day under Upper/Lower.
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    'Ab Crunches',
-    // Its id is `actual-leg-extensions` — the `leg-extensions` id renders as
-    // Hip Adduction, over on Posterior.
-    'Leg Extensions',
     // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
     // the row named Hip Adduction is `leg-extensions`. Both mismatches frozen.
     'Leg Press',

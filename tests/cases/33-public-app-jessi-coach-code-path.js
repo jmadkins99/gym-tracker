@@ -141,13 +141,15 @@ const JESSI_CODE = 'D1O9O9M2';
             'Shoulder Press',
             'Lateral Raises',
             'Overhead Tricep Extensions',
+            // Abs and quads moved up ahead of Tricep Extensions and the wrist
+            // pair, Aug 2026.
+            'Ab Crunches',
+            'Leg Extensions',
             'Tricep Extensions',
             // Wrist flexors here, extensors on Posterior — the pair shared a
             // day under Upper/Lower.
             'Reverse Wrist Curls',
             'Cable Wrist Curls',
-            'Ab Crunches',
-            'Leg Extensions',
             'Leg Press', // quad-dominant, so it closes the anterior day
         ];
         const POSTERIOR = [

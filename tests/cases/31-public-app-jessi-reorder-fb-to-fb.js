@@ -131,11 +131,13 @@ const EXPECTED_ANTERIOR = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair,
+    // Aug 2026 — JESSI_ANTERIOR_ORDER, matching the personal app.
+    'Ab Crunches',
+    'Leg Extensions', // added by JESSI_NEW_EXERCISES
     'Tricep Extensions',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    'Ab Crunches',
-    'Leg Extensions', // added by JESSI_NEW_EXERCISES
     'Leg Press',
 ];
 

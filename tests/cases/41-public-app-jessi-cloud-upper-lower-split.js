@@ -110,14 +110,16 @@ const EXPECTED_ANTERIOR = [
     ['Shoulder Press', ID.shoulderPress],
     ['Lateral Raises', DROPPED_ID.lateralRaises],
     ['Overhead Tricep Extensions', DROPPED_ID.dips],
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair,
+    // Aug 2026.
+    ['Ab Crunches', ID.abCrunches],
+    ['Leg Extensions', 'actual-leg-extensions'],
     ['Tricep Extensions', ID.tricepExt],
     // Wrist flexors here, extensors on Posterior. Both keep the ids they
     // reclaimed from history when the Aug 2026 split restored them — changing
     // day must not mint a fresh id any more than reordering may.
     ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
     ['Cable Wrist Curls', DROPPED_ID.cableWrist],
-    ['Ab Crunches', ID.abCrunches],
-    ['Leg Extensions', 'actual-leg-extensions'],
     // Quad-dominant, so it closes the anterior day. It keeps its recovered id
     // across the move from Lower — the second place that rule is checked.
     ['Leg Press', ID.legPress],

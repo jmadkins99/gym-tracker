@@ -85,11 +85,13 @@ const ANTERIOR_IDS = [
     ['shoulder-press', 'Shoulder Press'],
     ['lateral-raises', 'Lateral Raises'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist
+    // pair, Aug 2026.
+    ['ab-crunch', 'Ab Crunches'],
+    ['actual-leg-extensions', 'Leg Extensions'],
     ['tricep-pushdown', 'Tricep Extensions'],
     ['reverse-wrist-curls', 'Reverse Wrist Curls'],
     ['cable-wrist-curls', 'Cable Wrist Curls'],
-    ['ab-crunch', 'Ab Crunches'],
-    ['actual-leg-extensions', 'Leg Extensions'],
     ['hip-adduction', 'Leg Press'],
 ];
 

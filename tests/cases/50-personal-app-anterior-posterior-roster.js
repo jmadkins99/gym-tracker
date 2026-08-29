@@ -39,12 +39,13 @@ const ANTERIOR = [
     ['shoulder-press', 'Shoulder Press'],
     ['lateral-raises', 'Lateral Raises'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair, Aug 2026.
+    ['ab-crunch', 'Ab Crunches'],
+    ['actual-leg-extensions', 'Leg Extensions'],
     ['tricep-pushdown', 'Tricep Extensions'],
     // Wrist flexors are anterior forearm; the extensors sit on Posterior.
     ['reverse-wrist-curls', 'Reverse Wrist Curls'],
     ['cable-wrist-curls', 'Cable Wrist Curls'],
-    ['ab-crunch', 'Ab Crunches'],
-    ['actual-leg-extensions', 'Leg Extensions'],
     // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
     // the movement actually named Hip Adduction is `leg-extensions`, on
     // Posterior. Both mismatches are frozen.

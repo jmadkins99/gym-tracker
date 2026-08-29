@@ -84,12 +84,14 @@ const EXPECTED_ANTERIOR = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    'Tricep Extensions',
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist
+    // pair, Aug 2026.
     'Ab Crunches',
     // Like Chest Press above, added by the migration under its own fresh id.
     'Leg Extensions',
+    'Tricep Extensions',
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
     // hip-adduction, renamed by the user below. Its position comes from
     // DEFAULT_EXERCISES, not from the saved config — the migration takes order
     // and day from defaults while preserving the user's name, and this row is

@@ -190,7 +190,18 @@
         // `name`, so migrateExerciseConfig preserves the saved value instead of
         // overwriting it from defaults. Seeding it from the old maps is what
         // makes the upgrade invisible; case 59 is the pin on it surviving.
-        const EXERCISE_CONFIG_VERSION = 15;
+        //
+        // 16 moves Ab Crunches and Leg Extensions up the Anterior day, ahead of
+        // Tricep Extensions and the wrist pair, so the day runs press work,
+        // shoulders, one tricep movement, then abs and quads, then the small
+        // arm and forearm work, then Leg Press. Same 12 ids, same count, so the
+        // bump is once again the entire delivery mechanism — a fifth pure
+        // reorder, and the first since `loadType` became saved state, which
+        // makes the preserve list in migrateExerciseConfig load-bearing here in
+        // a way it was not for reorders 7 through 13: a device that has set a
+        // load type must come through this bump still holding it. Case 59 is
+        // what stops that regressing.
+        const EXERCISE_CONFIG_VERSION = 16;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -226,21 +237,25 @@
             { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 3 },
             { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 4 },
             { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 5 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
-            // The wrist pair splits by anatomy: flexors here, extensors on
-            // Posterior. They sat on the same day under Upper/Lower.
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 8 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 9 },
+            // Abs and quads moved up ahead of Tricep Extensions and the wrist
+            // pair (Aug 2026), so the big movements are done before the small
+            // isolation work rather than after it. Mirrored in Jessi's program.
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
             // NOT the `leg-extensions` id below, which renders as Hip Adduction.
             // There was no history to inherit, so this took a fresh id rather
             // than reclaiming one. `actual-` mirrors Jessi's
             // `actual-preacher-curls`; the two apps deliberately share the idiom.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 10 },
-            // Quad-dominant, so it closes the anterior day. `hip-adduction` is
-            // its frozen id; the `leg-extensions` id below is the one that
-            // renders as Hip Adduction. Neither name matches its id and neither
-            // is safe to rename.
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 8 },
+            // The wrist pair splits by anatomy: flexors here, extensors on
+            // Posterior. They sat on the same day under Upper/Lower.
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 9 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 10 },
+            // Quad-dominant, and still the last thing on the day even with Leg
+            // Extensions moved up ahead of the arm work. `hip-adduction` is its
+            // frozen id; the `leg-extensions` id below is the one that renders
+            // as Hip Adduction. Neither name matches its id and neither is safe
+            // to rename.
             { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'plate-two-sided', order: 11 },
 
             // --- Posterior (Mon / Wed / Fri) ---

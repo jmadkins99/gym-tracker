@@ -67,11 +67,13 @@ const EXPECTED_NEW_ORDER = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist
+    // pair, Aug 2026.
+    'Ab Crunches',
+    'Leg Extensions',         // added Aug 2026; arrives via the migration
     'Tricep Extensions',
     'Reverse Wrist Curls',
     'Cable Wrist Curls',
-    'Ab Crunches',
-    'Leg Extensions',         // added Aug 2026; arrives via the migration
     'Leg Press',
 ];
 
@@ -125,8 +127,10 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Tricep Extensions" (Anterior index 6) up one, above "Overhead
-        // Tricep Extensions".
+        // Move "Tricep Extensions" (Anterior index 8) up one, above "Leg
+        // Extensions". It sat at index 6, behind Overhead Tricep Extensions,
+        // until the Aug 2026 reorder moved Ab Crunches and Leg Extensions in
+        // front of it.
         const moved = await page.evaluate(() => {
             // Match on the name element, not the row's textContent: the row
             // also holds a <select> whose textContent is every option label.
@@ -147,7 +151,7 @@ const EXPECTED_NEW_ORDER = [
 
         const afterReorder = (await readCards(page)).map(c => c.name);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(5, 0, expectedAfter.splice(6, 1)[0]); // Tricep Extensions up one
+        expectedAfter.splice(7, 0, expectedAfter.splice(8, 1)[0]); // Tricep Extensions up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 

@@ -82,11 +82,14 @@ const EXPECTED_DAY_BY_ID = {
     'shoulder-press': 'anterior',
     'lateral-raises': 'anterior',
     'overhead-tricep-extensions': 'anterior',
+    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair,
+    // Aug 2026. Key order matters here: the assertion compares serialised
+    // maps, so this literal tracks the roster order.
+    'ab-crunch': 'anterior',
+    'actual-leg-extensions': 'anterior',
     'tricep-pushdown': 'anterior',
     'reverse-wrist-curls': 'anterior',
     'cable-wrist-curls': 'anterior',
-    'ab-crunch': 'anterior',
-    'actual-leg-extensions': 'anterior',
     'hip-adduction': 'anterior',
     'curls-shoulder-extension': 'posterior',
     'frontal-pulldowns': 'posterior',
