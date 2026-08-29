@@ -170,6 +170,46 @@ can catch:
 | `59-…-load-type-survives-version-bump.js` | The `loadType` line in `migrateExerciseConfig`. `40`, `43` and `54` all stay green without it, then every user choice silently reverts on the next unrelated bump. |
 | `60-…-load-type-survives-backup-restore.js` | The import path, which saves with no version and so always rebuilds — plus the `resolveLoadType` fallback that keeps a pre-v15 backup rendering before its first reload. The only case that drives the file input. |
 | `61-…-two-sided-increment-bump.js` | That a two-sided machine's PR increment lands on a real plate (1.25 → 2.5), and that only 1.25 moves. |
+| `65-…-exercise-timing-capture.js` | That opening a card's Weight Breakdown stamps `startedAt` and LOG stamps `loggedAt`, that a card logged without its panel opened carries no `startedAt`, and that the panel button is one-way. |
+| `66-…-session-timing-derivation.js` | `getSessionTiming`'s arithmetic against fixed timestamps: logged-order sorting, the two-minute fallback and its floor at zero, and the 30-minute ceiling above which a movement reports NA and is kept out of the session total. |
+| `67-…-pr-count-weight-drop.js` | That "PRs Smashed" refuses a weight drop, and reads the same `isImprovement` the flame badge does. |
+| `68-…-revisited-machine-restarts-clock.js` | That the LAST Weight Breakdown tap before a log starts the clock, so walking back to a machine measures the set rather than everything done while away. Also the two anchor resets. |
+| `69-…-timing-survives-cloud-sync.js` | That `startedAt`/`loggedAt` reach Firestore, come back, and survive the one-time first-sign-in import. The only case that drives the cloud repo at all. |
+| `70-…-thirty-minute-ceiling.js` | The 30-minute per-movement ceiling, table-driven over 13 scenarios: the exclusive boundary, all three anchor sources, and that a refused first row is kept out of the session total. |
+
+**Session timing.** `65`, `66` and `67` cover the August 2026 breakdown work.
+The split between the first two is deliberate: `65` drives the real gestures and
+asserts only that the stamps exist and are marked correctly, because the elapsed
+figures are a wall clock; `66` seeds exact timestamps and asserts exact rendered
+strings. Anything that needs a specific foreground stamp — the dash when the
+first movement has no anchor, the 30-minute cap on either side — is a direct
+`getSessionTiming` call in `66`, because staging it through the UI would make
+the case pass or fail depending on the hour it ran at.
+
+`69` is the only case in the suite that exercises the Firestore repo. Every
+other case runs local-only by design — `gym-local:` never initialises Firebase,
+and cases `36`/`38` pin that — which left the whole cloud path uncovered. It
+works by handing `createFirestoreRepo` a recording stub in place of the global
+`firebase`, so it tests our serialisation rather than Firestore's behaviour, and
+needs no network or emulator. Note its undefined check runs INSIDE the page: an
+`undefined` property does not survive being returned across the puppeteer
+boundary, so asserting it in Node would pass unconditionally.
+
+`68` is the cautionary one. The timing feature shipped with first-open-wins,
+on the reasoning that a one-way button cannot be opened twice — false, because
+opening another card closes this one, so returning to a machine is a second
+open. Durations only ever grew: five seconds of work reported as 2:11, then
+3:22. `65` passed throughout, because it opens each panel once. If you are
+adding coverage for a rule about *which* of several events counts, write the
+case that produces several of them; a case built from the same assumption as
+the code cannot test that assumption.
+
+`67` is the one to read before touching PR logic. The modal used to hold its own
+rule, `weight up OR reps up`, which scored a weight DROP as a PR whenever the
+reps rose — which is precisely what a plateau-buster recovery looks like, so the
+app congratulated the user for backing off. Its fixture is built so the old and
+new rules disagree (4 versus 3); restoring the `||` reddens it with 4, and
+dropping the `submitted` filter from the baseline search reddens it with 2.
 
 Note that `16` is weaker than it looks now: with every exercise carrying a
 `loadType`, "shows a breakdown button" is unconditionally true, so its

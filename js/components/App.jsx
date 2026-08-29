@@ -1,5 +1,23 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
+        // The last time this app was actually in front of the user: page load,
+        // plus every return to the foreground after that. It feeds exactly one
+        // case — the first movement of a day, logged without its Weight
+        // Breakdown ever being opened, which has no previous log to measure back
+        // to (see getSessionTiming in utils.js).
+        //
+        // Page load alone would not do. On a phone the tab is usually restored
+        // from the background rather than reloaded, so the last real load can be
+        // a day stale; visibilitychange is what makes "pulled the phone out at
+        // the machine" register at all. getSessionTiming still caps how old this
+        // may be before it stops counting as evidence.
+        let lastForegroundAt = new Date().toISOString();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                lastForegroundAt = new Date().toISOString();
+            }
+        });
+
         function App() {
             const [currentView, setCurrentView] = useState('workout');
             const [workoutData, setWorkoutData] = useState({});
@@ -15,6 +33,44 @@
             const [editingWorkout, setEditingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
+            // When each exercise's Weight Breakdown panel was first opened
+            // today, keyed by id — the start half of every movement's clock.
+            //
+            // Mirrored to a device-local storage key rather than through the
+            // repo, alongside firstWorkoutMonday and lastBackupReminder: this is
+            // scaffolding for the session in progress, not history. Once an
+            // exercise is logged its start is baked into the workout record and
+            // this map stops mattering for it, so all the mirror buys is
+            // surviving a mid-session reload with un-logged movements still
+            // anchored — which case 37 shows is a real thing to do on a phone.
+            // Stamped with the date and dropped on a new day, so yesterday's
+            // anchors can never leak into today's numbers.
+            // Persist the map alongside setting it. Returns the map so the
+            // state updaters below can `return saveStartTimes(...)` directly.
+            const saveStartTimes = (times) => {
+                storage.setItem('exerciseStartTimes', JSON.stringify({
+                    date: new Date().toDateString(),
+                    times
+                }));
+                return times;
+            };
+
+            // Wipe every anchor. Called when a day is closed out, so the next
+            // session cannot inherit a stamp from the one before it — the same
+            // reason loggedExercises and workoutData are cleared there.
+            const clearStartTimes = () => {
+                setExerciseStartTimes({});
+                storage.removeItem('exerciseStartTimes');
+            };
+
+            const [exerciseStartTimes, setExerciseStartTimes] = useState(() => {
+                try {
+                    const saved = JSON.parse(storage.getItem('exerciseStartTimes') || 'null');
+                    return saved && saved.date === new Date().toDateString() ? saved.times : {};
+                } catch (e) {
+                    return {};
+                }
+            });
             // Which day type the workout view shows. Defaults by weekday
             // (Mon/Wed/Fri = lower) on every load; a manual toggle only lasts
             // for the session.
@@ -275,6 +331,46 @@
                 return candidates.length > 0 ? candidates[0] : null;
             };
 
+            // Opening a card's Weight Breakdown starts that exercise's clock.
+            //
+            // The stamp is taken every time the panel goes from CLOSED to OPEN
+            // for that exercise, and the newest one wins. Coming back to a
+            // machine you walked away from — because it was taken, or because
+            // you did something else first — is a normal thing to do, and the
+            // set you are about to perform starts when you come back, not when
+            // you first glanced at the panel twenty minutes earlier.
+            //
+            // This was first-open-wins until it was tried in the gym, on the
+            // reasoning that a one-way button cannot be opened twice. That is
+            // false: it cannot be opened twice in a ROW, but opening another
+            // card closes this one, so returning to it is a second open. The
+            // symptom was durations that only ever grew — five seconds of work
+            // reported as two minutes, then as three on the next attempt.
+            //
+            // The already-open card is still exempt. Tapping its button changes
+            // nothing on screen, so it must not silently restart the clock
+            // either; that ambiguity is why the Hide arm was removed.
+            // At most ONE anchor exists at a time, and it belongs to whichever
+            // panel is open: opening a card discards the previous card's anchor
+            // rather than accumulating them. An anchor is a claim that a set is
+            // under way at that machine, and that stops being true the moment
+            // you walk to another one.
+            //
+            // Without this, a movement whose panel was opened and then left —
+            // logged later WITHOUT being reopened — measured from that first
+            // tap and silently swallowed everything done in between. Peek at
+            // Chest Press, go do Incline, come back and tap LOG on Chest Press,
+            // and it reported the Incline work as part of the Chest Press set.
+            // Dropping the anchor means that log has none, so it falls back to
+            // the estimate and is marked as one, which is the honest answer.
+            const openWeightBreakdown = (exerciseId) => {
+                if (expandedWeightBreakdown === exerciseId) return;
+                setExpandedWeightBreakdown(exerciseId);
+                setExerciseStartTimes(() => saveStartTimes({
+                    [exerciseId]: new Date().toISOString()
+                }));
+            };
+
             const handleInputChange = (exerciseId, field, value) => {
                 setWorkoutData(prev => ({
                     ...prev,
@@ -355,6 +451,17 @@
                 const timestamp = new Date().toISOString();
                 finalData.timestamp = timestamp;
 
+                // The two ends of this movement's clock. `startedAt` comes from
+                // the Weight Breakdown tap and is absent when the panel was
+                // never opened — getSessionTiming decides what stands in.
+                // `timestamp` itself has always been computed here; until August
+                // 2026 it was assigned to finalData above and then dropped on
+                // the floor, because exerciseToSave never copied it out.
+                const stamps = { loggedAt: timestamp };
+                if (exerciseStartTimes[exerciseId]) {
+                    stamps.startedAt = exerciseStartTimes[exerciseId];
+                }
+
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const todayWeek = getWeekNumber(today, workoutHistory);
@@ -373,7 +480,8 @@
                         category: exercise.category,
                         type: exercise.type,
                         watts: finalData.watts || '25',
-                        intensity: finalData.intensity || '20/40'
+                        intensity: finalData.intensity || '20/40',
+                        ...stamps
                     };
                 } else if (exercise.type === 'stairmaster') {
                     exerciseToSave = {
@@ -382,7 +490,8 @@
                         category: exercise.category,
                         type: exercise.type,
                         level: finalData.level || 'Level 7',
-                        time: finalData.time || ''
+                        time: finalData.time || '',
+                        ...stamps
                     };
                 } else if (exercise.type === 'bodyweight') {
                     exerciseToSave = {
@@ -391,7 +500,8 @@
                         category: exercise.category,
                         type: exercise.type,
                         weight: 'Body Weight',
-                        reps: finalData.reps || ''
+                        reps: finalData.reps || '',
+                        ...stamps
                     };
                 } else {
                     exerciseToSave = {
@@ -400,7 +510,8 @@
                         category: exercise.category,
                         type: exercise.type,
                         weight: finalData.weight || '',
-                        reps: finalData.reps || ''
+                        reps: finalData.reps || '',
+                        ...stamps
                     };
                 }
 
@@ -453,6 +564,22 @@
                     ...prev,
                     [exerciseId]: true
                 }));
+
+                // The open panel belongs to the movement just logged, so logging
+                // is what closes it — there is no Hide button any more.
+                setExpandedWeightBreakdown(prev => (prev === exerciseId ? null : prev));
+
+                // The anchor has done its job: it is written into the workout
+                // record above. Dropping it means a SECOND log of the same
+                // movement — possible once a day has been submitted, which
+                // re-enables the buttons — measures itself afresh instead of
+                // reaching back to a panel tap from the previous session.
+                setExerciseStartTimes(prev => {
+                    if (!prev[exerciseId]) return prev;
+                    const updated = { ...prev };
+                    delete updated[exerciseId];
+                    return saveStartTimes(updated);
+                });
 
                 setSuccessMessage('Exercise logged!');
                 setShowSuccess(true);
@@ -555,6 +682,7 @@
 
                 setLoggedExercises({});
                 setWorkoutData({});
+                clearStartTimes();
 
                 setShowDayBreakdown(true);
             };
@@ -616,6 +744,7 @@
 
                 setLoggedExercises({});
                 setWorkoutData({});
+                clearStartTimes();
 
                 setShowDayBreakdown(true);
             };
@@ -793,6 +922,7 @@
                             workoutHistory={workoutHistory}
                             getCurrentExercises={getCurrentExercises}
                             getPreviousWorkout={getPreviousWorkout}
+                            foregroundAt={lastForegroundAt}
                         />
                     )}
 
@@ -843,7 +973,7 @@
                             currentWeek={currentWeek}
                             workoutHistory={workoutHistory}
                             expandedWeightBreakdown={expandedWeightBreakdown}
-                            setExpandedWeightBreakdown={setExpandedWeightBreakdown}
+                            openWeightBreakdown={openWeightBreakdown}
                             activeDayType={activeDayType}
                             setActiveDayType={setActiveDayType}
                         />}

@@ -171,3 +171,135 @@
             const seconds = totalSeconds % 60;
             return `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
+
+        // How long an un-anchored exercise gets docked. When a movement is
+        // logged without its Weight Breakdown ever being opened there is no
+        // real start, so the span back to the previous log is used instead —
+        // minus this, as a flat allowance for walking to the machine and
+        // setting it up. Deliberately a blunt constant: it is an estimate
+        // standing in for a measurement, and the rows it produces are marked as
+        // such rather than dressed up as precise.
+        const UNANCHORED_TRANSITION_SECONDS = 120;
+
+        // The longest a single movement is allowed to claim. Past this the
+        // number is not wrong-but-plausible, it is nonsense, and the row reports
+        // NA instead of a figure nobody should trust.
+        //
+        // It catches two different things with one rule, which is why there is
+        // one constant and not two. A stale foreground stamp — a tab brought
+        // forward on the couch an hour before the first log — produces an
+        // over-long first movement. So does the one gap the open-panel anchor
+        // cannot close: open a panel, touch nothing else for hours, then log it
+        // without reopening. Both arrive here as "this movement claims to have
+        // taken longer than any movement takes", and both get the same answer.
+        //
+        // 30 minutes is deliberately generous. These are single working sets in
+        // the 4-6 rep range; nothing legitimate comes close.
+        const MAX_EXERCISE_SECONDS = 30 * 60;
+
+        // Reconstruct how long a session took, and how long each movement in it
+        // took, from the timestamps logExercise stamps on each exercise.
+        //
+        // The clock for one movement runs from the moment its Weight Breakdown
+        // panel was opened (`startedAt` — you open it at the machine, to see how
+        // to load it) to the moment it was logged (`loggedAt`). That pairing is
+        // the whole design: it needs no stopwatch discipline, and because both
+        // ends are real gestures, the number measures the work rather than the
+        // work plus the walk over.
+        //
+        // Rows are ordered by `loggedAt`, NOT by program order. Skipping a busy
+        // machine and coming back to it later is normal, and sorting by the
+        // roster would then attribute a wildly wrong span to whatever sat
+        // between them.
+        //
+        // A row's `seconds` is null when the movement cannot be honestly timed —
+        // no usable start, or a span so long it is not credible. The caller
+        // renders those NA.
+        //
+        // Returns null for any workout with no timestamps at all, which is every
+        // workout logged before August 2026 — history is never migrated here, so
+        // the caller renders nothing rather than a zero.
+        function getSessionTiming(workout, foregroundAt) {
+            if (!workout || !workout.exercises) return null;
+
+            const logged = workout.exercises
+                .map(e => ({ entry: e, loggedMs: new Date(e.loggedAt).getTime() }))
+                .filter(x => x.entry.loggedAt && !isNaN(x.loggedMs))
+                .sort((a, b) => a.loggedMs - b.loggedMs);
+
+            if (logged.length === 0) return null;
+
+            const foregroundMs = foregroundAt ? new Date(foregroundAt).getTime() : NaN;
+
+            const rows = [];
+            let sessionStartMs = null;
+
+            for (let i = 0; i < logged.length; i++) {
+                const { entry, loggedMs } = logged[i];
+                const startedMs = entry.startedAt ? new Date(entry.startedAt).getTime() : NaN;
+
+                // Three anchors, in descending order of trust.
+                let startMs = null;
+                let estimated = false;
+
+                if (!isNaN(startedMs) && startedMs <= loggedMs) {
+                    // Measured: the panel was opened on this card.
+                    startMs = startedMs;
+                } else if (i > 0) {
+                    // Estimated: span back to the previous log, less the
+                    // transition allowance. Clamped so a gap shorter than the
+                    // allowance reads 0 rather than negative.
+                    startMs = Math.min(
+                        logged[i - 1].loggedMs + UNANCHORED_TRANSITION_SECONDS * 1000,
+                        loggedMs);
+                    estimated = true;
+                } else if (!isNaN(foregroundMs) && foregroundMs <= loggedMs) {
+                    // Estimated: the first movement of the day has no previous
+                    // log to lean on, so the last time the app came to the
+                    // foreground stands in. A stale one is rejected below, by
+                    // the same rule that rejects any over-long movement.
+                    startMs = foregroundMs;
+                    estimated = true;
+                }
+
+                // Refuse a span no single movement plausibly takes. Dropping the
+                // start rather than the row means the movement still appears —
+                // it was performed — but reports NA instead of a figure that
+                // would quietly wreck the session total too.
+                if (startMs !== null && loggedMs - startMs > MAX_EXERCISE_SECONDS * 1000) {
+                    startMs = null;
+                    estimated = false;
+                }
+
+                if (i === 0) {
+                    // The session starts where its first movement starts. With
+                    // no usable anchor that is the log itself, which undercounts
+                    // by one movement rather than inventing a start — and is
+                    // what keeps a rejected anchor out of the total as well.
+                    sessionStartMs = startMs !== null ? startMs : loggedMs;
+                }
+
+                rows.push({
+                    id: entry.id,
+                    name: entry.name,
+                    seconds: startMs === null ? null : Math.round((loggedMs - startMs) / 1000),
+                    estimated
+                });
+            }
+
+            return {
+                totalSeconds: Math.round(
+                    (logged[logged.length - 1].loggedMs - sessionStartMs) / 1000),
+                rows
+            };
+        }
+
+        // Session-scale duration: "1h 13m", or "58m" under the hour. Distinct
+        // from formatSecondsToTime above, which renders M:SS and is what the
+        // per-exercise rows use — an hour-long total reads badly as "73:24",
+        // and a four-minute movement reads badly as "0h 4m".
+        function formatDuration(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        }

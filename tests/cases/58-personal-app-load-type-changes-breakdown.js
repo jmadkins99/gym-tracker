@@ -110,16 +110,11 @@ async function readBreakdown(page, name, weight) {
         return card ? card.textContent : '';
     }, name);
 
-    // Collapse it again so the next pass starts from a closed panel.
-    await page.evaluate((exName) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === exName);
-        const btn = card && Array.from(card.querySelectorAll('button'))
-            .find(b => b.textContent.includes('Hide'));
-        if (btn) btn.click();
-    }, name);
-    await new Promise(r => setTimeout(r, 150));
-
+    // No collapse step: the Weight Breakdown button stopped toggling in August
+    // 2026 (it is what starts an exercise's clock, so it had to become
+    // one-way), and there is no Hide to click. Nothing is needed in its place —
+    // expandedWeightBreakdown holds a single id, so opening the next exercise's
+    // panel closes this one.
     return text;
 }
 

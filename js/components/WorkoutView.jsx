@@ -1,4 +1,4 @@
-        function WorkoutView({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, setExpandedWeightBreakdown, activeDayType, setActiveDayType }) {
+        function WorkoutView({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout, logExercise, completeDay, markDayAsNA, getCurrentExercises, currentWeek, userBodyweight, workoutHistory, expandedWeightBreakdown, openWeightBreakdown, activeDayType, setActiveDayType }) {
             const exercises = getCurrentExercises();
             // Stairmaster is the only 'Cardio'-category entry left; it renders
             // under its own heading at the bottom of the Lower day.
@@ -300,9 +300,18 @@
                                     🔥 {prStreak}
                                 </div>
                             )}
+                            {/* One-way on purpose: there is no Hide. The panel
+                                closes when this card is logged, or when another
+                                card's panel is opened — expandedWeightBreakdown
+                                holds a single id, so only one is ever up. That
+                                matters beyond tidiness: this tap is what starts
+                                the exercise's clock, and a toggle could be
+                                pressed twice, leaving "which tap counted?"
+                                genuinely ambiguous. Re-tapping an open card is
+                                now a no-op instead. */}
                             {hasWeightBreakdown && (
                                 <button
-                                    onClick={() => setExpandedWeightBreakdown(isBreakdownExpanded ? null : exercise.id)}
+                                    onClick={() => openWeightBreakdown(exercise.id)}
                                     style={{
                                         padding: '6px 12px',
                                         fontSize: '12px',
@@ -315,7 +324,7 @@
                                         whiteSpace: 'nowrap'
                                     }}
                                 >
-                                    {isBreakdownExpanded ? 'Hide' : 'Weight Breakdown'}
+                                    Weight Breakdown
                                 </button>
                             )}
                         </div>

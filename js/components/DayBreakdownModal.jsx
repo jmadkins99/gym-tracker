@@ -1,4 +1,5 @@
-        function DayBreakdownModal({ onClose, workoutHistory, getCurrentExercises, getPreviousWorkout }) {
+        function DayBreakdownModal({ onClose, workoutHistory, getCurrentExercises, getPreviousWorkout, foregroundAt }) {
+            const [showDetails, setShowDetails] = React.useState(false);
             // Find today's workout
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -21,6 +22,11 @@
                 const candidates = [];
                 const sortedWorkouts = workoutHistory
                     .filter(w => {
+                        // Submitted only, matching getPRStreak's session filter.
+                        // An abandoned day sits in history with every row
+                        // materialised and empty, and comparing against one is
+                        // not a comparison against a session that happened.
+                        if (!w.submitted) return false;
                         const workoutDate = new Date(w.date);
                         return workoutDate < todayDate;
                     })
@@ -89,21 +95,19 @@
                     return; // Skip if no previous workout
                 }
 
-                let isPR = false;
+                // isImprovement (plateauLogic.js) is the app's one definition
+                // of a lift moving forward, and the flame streak badge on the
+                // card runs off the same call. This used to be a second, looser
+                // rule living here — `weight up OR reps up`, gated on reps >= 4 —
+                // which counted a weight DROP as a PR whenever the reps rose. A
+                // plateau buster drops the weight deliberately, so the recovery
+                // session scored a PR for backing off, and the badge and this
+                // count could disagree about the very same session.
+                console.log('Comparison:', exercise.name,
+                    'Current:', exercise.weight, 'lbs x', exercise.reps,
+                    'Previous:', previous.weight, 'lbs x', previous.reps);
 
-                // Standard exercise - PR if weight OR reps increased (and reps >= 4)
-                const currentWeight = parseFloat(exercise.weight);
-                const previousWeight = parseFloat(previous.weight);
-                const currentReps = parseInt(exercise.reps);
-                const previousReps = parseInt(previous.reps);
-
-                console.log('Standard comparison:', exercise.name, 'Current:', currentWeight, 'lbs x', currentReps, 'Previous:', previousWeight, 'lbs x', previousReps);
-
-                if ((currentWeight > previousWeight || currentReps > previousReps) && currentReps >= 4) {
-                    isPR = true;
-                }
-
-                if (isPR) {
+                if (isImprovement(exercise, previous)) {
                     console.log('PR detected for:', exercise.name);
                     prCount++;
                 }
@@ -125,6 +129,13 @@
                 }
             }).length;
             const totalCount = getCurrentExercises().length;
+
+            // Reconstructed from the per-exercise timestamps logExercise
+            // stamps. Null for any workout logged before August 2026, which
+            // carries none — the whole block is then left out rather than
+            // rendering a zero.
+            const timing = getSessionTiming(todayWorkout, foregroundAt);
+            const hasEstimatedRow = !!timing && timing.rows.some(r => r.estimated);
 
             const date = new Date(todayWorkout.date);
             const formattedDate = date.toLocaleDateString('en-US', {
@@ -156,10 +167,62 @@
                             <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
                                 PRs Smashed
                             </div>
-                            <div style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
+                            <div data-pr-count style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
                                 {prCount}
                             </div>
                         </div>
+
+                        {timing && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
+                                    Time at the Gym
+                                </div>
+                                <div data-timing-total style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
+                                    {formatDuration(timing.totalSeconds)}
+                                </div>
+                            </div>
+                        )}
+
+                        {timing && (
+                            <button
+                                className="modal-btn"
+                                onClick={() => setShowDetails(!showDetails)}
+                                style={{ marginBottom: '12px' }}
+                            >
+                                {showDetails ? 'Hide Details' : 'View More Details'}
+                            </button>
+                        )}
+
+                        {timing && showDetails && (
+                            <div data-timing-details style={{ marginBottom: '20px', fontSize: '14px' }}>
+                                {timing.rows.map(row => (
+                                    <div
+                                        key={row.id}
+                                        data-timing-row={row.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            gap: '12px',
+                                            padding: '6px 0',
+                                            borderBottom: '1px solid #2a2a3a'
+                                        }}
+                                    >
+                                        <span>{row.name}</span>
+                                        <span style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
+                                            {row.seconds === null
+                                                ? 'NA'
+                                                : formatSecondsToTime(row.seconds) + (row.estimated ? ' *' : '')}
+                                        </span>
+                                    </div>
+                                ))}
+                                {hasEstimatedRow && (
+                                    <div style={{ marginTop: '10px', color: '#888', fontSize: '12px' }}>
+                                        * estimated — Weight Breakdown was not opened for this movement,
+                                        so it is measured from the previous log
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <button className="modal-btn primary" onClick={onClose}>
                             Close

@@ -113,6 +113,38 @@
             return null;
         }
 
+        // Did `newer` move this lift forward on `older`? The single definition of
+        // "an improvement" in this app, and deliberately the only one: it backs
+        // both the flame streak badge and the "PRs Smashed" count in the Day
+        // Breakdown modal. Those disagreed until August 2026 — the modal carried
+        // its own looser rule, `weight up OR reps up`, which scored a weight DROP
+        // as a PR whenever the reps rose. That is not an edge case: a plateau
+        // buster drops the weight on purpose (see getPlateauBusterDecrement), so
+        // the recovery session came back lighter, at more reps, and the modal
+        // congratulated the user for the session the app had told them to back off
+        // on. Keep this the one arbiter; a second copy will drift the same way.
+        //
+        // The weight-up case ignores reps entirely, and that is deliberate: hitting
+        // 6 reps makes getSimplePR bump the weight and repsDefault reset the
+        // dropdown to 4, so the app's own progression always looks like a rep
+        // regression on the session after a bump. Counting that as backsliding
+        // would cap every streak at 2 and the badge would never mean anything.
+        //
+        // Non-numeric weights (bodyweight rows carry 'Body Weight', NA rows carry
+        // 'NA') can't be compared, so they read as "no improvement" rather than
+        // being mistaken for a change.
+        function isImprovement(newer, older) {
+            if (!newer || !older) return false;
+            const newWeight = parseFloat(newer.weight);
+            const oldWeight = parseFloat(older.weight);
+            const newReps = parseInt(newer.reps);
+            const oldReps = parseInt(older.reps);
+            if ([newWeight, oldWeight, newReps, oldReps].some(isNaN)) return false;
+            if (newWeight > oldWeight) return true;
+            if (newWeight < oldWeight) return false;
+            return newReps > oldReps;
+        }
+
         // The mirror image of getStagnationWarning: how many consecutive times
         // this lift has moved *forward*. Same history walk, no slice — a streak
         // has no ceiling. Surfaces as the green flame pill in the exercise header.
@@ -121,15 +153,10 @@
         // the baseline you improved *from*, so a flat stretch capped by one better
         // session reads 1, not 2.
         //
-        // A session extends the streak when the weight went up, or the weight held
-        // and the reps went up. It breaks on an identical session, on a weight
-        // drop, and on fewer reps at the same weight.
-        //
-        // The weight-up case ignores reps entirely, and that is deliberate: hitting
-        // 6 reps makes getSimplePR bump the weight and repsDefault reset the
-        // dropdown to 4, so the app's own progression always looks like a rep
-        // regression on the session after a bump. Counting that as backsliding
-        // would cap every streak at 2 and the badge would never mean anything.
+        // A session extends the streak exactly when isImprovement says so above:
+        // the weight went up, or the weight held and the reps went up. It breaks
+        // on an identical session, on a weight drop, and on fewer reps at the
+        // same weight.
         function getPRStreak(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
@@ -152,23 +179,10 @@
 
             const entries = sessions.map(w => w.exercises.find(e => e.id === exerciseId));
 
-            // Non-numeric weights (bodyweight rows carry 'Body Weight') can't be
-            // compared, so they end the run rather than being read as a change.
-            const extendsStreak = (newer, older) => {
-                const newWeight = parseFloat(newer.weight);
-                const oldWeight = parseFloat(older.weight);
-                const newReps = parseInt(newer.reps);
-                const oldReps = parseInt(older.reps);
-                if ([newWeight, oldWeight, newReps, oldReps].some(isNaN)) return false;
-                if (newWeight > oldWeight) return true;
-                if (newWeight < oldWeight) return false;
-                return newReps > oldReps;
-            };
-
             // Starts at 0: one session on its own is a baseline, not a gain.
             let streak = 0;
             for (let i = 0; i + 1 < entries.length; i++) {
-                if (!extendsStreak(entries[i], entries[i + 1])) break;
+                if (!isImprovement(entries[i], entries[i + 1])) break;
                 streak++;
             }
 
