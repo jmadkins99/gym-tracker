@@ -74,15 +74,15 @@ async function readStandardCard(page, name) {
         const cf = await readStandardCard(page, 'Chest Flies');
         eq(cf.repsValue, '4', 'no-history exercise defaults reps to 4');
 
-        // Kelso Shrugs hit 6 last time -> weight bumps (+1.25 -> 191.25), reps -> 4.
+        // Kelso Shrugs hit 6 last time -> weight bumps (+2.5 -> 192.5), reps -> 4.
         // It is the one probe here that sits on Posterior, so hop the toggle
         // for it. Keeping Kelso Shrugs specifically matters: the expected
-        // 190 -> 191.25 bump is its own PR increment, so substituting an
+        // 190 -> 192.5 bump is its own PR increment, so substituting an
         // Anterior movement to save the hop would change what is covered.
         await selectDayType(page, 'posterior');
         const ks = await readStandardCard(page, 'Kelso Shrugs');
         eq(ks.repsValue, '4', 'after hitting 6, reps reset to 4 for the new weight');
-        eq(ks.weightValue, '191.25', 'after hitting 6, weight auto-bumps by the PR increment');
+        eq(ks.weightValue, '192.5', 'after hitting 6, weight auto-bumps by the PR increment');
 
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.
         // On the deck that means navigating to it and opening it — LOG exists

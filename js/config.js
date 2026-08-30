@@ -42,21 +42,21 @@
         // per side per move) and pin stacks moved a full stack notch at a time.
         // 2.5 or 1.25 elsewhere; both are legal micro-plate steps.
         const PR_WEIGHT_INCREMENTS = {
-            'curls-shoulder-extension': 1.25,
-            'overhead-tricep-extensions': 1.25,
-            'chest-flies': 1.25,
-            'chest-press': 1.25,
+            'curls-shoulder-extension': 2.5,
+            'overhead-tricep-extensions': 2.5,
+            'chest-flies': 2.5,
+            'chest-press': 2.5,
             'incline-chest-press': 2.5,
             'leg-curls': 5,
             'shoulder-press': 2.5,
-            'preacher-curls': 1.25,
-            'tricep-pushdown': 1.25,
-            'lateral-raises': 1.25,
-            'frontal-pulldowns': 1.25,
-            'upper-back-row': 1.25,
-            'kelso-shrugs': 1.25,
-            'hammer-row': 1.25,
-            'leg-extensions': 1.25,
+            'preacher-curls': 2.5,
+            'tricep-pushdown': 2.5,
+            'lateral-raises': 2.5,
+            'frontal-pulldowns': 2.5,
+            'upper-back-row': 2.5,
+            'kelso-shrugs': 2.5,
+            'hammer-row': 2.5,
+            'leg-extensions': 2.5,
             // Leg Press: 5 = 2.5/side on a two-side plate machine. It reads as
             // one pin-stack notch too, which is why it needed no change when
             // this was briefly classified as a stack — do not take the shared
@@ -66,10 +66,10 @@
             // but a finer step than this machine warrants now that it is
             // capped at 405.
             'calf-raise': 5,
-            'ab-crunch': 1.25,
-            'cable-wrist-curls': 1.25,
-            'reverse-wrist-curls': 1.25,
-            'actual-leg-extensions': 1.25
+            'ab-crunch': 2.5,
+            'cable-wrist-curls': 2.5,
+            'reverse-wrist-curls': 2.5,
+            'actual-leg-extensions': 2.5
         };
 
         // How a machine is loaded, and therefore which shape the Weight
@@ -130,6 +130,12 @@
         // to preserve, and switching an exercise back to a stack would leave the
         // coarsened step behind. Computing it per read means the raw number in
         // PR_WEIGHT_INCREMENTS stays the single source of truth.
+        // NOTE: as of Aug 2026 no exercise ships a 1.25 increment, so the
+        // two-sided branch below never fires against the current roster. It is
+        // kept because loadType is a runtime user setting and the next 1.25
+        // exercise — a new movement, or one of these dialled back — would
+        // otherwise suggest 0.625 a side, which is not a plate. Case 61
+        // exercises it with a synthetic increment for exactly this reason.
         function getWeightIncrement(exerciseId, loadType) {
             const base = PR_WEIGHT_INCREMENTS[exerciseId];
             if (base === undefined) return undefined;
@@ -201,7 +207,7 @@
         // a way it was not for reorders 7 through 13: a device that has set a
         // load type must come through this bump still holding it. Case 59 is
         // what stops that regressing.
-        const EXERCISE_CONFIG_VERSION = 17;
+        const EXERCISE_CONFIG_VERSION = 18;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout

@@ -8,6 +8,10 @@
 // it is doubled to 2.5. 2.5 and 5 already halve legally (1.25 and 2.5 a side)
 // and must be left alone — the bump is minimal, not a floor.
 //
+// Aug 2026: every increment was raised to 2.5 or above, so NO exercise on the
+// roster triggers the branch any more. It is driven with a synthetic increment
+// below instead of being deleted — see the note there.
+//
 // This is the strengthened heir of a loop that used to live in case 45, which
 // swept PLATE_LOADED_EXERCISES asserting every two-sided entry's increment
 // halved onto a 1.25 multiple. That loop could not survive loadType becoming a
@@ -23,7 +27,7 @@
 //
 // To verify this test is real: delete the 'plate-two-sided' branch from
 // getWeightIncrement in config.js. The unit half fails naming every 1.25
-// exercise, and the end-to-end half reads 201.25 where it expects 202.5.
+// exercise, and the end-to-end half reads 202.5 where it expects 202.5.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -92,17 +96,47 @@ function daysAgo(n) {
         eq(overBumped, [],
             'only a 1.25 raw increment is bumped; 2.5 and 5 are already legal two-sided steps');
 
-        // Non-vacuity: at least one exercise must actually be bumped, or
-        // assertions 2 and 3 are both satisfied by a helper that does nothing.
+        // Non-vacuity, and the reason this looks the way it does.
+        //
+        // Since Aug 2026 no exercise ships a 1.25 increment — they were all
+        // raised to 2.5 — and the doubling branch ONLY fires for 1.25, because
+        // 2.5 and 5 already halve onto real plates. So assertions 2 and 3 above
+        // are now satisfied by a helper that does nothing at all, and there is
+        // no roster entry left to prove otherwise with.
+        //
+        // The rule is still worth keeping and still worth testing: loadType is a
+        // runtime user setting, so the next 1.25 exercise — a new movement, or
+        // one of these dialled back — would suggest 0.625 a side, which is not a
+        // plate. PR_WEIGHT_INCREMENTS is a plain object, so a synthetic id is
+        // enough to drive the branch directly.
+        const synthetic = await page.evaluate(() => {
+            PR_WEIGHT_INCREMENTS['synthetic-fine-increment'] = 1.25;
+            const out = {
+                pin: getWeightIncrement('synthetic-fine-increment', 'pin'),
+                oneSided: getWeightIncrement('synthetic-fine-increment', 'plate-one-sided'),
+                twoSided: getWeightIncrement('synthetic-fine-increment', 'plate-two-sided'),
+            };
+            delete PR_WEIGHT_INCREMENTS['synthetic-fine-increment'];
+            return out;
+        });
+        eq(synthetic.twoSided, 2.5,
+            'a 1.25 increment on a two-sided machine is doubled to 2.5 — 0.625 a side is ' +
+            'not a plate. No exercise ships 1.25 today, so this is the only thing keeping ' +
+            'the branch honest');
+        eq(synthetic.pin, 1.25, 'and a pin stack keeps the fine increment untouched');
+        eq(synthetic.oneSided, 1.25, 'as does a one-sided machine, which needs no halving');
+
+        // Every real exercise is already a legal two-sided step, so nothing on
+        // the current roster moves.
         const bumped = table.filter(r => r.twoSided !== r.raw);
-        ok(bumped.length > 0,
-            `at least one exercise is bumped under two-sided (got ${bumped.length})`);
-        ok(bumped.every(r => r.raw === 1.25 && r.twoSided === 2.5),
-            'every bump is exactly 1.25 -> 2.5');
+        eq(bumped, [],
+            'no roster exercise is bumped any more, because none is finer than 2.5');
 
         // --- End-to-end half: the number reaches the weight input ----------
-        // Chest Flies raw increment is 1.25. Last session: 200 x 6 reps, which
-        // is what getSimplePR treats as a PR worth adding weight to.
+        // Chest Flies raw increment is 2.5. Last session: 200 x 6 reps, which
+        // is what getSimplePR treats as a PR worth adding weight to. It is the
+        // same number under both load types now — which is the point of the
+        // control pass below rather than a reason to drop it.
         const history = [workoutEntry({
             date: daysAgo(7),
             day: 'anterior',
@@ -121,7 +155,7 @@ function daysAgo(n) {
         // reading every card off the screen at once.
         let flies = await readDeckCard(page, 'Chest Flies');
         ok(flies, 'found the Chest Flies card on Anterior');
-        eq(flies.weightValue, '201.25',
+        eq(flies.weightValue, '202.5',
             'as a pin stack, a 6-rep PR suggests 200 + 1.25');
 
         // Now the same history with the exercise set two-sided. Read the
