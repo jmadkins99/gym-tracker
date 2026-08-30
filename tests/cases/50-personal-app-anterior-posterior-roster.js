@@ -43,9 +43,8 @@ const ANTERIOR = [
     ['ab-crunch', 'Ab Crunches'],
     ['actual-leg-extensions', 'Leg Extensions'],
     ['tricep-pushdown', 'Tricep Extensions'],
-    // Wrist flexors are anterior forearm; the extensors sit on Posterior.
-    ['reverse-wrist-curls', 'Reverse Wrist Curls'],
-    ['cable-wrist-curls', 'Cable Wrist Curls'],
+    // The wrist pair used to sit here. It moved to Posterior in Aug 2026 — see
+    // the note in POSTERIOR below.
     // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
     // the movement actually named Hip Adduction is `leg-extensions`, on
     // Posterior. Both mismatches are frozen.
@@ -59,6 +58,12 @@ const POSTERIOR = [
     ['upper-back-row', 'Transverse Plane Rows'],
     ['kelso-shrugs', 'Kelso Shrugs'],
     ['preacher-curls', 'Preacher Curls'],
+    // The wrist pair, moved here from Anterior in Aug 2026 and placed directly
+    // after the curls. They are forearm work done back to back at the same
+    // cable, so splitting them flexor/extensor across the two days never earned
+    // its keep, and tacking them onto the end of a pressing day was worse.
+    ['reverse-wrist-curls', 'Reverse Wrist Curls'],
+    ['cable-wrist-curls', 'Cable Wrist Curls'],
     ['leg-curls', 'Back Extensions'],
     // Adductor magnus is a hip extensor, which is why this sits with the
     // posterior chain rather than with the quads.
@@ -95,9 +100,9 @@ function extractLiteral(source, name, open, close) {
     const anterior = exercises.filter(e => e.day === 'anterior');
     const posterior = exercises.filter(e => e.day === 'posterior');
     eq(anterior.map(e => e.name), ANTERIOR.map(([, n]) => n),
-        'Anterior holds its 12 movements in canonical order');
+        `Anterior holds its ${ANTERIOR.length} movements in canonical order`);
     eq(posterior.map(e => e.name), POSTERIOR.map(([, n]) => n),
-        'Posterior holds its 9 movements in canonical order');
+        `Posterior holds its ${POSTERIOR.length} movements in canonical order`);
 
     // 4. `category` must agree with `day`. Nothing else checks this: category
     // is copied onto every logged workout row, so a mismatch quietly poisons
@@ -113,7 +118,10 @@ function extractLiteral(source, name, open, close) {
     eq(exercises.map(e => e.order), Array.from({ length: 21 }, (_, i) => i),
         'order is a dense 0..20 run');
     const firstPosterior = exercises.findIndex(e => e.day === 'posterior');
-    eq(firstPosterior, 12, 'the Anterior block is the first 12 entries');
+    // Derived, not hardcoded: the split moved once already (the wrist pair
+    // went to Posterior in Aug 2026) and a literal here just goes stale.
+    eq(firstPosterior, ANTERIOR.length,
+        `the Anterior block is the first ${ANTERIOR.length} entries`);
     ok(exercises.slice(firstPosterior).every(e => e.day === 'posterior'),
         'the two days are contiguous blocks — no Anterior entry after the split point');
 
@@ -121,5 +129,5 @@ function extractLiteral(source, name, open, close) {
     const stale = exercises.filter(e => e.day === 'upper' || e.day === 'lower');
     eq(stale, [], 'no exercise still carries an upper/lower day');
 
-    console.log('PASS: the Anterior/Posterior roster is canonical — 12 + 9, in order.');
+    console.log(`PASS: the Anterior/Posterior roster is canonical — ${ANTERIOR.length} + ${POSTERIOR.length}, in order.`);
 })();

@@ -201,7 +201,7 @@
         // a way it was not for reorders 7 through 13: a device that has set a
         // load type must come through this bump still holding it. Case 59 is
         // what stops that regressing.
-        const EXERCISE_CONFIG_VERSION = 16;
+        const EXERCISE_CONFIG_VERSION = 17;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -247,26 +247,30 @@
             // `actual-preacher-curls`; the two apps deliberately share the idiom.
             { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
             { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 8 },
-            // The wrist pair splits by anatomy: flexors here, extensors on
-            // Posterior. They sat on the same day under Upper/Lower.
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 9 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 10 },
             // Quad-dominant, and still the last thing on the day even with Leg
             // Extensions moved up ahead of the arm work. `hip-adduction` is its
             // frozen id; the `leg-extensions` id below is the one that renders
             // as Hip Adduction. Neither name matches its id and neither is safe
             // to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'plate-two-sided', order: 11 },
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'plate-two-sided', order: 9 },
 
             // --- Posterior (Mon / Wed / Fri) ---
             // Recline Curls opens Posterior: biceps are grouped with the pulling
             // work rather than with the other arm movements.
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 12 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 13 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 15 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 16 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 17 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 10 },
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 11 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 12 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 13 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
+            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 15 },
+            // The wrist pair moved here from Anterior (Aug 2026). They are
+            // forearm work and belong with the pulling day's other arm
+            // movements, immediately after the curls rather than tacked onto
+            // the end of a pressing day. Splitting them by flexor/extensor
+            // across the two days was the older idea and it never earned its
+            // keep — they are done back to back at the same cable.
+            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 16 },
+            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 17 },
             // `leg-curls` is its frozen id — it has not been a leg curl in a
             // long time.
             { id: 'leg-curls',           name: 'Back Extensions',          category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-two-sided', order: 18 },

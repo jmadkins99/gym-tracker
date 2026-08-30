@@ -32,7 +32,8 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckNames } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -64,9 +65,11 @@ const V13_LAYOUT = [
     ['hammer-row', 'Sagittal Plane Pulldowns', 'upper'],
     ['tricep-pushdown', 'Tricep Extensions', 'upper'],
     ['preacher-curls', 'Preacher Curls', 'upper'],
-    ['leg-curls', 'Back Extensions', 'lower'],
+    // Moved to Posterior in Aug 2026. The third column is the LEGACY
+    // Upper/Lower day the old config recorded, which does not change.
     ['reverse-wrist-curls', 'Reverse Wrist Curls', 'lower'],
     ['cable-wrist-curls', 'Cable Wrist Curls', 'lower'],
+    ['leg-curls', 'Back Extensions', 'lower'],
     ['ab-crunch', 'Ab Crunches', 'lower'],
     ['actual-leg-extensions', 'Leg Extensions', 'lower'],
     ['leg-extensions', 'Hip Adduction', 'lower'],
@@ -88,8 +91,6 @@ const EXPECTED_DAY_BY_ID = {
     'ab-crunch': 'anterior',
     'actual-leg-extensions': 'anterior',
     'tricep-pushdown': 'anterior',
-    'reverse-wrist-curls': 'anterior',
-    'cable-wrist-curls': 'anterior',
     'hip-adduction': 'anterior',
     'curls-shoulder-extension': 'posterior',
     'frontal-pulldowns': 'posterior',
@@ -97,6 +98,11 @@ const EXPECTED_DAY_BY_ID = {
     'upper-back-row': 'posterior',
     'kelso-shrugs': 'posterior',
     'preacher-curls': 'posterior',
+    // Moved from Anterior in Aug 2026. This map is exactly what the version
+    // bump has to deliver to a saved config, so it is the assertion that
+    // catches a forgotten EXERCISE_CONFIG_VERSION.
+    'reverse-wrist-curls': 'posterior',
+    'cable-wrist-curls': 'posterior',
     'leg-curls': 'posterior',
     'leg-extensions': 'posterior',
     'calf-raise': 'posterior',
@@ -181,8 +187,8 @@ async function readSavedConfig(page) {
 
         // 6. It reaches the screen, not just storage.
         ok(await selectDayType(page, 'posterior'), 'Posterior toggle present after the migration');
-        const posterior = (await readCards(page)).map(c => c.name);
-        eq(posterior.length, 9, 'Posterior renders 9 cards');
+        const posterior = await readDeckNames(page);
+        eq(posterior.length, 11, 'Posterior renders 11 cards');
         ok(posterior.includes('My Renamed Pulldowns'),
             'the renamed pulldowns card renders on its new day');
 

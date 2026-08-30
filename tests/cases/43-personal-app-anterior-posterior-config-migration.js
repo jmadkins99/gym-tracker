@@ -29,7 +29,8 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckNames } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -51,10 +52,11 @@ function currentConfigVersion() {
 // would make the rename assertions vacuous.
 const FULL_BODY = [
     ['preacher-curls', 'Preacher Curls'],
-    ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
-    ['lateral-raises', 'Lateral Raises'],
+    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
     ['reverse-wrist-curls', 'Reverse Wrist Curls'],
     ['cable-wrist-curls', 'Cable Wrist Curls'],
+    ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
+    ['lateral-raises', 'Lateral Raises'],
     ['chest-flies', 'Unilateral Chest Flies'],
     ['curls-shoulder-extension', 'Recline Curls'],
     ['frontal-pulldowns', 'My Renamed Pulldowns'],
@@ -90,8 +92,6 @@ const EXPECTED_ANTERIOR = [
     // Like Chest Press above, added by the migration under its own fresh id.
     'Leg Extensions',
     'Tricep Extensions',
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
     // hip-adduction, renamed by the user below. Its position comes from
     // DEFAULT_EXERCISES, not from the saved config — the migration takes order
     // and day from defaults while preserving the user's name, and this row is
@@ -107,6 +107,9 @@ const EXPECTED_POSTERIOR = [
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Preacher Curls',
+    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
     'Back Extensions',
     'Hip Adduction',
     'Calf Raises',
@@ -158,11 +161,11 @@ async function readSavedConfig(page) {
 
         // 1 + 3 + 4. The split applied, leg extensions arrived, renames survived.
         ok(await selectDayType(page, 'anterior'), 'Anterior toggle present');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_ANTERIOR,
+        eq(await readDeckNames(page), EXPECTED_ANTERIOR,
             'saved config is split onto Anterior in canonical order, renames preserved');
 
         ok(await selectDayType(page, 'posterior'), 'Posterior toggle present');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_POSTERIOR,
+        eq(await readDeckNames(page), EXPECTED_POSTERIOR,
             'saved config is split onto Posterior in canonical order, renames preserved');
 
         // 2 + 5. What actually got persisted.
@@ -195,8 +198,13 @@ async function readSavedConfig(page) {
 
         // Every exercise is assigned to exactly one of the two days.
         const days = Object.values(saved.byId).map(e => e.day);
-        eq(days.filter(d => d === 'anterior').length, 12, '12 exercises on Anterior');
-        eq(days.filter(d => d === 'posterior').length, 9, '9 exercises on Posterior');
+        // Derived from the expected rosters: the split has moved once already
+        // (the wrist pair went to Posterior in Aug 2026) and a literal here
+        // just goes stale a second time.
+        eq(days.filter(d => d === 'anterior').length, EXPECTED_ANTERIOR.length,
+            `${EXPECTED_ANTERIOR.length} exercises on Anterior`);
+        eq(days.filter(d => d === 'posterior').length, EXPECTED_POSTERIOR.length,
+            `${EXPECTED_POSTERIOR.length} exercises on Posterior`);
         eq(days.filter(d => d !== 'anterior' && d !== 'posterior'), [],
             'no exercise is left without a day');
 
@@ -212,7 +220,7 @@ async function readSavedConfig(page) {
         eq(secondLoad, saved, 'a second load is a no-op — the migration is idempotent');
 
         await selectDayType(page, 'anterior');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_ANTERIOR,
+        eq(await readDeckNames(page), EXPECTED_ANTERIOR,
             'Anterior is stable across the reload');
 
         // ---- Phase 2: an id the defaults dropped must leave a saved config ----
@@ -242,7 +250,7 @@ async function readSavedConfig(page) {
         eq(dropped, saved, 'the dropped config matches the canonical one exactly');
 
         await selectDayType(page, 'posterior');
-        eq((await readCards(page)).map(c => c.name), EXPECTED_POSTERIOR,
+        eq(await readDeckNames(page), EXPECTED_POSTERIOR,
             'Posterior renders without a Stairmaster card after the drop');
         eq(await page.evaluate(() =>
             Array.from(document.querySelectorAll('.section-title')).map(e => e.textContent.trim())),

@@ -25,7 +25,8 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckNames } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -72,8 +73,6 @@ const EXPECTED_NEW_ORDER = [
     'Ab Crunches',
     'Leg Extensions',         // added Aug 2026; arrives via the migration
     'Tricep Extensions',
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
     'Leg Press',
 ];
 
@@ -105,7 +104,7 @@ const EXPECTED_NEW_ORDER = [
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        const names = (await readCards(page)).map(c => c.name);
+        const names = await readDeckNames(page);
         eq(names, EXPECTED_NEW_ORDER,
             'stale config is reordered to the canonical layout, renames preserved');
 
@@ -149,7 +148,7 @@ const EXPECTED_NEW_ORDER = [
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        const afterReorder = (await readCards(page)).map(c => c.name);
+        const afterReorder = await readDeckNames(page);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
         expectedAfter.splice(7, 0, expectedAfter.splice(8, 1)[0]); // Tricep Extensions up one
         eq(afterReorder, expectedAfter,

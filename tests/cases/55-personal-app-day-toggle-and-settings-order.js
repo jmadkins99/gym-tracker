@@ -28,13 +28,14 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const EXPECTED_ANTERIOR = [
     'Chest Press', 'Incline Chest Press', 'Chest Flies', 'Shoulder Press',
     'Lateral Raises', 'Overhead Tricep Extensions', 'Ab Crunches',
-    'Leg Extensions', 'Tricep Extensions', 'Reverse Wrist Curls',
-    'Cable Wrist Curls', 'Leg Press',
+    'Leg Extensions', 'Tricep Extensions', 'Leg Press',
 ];
 
 const EXPECTED_POSTERIOR = [
     'Recline Curls', 'Frontal Plane Pulldowns', 'Sagittal Plane Pulldowns',
     'Transverse Plane Rows', 'Kelso Shrugs', 'Preacher Curls',
+    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
+    'Reverse Wrist Curls', 'Cable Wrist Curls',
     'Back Extensions', 'Hip Adduction', 'Calf Raises',
 ];
 
@@ -108,6 +109,7 @@ const EXPECTED_POSTERIOR = [
         // The arrows must stop at each day boundary — that is the whole reason
         // the list is grouped. First row of a group cannot go up; last cannot
         // go down.
+        await page.evaluate((n) => { window.ANTERIOR_COUNT = n; }, EXPECTED_ANTERIOR.length);
         const arrowState = await page.evaluate(() => {
             const rows = Array.from(document.querySelectorAll('.exercise-row'));
             const at = (i) => {
@@ -117,7 +119,12 @@ const EXPECTED_POSTERIOR = [
                     down: btns.find(b => b.textContent.trim() === '↓')?.disabled,
                 };
             };
-            return { count: rows.length, first: at(0), lastAnterior: at(11), firstPosterior: at(12), last: at(rows.length - 1) };
+            // The boundary is derived, not a literal: it moved when the wrist
+            // pair went to Posterior in Aug 2026, and hardcoding 11/12 is what
+            // made this assertion fail for the wrong reason.
+            const boundary = window.ANTERIOR_COUNT;
+            return { count: rows.length, first: at(0), lastAnterior: at(boundary - 1),
+                     firstPosterior: at(boundary), last: at(rows.length - 1) };
         });
 
         eq(arrowState.count, 21, 'all 21 movements are listed across the two groups');

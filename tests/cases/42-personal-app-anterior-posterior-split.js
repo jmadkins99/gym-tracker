@@ -37,7 +37,8 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckNames } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -59,8 +60,6 @@ const EXPECTED_ANTERIOR = [
     'Tricep Extensions',
     // The wrist pair splits by anatomy under this program: flexors here,
     // extensors on Posterior. They shared a day under Upper/Lower.
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
     // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
     // the row named Hip Adduction is `leg-extensions`. Both mismatches frozen.
     'Leg Press',
@@ -74,6 +73,9 @@ const EXPECTED_POSTERIOR = [
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Preacher Curls',
+    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
     'Back Extensions',
     // Adductor magnus is a hip extensor, hence the posterior chain.
     'Hip Adduction',
@@ -120,7 +122,7 @@ async function sectionTitles(page) {
         // expectation variable pointing the other way, and the case would pass
         // or fail depending on the day of the week. Kelso Shrugs is
         // Posterior-only and has no such history.
-        const defaultNames = (await readCards(page)).map(c => c.name);
+        const defaultNames = await readDeckNames(page);
         eq(defaultNames.includes('Kelso Shrugs'), expectedDefaultIsPosterior,
             `default day type matches weekday rule (posterior=${expectedDefaultIsPosterior})`);
 
@@ -141,14 +143,14 @@ async function sectionTitles(page) {
 
         // 2. Anterior.
         ok(await selectDayType(page, 'anterior'), 'Anterior toggle exists and is clickable');
-        const anterior = (await readCards(page)).map(c => c.name);
+        const anterior = await readDeckNames(page);
         eq(anterior, EXPECTED_ANTERIOR, 'Anterior renders its 12 movements in canonical order');
         eq(await sectionTitles(page), [],
             'Anterior has no Cardio section now that Stairmaster is retired');
 
         // 3. Posterior.
         ok(await selectDayType(page, 'posterior'), 'Posterior toggle exists and is clickable');
-        const posterior = (await readCards(page)).map(c => c.name);
+        const posterior = await readDeckNames(page);
         eq(posterior, EXPECTED_POSTERIOR, 'Posterior renders its 9 movements in canonical order');
         eq(await sectionTitles(page), [], 'Posterior has no Cardio section');
 
