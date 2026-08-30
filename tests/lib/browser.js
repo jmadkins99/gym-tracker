@@ -93,10 +93,24 @@ function attachConsole(page) {
     return errors;
 }
 
-// Waits for an `.exercise-card` to appear, which is our signal that React
-// has finished hydrating + the workout view has rendered.
+// Waits for the workout screen to render, which is our signal that React has
+// finished hydrating.
+//
+// Two selectors because the two apps no longer draw the same screen. Jessi's
+// app is still a scrolling list of `.exercise-card`s; gym-tracker is a swipe
+// deck whose cards live inside `.deck-stage`. This helper is shared by roughly
+// forty cases across both, so it asks for either rather than being forked —
+// "the workout screen exists" is the same question in both apps even though the
+// answer is a different element.
 async function waitForApp(page, timeoutMs = 8000) {
-    await page.waitForSelector('.exercise-card', { timeout: timeoutMs });
+    try {
+        await page.waitForFunction(
+            () => !!(document.querySelector('.deck-stage') || document.querySelector('.exercise-card')),
+            { timeout: timeoutMs, polling: 50 });
+    } catch (err) {
+        throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for the workout ' +
+            'screen (neither .deck-stage nor .exercise-card appeared)');
+    }
     // Give React one more tick so derived state (PR helpers, defaults) settles.
     await new Promise(r => setTimeout(r, 250));
 }

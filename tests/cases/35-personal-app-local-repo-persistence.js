@@ -11,7 +11,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { ACTIVE, goToCard, goToCardAndLog } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -39,13 +40,11 @@ const NS = 'gym-local:';
         await waitForApp(page);
         await selectDayType(page, 'posterior');
 
-        // Log frontal-pulldowns with its pre-filled weight/reps.
-        await page.evaluate(() => {
-            const card = document.querySelector('[data-exercise-id="frontal-pulldowns"]');
-            const btn = Array.from(card.querySelectorAll('button')).find(b => /LOG/i.test(b.textContent));
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 250));
+        // Log Frontal Plane Pulldowns with its pre-filled weight/reps. The deck
+        // mounts three cards, so this navigates to it and opens it first —
+        // reaching straight for [data-exercise-id] only worked when every card
+        // was on screen.
+        await goToCardAndLog(page, 'Frontal Plane Pulldowns');
 
         // Persisted immediately (before any reload)?
         let saved = await page.evaluate((ns) =>
@@ -58,15 +57,20 @@ const NS = 'gym-local:';
         await waitForApp(page);
         await selectDayType(page, 'posterior');
 
-        const restored = await page.evaluate(() => {
-            const card = document.querySelector('[data-exercise-id="frontal-pulldowns"]');
+        // A logged card opens itself as a review, so after the reload it should
+        // be found already showing its numbers with a spent LOG button.
+        await goToCard(page, 'Frontal Plane Pulldowns');
+        const restored = await page.evaluate((sel) => {
+            const slot = document.querySelector(sel);
+            const btn = slot.querySelector('.log-btn');
             return {
-                logged: card.classList.contains('logged'),
-                btnText: Array.from(card.querySelectorAll('button'))
-                    .find(b => /LOG/i.test(b.textContent))?.textContent?.trim() || '',
+                logged: !!slot.querySelector('.card.is-done'),
+                review: !!slot.querySelector('.card-open'),
+                btnText: btn ? btn.textContent.trim() : '',
             };
-        });
+        }, ACTIVE);
         ok(restored.logged, 'card restored in logged state after reload');
+        ok(restored.review, 'and opens itself as a review');
         eq(restored.btnText, '✓ Logged', 'LOG button shows logged after reload');
 
         saved = await page.evaluate((ns) =>

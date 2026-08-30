@@ -80,6 +80,93 @@
             const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
             const [hydrated, setHydrated] = useState(false);
             const [showSyncPrompt, setShowSyncPrompt] = useState(false);
+            // Is a keyboard up? Ask focus, not arithmetic.
+            //
+            // This was a viewport-height heuristic — keyboard open if the visual
+            // viewport shrank by more than 120px — and on a real iPhone it never
+            // fired, so the card went on showing everything and simply clipped
+            // the field being typed into. Whatever iOS does to innerHeight, it
+            // is not something to infer a keyboard from.
+            //
+            // A field having focus IS the keyboard being up, on every platform,
+            // with no thresholds to be wrong about. focusin/focusout bubble, so
+            // one pair of listeners covers every card the deck ever mounts.
+            useEffect(() => {
+                // Deliberately NOT select. A dropdown raises a picker, not a
+                // text keyboard, and it closes on the first tap — so reshaping
+                // the card for it means hiding the hero, the warmup rows, the
+                // day toggle and the footer for a fraction of a second, which
+                // reads as the page lurching. Only something that summons a
+                // keyboard is worth rebuilding the card for.
+                const isField = (el) => !!el && el.matches && el.matches('input, textarea');
+                const open = (e) => {
+                    if (isField(e.target)) document.documentElement.classList.add('kb-open');
+                };
+                const close = (e) => {
+                    if (!isField(e.target)) return;
+                    // A blur that immediately re-focuses another field (weight
+                    // to reps) must not flicker the layout, so settle first and
+                    // ask what actually has focus.
+                    setTimeout(() => {
+                        if (!isField(document.activeElement)) {
+                            document.documentElement.classList.remove('kb-open');
+                        }
+                    }, 0);
+                };
+                document.addEventListener('focusin', open);
+                document.addEventListener('focusout', close);
+                return () => {
+                    document.removeEventListener('focusin', open);
+                    document.removeEventListener('focusout', close);
+                };
+            }, []);
+
+            // Keep --vvh on <html> equal to the VISUAL viewport height, which
+            // is what the app shell is sized to.
+            //
+            // The layout viewport and the visual viewport are the same until
+            // something covers part of the screen. Then they diverge: iOS
+            // shrinks the visual viewport for the keyboard and, if the page is
+            // taller than what is left, scrolls the focused input into view —
+            // which is what dragged the card up and took the exercise name off
+            // the top. Sizing to the visual viewport means everything already
+            // fits, so there is nothing for the browser to scroll. The card body
+            // scales itself down inside that, as it already did.
+            //
+            // visualViewport also fires on the address bar collapsing, which is
+            // the other reason 100vh was wrong on a phone.
+            //
+            // The `scroll` listener is the load-bearing one for the keyboard:
+            // iOS pans the visual viewport rather than scrolling the document,
+            // so that event is the only notification that anything moved.
+            useEffect(() => {
+                const vv = window.visualViewport;
+                const apply = () => {
+                    const style = document.documentElement.style;
+                    style.setProperty('--vvh', (vv ? vv.height : window.innerHeight) + 'px');
+                    // How far iOS has panned the visible area down the page.
+                    // Zero everywhere else, and zero here too until a keyboard
+                    // opens — which is exactly when it stops being zero and the
+                    // app would otherwise slide out from under it.
+                    style.setProperty('--vvo', (vv ? vv.offsetTop : 0) + 'px');
+                };
+                apply();
+                if (vv) {
+                    vv.addEventListener('resize', apply);
+                    vv.addEventListener('scroll', apply);
+                }
+                window.addEventListener('resize', apply);
+                window.addEventListener('orientationchange', apply);
+                return () => {
+                    if (vv) {
+                        vv.removeEventListener('resize', apply);
+                        vv.removeEventListener('scroll', apply);
+                    }
+                    window.removeEventListener('resize', apply);
+                    window.removeEventListener('orientationchange', apply);
+                };
+            }, []);
+
             const currentWeek = useMemo(() => getCurrentWeek(workoutHistory), [workoutHistory]);
             const hasMigratedWeeks = useRef(false);
 
@@ -690,68 +777,6 @@
                 setShowDayBreakdown(true);
             };
 
-            const markDayAsNA = () => {
-                if (!confirm('Are you sure you want to mark this day as NA?')) {
-                    return;
-                }
-
-                const timestamp = new Date().toISOString();
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const todayWeek = getWeekNumber(today, workoutHistory);
-
-                const currentDayExercises = getCurrentExercises();
-
-                const naExercises = currentDayExercises.map(ex => {
-                    if (ex.type === 'assault-bike') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, watts: '25', intensity: 'NA' };
-                    } else if (ex.type === 'stairmaster') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, level: 'Level 7', time: 'NA' };
-                    } else if (ex.type === 'bodyweight') {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'Body Weight', reps: 'NA' };
-                    } else {
-                        return { id: ex.id, name: ex.name, category: ex.category, type: ex.type, weight: 'NA', reps: 'NA' };
-                    }
-                });
-
-                let existingWorkoutIndex = workoutHistory.findIndex(w => {
-                    const workoutDate = new Date(w.date);
-                    workoutDate.setHours(0, 0, 0, 0);
-                    return workoutDate.getTime() === today.getTime() && !w.submitted;
-                });
-
-                let updatedHistory;
-                if (existingWorkoutIndex !== -1) {
-                    updatedHistory = [...workoutHistory];
-                    updatedHistory[existingWorkoutIndex] = {
-                        ...updatedHistory[existingWorkoutIndex],
-                        exercises: naExercises,
-                        date: timestamp,
-                        submitted: true,
-                        plateauBusters: []
-                    };
-                } else {
-                    const newWorkout = {
-                        date: timestamp,
-                        day: activeDayType,
-                        week: todayWeek,
-                        exercises: naExercises,
-                        submitted: true,
-                        plateauBusters: []
-                    };
-                    updatedHistory = [newWorkout, ...workoutHistory];
-                }
-
-                setWorkoutHistory(updatedHistory);
-                window.repo.saveHistory(updatedHistory);
-
-                setLoggedExercises({});
-                setWorkoutData({});
-                clearStartTimes();
-
-                setShowDayBreakdown(true);
-            };
-
             const updateWorkout = (workoutDate, updatedExercises) => {
                 const updatedHistory = workoutHistory.map(w => {
                     if (w.date === workoutDate) {
@@ -951,42 +976,31 @@
 
                     <div className="header">
                         <div className="header-top">
-                            <h1>Gym Tracker</h1>
+                            <div className="wordmark">
+                                <h1>Gym Tracker</h1>
+                                <div className="week-indicator">Week {currentWeek}</div>
+                            </div>
                             <button className="settings-btn" onClick={() => setShowSettings(true)}>⚙️</button>
-                        </div>
-                        <div className="week-indicator">Week {currentWeek}</div>
-                        <div className="nav">
-                            <button
-                                className={`nav-btn ${currentView === 'workout' ? 'active' : ''}`}
-                                onClick={() => setCurrentView('workout')}
-                            >
-                                Workout
-                            </button>
-                            <button
-                                className={`nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
-                                onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); window.scrollTo(0, 0); }}
-                            >
-                                History
-                            </button>
                         </div>
                     </div>
 
                     <div className="content">
-                        {currentView === 'workout' && <WorkoutView
+                        {currentView === 'workout' && <SwipeDeck
                             workoutData={workoutData}
                             loggedExercises={loggedExercises}
                             handleInputChange={handleInputChange}
                             getPreviousWorkout={getPreviousWorkout}
                             logExercise={logExercise}
                             completeDay={completeDay}
-                            markDayAsNA={markDayAsNA}
                             getCurrentExercises={getCurrentExercises}
                             currentWeek={currentWeek}
                             workoutHistory={workoutHistory}
                             expandedWeightBreakdown={expandedWeightBreakdown}
                             openWeightBreakdown={openWeightBreakdown}
+                            closeWeightBreakdown={() => setExpandedWeightBreakdown(null)}
                             activeDayType={activeDayType}
                             setActiveDayType={setActiveDayType}
+                            foregroundAt={lastForegroundAt}
                         />}
                         {currentView === 'weekly' && <WeeklyView
                             workoutHistory={workoutHistory}
@@ -1002,6 +1016,25 @@
                             foregroundAt={lastForegroundAt}
                         />}
                     </div>
+
+                    {/* The nav lives at the bottom now: the workout screen is a
+                        full-height card and the thumb is already down here. */}
+                    <nav className="bottom-nav">
+                        <button
+                            className={`bottom-nav-btn ${currentView === 'workout' ? 'active' : ''}`}
+                            onClick={() => setCurrentView('workout')}
+                        >
+                            <span className="bottom-nav-icon">◉</span>
+                            Workout
+                        </button>
+                        <button
+                            className={`bottom-nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
+                            onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); window.scrollTo(0, 0); }}
+                        >
+                            <span className="bottom-nav-icon">≡</span>
+                            History
+                        </button>
+                    </nav>
                 </div>
             );
         }

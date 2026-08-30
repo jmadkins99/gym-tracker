@@ -20,24 +20,57 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            height: 100%;
+            /* The page itself never scrolls. It used to overflow by exactly the
+               78px of padding that cleared the fixed bottom nav, which is the
+               slight scroll you could feel under the interface — and the same
+               overflow is what let iOS drag the card upward to bring a focused
+               input into view. Regions that genuinely need to scroll say so
+               themselves: .content and .modal. */
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: #050510;
             color: #b8b8d0;
-            padding-bottom: 80px;
             -webkit-font-smoothing: antialiased;
         }
 
         .app {
+            /* Glued to the VISUAL viewport, not the layout viewport.
+               
+               iOS does not scroll the document when a keyboard opens — it pans
+               the visual viewport across the layout viewport, which is why
+               overflow:hidden does not stop it and why window.scrollY stays 0
+               throughout. A fixed element sits still in LAYOUT coordinates, so
+               that pan slides it off the top of what you can see, taking the
+               exercise name with it.
+               
+               So: pin to the layout viewport, then cancel the pan. --vvo is how
+               far iOS has moved the visible area down, and translating by the
+               same amount puts the app back under it. --vvh is the height left
+               once the keyboard has taken its share. App.jsx keeps both current.
+               dvh/0px are the fallbacks for first paint and for anything with no
+               visualViewport. */
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
             max-width: 100%;
-            min-height: 100vh;
+            height: var(--vvh, 100dvh);
+            transform: translateY(var(--vvo, 0px));
+            will-change: transform;
         }
 
         .header {
+            flex: none;
             background: #0d0d1a;
-            padding: 20px;
-            position: sticky;
-            top: 0;
+            padding: 14px 20px;
             z-index: 100;
             border-bottom: 1px solid var(--accent);
             box-shadow: 0 4px 20px rgba(var(--accent-rgb), 0.2);
@@ -98,31 +131,21 @@
         }
 
         .content {
-            padding: 20px;
-        }
-
-        .day-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .day-btn {
             flex: 1;
-            padding: 12px;
-            background: #1a1a2a;
-            border: 1px solid #2a2a3a;
-            color: #8a8aa0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .day-btn.active {
-            background: var(--accent);
-            border-color: var(--accent-hi);
-            color: #b8b8d0;
+            min-height: 0;
+            /* A flex column, so the deck can be a flex ITEM that fills it.
+               The deck used to ask for height:100%, which silently failed to
+               resolve against a flex-sized parent and left the deck at its
+               content height — 654px inside a 363px box. Everything below the
+               weight field then sat under the keyboard, and the card scaler
+               never fired because the card was never actually constrained.
+               Percentage heights against flex items are the fragile part;
+               flex all the way down is not. */
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 16px;
         }
 
         .section-title {
@@ -271,29 +294,6 @@
             color: #666;
         }
 
-        .na-btn {
-            width: 100%;
-            padding: 12px;
-            background: #3a1a1a;
-            border: 2px solid #6a2a2a;
-            border-radius: 8px;
-            color: #d08888;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.3s;
-        }
-
-        .na-btn:hover {
-            background: #4a2222;
-            border-color: #8a3a3a;
-        }
-
-        .na-btn:active {
-            transform: scale(0.98);
-        }
-
         .week-nav {
             display: flex;
             gap: 10px;
@@ -323,6 +323,12 @@
             text-align: center;
             font-size: 18px;
             font-weight: 600;
+        }
+
+        .content > .week-nav,
+        .content > .history-item,
+        .content > .empty-state {
+            flex: none;
         }
 
         .history-item {
@@ -410,6 +416,7 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            overflow-y: auto;
         }
 
         .modal {
@@ -419,6 +426,10 @@
             max-width: 400px;
             width: 100%;
             border: 1px solid #2a2a3a;
+            /* Settings is taller than a phone. The page used to absorb that and
+               cannot any more, so the modal carries its own scroll. */
+            max-height: 100%;
+            overflow-y: auto;
         }
 
         .modal-title {
@@ -463,4 +474,588 @@
 
         .backup-reminder {
             background: #ff9500;
+        }
+
+        /* ==========================================================
+           SWIPE DECK — the workout screen
+           ==========================================================
+           One exercise per screen. The front face is a nameplate and the
+           numbers live behind a swipe up, because that gesture is what
+           stamps startedAt (see openWeightBreakdown in App.jsx). The
+           layout exists to make that gesture worth making.
+
+           Sizing note: the card is measured in dvh, not vh. On a phone
+           vh is the tallest the viewport ever gets, so with the browser
+           chrome showing, a 100vh card has its bottom — the LOG button —
+           pushed under the address bar. */
+
+        .wordmark {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .deck {
+            --deck-gap: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            /* Fills whatever the shell leaves, and nothing more.
+               
+               This used to be `min-height: calc(100dvh - 190px)` — the viewport
+               less a hand-counted guess at the chrome. That guess is what kept
+               the card 654px tall on a 363px box once the keyboard was up: dvh
+               knows nothing about a keyboard, and a min-height cannot shrink.
+               The card scaler never fired either, because the card was never
+               actually constrained. Flex all the way down instead, so the deck
+               is whatever is genuinely left. */
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* ---- Day toggle ---- */
+        .day-toggle {
+            display: flex;
+            gap: 6px;
+            padding: 4px;
+            background: #0d0d1a;
+            border: 1px solid #1a1a2a;
+            border-radius: 999px;
+        }
+
+        .day-pill {
+            flex: 1;
+            padding: 9px 12px;
+            border: none;
+            border-radius: 999px;
+            background: transparent;
+            color: #6a6a85;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.25s ease-out;
+        }
+
+        .day-pill.active {
+            background: var(--accent);
+            color: #d8d8ea;
+            box-shadow: 0 2px 12px rgba(var(--accent-rgb), 0.45);
+        }
+
+        /* ---- The card stage ---- */
+        .deck-stage {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            /* Clips the neighbours so they slide in from the screen edge
+               rather than overhanging the layout. */
+            overflow: hidden;
+            /* Without this the browser claims the drag and pans the page
+               instead, and the card simply never moves. */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Previous, current and next ride the rail together, which is what
+           makes the deck read as a loaded stack instead of one card over
+           black. Only the middle slot takes input. */
+        .deck-rail {
+            position: absolute;
+            inset: 0;
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+
+        .deck-slot {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .deck-slot[aria-hidden="true"] {
+            pointer-events: none;
+        }
+
+        .card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: 26px 22px;
+            border-radius: 26px;
+            border: 1px solid #1c1c2c;
+            background:
+                radial-gradient(120% 80% at 50% 0%, rgba(var(--accent-rgb), 0.28) 0%, rgba(var(--accent-rgb), 0) 62%),
+                linear-gradient(180deg, #12121f 0%, #0b0b16 100%);
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+            overflow: hidden;
+        }
+
+        /* A hairline of the day's accent along the top edge — the one place
+           the palette gets to announce itself on an otherwise dark card. */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 12%; right: 12%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-muted), transparent);
+        }
+
+        .card.is-done {
+            border-color: rgba(var(--accent-rgb), 0.8);
+        }
+
+        /* ---- Front face ---- */
+        .card-front {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .card-name {
+            font-size: clamp(34px, 11vw, 58px);
+            font-weight: 700;
+            line-height: 1.04;
+            letter-spacing: -0.03em;
+            color: #e6e6f2;
+            max-width: 12ch;
+        }
+
+        .card-front.is-done .card-name {
+            color: #55556a;
+        }
+
+        .card-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 0; right: 0;
+            font-size: 12px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #4e4e63;
+        }
+
+        .card-hint-arrow {
+            font-size: 22px;
+            line-height: 1;
+            margin-bottom: 8px;
+            color: var(--accent-muted);
+            animation: hintFloat 2.4s ease-in-out infinite;
+        }
+
+        @keyframes hintFloat {
+            0%, 100% { transform: translateY(0); opacity: 0.45; }
+            50%      { transform: translateY(-7px); opacity: 1; }
+        }
+
+        /* ---- Revealed face ---- */
+        .card-open {
+            padding: 22px 20px;
+        }
+
+        .card-open-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .logged-chip {
+            padding: 3px 9px;
+            border-radius: 999px;
+            background: rgba(var(--accent-rgb), 0.35);
+            border: 1px solid var(--accent-hi);
+            color: #b9b9d2;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .card-open-name {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: #9a9ab2;
+        }
+
+        .card-body {
+            flex: 1;
+            min-height: 0;
+            /* Never scrolls. .card-fit is scaled down to fit instead, so the
+               card is always exactly one screen and nothing inside it can
+               swallow a horizontal swipe. */
+            overflow: hidden;
+            margin: 4px -4px 14px;
+            padding: 0 4px;
+        }
+
+        .card-fit {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            /* Shrinks toward the top so the hero number stays put rather than
+               drifting to the middle as it scales. */
+            transform-origin: top center;
+            transition: transform 0.18s ease-out;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 6px 0 2px;
+        }
+
+        .hero-weight {
+            font-size: clamp(44px, min(19vw, 12vh), 84px);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.045em;
+            color: #f0f0fa;
+        }
+
+        .hero-unit {
+            font-size: 0.26em;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: #6a6a85;
+            margin-left: 8px;
+            vertical-align: 0.9em;
+        }
+
+        .hero-reps {
+            margin-top: 4px;
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--accent-muted);
+        }
+
+        .hero-tag {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        /* Fixed hues: these encode meaning, so they must not rotate with
+           the daily accent. */
+        .hero-tag.up   { color: #4CAF50; background: rgba(76, 175, 80, 0.12); }
+        .hero-tag.flat { color: #ff9500; background: rgba(255, 149, 0, 0.12); }
+
+        .card-last {
+            text-align: center;
+            font-size: 13px;
+            color: #5c5c74;
+        }
+
+        /* ---- Warmup breakdown ---- */
+        .breakdown {
+            border-top: 1px solid #1c1c2c;
+        }
+
+        .breakdown-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 10px 2px;
+            border-bottom: 1px solid #16162400;
+        }
+
+        .breakdown-row + .breakdown-row {
+            border-top: 1px solid #161624;
+        }
+
+        .breakdown-label {
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #5c5c74;
+            white-space: nowrap;
+        }
+
+        .breakdown-pct {
+            margin-left: 7px;
+            color: #3d3d50;
+        }
+
+        .breakdown-value {
+            text-align: right;
+        }
+
+        .breakdown-weight {
+            font-size: 16px;
+            font-weight: 700;
+            color: #cdcde0;
+        }
+
+        .breakdown-plates {
+            margin-top: 3px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 11.5px;
+            /* Tabular figures so the numbers line up between rows, and a hair
+               of letter-spacing so a comma-separated run does not clot. */
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+            color: #6a6a85;
+        }
+
+        .breakdown-side {
+            color: #46465c;
+        }
+
+        /* ---- Finish card ---- */
+        .card-finish {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .finish-title {
+            font-size: clamp(28px, 8vw, 40px);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #e6e6f2;
+            margin-bottom: 28px;
+        }
+
+        .finish-stats {
+            display: flex;
+            gap: 36px;
+            margin-bottom: 36px;
+        }
+
+        .finish-stat-value {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--accent-muted);
+        }
+
+        .finish-stat-of {
+            font-size: 0.5em;
+            color: #46465c;
+        }
+
+        .finish-stat-label {
+            margin-top: 2px;
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #4e4e63;
+        }
+
+        .card-finish .save-btn {
+            margin-top: 0;
+            max-width: 280px;
+        }
+
+        .finish-back {
+            margin-top: 18px;
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #3d3d50;
+        }
+
+        /* ---- Deck footer: position and progress ---- */
+        .deck-foot {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .deck-arrow {
+            width: 38px;
+            height: 38px;
+            flex: none;
+            border-radius: 50%;
+            border: 1px solid #1c1c2c;
+            background: #0d0d1a;
+            color: var(--accent-muted);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.25s ease-out;
+        }
+
+        .deck-arrow:disabled {
+            opacity: 0.28;
+            cursor: default;
+        }
+
+        .deck-arrow:not(:disabled):active {
+            transform: scale(0.94);
+        }
+
+        .deck-progress {
+            flex: 1;
+        }
+
+        .deck-count {
+            font-size: 11px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: #4e4e63;
+            text-align: center;
+            margin-bottom: 7px;
+        }
+
+        .deck-bar {
+            height: 2px;
+            border-radius: 2px;
+            background: #1a1a2a;
+            overflow: hidden;
+        }
+
+        .deck-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--accent-muted);
+            transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* ---- Bottom nav ---- */
+        .bottom-nav {
+            flex: none;
+            z-index: 100;
+            display: flex;
+            gap: 6px;
+            padding: 8px 14px calc(8px + env(safe-area-inset-bottom, 0px));
+            background: rgba(8, 8, 18, 0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-top: 1px solid #161624;
+        }
+
+        .bottom-nav-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 8px 0;
+            border: none;
+            border-radius: 14px;
+            background: transparent;
+            color: #4e4e63;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            transition: color 0.25s ease-out, background 0.25s ease-out;
+        }
+
+        .bottom-nav-btn.active {
+            color: #d8d8ea;
+            background: rgba(var(--accent-rgb), 0.28);
+        }
+
+        .bottom-nav-icon {
+            font-size: 15px;
+            line-height: 1;
+        }
+
+
+        /* Short screens. The scaler in ExerciseCard will always make the card
+           fit, but scaling is a safety net rather than a design: on a 667px
+           phone the fixed chrome was eating so much that the contents came out
+           at 0.65 and the numbers were too small to read at arm's length.
+           Reclaiming the chrome is worth more than any amount of shrinking. */
+        @media (max-height: 780px) {
+            .header { padding: 10px 16px; }
+            .header h1 { font-size: 19px; }
+            .content { padding: 10px 12px; }
+
+            .deck { gap: 10px; }
+            .day-toggle { padding: 3px; }
+            .day-pill { padding: 7px 10px; font-size: 12px; }
+
+            .card-open { padding: 16px 16px; }
+            .card-body { margin-bottom: 10px; }
+            .card-fit { gap: 11px; }
+
+            .deck-foot { gap: 10px; }
+            .deck-arrow { width: 32px; height: 32px; font-size: 17px; }
+            .deck-count { margin-bottom: 5px; font-size: 10px; }
+
+            .bottom-nav { padding: 5px 12px calc(5px + env(safe-area-inset-bottom, 0px)); }
+            .bottom-nav-btn { padding: 6px 0; font-size: 10px; }
+            .bottom-nav-icon { font-size: 13px; }
+        }
+
+
+        /* While the OS keyboard is up. The card keeps its identity and its
+           controls; the reference material steps aside rather than being
+           scaled into illegibility. */
+        .kb-open .breakdown,
+        .kb-open .card-last,
+        .kb-open .hero-tag {
+            display: none;
+        }
+
+        /* The hero number and the weight field are the same number. With the
+           keyboard up the field is the one you need, so it takes the hero's
+           place rather than being clipped out of existence below it. */
+        .kb-open .hero {
+            display: none;
+        }
+
+        .kb-open .card-body {
+            margin-bottom: 10px;
+        }
+
+        .kb-open .input-label {
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .kb-open .input-field {
+            font-size: 24px;
+            font-weight: 700;
+            padding: 12px 14px;
+            text-align: center;
+        }
+
+        /* Desktop-only clutter: Chrome draws spin buttons inside a number
+           input. iOS never does, but they sit in the middle of the field at
+           this size and make the checks harder to read. */
+        .input-field::-webkit-outer-spin-button,
+        .input-field::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .input-field[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .kb-open .deck-foot,
+        .kb-open .day-toggle {
+            display: none;
+        }
+
+        /* Everything above moves with transform and opacity only, so this
+           switches the motion off without changing a single layout. */
+        @media (prefers-reduced-motion: reduce) {
+            .deck-rail,
+            .deck-slot,
+            .card-fit,
+            .deck-bar-fill,
+            .card-hint-arrow,
+            .day-pill,
+            .deck-arrow,
+            .bottom-nav-btn {
+                transition: none;
+                animation: none;
+            }
         }

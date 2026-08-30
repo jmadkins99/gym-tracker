@@ -585,14 +585,85 @@
                 return plates;
             };
 
-            // Warmup per-side weights are rounded to the nearest 10 lb (an exact
-            // halfway value rounds DOWN) so warmups load with clean plates and no
-            // fiddly 5/2.5/1.25 micro-plates. The top set is NEVER rounded — it
-            // always shows the exact working weight.
+            // Warmups round to a load you can actually BUILD, rather than to a
+            // round number.
+            //
+            // A warmup per-side load is any number of 45s plus at most ONE each
+            // of 25, 10 and 5. Stacking two of the same small plate is the
+            // fiddly part of loading a warmup you do not care about, so 45+10+10
+            // is not offered — 45+25 is, and it is the same trip to the rack.
+            // Micro-plates (2.5, 1.25) never appear on a warmup at all; they
+            // exist to hit an exact working weight, which is the top set's job.
+            //
+            // The top set is NEVER rounded. It always shows the exact working
+            // weight, micro-plates and all.
+            const WARMUP_SMALLS = [25, 10, 5];
+
+            // Every total the small plates can make, each used at most once:
+            // 0, 5, 10, 15, 25, 30, 35, 40. Note 20 is missing — it would need
+            // two 10s or 10+5+5 — which is why some loads are simply not
+            // offered as warmups.
+            const smallSums = (() => {
+                const out = new Set([0]);
+                for (let mask = 1; mask < (1 << WARMUP_SMALLS.length); mask++) {
+                    let sum = 0;
+                    WARMUP_SMALLS.forEach((p, i) => { if (mask & (1 << i)) sum += p; });
+                    out.add(sum);
+                }
+                return Array.from(out).sort((a, b) => a - b);
+            })();
+
+            // Every loadable warmup value up to a ceiling, with its plate count.
+            const loadableUpTo = (ceiling) => {
+                const out = [];
+                const maxFortyFives = Math.max(0, Math.floor(ceiling / 45) + 1);
+                for (let k = 0; k <= maxFortyFives; k++) {
+                    for (const r of smallSums) {
+                        const value = k * 45 + r;
+                        // Count the smalls that build this residue.
+                        let n = k, rest = r;
+                        for (const plate of WARMUP_SMALLS) {
+                            if (rest >= plate) { rest -= plate; n++; }
+                        }
+                        out.push({ value, plates: n });
+                    }
+                }
+                return out;
+            };
+
+            // Nearest loadable value to `weight`. Ties go to the load that uses
+            // FEWER plates — 65 sits equally between 45+10+5 and 45+25, and the
+            // two-plate answer is the better trip to the rack.
             const roundWarmupPerSide = (weight) => {
-                const base = Math.floor(weight / 10) * 10;
-                const remainder = parseFloat((weight - base).toFixed(4));
-                return remainder > 5 ? base + 10 : base;
+                const candidates = loadableUpTo(weight + 45);
+                let best = null;
+                for (const c of candidates) {
+                    if (best === null) { best = c; continue; }
+                    const d = Math.abs(c.value - weight);
+                    const bd = Math.abs(best.value - weight);
+                    // A tie has to be judged with a tolerance, not with ===.
+                    // The target is a percentage of a decimal weight, so a
+                    // genuine tie arrives as 109.99999999999999 rather than 110
+                    // and the tie-break never runs — which quietly picked the
+                    // four-plate load over the three-plate one.
+                    const tied = Math.abs(d - bd) < 1e-6;
+                    if ((!tied && d < bd)
+                        || (tied && c.plates < best.plates)
+                        || (tied && c.plates === best.plates && c.value > best.value)) {
+                        best = c;
+                    }
+                }
+                return best ? best.value : 0;
+            };
+
+            // The largest loadable value strictly below `limit`, or 0 if there
+            // is none. Used to keep the ramp honest at light weights, where the
+            // old rule let warmup 2 catch — or even pass — the top set.
+            const largestLoadableBelow = (limit) => {
+                const under = loadableUpTo(limit + 45)
+                    .filter((c) => c.value < limit && c.value > 0)
+                    .sort((a, b) => (b.value - a.value) || (a.plates - b.plates));
+                return under.length ? under[0].value : 0;
             };
 
             // Calculate warmup and top set weights
@@ -603,9 +674,23 @@
             // For two-sided machines, divide by 2 to get per-side weight
             const isTwoSided = loadType === 'plate-two-sided';
 
-            const warmup1PerSide = roundWarmupPerSide(isTwoSided ? warmup1Weight / 2 : warmup1Weight);
-            const warmup2PerSide = roundWarmupPerSide(isTwoSided ? warmup2Weight / 2 : warmup2Weight);
             const topSetPerSide = isTwoSided ? topSetWeight / 2 : topSetWeight;
+
+            let warmup2PerSide = roundWarmupPerSide(isTwoSided ? warmup2Weight / 2 : warmup2Weight);
+            let warmup1PerSide = roundWarmupPerSide(isTwoSided ? warmup1Weight / 2 : warmup1Weight);
+
+            // A ramp has to ascend. Rounding to a coarse grid can push a warmup
+            // up onto — or past — the set above it, which used to happen for
+            // every plate-loaded weight under about 60 lb: at 60 lb two-sided
+            // the 90% warmup WAS the top set. Step each one down to the next
+            // loadable value instead. Zero means there is no honest warmup at
+            // this weight, and the caller leaves the row out.
+            if (warmup2PerSide >= topSetPerSide) {
+                warmup2PerSide = largestLoadableBelow(topSetPerSide);
+            }
+            if (warmup1PerSide >= warmup2PerSide) {
+                warmup1PerSide = largestLoadableBelow(warmup2PerSide);
+            }
 
             return {
                 isTwoSided,
@@ -679,9 +764,21 @@
                 return plates;
             };
 
-            const buildSet = (target) => {
+            // Warmups sit on a ROUND pin position: nearest 10 lb.
+            //
+            // The stack moves in 5 lb steps, so every multiple of 10 is a real
+            // position and no micro-plate is ever needed. Rounding to the exact
+            // percentage instead is what produced warmups like 141.25 lb — a
+            // 1.25 plate balanced on the pin for a set you do not care about.
+            // The top set keeps the precise rounding: that one IS the working
+            // weight, and it has to be reachable exactly.
+            const roundWarmupPin = (weight) => Math.round(weight / 10) * 10;
+
+            // `exact` skips the pin rounding for a value already known to be a
+            // legal position, so a warmup is not rounded twice.
+            const buildSet = (target, exact) => {
                 if (maxPin === null || target <= maxPin) {
-                    const w = roundPinToAchievable(target);
+                    const w = exact ? target : roundPinToAchievable(target);
                     return { overflow: false, pinWeight: w, totalWeight: w };
                 }
                 const excess = target - maxPin;
@@ -696,9 +793,26 @@
                 };
             };
 
+            const topSet = buildSet(totalWeight, false);
+
+            // A ramp has to ascend. Rounding to 10 can push a warmup onto — or
+            // past — the set above it: at a 30 lb working weight the 90% warmup
+            // rounds to exactly 30. Step down to the next position below
+            // instead, and let zero mean there is no honest warmup here, which
+            // the card renders by leaving the row out.
+            const below = (limit) => Math.floor((limit - 0.001) / 10) * 10;
+            let warmup2Weight = roundWarmupPin(totalWeight * 0.9);
+            let warmup1Weight = roundWarmupPin(totalWeight * 0.7);
+            if (warmup2Weight >= topSet.totalWeight) warmup2Weight = below(topSet.totalWeight);
+            if (warmup1Weight >= warmup2Weight) warmup1Weight = below(warmup2Weight);
+            warmup2Weight = Math.max(0, warmup2Weight);
+            warmup1Weight = Math.max(0, warmup1Weight);
+
+            const empty = { overflow: false, pinWeight: 0, totalWeight: 0 };
+
             return {
-                warmup1: buildSet(totalWeight * 0.7),
-                warmup2: buildSet(totalWeight * 0.9),
-                topSet: buildSet(totalWeight),
+                warmup1: warmup1Weight > 0 ? buildSet(warmup1Weight, true) : empty,
+                warmup2: warmup2Weight > 0 ? buildSet(warmup2Weight, true) : empty,
+                topSet,
             };
         }
