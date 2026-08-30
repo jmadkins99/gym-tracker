@@ -24,6 +24,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { ACTIVE, goToCardById, revealCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -90,10 +91,15 @@ function buildHistory() {
 }
 
 async function readBadge(page, exerciseId) {
-    return page.evaluate((id) => {
-        const el = document.querySelector(`[data-exercise-id="${id}"] .streak-badge`);
+    // The streak badge sits beside the exercise name on the card's REVEALED
+    // face, so the card has to be navigated to and opened to read it. On the
+    // old list every badge was on screen at once.
+    await goToCardById(page, exerciseId);
+    await revealCard(page);
+    return page.evaluate((sel) => {
+        const el = document.querySelector(sel + ' .streak-badge');
         return el ? el.textContent.trim() : null;
-    }, exerciseId);
+    }, ACTIVE);
 }
 
 (async () => {
@@ -122,20 +128,30 @@ async function readBadge(page, exerciseId) {
         eq(await readBadge(page, 'lateral-raises'), null,
             'six identical sessions is a streak of 0, so no badge');
 
-        const plateau = await page.evaluate(() => {
-            const card = document.querySelector('[data-exercise-id="lateral-raises"]');
-            return /Plateau Detected/.test(card.textContent);
-        });
+        // readBadge above already navigated to Lateral Raises and opened it,
+        // which is where the plateau tag lives — the card face carries nothing
+        // but the name.
+        const plateau = await page.evaluate((sel) => {
+            const card = document.querySelector(sel);
+            return /Plateau detected/i.test(card.textContent);
+        }, ACTIVE);
         ok(plateau, 'the gold Plateau Detected banner still fires on that card');
 
-        // The badge is a sibling of .exercise-name, never a child — a pile of
-        // other cases compare that node's textContent to the bare name.
-        const names = await page.evaluate((ids) => ids.map(id => {
-            const el = document.querySelector(`[data-exercise-id="${id}"] .exercise-name`);
-            return el ? el.textContent.trim() : null;
-        }), ['chest-press', 'incline-chest-press', 'chest-flies']);
+        // The badge is a SIBLING of the name node, never a child. One card at a
+        // time now, so each is visited in turn; the invariant is unchanged and
+        // still worth pinning, because several cases read that node expecting
+        // nothing but the name.
+        const names = [];
+        for (const id of ['chest-press', 'incline-chest-press', 'chest-flies']) {
+            await goToCardById(page, id);
+            await revealCard(page);
+            names.push(await page.evaluate((sel) => {
+                const el = document.querySelector(sel + ' .card-open-name');
+                return el ? el.textContent.trim() : null;
+            }, ACTIVE));
+        }
         eq(names, ['Chest Press', 'Incline Chest Press', 'Chest Flies'],
-            '.exercise-name carries the bare name on every badged card');
+            'the name node carries the bare name on every badged card');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: the streak reads only submitted, valid, numeric sessions, and never shares a card with the plateau banner.');

@@ -24,6 +24,7 @@ const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -60,47 +61,17 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         await selectDayType(page, 'posterior');
 
         // Open the Back Extensions breakdown at 270 lbs.
-        const interacted = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Back Extensions') {
-                    const input = c.querySelector('input[type="number"]');
-                    if (!input) return false;
-                    const setter = Object.getOwnPropertyDescriptor(
-                        window.HTMLInputElement.prototype, 'value').set;
-                    setter.call(input, '270');
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    const btn = Array.from(c.querySelectorAll('button'))
-                        .find(b => b.textContent.includes('Weight Breakdown'));
-                    btn?.click();
-                    return true;
-                }
-            }
-            return false;
-        });
-        ok(interacted, 'set Back Extensions weight to 270 and clicked Weight Breakdown');
-        await new Promise(r => setTimeout(r, 300));
+        const text = await setWeightAndOpen(page, 'Back Extensions', 270);
 
-        const text = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Back Extensions') {
-                    return c.textContent;
-                }
-            }
-            return '';
-        });
-
-        // Two-sided: top set is the exact target, per side is half. Warmups round
-        // each per-side to the nearest 10 lb: 70% -> 189/2 = 94.5 -> 90/side (180
-        // total); 90% -> 243/2 = 121.5 -> 120/side (240 total). Top set is never
-        // rounded. The "Per side" line only renders when isTwoSided.
-        contains(text, 'Top Set (270 lbs)', 'top set total shown as 270 lbs (unrounded)');
-        contains(text, 'Per side: 135 lbs', 'two-sided: top set per side = 135 lbs (= 270/2)');
-        contains(text, 'Warmup Set #1 (180 lbs', 'warmup #1 total = 180 lbs (94.5 -> 90/side)');
-        contains(text, 'Per side: 90 lbs', 'warmup #1 per side rounded 94.5 -> 90 lbs');
-        contains(text, 'Warmup Set #2 (240 lbs', 'warmup #2 total = 240 lbs (121.5 -> 120/side)');
-        contains(text, 'Per side: 120 lbs', 'warmup #2 per side rounded 121.5 -> 120 lbs');
+        contains(text, '270 lbs', 'top set total shown as 270 lbs (unrounded)');
+        contains(text, '135/side', 'two-sided: top set per side = 135 lbs (= 270/2)');
+        contains(text, '190 lbs',
+            'warmup #1 total = 190. Under the Aug 2026 rule a warmup rounds to the ' +
+            'nearest load you can BUILD, so 94.5/side becomes 95 (45+45+5) rather than ' +
+            'the old nearest-10 answer of 90');
+        contains(text, '95/side', 'warmup #1 per side: 94.5 -> 95');
+        contains(text, '240 lbs', 'warmup #2 total = 240 lbs (121.5 -> 120/side)');
+        contains(text, '120/side', 'warmup #2 per side: 121.5 -> 120');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Back Extensions renders two-sided breakdown; josh backup restores cleanly.');

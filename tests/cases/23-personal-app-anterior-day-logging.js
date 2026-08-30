@@ -24,19 +24,18 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { logCardById, goToCardById, ACTIVE, revealCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
 
+// One card at a time now: navigate to it by id, open it, and log it. The
+// reveal is not ceremony — it is what stamps the exercise's start time, and
+// LOG only exists on the revealed face.
 async function logCard(page, exerciseId) {
-    await page.evaluate((id) => {
-        const card = document.querySelector(`[data-exercise-id="${id}"]`);
-        const btn = Array.from(card.querySelectorAll('button')).find(b => /LOG/i.test(b.textContent));
-        if (btn) btn.click();
-    }, exerciseId);
-    await new Promise(r => setTimeout(r, 150));
+    await logCardById(page, exerciseId);
 }
 
 (async () => {
@@ -53,25 +52,24 @@ async function logCard(page, exerciseId) {
         await selectDayType(page, 'anterior');
 
         // Ab Crunches: Week 1 default weight 140, reps dropdown pre-fills 4.
-        await page.evaluate(() => {
-            const card = document.querySelector('[data-exercise-id="ab-crunch"]');
-            const input = card.querySelector('input[type="number"]');
+        // The card must be opened before it has a weight input to type into.
+        await goToCardById(page, 'ab-crunch');
+        await revealCard(page);
+        await page.evaluate((sel) => {
+            const input = document.querySelector(sel + ' input[type="number"]');
             const setter = Object.getOwnPropertyDescriptor(
                 window.HTMLInputElement.prototype, 'value').set;
             setter.call(input, '145');
             input.dispatchEvent(new Event('input', { bubbles: true }));
-        });
+        }, ACTIVE);
         await logCard(page, 'ab-crunch');
 
         // Leg Press: logged with no interaction at all, to cover the one-tap path.
         await logCard(page, 'hip-adduction');
 
-        // Submit the day.
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => /Submit Day/i.test(b.textContent));
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 250));
+        // Submit the day. The button lives on the finish card at the end of
+        // the deck, so this walks there first.
+        await submitDay(page);
 
         const saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
@@ -79,7 +77,12 @@ async function logCard(page, exerciseId) {
         const w = saved[0];
         eq(w.day, 'anterior', 'workout recorded as an anterior day');
         ok(w.submitted, 'workout is submitted');
-        eq(w.exercises.length, 12, 'the workout carries all 12 Anterior movements');
+        // Derived: the Anterior roster lost two movements when the wrist pair
+        // moved to Posterior in Aug 2026, and a literal here goes stale.
+        const anteriorCount = await page.evaluate(() =>
+            DEFAULT_EXERCISES.filter((e) => e.day === 'anterior').length);
+        eq(w.exercises.length, anteriorCount,
+            `the workout carries all ${anteriorCount} Anterior movements`);
         // The leak probe has to be a POSTERIOR id. Chest Flies was the probe
         // under Upper/Lower, where it was an Upper movement — it is Anterior
         // now, so keeping it would turn this into "no Anterior movement leaked

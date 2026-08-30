@@ -30,6 +30,7 @@ const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -116,31 +117,17 @@ async function readSavedConfig(page) {
 
         // And it is not just storage — the breakdown really renders two-sided.
         await selectDayType(page, 'anterior');
-        const text = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim()
-                    === 'My Renamed Flies');
-            if (!card) return null;
-            const input = card.querySelector('input[type="number"], input[inputmode="decimal"]');
-            const setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value').set;
-            setter.call(input, '200');
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            const btn = Array.from(card.querySelectorAll('button'))
-                .find(b => b.textContent.includes('Weight Breakdown'));
-            btn.click();
-            return card.textContent;
-        });
-        ok(text !== null, 'found the renamed card on Anterior');
+        // The card has to be navigated to and opened before it has a weight
+        // input or a breakdown at all.
+        // The rename is a user-owned field that survives the version bump, so
+        // the card is found by its NEW name — which is half of what this case
+        // is proving.
+        const text = await setWeightAndOpen(page, 'My Renamed Flies', 200);
+        ok(text.length > 0, 'found the renamed card on Anterior and opened it');
         await new Promise(r => setTimeout(r, 300));
-        const rendered = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim()
-                    === 'My Renamed Flies');
-            return card ? card.textContent : '';
-        });
-        contains(rendered, 'Per side: 70 lbs',
-            'the preserved setting reaches the render, not just localStorage');
+        contains(text, '70/side',
+            'the preserved setting reaches the render, not just localStorage — a ' +
+            'per-side figure only appears for a two-sided machine');
 
         // === Half 2: a config from before the field existed =================
         // Every pre-v15 device and every old backup looks like this.

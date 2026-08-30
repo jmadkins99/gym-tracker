@@ -52,7 +52,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await selectDeckDay(page, 'anterior');
 
         const total = parseInt((await deckPosition(page)).split(' ')[2], 10);
-        eq(total, 12, 'the Anterior day has 12 movements');
+        eq(total, await page.evaluate(() =>
+            DEFAULT_EXERCISES.filter((e) => e.day === 'anterior').length),
+            'the deck offers exactly the Anterior roster');
 
         // === 1. In order: log 1, land on 2 =============================
         eq(await deckIndex(page), 1, 'starting on the first card');

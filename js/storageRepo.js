@@ -8,7 +8,7 @@
         // lowers async/await to regenerator form, which crashes at runtime
         // without a regeneratorRuntime polyfill.
         //
-        // Device-local keys (lastBackupReminder, firstWorkoutMonday, migration
+        // Device-local keys (firstWorkoutMonday, migration
         // sentinels) intentionally bypass the repo: they describe this device,
         // not the training data, and are never synced.
 
@@ -44,7 +44,6 @@
                 clearAll: () => {
                     storage.removeItem('gymWorkoutHistory');
                     storage.removeItem('gymExerciseConfig');
-                    storage.removeItem('lastBackupReminder');
                     return Promise.resolve();
                 },
 

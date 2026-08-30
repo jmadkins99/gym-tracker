@@ -38,6 +38,7 @@ const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -98,47 +99,20 @@ function extractLiteral(source, name, open, close) {
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        const interacted = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Leg Press');
-            if (!card) return false;
-            const input = card.querySelector('input[type="number"]');
-            if (!input) return false;
-            const setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value').set;
-            setter.call(input, '200');
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            const btn = Array.from(card.querySelectorAll('button'))
-                .find(b => b.textContent.includes('Weight Breakdown'));
-            if (!btn) return false;
-            btn.click();
-            return true;
-        });
-        ok(interacted, 'set Leg Press to 200 and opened its Weight Breakdown');
-        await new Promise(r => setTimeout(r, 300));
+        const text = await setWeightAndOpen(page, 'Leg Press', 200);
 
-        const text = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Leg Press');
-            return card ? card.textContent : '';
-        });
+        contains(text, '140 lbs', 'warmup #1 total = 140 (70% of 200)');
+        contains(text, '70/side', 'warmup #1 per side = 70 lbs (= 140/2)');
+        contains(text, '180 lbs', 'warmup #2 total = 180 (90% of 200)');
+        contains(text, '90/side', 'warmup #2 per side = 90 lbs (= 180/2)');
+        contains(text, '200 lbs', 'top set total shown as 200 lbs (unrounded)');
+        contains(text, '100/side', 'top set per side = 100 lbs (= 200/2)');
 
-        // Totals stay in the label; the per-side halves are what prove the
-        // two-sided branch ran.
-        contains(text, 'Warmup Set #1 (140 lbs', 'warmup #1 total = 140 (70% of 200)');
-        contains(text, 'Per side: 70 lbs', 'warmup #1 per side = 70 lbs (= 140/2)');
-        contains(text, 'Warmup Set #2 (180 lbs', 'warmup #2 total = 180 (90% of 200)');
-        contains(text, 'Per side: 90 lbs', 'warmup #2 per side = 90 lbs (= 180/2)');
-        contains(text, 'Top Set (200 lbs)', 'top set total shown as 200 lbs (unrounded)');
-        contains(text, 'Per side: 100 lbs', 'top set per side = 100 lbs (= 200/2)');
-
-        // The pin-stack branch is what renders "Pin:" and the bare
-        // "<label>: N lbs" row shape. Their absence is what proves the revert
-        // actually took effect rather than both branches somehow rendering.
-        ok(!/Pin:/.test(text),
-            'no pin-stack rendering remains on Leg Press');
-        ok(!/Warmup Set #1 \(~70%\)/.test(text),
-            'Leg Press does not use the plain pin-stack row format');
+        // The pin-stack branch renders a single weight with no per-side split.
+        // Its absence proves the revert took effect rather than both branches
+        // somehow rendering.
+        ok(text.indexOf('pin ') === -1, 'no pin-stack overflow rendering remains on Leg Press');
+        ok(text.indexOf('/side') !== -1, 'Leg Press uses the two-sided plate format');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Leg Press renders a two-sided plate breakdown with a matching increment.');

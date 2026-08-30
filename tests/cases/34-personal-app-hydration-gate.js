@@ -14,7 +14,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -56,8 +57,7 @@ const NS = 'gym-local:';
         await waitForApp(page);
         await selectDayType(page, 'posterior');
 
-        const cards = await readCards(page);
-        const renamed = cards.find(c => c.name === 'My Custom Pulldowns');
+                const renamed = await readDeckCard(page, 'My Custom Pulldowns');
 
         ok(renamed, 'renamed exercise card rendered (config hydrated)');
         contains(renamed.last, '160', '"Last:" shows recent weight (history hydrated)');

@@ -23,6 +23,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { ACTIVE, goToCardById, revealCard, logCardById, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -33,8 +34,10 @@ const EXERCISE = 'chest-press';
 // React installs its own value setter on the input/select prototypes, so a
 // plain `el.value = x` is invisible to it. Same native-setter dance as case 23.
 async function enterSet(page, exerciseId, weight, reps) {
-    await page.evaluate((id, w, r) => {
-        const card = document.querySelector(`[data-exercise-id="${id}"]`);
+    await goToCardById(page, exerciseId);
+    await revealCard(page);
+    await page.evaluate((sel, w, r) => {
+        const card = document.querySelector(sel);
 
         const input = card.querySelector('input[type="number"]');
         const inputSetter = Object.getOwnPropertyDescriptor(
@@ -47,7 +50,7 @@ async function enterSet(page, exerciseId, weight, reps) {
             window.HTMLSelectElement.prototype, 'value').set;
         selectSetter.call(select, r);
         select.dispatchEvent(new Event('change', { bubbles: true }));
-    }, exerciseId, weight, reps);
+    }, ACTIVE, weight, reps);
     await new Promise(r => setTimeout(r, 100));
 }
 
@@ -58,14 +61,6 @@ async function logCard(page, exerciseId) {
         if (btn) btn.click();
     }, exerciseId);
     await new Promise(r => setTimeout(r, 150));
-}
-
-async function submitDay(page) {
-    await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('button')).find(b => /Submit Day/i.test(b.textContent));
-        if (btn) btn.click();
-    });
-    await new Promise(r => setTimeout(r, 250));
 }
 
 // completeDay only ever submits *today's* workout, and logExercise rewrites
@@ -87,10 +82,15 @@ async function backdateAndReload(page, daysAgo) {
 }
 
 async function readBadge(page, exerciseId) {
-    return page.evaluate((id) => {
-        const el = document.querySelector(`[data-exercise-id="${id}"] .streak-badge`);
+    // The streak badge sits beside the exercise name on the card's REVEALED
+    // face, so the card has to be navigated to and opened to read it. On the
+    // old list every badge was on screen at once.
+    await goToCardById(page, exerciseId);
+    await revealCard(page);
+    return page.evaluate((sel) => {
+        const el = document.querySelector(sel + ' .streak-badge');
         return el ? el.textContent.trim() : null;
-    }, exerciseId);
+    }, ACTIVE);
 }
 
 // The most recently backdated entry's values for our exercise, read straight
@@ -150,10 +150,13 @@ const ROUNDS = [
 
             // The badge must be a sibling of .exercise-name, never a child.
             if (round.badge) {
-                const name = await page.evaluate((id) => {
-                    const el = document.querySelector(`[data-exercise-id="${id}"] .exercise-name`);
+                // The name node is .card-open-name on the deck. The invariant
+                // is unchanged and still worth pinning: the badge is a SIBLING
+                // of the name, never a child, so this reads the bare name.
+                const name = await page.evaluate((sel) => {
+                    const el = document.querySelector(sel + ' .card-open-name');
                     return el ? el.textContent.trim() : null;
-                }, EXERCISE);
+                }, ACTIVE);
                 eq(name, 'Chest Press',
                     `${label}: .exercise-name is still the bare name with a badge showing`);
             }

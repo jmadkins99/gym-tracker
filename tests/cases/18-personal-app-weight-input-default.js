@@ -13,7 +13,8 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -72,7 +73,7 @@ function extractObjectLiteral(source, name) {
             const expected = WEEK_1_DEFAULTS[id];
             ok(expected, `${id} has a WEEK_1_DEFAULTS entry to test against`);
             await selectDayType(page, day);
-            const card = (await readCards(page)).find(c => c.name === name);
+            const card = await readDeckCard(page, name);
             ok(card, `card "${name}" is rendered on ${day}`);
             eq(card.weightValue, expected,
                 `"${name}" weight input pre-fills its default (${expected}) with no history`);

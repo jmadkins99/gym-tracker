@@ -37,6 +37,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { submitDay } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -107,11 +108,9 @@ const EXPECTED_TOTAL = '35m';
         await selectDayType(page, 'anterior');
 
         // === 1. What the modal renders ==================================
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button'))
-                .find(b => /Submit Day/i.test(b.textContent));
-            if (btn) btn.click();
-        });
+        // Submit Day lives on the finish card at the end of the deck now, so
+        // this walks there rather than searching the page for the button.
+        await submitDay(page);
         await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
 
         eq(await page.evaluate(() => document.querySelector('[data-timing-total]').textContent.trim()),

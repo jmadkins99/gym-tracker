@@ -25,7 +25,8 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckNames, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -102,31 +103,32 @@ function extractLiteral(source, name, open, close) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // The rotation is split across two days now, so sweep both — a card
-        // that only appears on Lower would otherwise never be classified.
+        // The rotation is split across two days, so sweep both. Names only:
+        // the deck shows one card at a time and opening all 21 to read them
+        // would cost seconds per sweep for nothing this case needs.
         await selectDayType(page, 'posterior');
-        const lowerCards = await readCards(page);
+        const posteriorNames = await readDeckNames(page);
         await selectDayType(page, 'anterior');
-        const upperCards = await readCards(page);
-        const cards = [...lowerCards, ...upperCards];
+        const anteriorNames = await readDeckNames(page);
+        const names = [...posteriorNames, ...anteriorNames];
 
-        ok(cards.length === DEFAULT_EXERCISES.length,
-            `rendered ${DEFAULT_EXERCISES.length} cards across both days (got ${cards.length})`);
+        ok(names.length === DEFAULT_EXERCISES.length,
+            `rendered ${DEFAULT_EXERCISES.length} cards across both days (got ${names.length})`);
 
-        // Every card shows a button, because every exercise carries a loadType.
-        for (const card of cards) {
-            ok(expectedByName.has(card.name),
-                `card "${card.name}" is a known rotation exercise`);
-            eq(card.hasWeightBreakdown, true,
-                `"${card.name}" shows a Weight Breakdown button`);
+        for (const name of names) {
+            ok(expectedByName.has(name), `card "${name}" is a known rotation exercise`);
         }
 
-        // Explicit regression guard for the two pin-loaded exercises that
-        // originally shipped unclassified (no button).
-        for (const name of ['Recline Curls', 'Overhead Tricep Extensions']) {
-            const card = cards.find(c => c.name === name);
+        // Every weighted exercise carries a loadType, so every card shows a
+        // breakdown once opened. That used to be a button on the card face; it
+        // is now part of the revealed face, so this opens a sample rather than
+        // all 21 — the source-level check below is what covers every id.
+        for (const [day, name] of [['posterior', 'Recline Curls'],
+                                   ['anterior', 'Overhead Tricep Extensions']]) {
+            await selectDayType(page, day);
+            const card = await readDeckCard(page, name);
             ok(card && card.hasWeightBreakdown,
-                `"${name}" (pin-loaded) shows a Weight Breakdown button`);
+                `"${name}" (pin-loaded) shows a warmup breakdown when opened`);
         }
 
         eq(errors, [], 'no console errors during load');

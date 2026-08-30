@@ -10,15 +10,23 @@
 // to "span since the previous log, minus two minutes", rendered an asterisk,
 // and reported an estimate instead of a measurement.
 //
-// Case 65 already proves the stamps are captured when the old button is tapped.
-// What is new here is that the GESTURE reaches the same code, and that the deck
-// makes the un-anchored path unreachable: LOG exists only on the revealed face,
-// so a movement logged from this screen always carries a real start.
+// What this pins is that the GESTURE reaches that code, and that the deck makes
+// the un-anchored path unreachable: LOG exists only on the revealed face, so a
+// movement logged from this screen always carries a real start.
 //
 // The reveal is derived from `expandedWeightBreakdown` rather than held in the
 // deck, which is what makes the one-way-open rule and the anchor reset come
 // across unchanged — so this also checks re-revealing an already-open card does
 // NOT restamp, exactly as re-tapping the old button did not.
+//
+// This REPLACES 65-personal-app-exercise-timing-capture, which was written
+// against the Weight Breakdown button. Almost all of it was about that button —
+// that it was one-way, that it had no Hide arm, that re-tapping an open card
+// changed nothing, that opening another card closed the first. Those are
+// gesture properties now and are asserted here and in case 75. Its remaining
+// half logged a movement with no anchor, which the deck makes unreachable: LOG
+// exists only on the revealed face. The arithmetic for an un-anchored movement
+// is still pinned by cases 66 and 70, neither of which needs the UI to make one.
 //
 // Mutation to try: drop `data-exercise-id` from the card root, or the
 // `inputmode="decimal"` from the weight input. Both make logExercise's DOM

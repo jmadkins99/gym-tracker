@@ -109,7 +109,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         eq(await page.$$eval('[data-day-type]', (els) =>
             els.map((e) => e.getAttribute('data-day-type'))),
             ['anterior', 'posterior'], 'the day toggle keeps its data-day-type hooks');
-        eq(await deckPosition(page), '1 of 12', 'the counter reports position in the day');
+        // Derived: the Anterior roster has changed size twice already.
+        const anteriorCount = await page.evaluate(() =>
+            DEFAULT_EXERCISES.filter((e) => e.day === 'anterior').length);
+        eq(await deckPosition(page), '1 of ' + anteriorCount,
+            'the counter reports position in the day');
 
         // === 5. History still reachable ================================
         await bottomNav(page, 'History');

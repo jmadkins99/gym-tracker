@@ -10,13 +10,13 @@
 // settings and back, asserting the rendered shape each time. The three shapes
 // are distinguished by what is present AND what is absent:
 //
-//   pin               "Warmup Set #1 (~70%): 140 lbs", no per-plate lines,
-//                     no "Per side", no "Pin:" (200 is under no cap)
-//   plate-two-sided   "Warmup Set #1 (140 lbs - ~70%)" + "Per side: 70 lbs",
-//                     per-plate lines, top set always shown
-//   plate-one-sided   the same label shape and plate lines, but NO "Per side" —
-//                     one-sided is the only pair that differs by an absence
-//                     alone, which is why both are exercised here
+//   pin               a single weight per row and nothing else: no plate list,
+//                     no per-side figure, no pin-at-max row (200 is under no cap)
+//   plate-two-sided   a per-side figure ("70/side") and a plate list, top set
+//                     always shown
+//   plate-one-sided   the same plate list, but NO per-side figure — one-sided is
+//                     the only pair that differs by an absence alone, which is
+//                     why both are exercised here
 //
 // The arithmetic mirrors case 46 (Leg Press at 200 two-sided), so the expected
 // numbers are already pinned independently: 70% = 140, 90% = 180, top = 200.
@@ -24,13 +24,14 @@
 // Ending back on 'pin' matters: it proves the branch is chosen per render
 // rather than latched on first open.
 //
-// To verify this test is real: in WorkoutView.jsx, change the loadType const
-// back to reading a code-side seed rather than resolveLoadType(exercise) —
+// To verify this test is real: in ExerciseCard.jsx, change computeCardModel's
+// loadType to read a code-side seed rather than resolveLoadType(exercise) —
 // every assertion after the first block fails.
 
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -82,39 +83,13 @@ async function setLoadType(page, exerciseId, loadType) {
     await new Promise(r => setTimeout(r, 250));
 }
 
-// Sets the weight input to 200 and opens the breakdown, returning the card's
-// full text. Same shape as the interaction in cases 45 and 46.
+// Navigate to a card, open it, set the weight, and return its warmup rows.
+// The breakdown is part of the revealed face now, so there is no button to
+// click — and the reveal is what starts the exercise's clock, which is exactly
+// why it stayed one-way.
 async function readBreakdown(page, name, weight) {
-    const opened = await page.evaluate((exName, w) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === exName);
-        if (!card) return false;
-        const input = card.querySelector('input[type="number"], input[inputmode="decimal"]');
-        if (!input) return false;
-        const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype, 'value').set;
-        setter.call(input, w);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        const btn = Array.from(card.querySelectorAll('button'))
-            .find(b => b.textContent.includes('Weight Breakdown'));
-        if (!btn) return false;
-        btn.click();
-        return true;
-    }, name, weight);
-    ok(opened, `set ${name} to ${weight} and opened its Weight Breakdown`);
-    await new Promise(r => setTimeout(r, 300));
-
-    const text = await page.evaluate((exName) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === exName);
-        return card ? card.textContent : '';
-    }, name);
-
-    // No collapse step: the Weight Breakdown button stopped toggling in August
-    // 2026 (it is what starts an exercise's clock, so it had to become
-    // one-way), and there is no Hide to click. Nothing is needed in its place —
-    // expandedWeightBreakdown holds a single id, so opening the next exercise's
-    // panel closes this one.
+    const text = await setWeightAndOpen(page, name, weight);
+    ok(text.length > 0, `set ${name} to ${weight} and opened its breakdown`);
     return text;
 }
 
@@ -137,44 +112,46 @@ async function readBreakdown(page, name, weight) {
 
         // --- 1. The seeded value: a plain pin stack -------------------------
         let text = await readBreakdown(page, EXERCISE_NAME, '200');
-        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
+        contains(text, '140 lbs',
             'seeded as a pin stack: warmup #1 is 70% of 200, already on the stack');
-        contains(text, 'Warmup Set #2 (~90%): 180 lbs',
+        contains(text, '180 lbs',
             'seeded as a pin stack: warmup #2 is 90% of 200');
-        ok(!/Per side/.test(text), 'a pin stack has no per-side split');
-        ok(!/Pin:/.test(text), '200 is under no cap, so this is the plain pin branch');
+        ok(text.indexOf('/side') === -1, 'a pin stack has no per-side split');
+        ok(text.indexOf('pin ') === -1, '200 is under no cap, so this is the plain pin branch');
 
         // --- 2. Plate-loaded on both sides ----------------------------------
         await setLoadType(page, EXERCISE_ID, 'plate-two-sided');
         await selectDayType(page, 'anterior');
         text = await readBreakdown(page, EXERCISE_NAME, '200');
-        contains(text, 'Warmup Set #1 (140 lbs', 'two-sided: warmup #1 total is 140');
-        contains(text, 'Per side: 70 lbs', 'two-sided: 140 splits to 70 a side');
-        contains(text, 'Warmup Set #2 (180 lbs', 'two-sided: warmup #2 total is 180');
-        contains(text, 'Per side: 90 lbs', 'two-sided: 180 splits to 90 a side');
-        contains(text, 'Top Set (200 lbs)', 'two-sided: the top set is always shown');
-        contains(text, 'Per side: 100 lbs', 'two-sided: 200 splits to 100 a side');
-        ok(!/Warmup Set #1 \(~70%\)/.test(text),
-            'the pin-stack label shape is gone once the setting changed');
+        contains(text, '140 lbs', 'two-sided: warmup #1 total is 140');
+        contains(text, '70/side', 'two-sided: 140 splits to 70 a side');
+        contains(text, '180 lbs', 'two-sided: warmup #2 total is 180');
+        contains(text, '90/side', 'two-sided: 180 splits to 90 a side');
+        contains(text, '200 lbs', 'two-sided: the top set is always shown');
+        contains(text, '100/side', 'two-sided: 200 splits to 100 a side');
+        ok(text.indexOf('/side') !== -1,
+            'the pin shape is gone once the setting changed — a pin row never has a ' +
+            'per-side figure');
 
         // --- 3. Plate-loaded on one side ------------------------------------
         await setLoadType(page, EXERCISE_ID, 'plate-one-sided');
         await selectDayType(page, 'anterior');
         text = await readBreakdown(page, EXERCISE_NAME, '200');
-        contains(text, 'Warmup Set #1 (140 lbs',
+        contains(text, '140 lbs',
             'one-sided keeps the plate-loaded label shape');
-        ok(/45s - \d/.test(text) || /45 x \d/.test(text) || /45/.test(text),
-            'one-sided still renders a plate pile');
-        ok(!/Per side/.test(text),
-            'one-sided is the whole load in one place — no per-side line');
+        ok(/\d+(?: × \d+)?, /.test(text),
+            'one-sided still renders a plate list');
+        ok(text.indexOf('/side') === -1,
+            'one-sided is the whole load in one place — no per-side figure');
 
         // --- 4. Back to a pin stack -----------------------------------------
         await setLoadType(page, EXERCISE_ID, 'pin');
         await selectDayType(page, 'anterior');
         text = await readBreakdown(page, EXERCISE_NAME, '200');
-        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
+        contains(text, '140 lbs',
             'switching back restores the pin shape — the branch is not latched');
-        ok(!/Per side/.test(text), 'no per-side line survives the switch back');
+        ok(text.indexOf('/side') === -1, 'no per-side figure survives the switch back');
+        ok(text.indexOf(', ') === -1, 'and no plate list either — it is a pin stack again');
 
         eq(errors, [], 'no console errors while changing the load type');
         console.log('PASS: load type changes the rendered Weight Breakdown');

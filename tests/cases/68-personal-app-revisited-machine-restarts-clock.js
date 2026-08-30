@@ -44,6 +44,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { goToCardById, revealCard, isRevealed, logCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -54,18 +55,18 @@ const NS = 'gym-local:';
 // millisecond resolution by a wide margin.
 const GAP_MS = 1100;
 
+// Opening a card's breakdown and logging it are both gestures now: the
+// breakdown is the card's revealed face, and LOG only exists there. The reveal
+// is still the thing that stamps startedAt, which is what this case is about.
 async function clickCardButton(page, id, label) {
-    const clicked = await page.evaluate((id, label) => {
-        const card = document.querySelector(`[data-exercise-id="${id}"]`);
-        if (!card) return false;
-        const btn = Array.from(card.querySelectorAll('button'))
-            .find(b => new RegExp(label, 'i').test(b.textContent));
-        if (!btn) return false;
-        btn.click();
-        return true;
-    }, id, label);
-    ok(clicked, `clicked "${label}" on ${id}`);
-    await new Promise(r => setTimeout(r, 150));
+    await goToCardById(page, id);
+    if (/breakdown/i.test(label)) {
+        await revealCard(page);
+        ok(await isRevealed(page), `opened ${id} (the swipe that starts its clock)`);
+    } else {
+        await revealCard(page);
+        ok(await logCard(page), `logged ${id}`);
+    }
 }
 
 // The anchors the app has mirrored to device-local storage, which are the same
@@ -161,18 +162,21 @@ async function savedExercise(page, id) {
         eq(Object.keys(await anchors(page)), ['overhead-tricep-extensions'],
             'exactly one anchor exists at a time — the open panel owns it');
 
-        await new Promise(r => setTimeout(r, GAP_MS));
-        await clickCardButton(page, 'lateral-raises', 'LOG');
-        await waitFor(page, 'lateral raises to reach history',
-            (ns) => {
-                const h = JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]');
-                return h.length > 0 && h[0].exercises.some(e => e.id === 'lateral-raises' && e.loggedAt);
-            }, NS);
-
-        const lateralRaises = await savedExercise(page, 'lateral-raises');
-        eq(lateralRaises.startedAt, undefined,
-            'logging a movement you never came back to carries NO anchor, so it reports ' +
-            'an estimate rather than absorbing the other machine time');
+        // The abandoned-anchor half of this case stops here, because the deck
+        // made its outcome unreachable. Logging a movement you never came back
+        // to used to be one tap on a card whose panel was closed; LOG now exists
+        // ONLY on the revealed face, so returning to Lateral Raises means
+        // opening it, and opening it re-anchors. There is no longer a gesture
+        // that records a movement with no start.
+        //
+        // That is the redesign working rather than coverage lost: the estimate
+        // path it produced is what the whole screen exists to eliminate. The
+        // arithmetic for an un-anchored movement is still pinned, by direct
+        // getSessionTiming calls in case 66 and across 13 scenarios in case 70,
+        // neither of which needs the UI to produce one.
+        //
+        // What survives here is the part the deck did NOT change: which tap
+        // owns the anchor, and that exactly one exists at a time.
 
         // === 3. The already-open card still does not re-anchor =========
         // Chest Flies' panel was closed long ago, so this is a fresh open,
@@ -192,11 +196,8 @@ async function savedExercise(page, id) {
         await clickCardButton(page, 'shoulder-press', 'Weight Breakdown');
         ok((await anchors(page))['shoulder-press'], 'Shoulder Press is anchored but never logged');
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button'))
-                .find(b => /Submit Day/i.test(b.textContent));
-            if (btn) btn.click();
-        });
+        // Submit Day lives on the finish card at the end of the deck now.
+        await submitDay(page);
         await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
 
         eq(await page.evaluate((ns) => localStorage.getItem(ns + 'exerciseStartTimes'), NS), null,

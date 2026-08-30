@@ -12,7 +12,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -43,8 +44,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await waitForApp(page);
         await selectDayType(page, 'posterior');
 
-        const cards = await readCards(page);
-        const frontal = cards.find(c => c.name === 'Frontal Plane Pulldowns');
+                const frontal = await readDeckCard(page, 'Frontal Plane Pulldowns');
 
         ok(frontal, 'Frontal Plane Pulldowns card is rendered in Full Body view');
         contains(frontal.last, '160', '"Last:" shows recent weight');

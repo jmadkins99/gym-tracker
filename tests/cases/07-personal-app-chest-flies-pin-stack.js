@@ -13,6 +13,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -38,43 +39,41 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        // Click the Weight Breakdown button on Chest Flies.
-        const clicked = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Chest Flies') {
-                    const btn = Array.from(c.querySelectorAll('button'))
-                        .find(b => b.textContent.includes('Weight Breakdown'));
-                    if (btn) { btn.click(); return true; }
-                }
-            }
-            return false;
-        });
-        ok(clicked, 'Chest Flies card has a Weight Breakdown button');
-        await new Promise(r => setTimeout(r, 250));
+        // The breakdown is no longer behind its own button: it is part of the
+        // card's revealed face, so this navigates to Chest Flies and swipes up.
+        const card = await readDeckCard(page, 'Chest Flies');
+        ok(card.hasWeightBreakdown, 'Chest Flies shows a warmup breakdown when opened');
 
-        const breakdownText = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Chest Flies') {
-                    return c.textContent;
-                }
-            }
-            return '';
-        });
+        // Pin-stack rows carry ONE weight and no plate list. Plate-loaded rows
+        // carry a per-side figure and a comma-separated plate list after a
+        // middot — that is the signature this must not have.
+        const rows = card.breakdown;
+        ok(rows.length >= 2, 'both warmup rows render');
+        contains(rows[0], 'WARMUP 1', 'first row is warmup 1');
+        contains(rows[0], '70%', 'labelled 70%');
+        contains(rows[1], 'WARMUP 2', 'second row is warmup 2');
+        contains(rows[1], '90%', 'labelled 90%');
 
-        // Pin-stack format: "Warmup Set #1 (~70%): NNN lbs" — no "(NNN lbs - ~70%)"
-        // signature from plate-loaded, no per-plate lines.
-        contains(breakdownText, 'Warmup Set #1 (~70%):', 'pin-stack warmup #1 label');
-        contains(breakdownText, 'Warmup Set #2 (~90%):', 'pin-stack warmup #2 label');
         ok(
-            !/lbs - ~70%/.test(breakdownText),
-            'must NOT show plate-loaded "lbs - ~70%" signature (would mean still classified as plate-loaded)'
+            rows.every(r => !/\/side/.test(r)),
+            'must NOT show a per-side figure — that is the plate-loaded signature, and ' +
+            'seeing it here would mean Chest Flies had been reclassified'
         );
         ok(
-            !/\d+(?:\.\d+)?s - \d+/.test(breakdownText),
-            'must NOT list per-plate lines like "25s - 1" — pin-stack format omits these'
+            rows.every(r => !/\d+(?:\.\d+)? × \d+/.test(r)),
+            'and must NOT list plates like "45 × 2" — a pin stack has no plates to list'
         );
+        ok(
+            rows.every(r => /\d+ lbs/.test(r)),
+            'each row states a single pin weight'
+        );
+        // Pin warmups sit on a round position: the stack moves in 5 lb steps so
+        // every multiple of 10 is reachable without a micro-plate.
+        ok(
+            rows.slice(0, 2).every(r => /(\d+) lbs/.test(r) && parseInt(/(\d+) lbs/.exec(r)[1], 10) % 10 === 0),
+            'and it is a multiple of 10 — no 1.25 micro-plate balanced on the pin'
+        );
+
         eq(errors, [], 'no console errors during load');
 
         console.log('PASS: Chest Flies renders pin-stack weight breakdown (not plate-loaded).');

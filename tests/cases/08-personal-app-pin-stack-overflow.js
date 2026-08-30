@@ -26,43 +26,33 @@
 // one day selection.
 //
 // To verify this test is real: in js/config.js, delete the 'calf-raise' entry
-// from PIN_STACK_CAPS. Top Set and the "Pin: 405 lbs" lines disappear and the
+// from PIN_STACK_CAPS. Top Set and the "pin 405" rows disappear and the
 // test fails. Caps stayed code-side when classification became a user setting,
 // so this is still a one-line change in config.js.
 
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
+// The breakdown is no longer behind a button: it is part of the card's revealed
+// face, so "clicking" it means navigating to the card and swiping up.
 async function clickBreakdown(page, exerciseName) {
-    const found = await page.evaluate((name) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === name) {
-                const btn = Array.from(c.querySelectorAll('button'))
-                    .find(b => b.textContent.includes('Weight Breakdown'));
-                if (btn) { btn.click(); return true; }
-            }
-        }
-        return false;
-    }, exerciseName);
-    return found;
+    await goToCard(page, exerciseName);
+    await revealCard(page);
+    return isRevealed(page);
 }
 
+// The card's breakdown, as one string per row: "WARMUP 1 70% | 450 lbs | pin 405 · 45".
 async function readCard(page, exerciseName) {
-    return page.evaluate((name) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === name) {
-                return c.textContent;
-            }
-        }
-        return '';
-    }, exerciseName);
+    await goToCard(page, exerciseName);
+    await revealCard(page);
+    const card = await readDeckCard(page, exerciseName);
+    return card.breakdown.join(' ~ ');
 }
 
 (async () => {
@@ -99,25 +89,29 @@ async function readCard(page, exerciseName) {
         const calfRaises = await readCard(page, 'Calf Raises');
 
         // Warmup 1 = 350 → under the cap, no overflow.
-        contains(calfRaises, 'Warmup Set #1 (~70%): 350 lbs',
+        contains(calfRaises, '350 lbs',
             'warmup 1 (350) stays on pin (no overflow)');
 
         // Warmup 2 = 450 → overflow. Excess 45 = one 45. Total = 405 + 45.
-        contains(calfRaises, 'Warmup Set #2 (~90%): 450 lbs',
+        contains(calfRaises, '450 lbs',
             'warmup 2 (450) overflows to pin 405 + 45 lbs of plates');
 
         // Top set 500 → overflow. Excess 95 = 45 + 45 + 5.
-        contains(calfRaises, 'Top Set: 500 lbs',
+        contains(calfRaises, '500 lbs',
             'top set shown at 500 (overflow mode triggers top-set display)');
 
-        // Both overflow rows expose "Pin: 405 lbs" — search for the literal.
-        const pinCount = (calfRaises.match(/Pin: 405 lbs/g) || []).length;
-        ok(pinCount >= 2, `expected >=2 "Pin: 405 lbs" lines (warmup 2 + top set), got ${pinCount}`);
+        // Both overflow rows name the pin at its cap. The label lost its
+        // "Pin:"/"lbs" scaffolding when the breakdown became a row of its own —
+        // it now reads "pin 405 · 45" — but the number is the point.
+        const pinCount = (calfRaises.match(/pin 405/g) || []).length;
+        ok(pinCount >= 2, `expected >=2 "pin 405" rows (warmup 2 + top set), got ${pinCount}`);
 
         // Plate lines across the two overflow sets: a single 45 on warmup 2,
         // two 45s plus a 5 on the top set.
-        ok(/45s - 1/.test(calfRaises), 'warmup 2 plate breakdown lists one 45 lb plate');
-        ok(/45s - 2/.test(calfRaises), 'top set plate breakdown lists two 45 lb plates');
+        ok(/pin 405 · 45(?!\s*×)/.test(calfRaises),
+                'warmup 2 is the pin at max plus a single 45 — plates are listed as ' +
+                '"45" now, with a count only when there is more than one');
+        ok(/45 × 2/.test(calfRaises), 'the top set needs two 45s, so it says so explicitly');
         // The top set's 5 lb plate gets no regex of its own: each plate line is
         // its own div, so textContent runs them together as "45s - 25s - 1" and
         // any pattern for the 5 either collides with the 45 line's count or
@@ -127,13 +121,13 @@ async function readCard(page, exerciseName) {
 
         // A stack has no per-side split, so the excess is one pile — the
         // plate-loaded branch must stay unreachable for a pin-stack id.
-        ok(!/Per side/.test(calfRaises),
+        ok(!/\/side/.test(calfRaises),
             'overflow plates render as a single pile, never "Per side"');
 
         // --- Un-capped stack: Cable Wrist Curls must NOT overflow at 115 ---
-        // Cable Wrist Curls is a wrist flexor, so it lives on Anterior while
-        // Calf Raises above is Posterior. Hop the toggle.
-        await selectDayType(page, 'anterior');
+        // It moved from Anterior to Posterior in Aug 2026, so it is already on
+        // the day selected above and the toggle hop this case used to need is
+        // gone.
 
         const clickedCable = await clickBreakdown(page, 'Cable Wrist Curls');
         ok(clickedCable, 'Cable Wrist Curls card has a Weight Breakdown button');
@@ -141,15 +135,20 @@ async function readCard(page, exerciseName) {
 
         const cable = await readCard(page, 'Cable Wrist Curls');
 
-        ok(!/Pin: \d/.test(cable),
-            'Cable Wrist Curls (cap removed) renders no "Pin: N lbs" overflow line at 115');
+        ok(!/pin \d/.test(cable),
+            'Cable Wrist Curls (cap removed) renders no pin-at-max overflow row at 115');
         ok(!/Top Set/.test(cable),
             'Cable Wrist Curls shows no Top Set row (top set is overflow-only)');
 
-        // It should still render plain pin warmups: 70% of 115 = 80.5 → 80,
-        // 90% of 115 = 103.5 → 103.75 (nearest achievable pin + micro-plate).
-        contains(cable, 'Warmup Set #1 (~70%): 80 lbs',
-            'Cable Wrist Curls warmup 1 (~80.5) rounds to an achievable 80 lb pin');
+        // It should still render plain pin warmups. Under the Aug 2026 rule
+        // these round to the nearest 10 rather than to the nearest achievable
+        // pin-plus-micro-plate, so 70% of 115 = 80.5 -> 80 and 90% = 103.5 ->
+        // 100. The old rule gave 103.75 here: a 3.75 micro-plate balanced on
+        // the pin for a warmup.
+        contains(cable, '80 lbs', 'warmup 1 (~80.5) rounds to an 80 lb pin position');
+        contains(cable, '100 lbs', 'warmup 2 (~103.5) rounds to 100, not 103.75');
+        ok(!/\.\d/.test(cable.replace(/115/g, '')),
+            'and neither warmup asks for a fractional plate');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Calf Raises renders pin+plate overflow at 500 over a 405 cap; Cable Wrist Curls no longer overflows.');

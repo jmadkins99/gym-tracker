@@ -19,7 +19,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 async function clickNav(page, label) {
     await page.evaluate((l) => {
-        const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.textContent.trim() === l);
+        // The nav moved to a bottom bar, and each button now carries an icon
+        // glyph beside its label, so this matches on containment rather than
+        // an exact trim.
+        const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
+            .find(b => b.textContent.indexOf(l) !== -1);
         if (btn) btn.click();
     }, label);
     await new Promise(r => setTimeout(r, 200));

@@ -205,6 +205,11 @@ async function readDeckNames(page) {
 // for `[data-exercise-id="..."]` because every card was on screen at once; the
 // deck mounts three, so the card has to be navigated to first.
 async function goToCard(page, name) {
+    // Already here? Do nothing. Navigating away and back is NOT free: leaving a
+    // card closes it, and reopening stamps a fresh start time — so a helper that
+    // always walked from card 1 would silently restart the clock it was only
+    // meant to look at.
+    if ((await activeName(page)) === name) return true;
     await stepTo(page, 1);
     const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
     for (let i = 1; i <= total; i++) {
@@ -214,7 +219,7 @@ async function goToCard(page, name) {
                 const a = document.querySelectorAll('.deck-arrow');
                 a[a.length - 1].click();
             });
-            await new Promise((r) => setTimeout(r, 140));
+            await new Promise((r) => setTimeout(r, 230));
         }
     }
     throw new Error('goToCard: no card named ' + name + ' in this day');
@@ -266,10 +271,97 @@ async function readDeckCard(page, name, { reveal = true } = {}) {
                 const a = document.querySelectorAll('.deck-arrow');
                 a[a.length - 1].click();
             });
-            await new Promise((r) => setTimeout(r, 140));
+            await new Promise((r) => setTimeout(r, 230));
         }
     }
     throw new Error('readDeckCard: no card named ' + name + ' in this day');
+}
+
+// Navigate to a card, open it, type a weight into it, and hand back the warmup
+// rows that result. Several cases drive the breakdown from a chosen weight
+// rather than from history, and on the deck all three steps are needed: the
+// input does not exist until the card is revealed.
+//
+// The value is set through the native setter and an input event, because React
+// ignores a plain `.value =` assignment — it tracks the previous value on the
+// node and skips the change as a no-op.
+async function setWeightAndOpen(page, name, weight) {
+    await goToCard(page, name);
+    await revealCard(page);
+    const ok = await page.evaluate((sel, w) => {
+        const input = document.querySelector(sel + ' input[type="number"]');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, w);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+    }, ACTIVE, String(weight));
+    if (!ok) throw new Error('setWeightAndOpen: no weight input on ' + name);
+    await new Promise((r) => setTimeout(r, 250));
+    return page.evaluate((sel) =>
+        Array.from(document.querySelectorAll(sel + ' .breakdown-row'))
+            .map((r) => r.innerText.split(String.fromCharCode(10)).join(' | '))
+            .join('  ~  '), ACTIVE);
+}
+
+// The same as goToCard, but keyed on the exercise id rather than the display
+// name. Cases that log a whole day work in ids, because a display name can be
+// renamed by the user and an id never is.
+async function goToCardById(page, id) {
+    const activeId = await page.evaluate((sel) => {
+        const card = document.querySelector(sel + ' .card[data-exercise-id]');
+        return card ? card.getAttribute('data-exercise-id') : null;
+    }, ACTIVE);
+    if (activeId === id) return true;
+    await stepTo(page, 1);
+    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+    for (let i = 1; i <= total; i++) {
+        const here = await page.evaluate((sel) => {
+            const card = document.querySelector(sel + ' .card[data-exercise-id]');
+            return card ? card.getAttribute('data-exercise-id') : null;
+        }, ACTIVE);
+        if (here === id) return true;
+        if (i < total) {
+            await page.evaluate(() => {
+                const a = document.querySelectorAll('.deck-arrow');
+                a[a.length - 1].click();
+            });
+            await new Promise((r) => setTimeout(r, 230));
+        }
+    }
+    throw new Error('goToCardById: no card with id ' + id + ' in this day');
+}
+
+// Navigate to a card by id, open it, and log it.
+async function logCardById(page, id) {
+    await goToCardById(page, id);
+    await revealCard(page);
+    return logCard(page);
+}
+
+// Submit the day. The button is on the FINISH card — the slot after the last
+// exercise — so it is not in the DOM until the deck is carried there. That is
+// deliberate: reaching Submit Day is now a statement that nothing is left.
+async function submitDay(page) {
+    for (let guard = 0; guard < 30; guard++) {
+        if (await onFinishCard(page)) break;
+        await page.evaluate(() => {
+            const a = document.querySelectorAll('.deck-arrow');
+            a[a.length - 1].click();
+        });
+        await new Promise((r) => setTimeout(r, 150));
+    }
+    if (!(await onFinishCard(page))) throw new Error('submitDay: never reached the finish card');
+    const clicked = await page.evaluate((sel) => {
+        const btn = Array.from(document.querySelectorAll(sel + ' .save-btn'))
+            .find((b) => /Submit Day/i.test(b.textContent));
+        if (!btn) return false;
+        btn.click();
+        return true;
+    }, ACTIVE);
+    await new Promise((r) => setTimeout(r, 400));
+    return clicked;
 }
 
 module.exports = {
@@ -277,5 +369,5 @@ module.exports = {
     swipe, swipeFrom, revealCard, isRevealed, logCard,
     activeName, deckPosition, deckIndex, onFinishCard,
     stepTo, selectDeckDay, bottomNav,
-    startAnchors, todayWorkout, readDeckNames, readDeckCard, goToCard, goToCardAndLog,
+    startAnchors, todayWorkout, readDeckNames, readDeckCard, goToCard, goToCardAndLog, setWeightAndOpen, goToCardById, logCardById, submitDay,
 };

@@ -1,6 +1,6 @@
         // Migrate existing data to namespaced keys (one-time migration for existing users)
         function migrateToNamespacedStorage() {
-            const keysToMigrate = ['gymWorkoutHistory', 'gymExerciseConfig', 'lastBackupReminder'];
+            const keysToMigrate = ['gymWorkoutHistory', 'gymExerciseConfig'];
 
             keysToMigrate.forEach(key => {
                 const oldData = localStorage.getItem(key);

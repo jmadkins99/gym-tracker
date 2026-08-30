@@ -11,27 +11,31 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { ACTIVE, goToCard, revealCard, goToCardAndLog } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
 
-// Read a standard card's weight input value and reps <select> (value + options).
+// Read a standard card's weight input and reps <select>. The card has to be
+// navigated to and opened first: on the deck the inputs do not exist until the
+// card is revealed.
 async function readStandardCard(page, name) {
-    return page.evaluate((n) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === n);
-        if (!card) return null;
-        const weightInput = card.querySelector('input[type="number"][inputmode="decimal"]');
-        const repsSelect = card.querySelector('select[data-field="reps"]');
+    await goToCard(page, name);
+    await revealCard(page);
+    return page.evaluate((sel) => {
+        const slot = document.querySelector(sel);
+        if (!slot) return null;
+        const weightInput = slot.querySelector('input[type="number"][inputmode="decimal"]');
+        const repsSelect = slot.querySelector('select[data-field="reps"]');
         return {
             weightValue: weightInput ? weightInput.value : null,
             repsValue: repsSelect ? repsSelect.value : null,
             repsIsSelect: !!repsSelect,
             repsOptions: repsSelect ? Array.from(repsSelect.options).map(o => o.value) : null,
         };
-    }, name);
+    }, ACTIVE);
 }
 
 (async () => {
@@ -81,14 +85,10 @@ async function readStandardCard(page, name) {
         eq(ks.weightValue, '191.25', 'after hitting 6, weight auto-bumps by the PR increment');
 
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.
+        // On the deck that means navigating to it and opening it — LOG exists
+        // only on the revealed face, which is the point of the screen.
         await selectDayType(page, 'anterior');
-        await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Shoulder Press');
-            const btn = Array.from(card.querySelectorAll('button')).find(b => /LOG/i.test(b.textContent));
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 200));
+        await goToCardAndLog(page, 'Shoulder Press');
         const saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
         const todays = saved.find(w => !w.submitted);

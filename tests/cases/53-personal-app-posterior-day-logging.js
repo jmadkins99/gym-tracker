@@ -16,19 +16,18 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { logCardById, goToCardById, ACTIVE, revealCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
 
+// One card at a time now: navigate to it by id, open it, and log it. The
+// reveal is not ceremony — it is what stamps the exercise's start time, and
+// LOG only exists on the revealed face.
 async function logCard(page, exerciseId) {
-    await page.evaluate((id) => {
-        const card = document.querySelector(`[data-exercise-id="${id}"]`);
-        const btn = Array.from(card.querySelectorAll('button')).find(b => /LOG/i.test(b.textContent));
-        if (btn) btn.click();
-    }, exerciseId);
-    await new Promise(r => setTimeout(r, 150));
+    await logCardById(page, exerciseId);
 }
 
 (async () => {
@@ -45,24 +44,24 @@ async function logCard(page, exerciseId) {
         await selectDayType(page, 'posterior');
 
         // Kelso Shrugs: Week 1 default 190, typed up to 195.
-        await page.evaluate(() => {
-            const card = document.querySelector('[data-exercise-id="kelso-shrugs"]');
-            const input = card.querySelector('input[type="number"]');
+        // The card must be opened before it has a weight input to type into.
+        await goToCardById(page, 'kelso-shrugs');
+        await revealCard(page);
+        await page.evaluate((sel) => {
+            const input = document.querySelector(sel + ' input[type="number"]');
             const setter = Object.getOwnPropertyDescriptor(
                 window.HTMLInputElement.prototype, 'value').set;
             setter.call(input, '195');
             input.dispatchEvent(new Event('input', { bubbles: true }));
-        });
+        }, ACTIVE);
         await logCard(page, 'kelso-shrugs');
 
         // Calf Raises: logged with no interaction at all (one-tap path).
         await logCard(page, 'calf-raise');
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => /Submit Day/i.test(b.textContent));
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 250));
+        // Submit Day lives on the finish card at the end of the deck, so this
+        // walks there first.
+        await submitDay(page);
 
         const saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
@@ -71,7 +70,12 @@ async function logCard(page, exerciseId) {
 
         eq(w.day, 'posterior', 'workout recorded as a posterior day');
         ok(w.submitted, 'workout is submitted');
-        eq(w.exercises.length, 9, 'the workout carries all 9 Posterior movements');
+        // Derived: Posterior gained the wrist pair in Aug 2026, and a literal
+        // here goes stale.
+        const posteriorCount = await page.evaluate(() =>
+            DEFAULT_EXERCISES.filter((e) => e.day === 'posterior').length);
+        eq(w.exercises.length, posteriorCount,
+            `the workout carries all ${posteriorCount} Posterior movements`);
         // Leak probe must be an ANTERIOR id, for the same reason test 23's has
         // to be a Posterior one.
         ok(!w.exercises.some(e => e.id === 'chest-press'),

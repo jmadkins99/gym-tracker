@@ -27,7 +27,6 @@
             const [successMessage, setSuccessMessage] = useState('');
             const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
             const [showSettings, setShowSettings] = useState(false);
-            const [showBackupReminder, setShowBackupReminder] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
@@ -40,7 +39,7 @@
             // today, keyed by id — the start half of every movement's clock.
             //
             // Mirrored to a device-local storage key rather than through the
-            // repo, alongside firstWorkoutMonday and lastBackupReminder: this is
+            // repo, alongside firstWorkoutMonday: this is
             // scaffolding for the session in progress, not history. Once an
             // exercise is logged its start is baked into the workout record and
             // this map stops mattering for it, so all the mirror buys is
@@ -215,15 +214,6 @@
                             repo.saveExerciseConfig(migratedConfig);
                         } else if (savedConfig && savedConfig.exercises) {
                             setExercises(savedConfig.exercises.sort((a, b) => a.order - b.order));
-                        }
-
-                        // Check last backup reminder (device-local, not repo data)
-                        const lastReminder = storage.getItem('lastBackupReminder');
-                        const now = new Date().getTime();
-                        const oneMonth = 30 * 24 * 60 * 60 * 1000;
-
-                        if (!lastReminder || (now - parseInt(lastReminder)) > oneMonth) {
-                            setShowBackupReminder(true);
                         }
 
                         // Cloud sync available but signed out: offer sign-in once
@@ -872,10 +862,6 @@
                 }
             };
 
-            const dismissBackupReminder = () => {
-                storage.setItem('lastBackupReminder', new Date().getTime().toString());
-                setShowBackupReminder(false);
-            };
 
             // Storage not read yet: render nothing rather than a flash of
             // default state (avoids acting on data that is about to change).
@@ -922,14 +908,8 @@
                             </button>
                         </div>
                     )}
-                    {showSuccess && <div className={`success-message ${showBackupReminder ? 'backup-reminder' : ''}`}>{successMessage}</div>}
+                    {showSuccess && <div className="success-message">{successMessage}</div>}
 
-                    {showBackupReminder && (
-                        <BackupReminderModal
-                            onExport={() => { exportData(); dismissBackupReminder(); }}
-                            onDismiss={dismissBackupReminder}
-                        />
-                    )}
 
                     {showSettings && (
                         <SettingsModal
@@ -997,7 +977,8 @@
                             workoutHistory={workoutHistory}
                             expandedWeightBreakdown={expandedWeightBreakdown}
                             openWeightBreakdown={openWeightBreakdown}
-                            closeWeightBreakdown={() => setExpandedWeightBreakdown(null)}
+                            closeWeightBreakdown={(id) => setExpandedWeightBreakdown(
+                                (cur) => (id === undefined || cur === id ? null : cur))}
                             activeDayType={activeDayType}
                             setActiveDayType={setActiveDayType}
                             foregroundAt={lastForegroundAt}

@@ -177,8 +177,32 @@ can catch:
 | `69-…-timing-survives-cloud-sync.js` | That `startedAt`/`loggedAt` reach Firestore, come back, and survive the one-time first-sign-in import. The only case that drives the cloud repo at all. |
 | `70-…-thirty-minute-ceiling.js` | The 30-minute per-movement ceiling, table-driven over 13 scenarios: the exclusive boundary, all three anchor sources, and that a refused first row is kept out of the session total. |
 | `71-…-history-timing-details.js` | That a session's timing is readable after the day it was logged — the ⏱️ beside a History entry's pencil opens the workout that was TAPPED, not today's, and is absent entirely on a workout carrying no stamps. |
+| `72-…-deck-renders.js` | What the swipe deck shows and — the strong one — what it does not: no digit of any kind on a card's front face. Leaking last session's weight would remove every reason to swipe up, and the damage would surface weeks later as asterisked timings. |
+| `73-…-deck-gestures.js` | The four gesture rules: neighbours mounted so a drag peeks, no swipe dropped mid-animation, commit on distance OR speed, and a drag that starts on the weight box / reps dropdown / LOG still swipes (and dragging off LOG does not log). |
+| `74-…-deck-timing-capture.js` | That the swipe up reaches openWeightBreakdown and both stamps reach the record. Replaces `65`. |
+| `75-…-deck-card-closes-behind-you.js` | Leaving an opened card closes it and reopening restarts the clock — a timing rule wearing a UI costume. Deliberately not cancelled by a fast return. |
+| `76-…-deck-logged-card-is-a-review.js` | A logged card opens itself, and needs no exemption from `75` because it is open by virtue of being logged rather than by holding an anchor. Waits out the close timer, which is where a broken exemption shows up. |
+| `77-…-deck-jumps-to-earliest-unlogged.js` | After a LOG the deck lands on the earliest unlogged card, wherever it is; the finish card only when nothing is left. Manual swiping still steps exactly one. |
+| `78-…-deck-card-fits-the-screen.js` | An open card fits at three sizes with no scrollbar. Asks whether content is inside card-body's CLIP, not whether it is at the right coordinates — that distinction hid a real bug. |
+| `79-…-shell-and-keyboard.js` | The page cannot scroll or be shoved. Stubs visualViewport to reproduce an iOS keyboard, because iOS pans the visual viewport rather than scrolling the document — which is why `window.scrollY` stays 0 and an earlier "cannot be scrolled" assertion passed while the phone was still shoving the card. |
+| `80-…-warmup-rounding-rules.js` | Both warmup rules over ~700 weights, no browser. Replaces `28`. |
+| `81-…-deck-records-reach-the-cloud.js` | That records the DECK produced survive all three Firestore paths. `69` cannot catch a UI regression: it hands the repo a hand-written workout. |
+| `82-…-lab-artifacts-not-ported.js` | A source-level guard that gym-lab's isolation never lands here — a null FIREBASE_CONFIG, a pinned APP_NAMESPACE, Gym Lab branding. All three would be silent and severe. |
 
-**Session timing.** `65`, `66` and `67` cover the August 2026 breakdown work.
+**The swipe deck** (August 2026) replaced the scrolling list with one exercise
+per screen, the working weight hidden behind a swipe up. `lib/deck.js` holds the
+vocabulary every case needs — `goToCard`, `revealCard`, `logCard`, `submitDay`,
+`readDeckNames`, `readDeckCard` — because three cards are mounted at once and a
+bare `.card-name` selector finds the PREVIOUS one. Scope to `ACTIVE`.
+
+Two cases were retired rather than migrated. `28` pinned a warmup rounding rule
+that no longer exists for either load type; `80` replaces it. `65` was almost
+entirely about the Weight Breakdown button — one-way, no Hide arm, re-tap is a
+no-op — all of which are gesture properties now, asserted in `74` and `75`; its
+remaining half logged a movement with no anchor, which the deck makes
+unreachable.
+
+**Session timing.** `66` and `67` cover the August 2026 breakdown work.
 The split between the first two is deliberate: `65` drives the real gestures and
 asserts only that the stamps exist and are marked correctly, because the elapsed
 figures are a wall clock; `66` seeds exact timestamps and asserts exact rendered

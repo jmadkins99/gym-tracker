@@ -32,6 +32,7 @@ const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -81,28 +82,10 @@ async function importBackup(page, backup) {
     await new Promise(r => setTimeout(r, 250));
 }
 
+// Navigate to a card, open it, set the weight, and return its warmup rows.
+// The breakdown moved onto the card's revealed face, so there is no button.
 async function readBreakdownText(page, name, weight) {
-    await page.evaluate((exName, w) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === exName);
-        if (!card) return;
-        const input = card.querySelector('input[type="number"], input[inputmode="decimal"]');
-        if (input) {
-            const setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value').set;
-            setter.call(input, w);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        const btn = Array.from(card.querySelectorAll('button'))
-            .find(b => b.textContent.includes('Weight Breakdown'));
-        if (btn) btn.click();
-    }, name, weight);
-    await new Promise(r => setTimeout(r, 300));
-    return page.evaluate((exName) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === exName);
-        return card ? card.textContent : '';
-    }, name);
+    return setWeightAndOpen(page, name, weight);
 }
 
 async function readSavedLoadTypes(page) {
@@ -167,7 +150,7 @@ async function readSavedLoadTypes(page) {
 
         // Before any reload: the imported override is live immediately.
         let text = await readBreakdownText(page, 'Chest Flies', '200');
-        contains(text, 'Per side: 70 lbs',
+        contains(text, '70/side',
             'the imported override renders immediately, before any reload');
 
         // Import writes without a version, so the next load rebuilds. The
@@ -193,19 +176,19 @@ async function readSavedLoadTypes(page) {
         // loadType at all, and the breakdown must still render its seeded shape
         // rather than a blank panel.
         text = await readBreakdownText(page, 'Chest Flies', '200');
-        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
+        contains(text, '140 lbs',
             'a pre-v15 import falls back to the seeded pin shape, not an empty panel');
-        ok(!/Per side/.test(text),
+        ok(text.indexOf('/side') === -1,
             'and it is genuinely the pin branch, not a stale two-sided render');
 
         text = await readBreakdownText(page, 'Leg Press', '240');
-        contains(text, 'Per side',
+        contains(text, '/side',
             'a seeded two-sided machine still renders two-sided after a pre-v15 import');
 
         // Calf Raises keeps its cap through all of this — caps are code-side.
         await selectDayType(page, 'posterior');
         text = await readBreakdownText(page, 'Calf Raises', '500');
-        contains(text, 'Pin: 405 lbs',
+        contains(text, 'pin 405',
             'the 405 cap still applies after a pre-v15 restore');
 
         await page.reload({ waitUntil: 'networkidle0' });

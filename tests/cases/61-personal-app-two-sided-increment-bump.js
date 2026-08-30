@@ -27,7 +27,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -116,8 +117,9 @@ function daysAgo(n) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'anterior');
-        let cards = await readCards(page);
-        let flies = cards.find(c => c.name === 'Chest Flies');
+        // One card at a time now: navigate to it and open it rather than
+        // reading every card off the screen at once.
+        let flies = await readDeckCard(page, 'Chest Flies');
         ok(flies, 'found the Chest Flies card on Anterior');
         eq(flies.weightValue, '201.25',
             'as a pin stack, a 6-rep PR suggests 200 + 1.25');
@@ -135,8 +137,7 @@ function daysAgo(n) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'anterior');
-        cards = await readCards(page);
-        flies = cards.find(c => c.name === 'Chest Flies');
+        flies = await readDeckCard(page, 'Chest Flies');
         ok(flies, 'found the Chest Flies card after switching it two-sided');
         eq(flies.weightValue, '202.5',
             'set two-sided, the same 6-rep PR suggests 200 + 2.5 (= 1.25 a side)');

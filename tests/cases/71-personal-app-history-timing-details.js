@@ -128,8 +128,8 @@ async function clickIcon(page, itemIndex, icon) {
         await waitForApp(page);
 
         await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.nav-btn'))
-                .find(b => b.textContent.trim() === 'History');
+            const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
+                .find(b => b.textContent.indexOf('History') !== -1);
             if (btn) btn.click();
         });
         await page.waitForSelector('.history-item', { timeout: 8000 });

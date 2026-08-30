@@ -28,6 +28,7 @@ const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -83,42 +84,21 @@ function extractLiteral(source, name, open, close) {
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        const interacted = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Shoulder Press');
-            if (!card) return false;
-            const input = card.querySelector('input[type="number"]');
-            if (!input) return false;
-            const setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value').set;
-            setter.call(input, '200');
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            const btn = Array.from(card.querySelectorAll('button'))
-                .find(b => b.textContent.includes('Weight Breakdown'));
-            if (!btn) return false;
-            btn.click();
-            return true;
-        });
-        ok(interacted, 'set Shoulder Press to 200 and opened its Weight Breakdown');
-        await new Promise(r => setTimeout(r, 300));
+        // The breakdown is part of the card's revealed face now, so this
+        // navigates to Shoulder Press, opens it, and types the weight in.
+        const text = await setWeightAndOpen(page, 'Shoulder Press', 200);
 
-        const text = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Shoulder Press');
-            return card ? card.textContent : '';
-        });
+        contains(text, '140 lbs', 'warmup #1 = 70% of 200 = 140, already on the stack');
+        contains(text, '180 lbs', 'warmup #2 = 90% of 200 = 180, already on the stack');
 
-        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
-            'warmup #1 = 70% of 200 = 140, already on the stack');
-        contains(text, 'Warmup Set #2 (~90%): 180 lbs',
-            'warmup #2 = 90% of 200 = 180, already on the stack');
-
-        // The plate-loaded branch is what renders "Per side". Its absence is
-        // what proves the reclassification actually took effect rather than
-        // both branches somehow rendering.
-        ok(!/Per side/.test(text),
+        // A per-side figure and a plate list are the plate-loaded signature.
+        // Their absence is what proves the reclassification took effect rather
+        // than both branches somehow rendering.
+        ok(text.indexOf('/side') === -1,
             'no two-sided plate rendering remains on Shoulder Press');
-        ok(!/Pin:/.test(text),
+        ok(text.indexOf(' × ') === -1,
+            'and no plate list — a pin stack has no plates to name');
+        ok(text.indexOf('pin ') === -1,
             'plain pin stack, not the capped-overflow branch');
 
         eq(errors, [], 'no console errors during load');

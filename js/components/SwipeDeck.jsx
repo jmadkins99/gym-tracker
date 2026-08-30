@@ -99,10 +99,18 @@
                 //
                 // Deliberately NOT cancelled if you swipe straight back: the
                 // point is that returning finds the card shut.
+                // The close names the card it is closing. It fires after the
+                // rail has carried that card off-screen, and in that window you
+                // can already have opened the NEXT one — a blanket close would
+                // then wipe a reveal that had nothing to do with the card you
+                // left, taking its freshly stamped anchor with it. Swiping on
+                // and immediately opening the next machine is not an unusual
+                // thing to do; it is the normal thing to do.
                 const leaving = exercises[index];
                 if (leaving && expandedWeightBreakdown === leaving.id) {
                     clearTimeout(collapseTimer.current);
-                    collapseTimer.current = setTimeout(closeWeightBreakdown, RAIL_MS);
+                    collapseTimer.current = setTimeout(
+                        () => closeWeightBreakdown(leaving.id), RAIL_MS);
                 }
 
                 const step = (stageRef.current ? stageRef.current.offsetWidth : 0) + DECK_GAP;

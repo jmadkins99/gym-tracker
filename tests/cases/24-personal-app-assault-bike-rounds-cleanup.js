@@ -49,7 +49,7 @@ const NS = 'gym-local:';
 
         // And it renders as NA (not a stale rounds value) in the Weekly view.
         await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.nav-btn')).find(b => b.textContent.trim() === 'History');
+            const btn = Array.from(document.querySelectorAll('.bottom-nav-btn')).find(b => b.textContent.indexOf('History') !== -1);
             if (btn) btn.click();
         });
         await new Promise(r => setTimeout(r, 200));

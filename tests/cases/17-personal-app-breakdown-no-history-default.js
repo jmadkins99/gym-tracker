@@ -16,6 +16,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -56,36 +57,22 @@ const TARGET_NAME = 'Recline Curls';
             `app is past Week 1 (indicator: "${weekText}")`);
 
         // Open the Weight Breakdown on the never-logged new exercise.
-        const clicked = await page.evaluate((name) => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === name) {
-                    const btn = Array.from(c.querySelectorAll('button'))
-                        .find(b => b.textContent.includes('Weight Breakdown'));
-                    if (btn) { btn.click(); return true; }
-                }
-            }
-            return false;
-        }, TARGET_NAME);
-        ok(clicked, `${TARGET_NAME} card has a Weight Breakdown button`);
-        await new Promise(r => setTimeout(r, 250));
+        await goToCard(page, TARGET_NAME);
+        await revealCard(page);
+        const clicked = await isRevealed(page);
+        ok(clicked, `${TARGET_NAME} opens to show its breakdown`);
 
-        const breakdownText = await page.evaluate((name) => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === name) {
-                    return c.textContent;
-                }
-            }
-            return '';
-        }, TARGET_NAME);
+        const breakdownText = (await readDeckCard(page, TARGET_NAME)).breakdown.join('  ~  ');
 
         // The breakdown must actually render (the bug produced an empty popover),
         // using the 25 lb default: 70% -> 17.5 lbs, 90% -> 22.5 lbs.
-        contains(breakdownText, 'Warmup Set #1 (~70%):', 'breakdown renders warmup #1 from default weight');
-        contains(breakdownText, 'Warmup Set #2 (~90%):', 'breakdown renders warmup #2 from default weight');
-        contains(breakdownText, '17.5 lbs', 'warmup #1 computed from 25 lb default (70%)');
-        contains(breakdownText, '22.5 lbs', 'warmup #2 computed from 25 lb default (90%)');
+        contains(breakdownText, 'WARMUP 1', 'breakdown renders warmup #1 from default weight');
+        contains(breakdownText, 'WARMUP 2', 'breakdown renders warmup #2 from default weight');
+        contains(breakdownText, '10 lbs',
+            'warmup #1 from the 25 lb default. Under the Aug 2026 rule a pin warmup ' +
+            'rounds to the nearest 10 — 17.5 became 20 — and then steps down to 10 so ' +
+            'the ramp still ascends past warmup #2');
+        contains(breakdownText, '20 lbs', 'warmup #2 rounds 22.5 to a real pin position of 20');
         eq(errors, [], 'no console errors during load');
 
         console.log('PASS: Weight Breakdown renders from default weight with no logged history.');
