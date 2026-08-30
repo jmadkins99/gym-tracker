@@ -34,9 +34,40 @@ function resolvePublicApp() {
     );
 }
 
+// The public app's full source, index.html plus every module under js/,
+// concatenated.
+//
+// Several cases assert against the app's SOURCE rather than its behaviour —
+// the Firestore collection roots (case 39) and the current Jessi split
+// revision (41, 56) are both unreachable at runtime in a test. Those cases
+// used to read index.html, which worked while the app was a single 7.7k-line
+// file. The Aug 2026 split moved that code into js/*.js and js/components/*.jsx
+// and broke all three at once, and the failure mode was worse than a break:
+// case 39's negative assertions ("must never reference the personal tree")
+// pass vacuously against a file the code has left.
+//
+// So read the whole tree, not one file. A constant moving between modules is
+// then invisible to these checks, which is the right sensitivity — they care
+// that the app says something, not which file says it.
+function publicAppSource() {
+    const root = resolvePublicApp();
+    const out = [fs.readFileSync(path.join(root, 'index.html'), 'utf8')];
+    const walk = (dir) => {
+        if (!fs.existsSync(dir)) return;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else if (/[.]jsx?$/.test(entry.name)) out.push(fs.readFileSync(full, 'utf8'));
+        }
+    };
+    walk(path.join(root, 'js'));
+    return out.join('\n');
+}
+
 module.exports = {
     PERSONAL_APP_ROOT,
     PUBLIC_APP_CANDIDATES,
+    publicAppSource,
     // Getter, not a value: the throw should happen when a test actually needs
     // the public app, not at require() time in a personal-app-only run.
     get PUBLIC_APP_ROOT() { return resolvePublicApp(); },

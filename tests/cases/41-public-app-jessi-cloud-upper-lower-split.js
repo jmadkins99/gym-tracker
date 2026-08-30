@@ -43,16 +43,16 @@ const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
-const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
 const NS = 'gym-local:';
 
 // Read from the app so a future revision bump doesn't rot this assertion —
 // what matters is that the stamp matches whatever the migration currently
 // claims, not that it holds any particular number.
 function currentSplitRevision() {
-    const src = fs.readFileSync(path.join(PUBLIC_APP_ROOT, 'index.html'), 'utf8');
+    const src = publicAppSource();
     const m = src.match(/const JESSI_SPLIT_REVISION\s*=\s*(\d+)/);
-    if (!m) throw new Error('could not find JESSI_SPLIT_REVISION in index.html');
+    if (!m) throw new Error('could not find JESSI_SPLIT_REVISION in the public app source');
     return Number(m[1]);
 }
 

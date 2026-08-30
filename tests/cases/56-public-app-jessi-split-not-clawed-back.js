@@ -34,7 +34,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
-const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
 
 const NS = 'gym-local:';
 
@@ -59,9 +59,9 @@ const DROPPED_BY_FB = [
 ];
 
 function currentSplitRevision() {
-    const src = fs.readFileSync(path.join(PUBLIC_APP_ROOT, 'index.html'), 'utf8');
+    const src = publicAppSource();
     const m = src.match(/const JESSI_SPLIT_REVISION\s*=\s*(\d+)/);
-    if (!m) throw new Error('could not find JESSI_SPLIT_REVISION in index.html');
+    if (!m) throw new Error('could not find JESSI_SPLIT_REVISION in the public app source');
     return Number(m[1]);
 }
 

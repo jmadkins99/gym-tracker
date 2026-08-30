@@ -19,12 +19,11 @@
 const fs = require('fs');
 const path = require('path');
 const { ok } = require('../lib/assert');
-const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { publicAppSource } = require('../lib/paths');
 
 const personalRepo = fs.readFileSync(
     path.resolve(__dirname, '..', '..', 'js', 'storageRepo.js'), 'utf8');
-const publicApp = fs.readFileSync(
-    path.join(PUBLIC_APP_ROOT, 'index.html'), 'utf8');
+const publicApp = publicAppSource();
 
 // Personal app: users/ root, and never the public tree.
 ok(personalRepo.includes(".collection('users')"),
@@ -34,8 +33,8 @@ ok(!personalRepo.includes('publicUsers'),
 
 // Public app: publicUsers/ root, and never the personal tree.
 ok(publicApp.includes(".collection('publicUsers')"),
-    "public index.html roots its cloud data at collection('publicUsers')");
+    "the public app roots its cloud data at collection('publicUsers')");
 ok(!publicApp.includes(".collection('users')"),
-    "public index.html must never reference the personal collection('users') tree");
+    "the public app must never reference the personal collection('users') tree");
 
 console.log('PASS: personal and public apps use disjoint Firestore collection roots.');

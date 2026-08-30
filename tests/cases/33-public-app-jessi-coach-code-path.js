@@ -27,7 +27,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, waitFor, waitForStorageKey } = require('../lib/browser');
 const { eq, ok } = require('../lib/assert');
 
-const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
 const NS = 'gym-local:';
 const JESSI_CODE = 'D1O9O9M2';
 
@@ -68,15 +68,19 @@ const JESSI_CODE = 'D1O9O9M2';
 
         // Confirm the app's own resetData lists all of them, so the simulation
         // above cannot drift from the real implementation unnoticed.
-        const resetSource = await page.evaluate(() => {
-            const html = document.documentElement.outerHTML;
-            const i = html.indexOf('const resetData =');
+        //
+        // Read the app's source from disk rather than the served DOM: since the
+        // module split, resetData lives in js/components/App.jsx and never
+        // appears in document.documentElement.outerHTML.
+        const resetSource = (() => {
+            const src = publicAppSource();
+            const i = src.indexOf('const resetData =');
             if (i === -1) return '';
             // Bound by the end of the function's body rather than a character
             // count, so the check survives edits to the confirm() copy.
-            const j = html.indexOf('setShowWizard(true)', i);
-            return j === -1 ? '' : html.slice(i, j);
-        });
+            const j = src.indexOf('setShowWizard(true)', i);
+            return j === -1 ? '' : src.slice(i, j);
+        })();
         ok(resetSource, 'located the resetData implementation in the page source');
         for (const flag of ['jessiRepsDropdownEnabled', 'jessiFullBodyMigrationApplied5']) {
             ok(resetSource.includes(flag), `resetData removes ${flag}`);
