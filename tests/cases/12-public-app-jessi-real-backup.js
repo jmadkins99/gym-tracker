@@ -23,6 +23,7 @@ const { seedPublicApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, goToCard, revealCard, stepTo, deckPosition, activeName } = require('../lib/deck');
 const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'jessi-backup-2026-06-09-config.json');
 
 // Names that should be in the new Full Body program AND classify into a
@@ -91,64 +92,68 @@ const DROPPED_NAMES = [
         ok(state.day1.includes('Hip Adduction'),
             'Leg Extensions renamed to "Hip Adduction" to match personal-app display');
 
-        // Every classified exercise has a Weight Breakdown button.
-        const namesWithButton = await page.evaluate(() => {
-            const out = [];
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                const name = c.querySelector('.exercise-name')?.textContent?.trim();
-                const has = !!Array.from(c.querySelectorAll('button'))
-                    .find(b => b.textContent.includes('Weight Breakdown'));
-                if (has && name) out.push(name);
+        // Every classified exercise reveals a Weight Breakdown. There is no
+        // button any more — the swipe up IS the breakdown — so this walks the
+        // deck, opens each card and gives it a weight, because a card with
+        // nothing to break down renders no panel.
+        const namesWithButton = [];
+        await stepTo(page, 1);
+        const totalCards = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+        for (let i = 1; i <= totalCards; i++) {
+            const name = await activeName(page);
+            await revealCard(page);
+            await page.evaluate((sel) => {
+                const input = document.querySelector(sel + ' input[type="number"]');
+                if (!input) return;
+                const setter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value').set;
+                setter.call(input, '100');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }, ACTIVE);
+            await new Promise(r => setTimeout(r, 200));
+            const has = await page.evaluate(
+                (sel) => !!document.querySelector(sel + ' .breakdown'), ACTIVE);
+            if (has && name) namesWithButton.push(name);
+            if (i < totalCards) {
+                await page.evaluate(() => {
+                    const a = document.querySelectorAll('.deck-arrow');
+                    a[a.length - 1].click();
+                });
+                await new Promise(r => setTimeout(r, 230));
             }
-            return out;
-        });
+        }
 
         const seen = new Set(namesWithButton);
         const missing = EXPECTED_BREAKDOWN_NAMES.filter(n => !seen.has(n));
         eq(missing, [],
-            `every retained classified exercise must show the Weight Breakdown button (missing: ${JSON.stringify(missing)})`);
+            `every retained classified exercise must reveal a Weight Breakdown (missing: ${JSON.stringify(missing)})`);
 
-        // Kelso Shrugs overflow at 215 lbs.
-        const interacted = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Kelso Shrugs') {
-                    const input = c.querySelector('input[type="number"]');
-                    if (!input) return false;
-                    const setter = Object.getOwnPropertyDescriptor(
-                        window.HTMLInputElement.prototype, 'value').set;
-                    setter.call(input, '215');
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    const btn = Array.from(c.querySelectorAll('button'))
-                        .find(b => b.textContent.includes('Weight Breakdown'));
-                    btn?.click();
-                    return true;
-                }
-            }
-            return false;
-        });
-        ok(interacted, 'set Kelso Shrugs weight to 215 and clicked Weight Breakdown');
+        // Kelso Shrugs at 215 lbs.
+        await goToCard(page, 'Kelso Shrugs');
+        await revealCard(page);
+        const interacted = await page.evaluate((sel) => {
+            const input = document.querySelector(sel + ' input[type="number"]');
+            if (!input) return false;
+            const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value').set;
+            setter.call(input, '215');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+        }, ACTIVE);
+        ok(interacted, 'set Kelso Shrugs weight to 215 on its open card');
         await new Promise(r => setTimeout(r, 300));
 
-        const text = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Kelso Shrugs') {
-                    return c.textContent;
-                }
-            }
-            return '';
-        });
-        // Kelso Shrugs is plate-loaded one-sided (no pin cap): "(<total> lbs - ~NN%):"
-        // labels, floor plate breakdown, and no "Pin: X lbs" overflow line.
-        contains(text, 'Warmup Set #1 (150 lbs - ~70%):',
+        const text = await page.evaluate(
+            (sel) => document.querySelector(sel).textContent, ACTIVE);
+        // Kelso Shrugs is plate-loaded one-sided (no pin cap): a labelled row
+        // per set, a plate list, and no pin overflow line.
+        contains(text, 'Warmup 1' + '70%' + '150 lbs',
             'Kelso warmup 1 at 215 → nearest-10 = 150');
-        contains(text, 'Warmup Set #2 (190 lbs - ~90%):',
+        contains(text, 'Warmup 2' + '90%' + '195 lbs',
             'Kelso warmup 2 at 215 → nearest-10 = 190');
-        contains(text, 'Top Set (215 lbs):',
+        contains(text, 'Top set' + '215 lbs',
             'Kelso top set shows exact 215 lbs');
-        ok(!/Pin: \d/.test(text),
+        ok(!/pin \d/.test(text),
             'Kelso has no "Pin: N lbs" line (plate-loaded, not a capped pin stack)');
 
         eq(errors, [], 'no console errors during load');

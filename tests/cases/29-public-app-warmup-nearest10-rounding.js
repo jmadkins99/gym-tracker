@@ -16,6 +16,7 @@ const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 
 function fullBodyConfig() {
     return {
@@ -36,35 +37,28 @@ function fullBodyConfig() {
     };
 }
 
+// Walk the deck to the card, swipe it open, type the weight, and hand back
+// what the open card says. On the deck all three steps are needed: the weight
+// input does not exist until the card is revealed, and there is no breakdown
+// button to press — the reveal is the breakdown.
 async function breakdownText(page, name, weight) {
-    const opened = await page.evaluate(({ name, weight }) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === name) {
-                const input = c.querySelector('input[type="number"]');
-                if (!input) return false;
-                const setter = Object.getOwnPropertyDescriptor(
-                    window.HTMLInputElement.prototype, 'value').set;
-                setter.call(input, String(weight));
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                const btn = Array.from(c.querySelectorAll('button'))
-                    .find(b => b.textContent.includes('Weight Breakdown'));
-                if (!btn) return false;
-                btn.click();
-                return true;
-            }
-        }
-        return false;
-    }, { name, weight });
-    if (!opened) return null;
+    await goToCard(page, name);
+    await revealCard(page);
+    const ok = await page.evaluate((sel, w) => {
+        const input = document.querySelector(sel + ' input[type="number"]');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, String(w));
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+    }, ACTIVE, weight);
+    if (!ok) return null;
     await new Promise(r => setTimeout(r, 250));
-    return page.evaluate((name) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === name) return c.textContent;
-        }
-        return '';
-    }, name);
+    return page.evaluate((sel) => {
+        const slot = document.querySelector(sel);
+        return slot ? slot.textContent : '';
+    }, ACTIVE);
 }
 
 (async () => {
@@ -92,26 +86,32 @@ async function breakdownText(page, name, weight) {
         // arithmetic is weight-driven and identical on either card.)
         const backExt = await breakdownText(page, 'Back Extensions', 250);
         ok(backExt, 'opened Back Extensions breakdown');
-        contains(backExt, 'Warmup Set #1 (180 lbs - ~70%)', 'two-sided W1 87.5/side rounds UP to 90 (total 180)');
-        contains(backExt, 'Per side: 90 lbs', 'two-sided W1 per side = 90');
-        contains(backExt, 'Warmup Set #2 (220 lbs - ~90%)', 'two-sided W2 112.5/side rounds DOWN to 110 (total 220)');
-        contains(backExt, 'Per side: 110 lbs', 'two-sided W2 per side = 110');
-        contains(backExt, 'Top Set (250 lbs)', 'two-sided top set exact 250 (never rounded)');
-        contains(backExt, 'Per side: 125 lbs', 'two-sided top set per side exact 125');
+        contains(backExt, 'Warmup 1' + '70%' + '180 lbs', 'two-sided W1 87.5/side lands on 90 (total 180)');
+        contains(backExt, '90/side', 'two-sided W1 per side = 90');
+        contains(backExt, 'Warmup 2' + '90%' + '230 lbs',
+            'two-sided W2 112.5/side lands on 115 (45x2 + 25) = 230 total. The old ' +
+            'nearest-10 rule said 110/side, which needs 45x2 + 10 + 10 — two of the ' +
+            'same small plate, which is exactly what the loadable rule refuses.');
+        contains(backExt, '115/side', 'two-sided W2 per side = 115 (45x2 + 25)');
+        contains(backExt, 'Top set' + '250 lbs', 'two-sided top set exact 250 (never rounded)');
+        contains(backExt, '125/side', 'two-sided top set per side exact 125');
 
         // Kelso Shrugs (one-sided) at 67.5: W1 47.25 -> 50 (up), W2 60.75 -> 60, top 67.5 exact.
         const kelso = await breakdownText(page, 'Kelso Shrugs', 67.5);
         ok(kelso, 'opened Kelso Shrugs breakdown');
-        contains(kelso, 'Warmup Set #1 (50 lbs - ~70%)', 'one-sided W1 47.25 rounds UP to 50');
-        contains(kelso, 'Warmup Set #2 (60 lbs - ~90%)', 'one-sided W2 60.75 rounds DOWN to 60');
-        contains(kelso, 'Top Set (67.5 lbs)', 'one-sided top set exact 67.5');
+        contains(kelso, 'Warmup 1' + '70%' + '45 lbs',
+            'one-sided W1 47.25 lands on a bare 45 — nearer than 50 (45 + 5)');
+        contains(kelso, 'Warmup 2' + '90%' + '60 lbs', 'one-sided W2 60.75 lands on 60 (45 + 10 + 5)');
+        contains(kelso, 'Top set' + '67.5 lbs', 'one-sided top set exact 67.5');
 
         // Sagittal Plane Pulldowns (one-sided) at 50: exact-halfway ties round DOWN
         const sagittal = await breakdownText(page, 'Sagittal Plane Pulldowns', 50);
         ok(sagittal, 'opened Sagittal Plane Pulldowns breakdown');
-        contains(sagittal, 'Warmup Set #1 (30 lbs - ~70%)', 'sagittal W1 35.0 (halfway) rounds DOWN to 30');
-        contains(sagittal, 'Warmup Set #2 (40 lbs - ~90%)', 'sagittal W2 45.0 (halfway) rounds DOWN to 40');
-        contains(sagittal, 'Top Set (50 lbs)', 'sagittal top set exact 50');
+        contains(sagittal, 'Warmup 1' + '70%' + '35 lbs',
+            'sagittal W1 is exactly 35, which is loadable (25 + 10) and so is not moved');
+        contains(sagittal, 'Warmup 2' + '90%' + '45 lbs',
+            'sagittal W2 is exactly 45, a single plate, and so is not moved either');
+        contains(sagittal, 'Top set' + '50 lbs', 'sagittal top set exact 50');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: public-app warmups round per-side to nearest 10 (ties down); top set exact.');

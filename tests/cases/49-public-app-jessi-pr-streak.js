@@ -27,6 +27,31 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
+const { ACTIVE, goToCard, revealCard, stepTo, deckPosition, activeName } = require('../lib/deck');
+
+// Every card's `.exercise-name`, read with each card OPEN — the badge is a
+// sibling of that node on the revealed face, which is exactly where it could
+// leak into it.
+async function readDeckNamesRevealed(page) {
+    await stepTo(page, 1);
+    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+    const names = [];
+    for (let i = 1; i <= total; i++) {
+        await revealCard(page);
+        names.push(await page.evaluate((sel) => {
+            const el = document.querySelector(sel + ' .exercise-name');
+            return el ? el.textContent.trim() : null;
+        }, ACTIVE));
+        if (i < total) {
+            await page.evaluate(() => {
+                const a = document.querySelectorAll('.deck-arrow');
+                a[a.length - 1].click();
+            });
+            await new Promise((r) => setTimeout(r, 230));
+        }
+    }
+    return names;
+}
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const NS = 'gym-local:';
@@ -50,9 +75,10 @@ function jessiConfig() {
 }
 
 async function enterSet(page, name, weight, reps) {
-    await page.evaluate((n, w, r) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === n);
+    await goToCard(page, name);
+    await revealCard(page);
+    await page.evaluate((sel, w, r) => {
+        const card = document.querySelector(sel);
 
         const input = card.querySelector('input[inputmode="decimal"]');
         const inputSetter = Object.getOwnPropertyDescriptor(
@@ -65,18 +91,19 @@ async function enterSet(page, name, weight, reps) {
             window.HTMLSelectElement.prototype, 'value').set;
         selectSetter.call(select, r);
         select.dispatchEvent(new Event('change', { bubbles: true }));
-    }, name, weight, reps);
+    }, ACTIVE, weight, reps);
     await new Promise(r => setTimeout(r, 100));
 }
 
 async function logCard(page, name) {
-    await page.evaluate((n) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === n);
-        const btn = Array.from(card.querySelectorAll('button')).find(b => /^LOG$/i.test(b.textContent.trim()));
+    await goToCard(page, name);
+    await page.evaluate((sel) => {
+        const card = document.querySelector(sel);
+        const btn = Array.from(card.querySelectorAll('button'))
+            .find(b => /^LOG$/i.test(b.textContent.trim()));
         if (btn) btn.click();
-    }, name);
-    await new Promise(r => setTimeout(r, 200));
+    }, ACTIVE);
+    await new Promise(r => setTimeout(r, 300));
 }
 
 async function submitDay(page) {
@@ -104,14 +131,17 @@ async function backdateAndReload(page, daysAgo) {
     await waitForApp(page);
 }
 
+// The badge lives on the revealed face, beside the name, so the card has to be
+// navigated to and opened before it can be read.
 async function readBadge(page, name) {
-    return page.evaluate((n) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === n);
+    await goToCard(page, name);
+    await revealCard(page);
+    return page.evaluate((sel) => {
+        const card = document.querySelector(sel);
         if (!card) return { missing: true };
         const el = card.querySelector('.streak-badge');
         return { badge: el ? el.textContent.trim() : null };
-    }, name);
+    }, ACTIVE);
 }
 
 // Jessi's dropdown runs 5-8, and getMinimalistPR bumps once reps hit maxReps (8).
@@ -169,9 +199,7 @@ const ROUNDS = [
 
         // The badge must not have leaked into .exercise-name — several
         // public-app cases find cards by comparing that string exactly.
-        const names = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('.exercise-card'))
-                .map(c => c.querySelector('.exercise-name')?.textContent?.trim()));
+        const names = await readDeckNamesRevealed(page);
         eq(names, ['Chest Flies', 'Incline Chest Press'],
             '.exercise-name still carries the bare names with a badge showing');
 

@@ -10,7 +10,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards } = require('../lib/browser');
+const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { ACTIVE, readDeckCard, goToCard, revealCard, logCard } = require('../lib/deck');
 const {
     seedPublicApp,
     workoutEntry,
@@ -45,18 +46,12 @@ const NS = 'gym-local:';
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        const cards = await readCards(page);
-        ok(cards.find(c => c.name === 'Frontal Plane Pulldowns'),
-            'Frontal Plane Pulldowns card rendered before logging');
+        const before = await readDeckCard(page, 'Frontal Plane Pulldowns');
+        ok(before, 'Frontal Plane Pulldowns card rendered before logging');
 
-        // Log it with its pre-filled values.
-        await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Frontal Plane Pulldowns');
-            const btn = Array.from(card.querySelectorAll('button')).find(b => /LOG/i.test(b.textContent));
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 250));
+        // Log it with its pre-filled values. readDeckCard has already navigated
+        // to it and swiped it open, which is where LOG lives.
+        await logCard(page);
 
         let saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
@@ -67,13 +62,13 @@ const NS = 'gym-local:';
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        const restored = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Frontal Plane Pulldowns');
-            return {
-                logged: !!card && card.classList.contains('logged'),
-            };
-        });
+        // A logged card renders its open face unconditionally — it is a review
+        // at that point — so navigating to it is enough to read its state back.
+        await goToCard(page, 'Frontal Plane Pulldowns');
+        const restored = await page.evaluate((sel) => {
+            const card = document.querySelector(sel + ' .card');
+            return { logged: !!card && card.classList.contains('logged') };
+        }, ACTIVE);
         ok(restored.logged, 'card restored in logged state after reload');
 
         saved = await page.evaluate((ns) =>

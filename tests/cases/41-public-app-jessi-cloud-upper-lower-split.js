@@ -44,6 +44,8 @@ const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
+const { ACTIVE, selectDeckDay, readDeckNames, readDeckCard, stepTo,
+        deckPosition, activeName, revealCard } = require('../lib/deck');
 const NS = 'gym-local:';
 
 // Read from the app so a future revision bump doesn't rot this assertion —
@@ -110,16 +112,10 @@ const EXPECTED_ANTERIOR = [
     ['Shoulder Press', ID.shoulderPress],
     ['Lateral Raises', DROPPED_ID.lateralRaises],
     ['Overhead Tricep Extensions', DROPPED_ID.dips],
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair,
-    // Aug 2026.
+    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026.
     ['Ab Crunches', ID.abCrunches],
     ['Leg Extensions', 'actual-leg-extensions'],
     ['Tricep Extensions', ID.tricepExt],
-    // Wrist flexors here, extensors on Posterior. Both keep the ids they
-    // reclaimed from history when the Aug 2026 split restored them — changing
-    // day must not mint a fresh id any more than reordering may.
-    ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
-    ['Cable Wrist Curls', DROPPED_ID.cableWrist],
     // Quad-dominant, so it closes the anterior day. It keeps its recovered id
     // across the move from Lower — the second place that rule is checked.
     ['Leg Press', ID.legPress],
@@ -133,6 +129,12 @@ const EXPECTED_POSTERIOR = [
     ['Transverse Plane Rows', ID.transverseRows],
     ['Kelso Shrugs', ID.kelsoShrugs],
     ['Preacher Curls', 'actual-preacher-curls'],
+    // The wrist pair moved off Anterior to sit with the pulling work
+    // (revision 12). Both keep the ids they reclaimed from history when the
+    // Aug 2026 split restored them — changing day must not mint a fresh id
+    // any more than reordering may.
+    ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
+    ['Cable Wrist Curls', DROPPED_ID.cableWrist],
     // Keeps its recovered id across the move from Lower.
     ['Back Extensions', ID.backExtensions],
     // Adductor magnus is a hip extensor, hence the posterior chain.
@@ -238,9 +240,9 @@ async function readSaved(page) {
         eq(saved.dayCount, 2, 'the single Full Body day became two days');
         eq(saved.categories, ['Anterior', 'Posterior'], 'categories are Anterior and Posterior');
         eq(saved.anterior, EXPECTED_ANTERIOR,
-            'Anterior holds 12 movements in order, each with the correct id');
+            'Anterior holds 10 movements in order, each with the correct id');
         eq(saved.posterior, EXPECTED_POSTERIOR,
-            'Posterior holds 9 movements in order, each with the correct id');
+            'Posterior holds 11 movements in order, each with the correct id');
 
         // Called out separately so a failure names the actual problem.
         for (const [name, id] of [
@@ -290,50 +292,57 @@ async function readSaved(page) {
         eq(await readSaved(page), saved, 'a second load changes nothing');
 
         // On-screen: drive the day selector explicitly so this is weekday-independent.
-        const onScreen = await page.evaluate(async () => {
-            const out = {};
-            const btns = Array.from(document.querySelectorAll('.day-btn'));
-            for (let i = 0; i < btns.length; i++) {
-                btns[i].click();
-                await new Promise(r => setTimeout(r, 250));
-                out[i + 1] = Array.from(document.querySelectorAll('.exercise-name'))
-                    .map(e => e.textContent.trim());
-            }
-            return out;
-        });
+        // The deck mounts three cards, not the whole roster, so "what renders"
+        // means walking each day's deck end to end rather than reading a list.
+        const onScreen = {};
+        for (const dayNum of [1, 2]) {
+            await selectDeckDay(page, dayNum);
+            onScreen[dayNum] = await readDeckNames(page);
+        }
         eq(onScreen[1], EXPECTED_ANTERIOR.map(([n]) => n), 'day 1 renders Anterior on screen');
         eq(onScreen[2], EXPECTED_POSTERIOR.map(([n]) => n), 'day 2 renders Posterior on screen');
 
-        // 4 (cont). The new movement's weight input is seeded with 50.
-        const preacherWeight = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Preacher Curls');
-            if (!card) return null;
-            const input = card.querySelector('input[type="number"]');
-            return input ? input.value : null;
-        });
-        // Day 2 (Posterior) is selected after the loop; hop back to Anterior.
-        if (preacherWeight === null) {
-            await page.evaluate(() => document.querySelectorAll('.day-btn')[0].click());
-            await new Promise(r => setTimeout(r, 300));
-        }
-        const preacherWeight2 = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Preacher Curls');
-            const input = card && card.querySelector('input[type="number"]');
-            return input ? input.value : null;
-        });
+        // 4 (cont). The new movement's weight input is seeded with 50. Preacher
+        // Curls is on Posterior, which the loop above left selected — and the
+        // field does not exist until the card is opened.
+        await selectDeckDay(page, 2);
+        const preacher = await readDeckCard(page, 'Preacher Curls');
+        const preacherWeight2 = preacher ? preacher.weightValue : null;
         eq(preacherWeight2, '50',
             'Preacher Curls pre-fills to its startingWeight with no history');
 
-        // Every movement keeps a Weight Breakdown button (the 90028e6 / 5cad8f8
-        // regression, twice burned).
-        const missingBreakdown = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('.exercise-card'))
-                .filter(c => !Array.from(c.querySelectorAll('button'))
-                    .some(b => b.textContent.includes('Weight Breakdown')))
-                .map(c => c.querySelector('.exercise-name')?.textContent?.trim()));
-        eq(missingBreakdown, [], 'every Anterior movement keeps its Weight Breakdown button');
+        // Every movement still reveals a Weight Breakdown (the 90028e6 / 5cad8f8
+        // regression, twice burned). There is no button now — the swipe up IS
+        // the breakdown — and a card with no weight has nothing to break down,
+        // so each one is given a weight before being asked.
+        await selectDeckDay(page, 1);
+        const missingBreakdown = [];
+        await stepTo(page, 1);
+        const anteriorCount = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+        for (let i = 1; i <= anteriorCount; i++) {
+            const nm = await activeName(page);
+            await revealCard(page);
+            await page.evaluate((sel) => {
+                const input = document.querySelector(sel + ' input[type="number"]');
+                if (!input) return;
+                const setter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, 'value').set;
+                setter.call(input, '100');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }, ACTIVE);
+            await new Promise(r => setTimeout(r, 200));
+            const has = await page.evaluate(
+                (sel) => !!document.querySelector(sel + ' .breakdown'), ACTIVE);
+            if (!has) missingBreakdown.push(nm);
+            if (i < anteriorCount) {
+                await page.evaluate(() => {
+                    const a = document.querySelectorAll('.deck-arrow');
+                    a[a.length - 1].click();
+                });
+                await new Promise(r => setTimeout(r, 230));
+            }
+        }
+        eq(missingBreakdown, [], 'every Anterior movement still reveals a Weight Breakdown');
 
         // 7. A program that is not Jessi's must be untouched.
         const otherConfig = {

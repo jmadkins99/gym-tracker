@@ -38,6 +38,7 @@ const { seedPublicApp, jessiPreMigrationConfig, jessiDefaultSchedule } = require
 const { eq, ok, contains } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 const NS = 'gym-local:';
 
 async function openSettings(page) {
@@ -116,52 +117,33 @@ async function setLoadType(page, exerciseName, loadType) {
 }
 
 // Types a weight into the card and opens its breakdown; returns the card text.
+// Walk the deck to the card, swipe it open, type the weight, and hand back
+// what the open card says.
+//
+// Nothing collapses the panel afterwards any more, and nothing needs to. The
+// old version had to press "Hide" between reads because the button toggled;
+// here each read navigates to its own card, and leaving a card is itself what
+// closes it.
 async function readBreakdown(page, exerciseName, weight) {
-    const opened = await page.evaluate((name, w) => {
-        const cards = Array.from(document.querySelectorAll('.exercise-card'));
-        const card = cards.find(c =>
-            c.querySelector('.exercise-name')?.textContent?.trim() === name);
-        const rendered = cards
-            .map(c => c.querySelector('.exercise-name')?.textContent?.trim())
-            .join(', ');
-        if (!card) return `no card for "${name}" — rendered: ${rendered}`;
-        const input = card.querySelector('input[type="number"], input[inputmode="decimal"]');
-        if (input) {
-            const setter = Object.getOwnPropertyDescriptor(
-                window.HTMLInputElement.prototype, 'value').set;
-            setter.call(input, w);
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-        const btn = Array.from(card.querySelectorAll('button'))
-            .find(b => b.textContent.includes('Weight Breakdown'));
-        if (!btn) {
-            const labels = Array.from(card.querySelectorAll('button'))
-                .map(b => JSON.stringify(b.textContent.trim())).join(', ');
-            return `no breakdown button on "${name}" — its buttons: ${labels}`;
-        }
-        btn.click();
-        return 'ok';
-    }, exerciseName, weight);
-    eq(opened, 'ok', `opened the Weight Breakdown on "${exerciseName}"`);
+    await goToCard(page, exerciseName);
+    await revealCard(page);
+    const set = await page.evaluate((sel, w) => {
+        const input = document.querySelector(
+            sel + ' input[type="number"], ' + sel + ' input[inputmode="decimal"]');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, w);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+    }, ACTIVE, weight);
+    ok(set, `set a weight on "${exerciseName}"`);
     await new Promise(r => setTimeout(r, 350));
 
-    const text = await page.evaluate((name) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === name);
-        return card ? card.textContent : '';
-    }, exerciseName);
-
-    // Collapse again so the next read starts from a closed panel. The button
-    // reads "Hide" while expanded, not "Weight Breakdown" — matching on the
-    // latter here leaves the panel open and the next read finds no button.
-    await page.evaluate((name) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === name);
-        const btn = card && Array.from(card.querySelectorAll('button'))
-            .find(b => b.textContent.trim() === 'Hide');
-        if (btn) btn.click();
-    }, exerciseName);
-    await new Promise(r => setTimeout(r, 200));
+    const text = await page.evaluate((sel) => {
+        const slot = document.querySelector(sel);
+        return slot ? slot.textContent : '';
+    }, ACTIVE);
 
     return text;
 }
@@ -212,16 +194,16 @@ async function savedLoadType(page, exerciseName) {
         // === 1. A recognised movement: Kelso Shrugs ========================
         // /kelso|shrug/ makes it one-sided plate-loaded by default.
         let text = await readBreakdown(page, 'Kelso Shrugs', '200');
-        ok(!/Per side/.test(text),
+        ok(!/\/side/.test(text),
             'Kelso Shrugs defaults to ONE-sided plate-loaded — no per-side line');
-        contains(text, 'Warmup Set #1 (140 lbs',
+        contains(text, 'Warmup 1' + '70%' + '140 lbs',
             'and it renders the plate-loaded label shape by default');
 
         await setLoadType(page, 'Kelso Shrugs', 'pin');
         text = await readBreakdown(page, 'Kelso Shrugs', '200');
-        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
+        contains(text, 'Warmup 1' + '70%' + '140 lbs',
             'set to a pin stack, it renders the pin shape — the choice beats the name rule');
-        ok(!/Per side/.test(text), 'still no per-side line as a stack');
+        ok(!/\/side/.test(text), 'still no per-side line as a stack');
 
         eq(await savedLoadType(page, 'Kelso Shrugs'), 'pin',
             'the choice persisted onto the exercise in exerciseConfig');
@@ -229,7 +211,7 @@ async function savedLoadType(page, exerciseName) {
         // Two-sided, to prove all three values reach the render.
         await setLoadType(page, 'Kelso Shrugs', 'plate-two-sided');
         text = await readBreakdown(page, 'Kelso Shrugs', '200');
-        contains(text, 'Per side: 70 lbs', 'set two-sided, 140 splits to 70 a side');
+        contains(text, '70/side', 'set two-sided, 140 splits to 70 a side');
 
         // === 2. A movement the rules have never seen ======================
         // 200 rather than a rounder-looking 100 on purpose: at 100 the
@@ -237,13 +219,13 @@ async function savedLoadType(page, exerciseName) {
         // to 30 (the exact-halfway case case 28 pins). 200 keeps this case about
         // the load type rather than about rounding.
         text = await readBreakdown(page, CUSTOM, '200');
-        contains(text, 'Warmup Set #1 (~70%): 140 lbs',
+        contains(text, 'Warmup 1' + '70%' + '140 lbs',
             'an unrecognised custom exercise defaults to a plain pin stack');
-        ok(!/Per side/.test(text), 'and not to any plate shape');
+        ok(!/\/side/.test(text), 'and not to any plate shape');
 
         await setLoadType(page, CUSTOM, 'plate-two-sided');
         text = await readBreakdown(page, CUSTOM, '200');
-        contains(text, 'Per side: 70 lbs',
+        contains(text, '70/side',
             'a custom exercise can be set two-sided — 140 splits to 70 a side');
 
         // === 3. It survives a reload ======================================
@@ -252,7 +234,7 @@ async function savedLoadType(page, exerciseName) {
         eq(await savedLoadType(page, CUSTOM), 'plate-two-sided',
             'the custom exercise kept its load type across a reload');
         text = await readBreakdown(page, CUSTOM, '200');
-        contains(text, 'Per side: 70 lbs', 'and still renders two-sided after the reload');
+        contains(text, '70/side', 'and still renders two-sided after the reload');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: the load-type choice overrides the name rules and persists.');

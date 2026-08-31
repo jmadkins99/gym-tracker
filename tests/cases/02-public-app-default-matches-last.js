@@ -23,7 +23,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readCards } = require('../lib/browser');
+const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { readDeckCard } = require('../lib/deck');
 const {
     seedPublicApp,
     workoutEntry,
@@ -65,8 +66,10 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        const cards = await readCards(page);
-        const frontal = cards.find(c => c.name === 'Frontal Plane Pulldowns');
+        // One card at a time now: navigate the deck to it and swipe it open.
+        // The reveal is not ceremony — the weight field does not exist until the
+        // card is open, and opening it is what starts the exercise's clock.
+        const frontal = await readDeckCard(page, 'Frontal Plane Pulldowns');
 
         ok(frontal, 'Frontal Plane Pulldowns card is rendered on the current day');
         contains(frontal.last, '160', '"Last:" should show 160 (the recent session weight)');

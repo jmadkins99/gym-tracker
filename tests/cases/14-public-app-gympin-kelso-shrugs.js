@@ -19,6 +19,7 @@ const { start } = require('../lib/server');
 const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiPreMigrationConfig, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
+const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
 
@@ -62,47 +63,35 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
         });
         eq(persisted, true, 'a config is persisted for the Jessi-shaped install');
 
-        // Day 1 (Torso) should already be the default. Click the Kelso card's
-        // Weight Breakdown button.
-        const clicked = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Kelso Shrugs') {
-                    const btn = Array.from(c.querySelectorAll('button'))
-                        .find(b => b.textContent.includes('Weight Breakdown'));
-                    if (btn) { btn.click(); return true; }
-                }
-            }
-            return false;
-        });
-        ok(clicked, 'Kelso Shrugs card shows the Weight Breakdown button');
+        // Day 1 (Torso) is already the default. Walk the deck to the Kelso card
+        // and swipe it open — there is no Weight Breakdown button any more, the
+        // reveal is the breakdown.
+        await goToCard(page, 'Kelso Shrugs');
+        await revealCard(page);
         await new Promise(r => setTimeout(r, 250));
 
-        const text = await page.evaluate(() => {
-            const cards = document.querySelectorAll('.exercise-card');
-            for (const c of cards) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Kelso Shrugs') {
-                    return c.textContent;
-                }
-            }
-            return '';
-        });
+        const text = await page.evaluate(
+            (sel) => document.querySelector(sel).textContent, ACTIVE);
 
-        contains(text, 'Warmup Set #1 (150 lbs - ~70%):',
-            'warmup 1 (150.5) rounds to nearest-10 = 150 lbs (plate-loaded label shape)');
-        contains(text, 'Warmup Set #2 (190 lbs - ~90%):',
-            'warmup 2 (193.5) rounds to nearest-10 = 190 lbs');
-        contains(text, 'Top Set (215 lbs):',
-            'top set shows exact 215 lbs (plate-loaded label shape)');
+        // Warmups round to a load you can BUILD — any number of 45s plus at
+        // most one each of 25/10/5 — rather than to a round number. 150.5 lands
+        // on 150 (45x3 + 10 + 5); 193.5 lands on 195 (45x4 + 10 + 5) where the
+        // old nearest-10 rule said 190, which needs two 10s.
+        contains(text, 'Warmup 1' + '70%' + '150 lbs',
+            'warmup 1 (150.5) rounds to the loadable 150 lbs');
+        contains(text, 'Warmup 2' + '90%' + '195 lbs',
+            'warmup 2 (193.5) rounds to the loadable 195 lbs');
+        contains(text, 'Top set' + '215 lbs',
+            'top set shows exact 215 lbs, never rounded');
 
         // No pin cap anymore — the pin-stack overflow line must be gone.
-        ok(!/Pin: \d/.test(text),
+        ok(!/pin \d/.test(text),
             'no "Pin: N lbs" overflow line (Kelso Shrugs is plate-loaded, not a capped pin stack)');
 
-        // Top set 215 one-sided = 45×4 + 25 + 10.
-        ok(/45s - 4/.test(text), 'top set plate breakdown lists four 45 lb plates');
-        ok(/25s - 1/.test(text), 'top set plate breakdown lists a 25 lb plate');
-        ok(/10s - 1/.test(text), 'plate breakdown lists a 10 lb plate');
+        // Top set 215 one-sided = 45x4 + 25 + 10, rendered as a comma list
+        // with a count only where there is more than one plate.
+        contains(text, '45 × 4, 25, 10',
+            'the top set lists its plates as a comma list, counts only above one');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: public-app renders Kelso Shrugs plate-loaded breakdown at 215 lbs.');

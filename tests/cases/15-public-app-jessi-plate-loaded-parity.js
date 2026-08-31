@@ -20,31 +20,25 @@ const { seedPublicApp, jessiStaleNameConfig, jessiDefaultSchedule } = require('.
 const { eq, ok, contains } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 
+// Walk the deck to a named card and swipe it open. There is no Weight
+// Breakdown button any more — the reveal IS the breakdown, and it is what
+// stamps the movement's start time.
 async function clickBreakdown(page, name) {
-    return page.evaluate((n) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === n) {
-                const btn = Array.from(c.querySelectorAll('button'))
-                    .find(b => b.textContent.includes('Weight Breakdown'));
-                if (btn) { btn.click(); return true; }
-            }
-        }
-        return false;
-    }, name);
+    await goToCard(page, name);
+    await revealCard(page);
+    return true;
 }
 
+// The open card's text. Only three cards are mounted at a time, so this reads
+// the active slot rather than searching a list.
 async function readCard(page, name) {
-    return page.evaluate((n) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === n) {
-                return c.textContent;
-            }
-        }
-        return '';
-    }, name);
+    await goToCard(page, name);
+    return page.evaluate((sel) => {
+        const slot = document.querySelector(sel);
+        return slot ? slot.textContent : '';
+    }, ACTIVE);
 }
 
 (async () => {
@@ -92,11 +86,11 @@ async function readCard(page, name) {
         await new Promise(r => setTimeout(r, 200));
         const sagText = await readCard(page, 'Sagittal Plane Pulldowns');
 
-        contains(sagText, 'Warmup Set #1 (', 'Sagittal Pulldowns renders plate-loaded warmup label');
-        contains(sagText, 'lbs - ~70%',      'Sagittal Pulldowns renders plate-loaded percent label');
-        ok(/\d+(?:\.\d+)?s - \d+/.test(sagText),
-            'Sagittal Pulldowns renders plate breakdown lines (not bare pin-stack)');
-        ok(!/Pin: \d/.test(sagText),
+        contains(sagText, 'Warmup 1', 'Sagittal Pulldowns renders a plate-loaded warmup row');
+        contains(sagText, '70%', 'Sagittal Pulldowns labels the warmup percentage');
+        ok(/\d+(?: × \d+)?, /.test(sagText),
+            'Sagittal Pulldowns renders a plate list (not a bare pin-stack row)');
+        ok(!/pin \d/.test(sagText),
             'Sagittal Pulldowns must NOT render any "Pin: X" line (pin-stack regression)');
 
         const sagPerSide = (sagText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || []).length;

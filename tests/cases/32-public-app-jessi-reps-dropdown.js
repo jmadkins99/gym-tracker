@@ -34,6 +34,7 @@ const { seedPublicApp, jessiDefaultSchedule, workoutEntry } = require('../lib/st
 const { eq, ok } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 
 function config(categories) {
     return {
@@ -65,10 +66,13 @@ const HISTORY = [
     }),
 ];
 
+// The reps control lives on the revealed face, so the card has to be navigated
+// to and swiped open before it exists at all.
 async function readReps(page, name) {
-    return page.evaluate((n) => {
-        const card = Array.from(document.querySelectorAll('.exercise-card'))
-            .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === n);
+    await goToCard(page, name);
+    await revealCard(page);
+    return page.evaluate((sel2) => {
+        const card = document.querySelector(sel2);
         if (!card) return null;
         const sel = card.querySelector('select[data-field="reps"]');
         const input = card.querySelector('input[type="number"][inputmode="numeric"]');
@@ -78,7 +82,7 @@ async function readReps(page, name) {
             value: sel ? sel.value : (input ? input.value : null),
             options: sel ? Array.from(sel.options).map(o => o.value) : null,
         };
-    }, name);
+    }, ACTIVE);
 }
 
 (async () => {
@@ -128,15 +132,16 @@ async function readReps(page, name) {
         eq(fresh.value, '6', 'first-ever session defaults to the 6 goal floor');
 
         // 4. One-tap LOG with zero interaction persists the pre-selected reps.
-        const logged = await page.evaluate(() => {
-            const card = Array.from(document.querySelectorAll('.exercise-card'))
-                .find(c => c.querySelector('.exercise-name')?.textContent?.trim() === 'Chest Flies');
+        await goToCard(page, 'Chest Flies');
+        await revealCard(page);
+        const logged = await page.evaluate((sel) => {
+            const card = document.querySelector(sel);
             const btn = Array.from(card.querySelectorAll('button'))
                 .find(b => b.textContent.trim() === 'LOG');
             if (!btn) return false;
             btn.click();
             return true;
-        });
+        }, ACTIVE);
         ok(logged, 'clicked LOG on Chest Flies without touching any field');
         await new Promise(r => setTimeout(r, 600));
 

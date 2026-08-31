@@ -44,6 +44,8 @@ const { seedPublicApp, jessiDefaultSchedule, workoutEntry } = require('../lib/st
 const { eq, ok, contains } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, selectDeckDay, goToCard, revealCard, stepTo,
+        deckPosition, activeName } = require('../lib/deck');
 
 // Real ids from fixtures/jessi-backup-2026-06-09-config.json. Back Extensions
 // and Leg Press keep the ids of the movements they were renamed from on his
@@ -131,13 +133,11 @@ const EXPECTED_ANTERIOR = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair,
-    // Aug 2026 — JESSI_ANTERIOR_ORDER, matching the personal app.
+    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026 —
+    // JESSI_ANTERIOR_ORDER, matching the personal app.
     'Ab Crunches',
     'Leg Extensions', // added by JESSI_NEW_EXERCISES
     'Tricep Extensions',
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
     'Leg Press',
 ];
 
@@ -148,6 +148,10 @@ const EXPECTED_POSTERIOR = [
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Preacher Curls',
+    // The wrist pair moved off Anterior to sit with the pulling work,
+    // revision 12.
+    'Reverse Wrist Curls',
+    'Cable Wrist Curls',
     'Back Extensions',
     'Hip Adduction',
     'Calf Raises',
@@ -171,25 +175,66 @@ async function readOrder(page) {
 // Walk both day tabs and collect every card, so the assertions below are
 // weekday-independent and see the whole program rather than today's half.
 async function readAllCards(page) {
-    return page.evaluate(async () => {
-        const out = {};
-        const btns = Array.from(document.querySelectorAll('.day-btn'));
-        for (const btn of btns) {
-            btn.click();
-            await new Promise(r => setTimeout(r, 250));
-            for (const c of document.querySelectorAll('.exercise-card')) {
-                const name = c.querySelector('.exercise-name')?.textContent?.trim();
-                if (!name) continue;
-                const input = c.querySelector('input[type="number"]');
+    const out = {};
+    for (const dayNum of [1, 2]) {
+        await selectDeckDay(page, dayNum);
+        await stepTo(page, 1);
+        const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+        for (let i = 1; i <= total; i++) {
+            const name = await activeName(page);
+            // The weight field and the breakdown are both on the revealed face,
+            // so each card has to be opened to be read at all.
+            await revealCard(page);
+            if (name) {
+                // Read the prefilled weight BEFORE touching anything — that
+                // value is what half this case is about.
+                const weight = await page.evaluate((sel) => {
+                    const input = document.querySelector(sel + ' input[type="number"]');
+                    return input ? input.value : null;
+                }, ACTIVE);
+                // The panel is drawn from a target weight, so a card with no
+                // history and no startingWeight has nothing to break down. Give
+                // it one and then ask, because the question is whether the
+                // breakdown is gated on anything, not whether a blank card
+                // produces one.
+                await page.evaluate((sel) => {
+                    const input = document.querySelector(sel + ' input[type="number"]');
+                    if (!input) return;
+                    const setter = Object.getOwnPropertyDescriptor(
+                        window.HTMLInputElement.prototype, 'value').set;
+                    setter.call(input, '100');
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }, ACTIVE);
+                await new Promise((r) => setTimeout(r, 200));
                 out[name] = {
-                    weight: input ? input.value : null,
-                    hasBreakdown: Array.from(c.querySelectorAll('button'))
-                        .some(b => b.textContent.includes('Weight Breakdown')),
+                    weight,
+                    hasBreakdown: await page.evaluate(
+                        (sel) => !!document.querySelector(sel + ' .breakdown'), ACTIVE),
                 };
+                // Put it back. The probe writes into workoutData, and a later
+                // assertion in this case reads Recline Curls' own breakdown at
+                // its history weight — which a leftover 100 would silently
+                // replace.
+                await page.evaluate((sel, w) => {
+                    const input = document.querySelector(sel + ' input[type="number"]');
+                    if (!input) return;
+                    const setter = Object.getOwnPropertyDescriptor(
+                        window.HTMLInputElement.prototype, 'value').set;
+                    setter.call(input, w == null ? '' : w);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }, ACTIVE, weight);
+                await new Promise((r) => setTimeout(r, 120));
+            }
+            if (i < total) {
+                await page.evaluate(() => {
+                    const a = document.querySelectorAll('.deck-arrow');
+                    a[a.length - 1].click();
+                });
+                await new Promise((r) => setTimeout(r, 230));
             }
         }
-        return out;
-    });
+    }
+    return out;
 }
 
 (async () => {
@@ -284,38 +329,24 @@ async function readAllCards(page) {
         // 3. Recline Curls renders as a PIN STACK, not plate-loaded. It moved
         // to Posterior (day 2) in the Anterior/Posterior switch — it was on
         // Upper (day 1) before — so select the second day button.
-        await page.evaluate(() => document.querySelectorAll('.day-btn')[1].click());
-        await new Promise(r => setTimeout(r, 300));
-        const recline = await page.evaluate(() => {
-            for (const c of document.querySelectorAll('.exercise-card')) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Recline Curls') {
-                    const btn = Array.from(c.querySelectorAll('button'))
-                        .find(b => b.textContent.includes('Weight Breakdown'));
-                    btn?.click();
-                    return true;
-                }
-            }
-            return false;
-        });
-        ok(recline, 'opened Recline Curls Weight Breakdown');
+        await selectDeckDay(page, 2);
+        await goToCard(page, 'Recline Curls');
+        await revealCard(page);
         await new Promise(r => setTimeout(r, 300));
 
-        const reclineText = await page.evaluate(() => {
-            for (const c of document.querySelectorAll('.exercise-card')) {
-                if (c.querySelector('.exercise-name')?.textContent?.trim() === 'Recline Curls') {
-                    return c.textContent;
-                }
-            }
-            return '';
-        });
-        // Pin stack at 67.5: 70% = 47.25 -> 47.5, 90% = 60.75 -> 61.25 (1.25 increments).
-        contains(reclineText, 'Warmup Set #1 (~70%): 47.5 lbs',
-            'Recline Curls W1 uses pin increments (47.25 -> 47.5), not nearest-10 plate math');
-        contains(reclineText, 'Warmup Set #2 (~90%): 61.25 lbs',
+        const reclineText = await page.evaluate(
+            (sel) => document.querySelector(sel).textContent, ACTIVE);
+        // Pin stack at 67.5. Warmups sit on a ROUND pin position, nearest 10:
+        // 47.25 -> 50, 60.75 -> 60. The old rule rounded to the nearest 1.25 and
+        // produced 47.5 and 61.25 — a micro-plate balanced on the pin for a set
+        // nobody cares about.
+        contains(reclineText, 'Warmup 1' + '70%' + '50 lbs',
+            'Recline Curls W1 sits on a round pin position, not an exact percentage');
+        contains(reclineText, 'Warmup 2' + '90%' + '60 lbs',
             'Recline Curls W2 uses pin increments (60.75 -> 61.25)');
         ok(!/Per side:/.test(reclineText),
             'Recline Curls has no "Per side:" line — it is a pin stack, not plate-loaded');
-        ok(!/Top Set/.test(reclineText),
+        ok(!/Top set/.test(reclineText),
             'plain pin stack shows no Top Set line (it never overflows a cap)');
 
         // 6. Idempotent: reload again, order unchanged.

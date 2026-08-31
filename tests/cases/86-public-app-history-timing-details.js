@@ -30,6 +30,7 @@ const { launch, attachConsole, waitForApp } = require('../lib/browser');
 const { seedPublicApp, jessiDefaultSchedule, DEFAULT_NS } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { bottomNav } = require('../lib/deck');
 
 // Two sessions in the current week: one carrying timestamps, one not.
 const now = new Date();
@@ -37,18 +38,18 @@ const at = (hoursAgo, minutesAgo = 0) =>
     new Date(now.getTime() - hoursAgo * 3600000 - minutesAgo * 60000).toISOString();
 
 const TIMED = [
-    { id: 'ex-a', name: 'Chest Press', category: 'Anterior', type: 'standard',
+    { id: 'ex-a', name: 'Chest Press', category: 'Push', type: 'standard',
       weight: '100', reps: '8',
       startedAt: at(3, 10), loggedAt: at(3, 4) },   // 6 minutes, measured
-    { id: 'ex-b', name: 'Shoulder Press', category: 'Anterior', type: 'standard',
+    { id: 'ex-b', name: 'Shoulder Press', category: 'Push', type: 'standard',
       weight: '60', reps: '8',
       loggedAt: at(3, 0) },                          // no anchor -> estimated
 ];
 
 const UNTIMED = [
-    { id: 'ex-a', name: 'Chest Press', category: 'Anterior', type: 'standard',
+    { id: 'ex-a', name: 'Chest Press', category: 'Push', type: 'standard',
       weight: '95', reps: '7' },
-    { id: 'ex-b', name: 'Shoulder Press', category: 'Anterior', type: 'standard',
+    { id: 'ex-b', name: 'Shoulder Press', category: 'Push', type: 'standard',
       weight: '55', reps: '7' },
 ];
 
@@ -57,17 +58,17 @@ function config() {
         version: 2,
         days: {
             1: [
-                { id: 'ex-a', name: 'Chest Press', category: 'Anterior', typeId: 'standard',
+                { id: 'ex-a', name: 'Chest Press', category: 'Push', typeId: 'standard',
                   sets: 3, minReps: 5, maxReps: 8, order: 0, loadType: 'plate-two-sided' },
-                { id: 'ex-b', name: 'Shoulder Press', category: 'Anterior', typeId: 'standard',
+                { id: 'ex-b', name: 'Shoulder Press', category: 'Push', typeId: 'standard',
                   sets: 3, minReps: 5, maxReps: 8, order: 1, loadType: 'pin' },
             ],
             2: [
-                { id: 'ex-c', name: 'Seated Row', category: 'Posterior', typeId: 'standard',
+                { id: 'ex-c', name: 'Seated Row', category: 'Pull', typeId: 'standard',
                   sets: 3, minReps: 5, maxReps: 8, order: 0, loadType: 'pin' },
             ],
         },
-        categories: ['Anterior', 'Posterior'],
+        categories: ['Push', 'Pull'],
     };
 }
 
@@ -113,11 +114,7 @@ async function clickIcon(page, itemIndex, icon) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.nav-btn'))
-                .find(b => /week|history/i.test(b.textContent));
-            if (btn) btn.click();
-        });
+        await bottomNav(page, 'History');
         await page.waitForSelector('.history-item', { timeout: 8000 });
 
         // === 1. Which entries offer a stopwatch ========================

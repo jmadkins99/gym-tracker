@@ -22,25 +22,62 @@
 //
 // To verify this test is real: put `gympinMode ? … : null` back on the
 // breakdownConfigFor call in the card render. The first block fails.
+//
+// The workout screen is a deck now, so "shows a Weight Breakdown button" has
+// become "reveals a breakdown when you swipe up". There is no button any more:
+// the reveal IS the breakdown, and it is what stamps the movement's start time.
+// The property under test is unchanged — every exercise gets one, for every
+// user — but it has to be checked one card at a time, because the deck mounts
+// three rather than the whole roster.
 
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, waitForApp, attachConsole } = require('../lib/browser');
 const { seedPublicApp, jessiPreMigrationConfig, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
+const { ACTIVE, stepTo, deckPosition, activeName, revealCard } = require('../lib/deck');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const NS = 'gym-local:';
 
-// Every rendered card, with whether it has a breakdown button.
+// Walk the whole day's deck, revealing each card, and report whether each one
+// produced a breakdown panel.
 async function readBreakdownButtons(page) {
-    return page.evaluate(() => {
-        return Array.from(document.querySelectorAll('.exercise-card')).map(c => ({
-            name: c.querySelector('.exercise-name')?.textContent?.trim() || '',
-            hasButton: !!Array.from(c.querySelectorAll('button'))
-                .find(b => b.textContent.includes('Weight Breakdown')),
-        }));
-    });
+    await stepTo(page, 1);
+    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+    const out = [];
+    for (let i = 1; i <= total; i++) {
+        const name = await activeName(page);
+        await revealCard(page);
+        // The panel is drawn from a target weight, so a card with no history
+        // and no startingWeight has nothing to break down and renders none.
+        // That is true of most of this fixture, and it is not what this case is
+        // about — the question is whether the breakdown is gated on anything,
+        // not whether a blank card produces one. So give each card a weight and
+        // then ask.
+        await page.evaluate((sel) => {
+            const input = document.querySelector(sel + ' input[type="number"]');
+            if (!input) return;
+            const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value').set;
+            setter.call(input, '100');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }, ACTIVE);
+        await new Promise((r) => setTimeout(r, 220));
+        out.push({
+            name,
+            hasButton: await page.evaluate(
+                (sel) => !!document.querySelector(sel + ' .breakdown'), ACTIVE),
+        });
+        if (i < total) {
+            await page.evaluate(() => {
+                const a = document.querySelectorAll('.deck-arrow');
+                a[a.length - 1].click();
+            });
+            await new Promise((r) => setTimeout(r, 230));
+        }
+    }
+    return out;
 }
 
 (async () => {
@@ -65,7 +102,7 @@ async function readBreakdownButtons(page) {
         ok(cards.length > 0, `rendered some exercise cards (got ${cards.length})`);
 
         let missing = cards.filter(c => !c.hasButton).map(c => c.name);
-        eq(missing, [], 'every card shows a Weight Breakdown button with no opt-in');
+        eq(missing, [], 'every card reveals a Weight Breakdown with no opt-in');
 
         // === 2. A device carrying a stale gympinMode: false =================
         // This is what an old backup restores, and what a device that ran

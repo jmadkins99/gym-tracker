@@ -28,6 +28,7 @@ const { launch, attachConsole, waitForApp, waitFor, waitForStorageKey } = requir
 const { eq, ok } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
+const { selectDeckDay, readDeckNames } = require('../lib/deck');
 const NS = 'gym-local:';
 const JESSI_CODE = 'D1O9O9M2';
 
@@ -150,10 +151,6 @@ const JESSI_CODE = 'D1O9O9M2';
             'Ab Crunches',
             'Leg Extensions',
             'Tricep Extensions',
-            // Wrist flexors here, extensors on Posterior — the pair shared a
-            // day under Upper/Lower.
-            'Reverse Wrist Curls',
-            'Cable Wrist Curls',
             'Leg Press', // quad-dominant, so it closes the anterior day
         ];
         const POSTERIOR = [
@@ -163,6 +160,10 @@ const JESSI_CODE = 'D1O9O9M2';
             'Transverse Plane Rows',
             'Kelso Shrugs',
             'Preacher Curls',
+            // The pair moved off Anterior to sit with the pulling work,
+            // revision 12.
+            'Reverse Wrist Curls',
+            'Cable Wrist Curls',
             'Back Extensions',
             'Hip Adduction', // adductor magnus is a hip extensor
             'Calf Raises',
@@ -214,17 +215,13 @@ const JESSI_CODE = 'D1O9O9M2';
             ['Friday', 2], ['Saturday', 1], ['Sunday', 1],
         ], 'coach code yields the exact weekday map, not an alternating round-robin');
 
-        const onScreen1 = await page.evaluate(async () => {
-            const out = {};
-            const btns = Array.from(document.querySelectorAll('.day-btn'));
-            for (let i = 0; i < btns.length; i++) {
-                btns[i].click();
-                await new Promise(r => setTimeout(r, 250));
-                out[i + 1] = Array.from(document.querySelectorAll('.exercise-name'))
-                    .map(e => e.textContent.trim());
-            }
-            return out;
-        });
+        // The deck mounts three cards, not the whole roster, so "what renders"
+        // means walking each day's deck end to end rather than reading a list.
+        const onScreen1 = {};
+        for (const dayNum of [1, 2]) {
+            await selectDeckDay(page, dayNum);
+            onScreen1[dayNum] = await readDeckNames(page);
+        }
         eq(onScreen1[1], ANTERIOR, 'Anterior is what actually renders on screen');
         eq(onScreen1[2], POSTERIOR, 'Posterior is what actually renders on screen');
 

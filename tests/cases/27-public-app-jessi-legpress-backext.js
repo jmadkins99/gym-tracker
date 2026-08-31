@@ -33,6 +33,7 @@ const { seedPublicApp, jessiDefaultSchedule } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
+const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 
 function jessiLegPressConfig() {
     return {
@@ -49,30 +50,23 @@ function jessiLegPressConfig() {
     };
 }
 
+// Walk the deck to a named card and swipe it open. There is no Weight
+// Breakdown button any more — the reveal IS the breakdown, and it is what
+// stamps the movement's start time.
 async function clickBreakdown(page, name) {
-    return page.evaluate((n) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === n) {
-                const btn = Array.from(c.querySelectorAll('button'))
-                    .find(b => b.textContent.includes('Weight Breakdown'));
-                if (btn) { btn.click(); return true; }
-            }
-        }
-        return false;
-    }, name);
+    await goToCard(page, name);
+    await revealCard(page);
+    return true;
 }
 
+// The open card's text. Only three cards are mounted at a time, so this reads
+// the active slot rather than searching a list.
 async function readCard(page, name) {
-    return page.evaluate((n) => {
-        const cards = document.querySelectorAll('.exercise-card');
-        for (const c of cards) {
-            if (c.querySelector('.exercise-name')?.textContent?.trim() === n) {
-                return c.textContent;
-            }
-        }
-        return '';
-    }, name);
+    await goToCard(page, name);
+    return page.evaluate((sel) => {
+        const slot = document.querySelector(sel);
+        return slot ? slot.textContent : '';
+    }, ACTIVE);
 }
 
 (async () => {
@@ -110,29 +104,29 @@ async function readCard(page, name) {
 
         // --- Leg Press: two-sided plate-loaded (a pin stack for part of Aug 2026) ---
         ok(await clickBreakdown(page, 'Leg Press'),
-            'Leg Press card has a Weight Breakdown button');
+            'walked the deck to Leg Press and opened it');
         await new Promise(r => setTimeout(r, 200));
         const legText = await readCard(page, 'Leg Press');
-        ok(/\d+(?:\.\d+)?s - \d+/.test(legText),
-            'Leg Press renders plate breakdown lines (not bare pin-stack)');
-        ok(!/Pin: \d/.test(legText),
+        ok(/\d+(?: × \d+)?, /.test(legText),
+            'Leg Press renders a plate list (not a bare pin-stack row)');
+        ok(!/pin \d/.test(legText),
             'Leg Press must NOT render any "Pin: X" line');
-        const legPerSide = (legText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || []).length;
+        const legPerSide = (legText.match(/\d+(?:\.\d+)?\/side/g) || []).length;
         eq(legPerSide, 3,
-            'Leg Press two-sided renders 3 "Per side: X lbs" lines (warmup1, warmup2, top)');
+            'Leg Press two-sided renders 3 per-side figures (warmup1, warmup2, top)');
 
         // --- Back Extensions: two-sided plate-loaded (was one-sided) ---
         ok(await clickBreakdown(page, 'Back Extensions'),
-            'Back Extensions card has a Weight Breakdown button');
+            'walked the deck to Back Extensions and opened it');
         await new Promise(r => setTimeout(r, 200));
         const backText = await readCard(page, 'Back Extensions');
-        ok(/\d+(?:\.\d+)?s - \d+/.test(backText),
-            'Back Extensions renders plate breakdown lines (not bare pin-stack)');
-        ok(!/Pin: \d/.test(backText),
+        ok(/\d+(?: × \d+)?, /.test(backText),
+            'Back Extensions renders a plate list (not a bare pin-stack row)');
+        ok(!/pin \d/.test(backText),
             'Back Extensions must NOT render any "Pin: X" line');
-        const backPerSide = (backText.match(/Per side: \d+(?:\.\d+)?\s*lbs/g) || []).length;
+        const backPerSide = (backText.match(/\d+(?:\.\d+)?\/side/g) || []).length;
         eq(backPerSide, 3,
-            'Back Extensions two-sided renders 3 "Per side: X lbs" lines (warmup1, warmup2, top)');
+            'Back Extensions two-sided renders 3 per-side figures (warmup1, warmup2, top)');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Jessi Leg Press + Back Extensions both render two-sided breakdown buttons.');
