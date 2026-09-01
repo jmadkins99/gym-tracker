@@ -32,18 +32,23 @@ const { eq, ok } = require('../lib/assert');
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const { bottomNav } = require('../lib/deck');
 
-// Two sessions in the current week: one carrying timestamps, one not.
+// Two sessions in the current week: one carrying timestamps, one not. Anchor
+// them to this week's Monday instead of "hours ago" so the case does not fall
+// across a week boundary when it runs on Monday.
 const now = new Date();
-const at = (hoursAgo, minutesAgo = 0) =>
-    new Date(now.getTime() - hoursAgo * 3600000 - minutesAgo * 60000).toISOString();
+const weekStart = new Date(now);
+weekStart.setHours(12, 0, 0, 0);
+weekStart.setDate(weekStart.getDate() + (weekStart.getDay() === 0 ? -6 : 1 - weekStart.getDay()));
+const at = (dayOffset, minutesAfterNoon = 0) =>
+    new Date(weekStart.getTime() + dayOffset * 86400000 + minutesAfterNoon * 60000).toISOString();
 
 const TIMED = [
     { id: 'ex-a', name: 'Chest Press', category: 'Push', type: 'standard',
       weight: '100', reps: '8',
-      startedAt: at(3, 10), loggedAt: at(3, 4) },   // 6 minutes, measured
+      startedAt: at(0, 110), loggedAt: at(0, 116) }, // 6 minutes, measured
     { id: 'ex-b', name: 'Shoulder Press', category: 'Push', type: 'standard',
       weight: '60', reps: '8',
-      loggedAt: at(3, 0) },                          // no anchor -> estimated
+      loggedAt: at(0, 120) },                         // no anchor -> estimated
 ];
 
 const UNTIMED = [
@@ -103,9 +108,9 @@ async function clickIcon(page, itemIndex, icon) {
             exerciseConfig: config(),
             schedule: jessiDefaultSchedule(),
             workoutHistory: [
-                { date: at(3, 0), day: 1, week: 1, submitted: true,
+                { date: at(0, 120), day: 1, week: 1, submitted: true,
                   plateauBusters: [], exercises: TIMED },
-                { date: at(50, 0), day: 1, week: 1, submitted: true,
+                { date: at(0, 60), day: 1, week: 1, submitted: true,
                   plateauBusters: [], exercises: UNTIMED },
             ],
         });

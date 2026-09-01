@@ -24,7 +24,8 @@
         };
 
         // Tracking mode: only one should be true at a time
-        // SIMPLE_PR_TRACKING: if you hit 6 reps last session, bump weight and highlight green. No plateau buster.
+        // SIMPLE_PR_TRACKING: if you hit the top of the rep range last session,
+        // bump weight and highlight green. No plateau buster.
         // ADVANCED_PR_TRACKING: full plateau buster + PR auto-regulation system
         const SIMPLE_PR_TRACKING = true;
         const ADVANCED_PR_TRACKING = false;
@@ -37,7 +38,8 @@
         const PR_STREAK_TRACKING = true;
         const PR_STREAK_MIN = 1;   // fewest consecutive improvements that earn a badge
 
-        // PR Auto-Regulation: Weight increments when you hit 6+ reps (top of 4-6 range)
+        // PR Auto-Regulation: Weight increments when you hit the top of the
+        // exercise's standard rep range.
         // 5 lbs where a 5 is the natural step — two-sided plate-loaded (= 2.5
         // per side per move) and pin stacks moved a full stack notch at a time.
         // 2.5 or 1.25 elsewhere; both are legal micro-plate steps.
@@ -71,6 +73,38 @@
             'reverse-wrist-curls': 2.5,
             'actual-leg-extensions': 2.5
         };
+
+        // Standard weighted rep dropdowns. Almost every movement keeps the
+        // historical 3-6 range; the wrist pair is deliberately higher. Overrides
+        // are keyed by frozen exercise id because display names are user-owned.
+        const DEFAULT_STANDARD_REP_RANGE = { min: 3, max: 6 };
+        const STANDARD_REP_RANGE_OVERRIDES = {
+            'reverse-wrist-curls': { min: 5, max: 8 },
+            'cable-wrist-curls': { min: 5, max: 8 }
+        };
+
+        function getStandardRepRange(exerciseId) {
+            return STANDARD_REP_RANGE_OVERRIDES[exerciseId] || DEFAULT_STANDARD_REP_RANGE;
+        }
+
+        function getStandardRepOptions(exerciseId) {
+            const range = getStandardRepRange(exerciseId);
+            const options = [];
+            for (let reps = range.min; reps <= range.max; reps++) options.push(String(reps));
+            return options;
+        }
+
+        function getStandardRepStart(exerciseId) {
+            const range = getStandardRepRange(exerciseId);
+            return String(Math.min(range.max, range.min + 1));
+        }
+
+        function clampStandardReps(exerciseId, reps) {
+            const n = parseInt(reps, 10);
+            if (isNaN(n)) return null;
+            const range = getStandardRepRange(exerciseId);
+            return String(Math.min(range.max, Math.max(range.min, n)));
+        }
 
         // How a machine is loaded, and therefore which shape the Weight
         // Breakdown renders. This is a USER setting: every exercise carries a

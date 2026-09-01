@@ -34,7 +34,8 @@
             return previousWorkout.plateauBusters.includes(exerciseId);
         }
 
-        // Simple PR tracking: if last session hit 6+ reps, suggest weight + increment highlighted green
+        // Simple PR tracking: if last session hit the top of this exercise's
+        // rep range, suggest weight + increment highlighted green.
         function getSimplePR(exerciseId, workoutHistory, loadType) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
             if (!getWeightIncrement(exerciseId, loadType)) return null;
@@ -58,7 +59,8 @@
             const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
             if (!previousExercise || !previousExercise.reps || !previousExercise.weight) return null;
 
-            if (parseInt(previousExercise.reps) >= 6) {
+            const range = getStandardRepRange(exerciseId);
+            if (parseInt(previousExercise.reps, 10) >= range.max) {
                 const lastWeight = parseFloat(previousExercise.weight);
                 const increment = getWeightIncrement(exerciseId, loadType);
                 return {
@@ -125,10 +127,11 @@
         // on. Keep this the one arbiter; a second copy will drift the same way.
         //
         // The weight-up case ignores reps entirely, and that is deliberate: hitting
-        // 6 reps makes getSimplePR bump the weight and repsDefault reset the
-        // dropdown to 4, so the app's own progression always looks like a rep
-        // regression on the session after a bump. Counting that as backsliding
-        // would cap every streak at 2 and the badge would never mean anything.
+        // the top of a rep range makes getSimplePR bump the weight and repsDefault
+        // reset the dropdown to its start, so the app's own progression always
+        // looks like a rep regression on the session after a bump. Counting that
+        // as backsliding would cap every streak at 2 and the badge would never
+        // mean anything.
         //
         // Non-numeric weights (bodyweight rows carry 'Body Weight', NA rows carry
         // 'NA') can't be compared, so they read as "no improvement" rather than
@@ -225,16 +228,19 @@
                 const lastWeekExercise = lastWeek.exercises.find(e => e.id === exerciseId);
                 const twoWeeksExercise = twoWeeksAgo.exercises.find(e => e.id === exerciseId);
 
-                // Only trigger Trial of Strength if last week hit 6+ reps
-                if (lastWeekExercise && lastWeekExercise.reps && parseInt(lastWeekExercise.reps) >= 6) {
+                const range = getStandardRepRange(exerciseId);
+                // Only trigger Trial of Strength if last week hit the top of
+                // this exercise's rep range.
+                if (lastWeekExercise && lastWeekExercise.reps &&
+                    parseInt(lastWeekExercise.reps, 10) >= range.max) {
                     if (twoWeeksExercise && twoWeeksExercise.weight) {
                         return {
                             weight: twoWeeksExercise.weight,
-                            reps: '4'  // Always show 4 as the target for Trial of Strength
+                            reps: getStandardRepStart(exerciseId)
                         };
                     }
                 }
-                // If last week didn't hit 8 reps, return null so other logic can handle it
+                // If last week did not hit the top, return null so other logic can handle it.
             }
 
             return null;
@@ -273,10 +279,12 @@
                 const lastWeekExercise = lastWeek.exercises.find(e => e.id === exerciseId);
 
                 if (lastWeekExercise && lastWeekExercise.reps && lastWeekExercise.weight) {
-                    const lastReps = parseInt(lastWeekExercise.reps);
+                    const lastReps = parseInt(lastWeekExercise.reps, 10);
 
-                    // If got 4-5 reps (didn't hit the 6 rep goal), suggest same weight but reps+1
-                    if (lastReps >= 4 && lastReps < 6) {
+                    const range = getStandardRepRange(exerciseId);
+                    const startReps = parseInt(getStandardRepStart(exerciseId), 10);
+                    // If got below the top, suggest same weight but reps+1.
+                    if (lastReps >= startReps && lastReps < range.max) {
                         return {
                             weight: lastWeekExercise.weight,
                             targetReps: (lastReps + 1).toString(),
@@ -289,7 +297,7 @@
             return null;
         }
 
-        // Helper function to check if this is a PR Auto-Regulation week (after hitting 8+ reps)
+        // Helper function to check if this is a PR Auto-Regulation week.
         function getPRAutoRegulation(exerciseId, workoutHistory, loadType) {
             console.log('[getPRAutoRegulation] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) {
@@ -326,8 +334,9 @@
             const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
             console.log('[getPRAutoRegulation] Previous exercise:', previousExercise);
 
-            // Check if last week hit a PR (6+ reps) and has a weight increment defined
-            if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps) >= 6 &&
+            const range = getStandardRepRange(exerciseId);
+            // Check if last week hit the top of the rep range and has a weight increment defined.
+            if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps, 10) >= range.max &&
                 previousExercise.weight && getWeightIncrement(exerciseId, loadType)) {
                 const lastWeight = parseFloat(previousExercise.weight);
                 const increment = getWeightIncrement(exerciseId, loadType);
@@ -343,7 +352,7 @@
                 };
             }
 
-            console.log('[getPRAutoRegulation] No PR (reps < 6 or missing data)');
+            console.log('[getPRAutoRegulation] No PR (below rep range top or missing data)');
             return null;
         }
 
@@ -534,15 +543,16 @@
 
             const previousExercise = previousWorkout.exercises.find(e => e.id === exerciseId);
 
-            // Only drop weight if previous reps were < 4 (true failure)
-            // For 4-5 reps stagnation, keep same weight (just do 2 sets)
-            const previousReps = parseInt(previousExercise?.reps) || 0;
-            if (previousReps >= 4) {
-                console.log('[getPlateauBusterDecrement] Previous reps were', previousReps, '(>= 4), no weight drop needed');
+            // Only drop weight if previous reps were below the exercise's start
+            // reps (true failure). For below-top stagnation, keep same weight.
+            const previousReps = parseInt(previousExercise?.reps, 10) || 0;
+            const startReps = parseInt(getStandardRepStart(exerciseId), 10);
+            if (previousReps >= startReps) {
+                console.log('[getPlateauBusterDecrement] Previous reps were', previousReps, '(>= start reps), no weight drop needed');
                 return null;
             }
 
-            // Decrease weight by the increment amount (only for < 6 reps)
+            // Decrease weight by the increment amount after a true failure.
             if (previousExercise && previousExercise.weight && getWeightIncrement(exerciseId, loadType)) {
                 const lastWeight = parseFloat(previousExercise.weight);
                 const increment = getWeightIncrement(exerciseId, loadType);

@@ -468,7 +468,7 @@
                 if (exercise.type === 'standard') {
                     const exerciseCard = document.querySelector(`[data-exercise-id="${exerciseId}"]`);
                     // Capture pre-filled (untouched) values so one-tap LOG works:
-                    // the weight from its input, the reps from the 3/4/5/6 dropdown.
+                    // the weight from its input, the reps from the range dropdown.
                     if (!data.weight) {
                         const weightInput = exerciseCard?.querySelector('input[type="number"][inputmode="decimal"]');
                         if (weightInput && weightInput.value) {
@@ -698,18 +698,23 @@
                 console.log('[completeDay] Checking for plateau busters in:', todayWorkout);
                 todayWorkout.exercises.forEach(exercise => {
                     if ((exercise.type === 'standard' || exercise.type === 'bodyweight') && exercise.reps && exercise.reps !== 'NA') {
-                        const reps = parseInt(exercise.reps);
+                        const reps = parseInt(exercise.reps, 10);
                         console.log('[completeDay] Exercise:', exercise.name, 'Reps:', reps);
 
                         if (isNaN(reps)) return;
 
-                        if (reps < 4) {
-                            console.log('[completeDay] PLATEAU BUSTER (< 4 reps) detected for:', exercise.name);
+                        const startReps = exercise.type === 'standard'
+                            ? parseInt(getStandardRepStart(exercise.id), 10) : 4;
+                        const topReps = exercise.type === 'standard'
+                            ? getStandardRepRange(exercise.id).max : 6;
+
+                        if (reps < startReps) {
+                            console.log('[completeDay] PLATEAU BUSTER (below start reps) detected for:', exercise.name);
                             plateauBusters.push(exercise.id);
                             return;
                         }
 
-                        if (reps >= 4 && reps <= 5) {
+                        if (reps >= startReps && reps < topReps) {
                             const previousWorkoutWithPlateau = workoutHistory
                                 .filter(w => {
                                     if (w.date === todayWorkout.date) return false;
@@ -727,11 +732,11 @@
                             const previousExercise = findPreviousValidExercise(exercise.id);
 
                             if (previousExercise) {
-                                const previousReps = parseInt(previousExercise.reps) || 0;
+                                const previousReps = parseInt(previousExercise.reps, 10) || 0;
 
                                 if (exercise.type === 'bodyweight') {
                                     if (reps <= previousReps) {
-                                        console.log('[completeDay] PLATEAU BUSTER (bodyweight 4-5 reps, no rep improvement) detected for:', exercise.name);
+                                        console.log('[completeDay] PLATEAU BUSTER (bodyweight below top, no rep improvement) detected for:', exercise.name);
                                         plateauBusters.push(exercise.id);
                                     }
                                     return;
@@ -741,7 +746,7 @@
                                 const previousWeight = parseFloat(previousExercise.weight) || 0;
 
                                 if (currentWeight <= previousWeight && reps <= previousReps) {
-                                    console.log('[completeDay] PLATEAU BUSTER (4-5 reps, no progress) detected for:', exercise.name);
+                                    console.log('[completeDay] PLATEAU BUSTER (below top, no progress) detected for:', exercise.name);
                                     plateauBusters.push(exercise.id);
                                 }
                             }

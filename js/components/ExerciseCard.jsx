@@ -39,21 +39,20 @@
                     || prAutoRegulation?.weight || plateauBusterDecrement?.weight
                     || previous?.weight || defaultWeight || WEEK_1_DEFAULTS[exercise.id] || '');
 
-            // Options are 3/4/5/6: after a weight bump reset to 4, otherwise
-            // carry last session reps clamped into range, otherwise 4.
-            const clampReps = (r) => {
-                const n = parseInt(r);
-                if (isNaN(n)) return null;
-                return String(Math.min(6, Math.max(3, n)));
-            };
-            const repsDefault = simplePR ? '4'
+            const repRange = getStandardRepRange(exercise.id);
+            const repOptions = getStandardRepOptions(exercise.id);
+            const repStart = getStandardRepStart(exercise.id);
+
+            // After a weight bump reset to the exercise's start reps, otherwise
+            // carry last session reps clamped into that exercise's range.
+            const repsDefault = simplePR ? repStart
                 : (prWeightRecovery?.reps
                     || failedPlateauBusterRetry?.targetReps
-                    || (prAutoRegulation ? '4'
-                        : plateauBusterDecrement ? '6'
-                        : (clampReps(previous?.reps) || '4')));
+                    || (prAutoRegulation ? repStart
+                        : plateauBusterDecrement ? String(repRange.max)
+                        : (clampStandardReps(exercise.id, previous?.reps) || repStart)));
 
-            return { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault };
+            return { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault, repOptions };
         }
 
         // The warmup table. Same arithmetic as before — calculatePinStackBreakdown
@@ -142,7 +141,7 @@
         // default still log.
         function CardInputs({ exercise, data, model, previous, isLogged, handleInputChange, workoutHistory }) {
             const change = (field, value) => handleInputChange(exercise.id, field, value);
-            const { simplePR, stagnation, repsDefault, targetWeight } = model;
+            const { simplePR, stagnation, repsDefault, repOptions, targetWeight } = model;
 
             if (exercise.type === 'assault-bike') {
                 const last = getAssaultBikeLast(workoutHistory);
@@ -247,7 +246,7 @@
                             disabled={isLogged}
                             style={stagnation ? { borderColor: HINT_ORANGE } : {}}
                         >
-                            {['3', '4', '5', '6'].map(r => <option key={r} value={r}>{r}</option>)}
+                            {repOptions.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                     </div>
                 </div>

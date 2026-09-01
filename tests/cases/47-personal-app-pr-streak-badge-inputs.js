@@ -6,9 +6,10 @@
 // or the reps select stops firing onChange, or the badge gets wired to the
 // wrong value, this fails.
 //
-// The row that matters is round 4. Hitting 6 reps makes getSimplePR bump the
-// weight and repsDefault reset the dropdown to 4, so the app's own progression
-// always looks like a rep regression on the session right after a bump.
+// The row that matters is round 4. Hitting the top of the rep range makes
+// getSimplePR bump the weight and repsDefault reset the dropdown to the
+// exercise's start reps, so the app's own progression always looks like a rep
+// regression on the session right after a bump.
 // getPRStreak treats any weight increase as extending the streak precisely so
 // that bump keeps the run alive; read literally ("reps down breaks it") the
 // badge could never climb past 2 and would mean nothing. Flip the `weight up`
