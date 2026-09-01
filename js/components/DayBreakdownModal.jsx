@@ -14,63 +14,6 @@
                 return null;
             }
 
-            // Function to get most recent previous workout for the same exercise (skips NA, no lookback cap)
-            const getPreviousWorkoutForExercise = (exerciseId) => {
-                const todayDate = new Date(todayWorkout.date);
-
-                // Find all previous workouts with this exercise, most recent first
-                const candidates = [];
-                const sortedWorkouts = workoutHistory
-                    .filter(w => {
-                        // Submitted only, matching getPRStreak's session filter.
-                        // An abandoned day sits in history with every row
-                        // materialised and empty, and comparing against one is
-                        // not a comparison against a session that happened.
-                        if (!w.submitted) return false;
-                        const workoutDate = new Date(w.date);
-                        return workoutDate < todayDate;
-                    })
-                    .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                for (let workout of sortedWorkouts) {
-                    const exercise = workout.exercises.find(e => e.id === exerciseId);
-                    if (exercise) {
-                        candidates.push(exercise);
-                    }
-                }
-
-                console.log('Found', candidates.length, 'candidate(s)');
-
-                // Return first candidate that doesn't have "NA" values (check appropriate field based on exercise type)
-                for (let candidate of candidates) {
-                    // For assault bike, check intensity
-                    if (candidate.type === 'assault-bike') {
-                        if (candidate.intensity && candidate.intensity !== 'NA') {
-                            console.log('Returning valid assault-bike workout with intensity:', candidate.intensity);
-                            return candidate;
-                        }
-                    }
-                    // For stairmaster, check time
-                    else if (candidate.type === 'stairmaster') {
-                        if (candidate.time && candidate.time !== 'NA') {
-                            console.log('Returning valid stairmaster workout with time:', candidate.time);
-                            return candidate;
-                        }
-                    }
-                    // For standard/bodyweight exercises, check reps
-                    else {
-                        if (candidate.reps && candidate.reps !== 'NA') {
-                            console.log('Returning valid workout with reps:', candidate.reps);
-                            return candidate;
-                        }
-                    }
-                }
-
-                console.log('All candidates have NA values or no valid candidates found');
-                // If all candidates have NA values (or no valid candidates), return the most recent one
-                return candidates.length > 0 ? candidates[0] : null;
-            };
-
             // Get only exercises that match the current day
             const currentDayExerciseIds = new Set(getCurrentExercises().map(e => e.id));
             const currentDayWorkoutExercises = todayWorkout.exercises.filter(e => currentDayExerciseIds.has(e.id));
@@ -78,36 +21,12 @@
             // Calculate PRs (just count them)
             let prCount = 0;
             currentDayWorkoutExercises.forEach(exercise => {
-                if (!exercise.weight && !exercise.reps && !exercise.intensity && !exercise.time) {
-                    return; // Skip NA exercises
-                }
-
-                // Cardio movements (stairmaster today; assault bike and the
-                // bodyweight pair on retired Cardio days) just carry over last
-                // session — they never count as PRs.
-                if (exercise.type === 'assault-bike' || exercise.type === 'stairmaster' || exercise.type === 'bodyweight') {
-                    return;
-                }
-
-                const previous = getPreviousWorkoutForExercise(exercise.id);
-                if (!previous) {
-                    console.log('No previous data for:', exercise.name);
-                    return; // Skip if no previous workout
-                }
-
-                // isImprovement (plateauLogic.js) is the app's one definition
-                // of a lift moving forward, and the flame streak badge on the
-                // card runs off the same call. This used to be a second, looser
-                // rule living here — `weight up OR reps up`, gated on reps >= 4 —
-                // which counted a weight DROP as a PR whenever the reps rose. A
-                // plateau buster drops the weight deliberately, so the recovery
-                // session scored a PR for backing off, and the badge and this
-                // count could disagree about the very same session.
-                console.log('Comparison:', exercise.name,
-                    'Current:', exercise.weight, 'lbs x', exercise.reps,
-                    'Previous:', previous.weight, 'lbs x', previous.reps);
-
-                if (isImprovement(exercise, previous)) {
+                // Day Breakdown's PR count uses the same "lift moved forward"
+                // definition as the workout-card flame streak. The History
+                // tab's PR badge is intentionally separate: it marks submitted
+                // standard rows that hit the top of their exercise-specific
+                // rep range.
+                if (isExercisePRInWorkout(exercise, todayWorkout, workoutHistory)) {
                     console.log('PR detected for:', exercise.name);
                     prCount++;
                 }

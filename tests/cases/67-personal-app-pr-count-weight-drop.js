@@ -168,7 +168,7 @@ const TODAY = workoutEntry({
             'the genuine PR does earn a flame badge, so the probe is not vacuous');
 
         eq(errors, [], 'no console errors');
-        console.log('PASS: a weight drop is no longer scored as a PR, and the badge agrees.');
+        console.log('PASS: a weight drop is no longer scored as a PR, and the streak agrees.');
     } finally {
         await browser.close();
         await server.stop();

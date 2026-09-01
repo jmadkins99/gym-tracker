@@ -348,6 +348,8 @@
         .history-exercise {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            gap: 12px;
             padding: 8px 0;
             border-bottom: 1px solid #1a1a2a;
             font-size: 14px;
@@ -361,8 +363,20 @@
             color: var(--accent-muted);
         }
 
+        .history-exercise-title {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .history-pr-badge {
+            flex: none;
+            margin-right: 0;
+        }
+
         .history-exercise-data {
             font-weight: 600;
+            flex: none;
         }
 
         .empty-state {

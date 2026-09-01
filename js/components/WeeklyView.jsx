@@ -94,9 +94,18 @@
                                         </div>
                                         {allExercises.map((expectedExercise) => {
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
+                                            const isPR = workout.submitted && completedExercise &&
+                                                isTopOfStandardRepRange(completedExercise);
                                             return (
                                                 <div key={expectedExercise.id} className="history-exercise">
-                                                    <div className="history-exercise-name">{expectedExercise.name}</div>
+                                                    <div className="history-exercise-title">
+                                                        <div className="history-exercise-name">{expectedExercise.name}</div>
+                                                        {isPR ? (
+                                                            <div className="streak-badge history-pr-badge" data-pr-badge>
+                                                                🔥 PR
+                                                            </div>
+                                                        ) : null}
+                                                    </div>
                                                     <div className="history-exercise-data">
                                                         {completedExercise ? (
                                                             completedExercise.type === 'assault-bike'
