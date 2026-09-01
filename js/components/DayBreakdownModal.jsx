@@ -1,5 +1,4 @@
         function DayBreakdownModal({ onClose, workoutHistory, getCurrentExercises, getPreviousWorkout, foregroundAt }) {
-            const [showDetails, setShowDetails] = React.useState(false);
             // Find today's workout
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -20,6 +19,7 @@
 
             // Calculate PRs (just count them)
             let prCount = 0;
+            const prExerciseIds = [];
             currentDayWorkoutExercises.forEach(exercise => {
                 // Day Breakdown's PR count, History's PR badge, and the
                 // workout-card flame streak all use the same "lift moved
@@ -28,6 +28,7 @@
                 if (isExercisePRInWorkout(exercise, todayWorkout, workoutHistory)) {
                     console.log('PR detected for:', exercise.name);
                     prCount++;
+                    prExerciseIds.push(exercise.id);
                 }
             });
 
@@ -100,17 +101,7 @@
                             </div>
                         )}
 
-                        {timing && (
-                            <button
-                                className="modal-btn"
-                                onClick={() => setShowDetails(!showDetails)}
-                                style={{ marginBottom: '12px' }}
-                            >
-                                {showDetails ? 'Hide Details' : 'View More Details'}
-                            </button>
-                        )}
-
-                        {timing && showDetails && <TimingDetails timing={timing} />}
+                        {timing && <TimingDetails timing={timing} prExerciseIds={prExerciseIds} />}
 
                         <button className="modal-btn primary" onClick={onClose}>
                             Close

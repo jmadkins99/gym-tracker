@@ -370,7 +370,8 @@
         }
 
         .history-pr-badge,
-        .logged-pr-badge {
+        .logged-pr-badge,
+        .day-breakdown-pr-badge {
             flex: none;
             margin-right: 0;
         }

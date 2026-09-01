@@ -48,6 +48,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const base = new Date();
 base.setHours(9, 0, 0, 0);
 const at = (min, sec = 0) => new Date(base.getTime() + min * 60000 + sec * 1000).toISOString();
+const baselineAt = () => new Date(base.getTime() - 2 * 86400000).toISOString();
 
 // Seeded OUT OF LOGGED ORDER on purpose: array order is 4, 1, 3, 2.
 const EXERCISES = [
@@ -81,6 +82,13 @@ const EXPECTED_ROWS = [
     // refusal to guess.
     ['lateral-raises', 'NA'],
 ];
+const EXPECTED_BADGES = [
+    ['chest-press', '🔥 PR'],
+    ['incline-chest-press', null],
+    ['chest-flies', null],
+    ['shoulder-press', null],
+    ['lateral-raises', null],
+];
 
 // 09:35 - 09:00 = 35m. The NA row still ends the session — it was performed,
 // and its LOG is real even though its start is not believable.
@@ -94,12 +102,25 @@ const EXPECTED_TOTAL = '35m';
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPersonalApp(page, {
-            workoutHistory: [workoutEntry({
-                date: at(26, 30),
-                day: 'anterior',
-                submitted: false,
-                exercises: EXERCISES,
-            })],
+            workoutHistory: [
+                workoutEntry({
+                    date: at(26, 30),
+                    day: 'anterior',
+                    submitted: false,
+                    exercises: EXERCISES,
+                }),
+                workoutEntry({
+                    date: baselineAt(),
+                    day: 'anterior',
+                    submitted: true,
+                    exercises: [
+                        { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '5' },
+                        { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '6' },
+                        { id: 'chest-flies', name: 'Chest Flies', weight: '170', reps: '6' },
+                        { id: 'shoulder-press', name: 'Shoulder Press', weight: '120', reps: '6' },
+                    ],
+                }),
+            ],
         });
         await page.evaluate(() =>
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
@@ -117,21 +138,31 @@ const EXPECTED_TOTAL = '35m';
             EXPECTED_TOTAL,
             'the session total runs from the first Weight Breakdown tap to the last log');
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button'))
-                .find(b => /View More Details/i.test(b.textContent));
-            if (btn) btn.click();
-        });
+        eq(await page.evaluate(() =>
+            Array.from(document.querySelectorAll('button'))
+                .some(b => /View More Details|Hide Details/i.test(b.textContent))),
+            false,
+            'Day Breakdown has no details toggle; rows are always visible');
         await page.waitForSelector('[data-timing-details]', { timeout: 8000 });
 
-        const rows = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('[data-timing-row]')).map(r => [
-                r.getAttribute('data-timing-row'),
-                r.children[1].textContent.trim(),
-            ]));
+        const rowDetails = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('[data-timing-row]')).map(r => {
+                const badge = r.querySelector('[data-day-breakdown-pr-badge]');
+                return {
+                    id: r.getAttribute('data-timing-row'),
+                    time: r.children[1].textContent.trim(),
+                    badge: badge ? badge.textContent.trim() : null,
+                    badgeClass: badge ? badge.className : null,
+                };
+            }));
+        const rows = rowDetails.map(r => [r.id, r.time]);
 
         eq(rows, EXPECTED_ROWS,
             'each movement is timed correctly, in logged order, estimates marked');
+        eq(rowDetails.map(r => [r.id, r.badge]), EXPECTED_BADGES,
+            'only movements that counted toward PRs Smashed get a row-level PR badge');
+        ok(rowDetails.find(r => r.id === 'chest-press').badgeClass.includes('streak-badge'),
+            'Day Breakdown PR badge reuses the same flame badge container');
 
         // === 2. The branches the UI cannot stage ========================
         const probe = await page.evaluate((baseMs) => {

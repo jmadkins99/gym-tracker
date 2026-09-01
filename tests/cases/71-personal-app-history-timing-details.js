@@ -158,7 +158,7 @@ async function clickIcon(page, itemIndex, icon) {
             'the total runs from the first Weight Breakdown tap to the last log');
 
         // Details are expanded on open — the breakdown is the whole reason the
-        // button was pressed, so unlike the Day Breakdown there is no toggle.
+        // button was pressed.
         const rows = await page.evaluate(() =>
             Array.from(document.querySelectorAll('[data-timing-row]')).map(r => [
                 r.getAttribute('data-timing-row'),
