@@ -322,6 +322,16 @@
             // ---- Revealed: the numbers, and the only place LOG exists. -----
             const model = computeCardModel(exercise, { previous, workoutHistory, currentWeek, data });
             const { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault } = model;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const loggedWorkout = isLogged ? workoutHistory.find(w => {
+                if (w.submitted) return false;
+                const workoutDate = new Date(w.date);
+                workoutDate.setHours(0, 0, 0, 0);
+                return workoutDate.getTime() === today.getTime();
+            }) : null;
+            const loggedExercise = loggedWorkout?.exercises.find(e => e.id === exercise.id);
+            const loggedPR = isLogged && isExercisePRInWorkout(loggedExercise, loggedWorkout, workoutHistory);
 
             const lastLine = !previous ? null
                 : exercise.type === 'assault-bike' ? 'Last: ' + previous.intensity + ' @ ' + previous.watts + 'W'
@@ -331,11 +341,16 @@
 
             return (
                 <div data-exercise-id={exercise.id}
-                     className={'card card-open' + (isLogged ? ' is-done' : '')}>
+                    className={'card card-open' + (isLogged ? ' is-done' : '')}>
                     <div className="card-open-head">
                         <div className="card-open-name">{exercise.name}</div>
+                        {loggedPR ? (
+                            <div className="streak-badge logged-pr-badge" data-logged-pr-badge>
+                                🔥 PR
+                            </div>
+                        ) : null}
                         {isLogged ? <div className="logged-chip">logged</div> : null}
-                        {prStreak ? (
+                        {!isLogged && prStreak ? (
                             <div className="streak-badge" data-streak={prStreak}>🔥 {prStreak}</div>
                         ) : null}
                     </div>

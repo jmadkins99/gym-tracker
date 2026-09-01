@@ -369,7 +369,8 @@
             min-width: 0;
         }
 
-        .history-pr-badge {
+        .history-pr-badge,
+        .logged-pr-badge {
             flex: none;
             margin-right: 0;
         }
