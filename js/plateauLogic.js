@@ -186,17 +186,6 @@
             return !!previous && isImprovement(exercise, previous);
         }
 
-        function isTopOfStandardRepRange(exercise) {
-            if (!exercise || exercise.type !== 'standard') return false;
-            if (!exercise.weight || exercise.weight === 'NA' || !exercise.reps || exercise.reps === 'NA') {
-                return false;
-            }
-
-            const reps = parseInt(exercise.reps, 10);
-            if (isNaN(reps)) return false;
-            return reps >= getStandardRepRange(exercise.id).max;
-        }
-
         // The mirror image of getStagnationWarning: how many consecutive times
         // this lift has moved *forward*. Same history walk, no slice — a streak
         // has no ceiling. Surfaces as the green flame pill in the exercise header.

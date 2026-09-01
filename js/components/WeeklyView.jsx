@@ -95,7 +95,7 @@
                                         {allExercises.map((expectedExercise) => {
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
                                             const isPR = workout.submitted && completedExercise &&
-                                                isTopOfStandardRepRange(completedExercise);
+                                                isExercisePRInWorkout(completedExercise, workout, workoutHistory);
                                             return (
                                                 <div key={expectedExercise.id} className="history-exercise">
                                                     <div className="history-exercise-title">

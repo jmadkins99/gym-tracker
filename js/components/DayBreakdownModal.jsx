@@ -21,11 +21,10 @@
             // Calculate PRs (just count them)
             let prCount = 0;
             currentDayWorkoutExercises.forEach(exercise => {
-                // Day Breakdown's PR count uses the same "lift moved forward"
-                // definition as the workout-card flame streak. The History
-                // tab's PR badge is intentionally separate: it marks submitted
-                // standard rows that hit the top of their exercise-specific
-                // rep range.
+                // Day Breakdown's PR count, History's PR badge, and the
+                // workout-card flame streak all use the same "lift moved
+                // forward" definition: weight up, or same weight with more
+                // reps. A separate copy of that rule already drifted once.
                 if (isExercisePRInWorkout(exercise, todayWorkout, workoutHistory)) {
                     console.log('PR detected for:', exercise.name);
                     prCount++;
