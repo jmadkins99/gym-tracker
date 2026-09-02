@@ -32,7 +32,7 @@
 
         // Streaks: the positive counterpart to the "Plateau Detected" hint. Counts
         // consecutive improvements — sessions that moved a lift forward, not
-        // counting the baseline you improved from — and shows a green flame pill
+        // counting the baseline you improved from — and shows a gold-outline flame pill
         // in the exercise header. Independent of the tracking mode above, since
         // it only reads history and suggests nothing.
         const PR_STREAK_TRACKING = true;

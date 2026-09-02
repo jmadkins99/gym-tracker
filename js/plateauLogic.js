@@ -188,7 +188,7 @@
 
         // The mirror image of getStagnationWarning: how many consecutive times
         // this lift has moved *forward*. Same history walk, no slice — a streak
-        // has no ceiling. Surfaces as the green flame pill in the exercise header.
+        // has no ceiling. Surfaces as the gold-outline flame pill in the exercise header.
         //
         // It counts improvements, not sessions: the oldest session in the run is
         // the baseline you improved *from*, so a flat stretch capped by one better

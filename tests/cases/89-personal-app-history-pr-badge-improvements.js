@@ -27,6 +27,8 @@ const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
+const BADGE_BG = 'rgba(0, 0, 0, 0)';
+const BADGE_BORDER = 'rgb(212, 175, 55)';
 
 const dayOffset = (days, hour) => {
     const d = new Date();
@@ -120,6 +122,8 @@ async function readCardBadge(page, exerciseId) {
                 rows[name.textContent.trim()] = {
                     badgeText: badge ? badge.textContent.trim() : null,
                     badgeClass: badge ? badge.className : null,
+                    badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
+                    badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                     badgeRightOfName: badge ? name.nextElementSibling === badge : false,
                 };
             });
@@ -145,6 +149,10 @@ async function readCardBadge(page, exerciseId) {
             'History does not show PR for top reps without a previous submitted row');
         ok(historyRows['Cable Wrist Curls'].badgeClass.includes('streak-badge'),
             'History PR badge reuses the streak-badge container class');
+        eq(historyRows['Cable Wrist Curls'].badgeBg, BADGE_BG,
+            'History PR badge uses the shared transparent background');
+        eq(historyRows['Cable Wrist Curls'].badgeBorder, BADGE_BORDER,
+            'History PR badge uses the shared gold border');
         ok(historyRows['Cable Wrist Curls'].badgeRightOfName,
             'History PR badge sits immediately to the right of the exercise name');
 

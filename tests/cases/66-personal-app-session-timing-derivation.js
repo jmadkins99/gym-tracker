@@ -89,6 +89,8 @@ const EXPECTED_BADGES = [
     ['shoulder-press', null],
     ['lateral-raises', null],
 ];
+const BADGE_BG = 'rgba(0, 0, 0, 0)';
+const BADGE_BORDER = 'rgb(212, 175, 55)';
 
 // 09:35 - 09:00 = 35m. The NA row still ends the session — it was performed,
 // and its LOG is real even though its start is not believable.
@@ -153,6 +155,8 @@ const EXPECTED_TOTAL = '35m';
                     time: r.children[1].textContent.trim(),
                     badge: badge ? badge.textContent.trim() : null,
                     badgeClass: badge ? badge.className : null,
+                    badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
+                    badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 };
             }));
         const rows = rowDetails.map(r => [r.id, r.time]);
@@ -163,6 +167,10 @@ const EXPECTED_TOTAL = '35m';
             'only movements that counted toward PRs Smashed get a row-level PR badge');
         ok(rowDetails.find(r => r.id === 'chest-press').badgeClass.includes('streak-badge'),
             'Day Breakdown PR badge reuses the same flame badge container');
+        eq(rowDetails.find(r => r.id === 'chest-press').badgeBg, BADGE_BG,
+            'Day Breakdown PR badge uses the shared transparent background');
+        eq(rowDetails.find(r => r.id === 'chest-press').badgeBorder, BADGE_BORDER,
+            'Day Breakdown PR badge uses the shared gold border');
 
         // === 2. The branches the UI cannot stage ========================
         const probe = await page.evaluate((baseMs) => {

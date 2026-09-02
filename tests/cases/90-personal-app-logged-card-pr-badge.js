@@ -21,6 +21,8 @@ const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
+const BADGE_BG = 'rgba(0, 0, 0, 0)';
+const BADGE_BORDER = 'rgb(212, 175, 55)';
 
 const dayOffset = (days, hour) => {
     const d = new Date();
@@ -83,7 +85,11 @@ async function readHeader(page, exerciseId) {
             logged: logged ? logged.textContent.trim() : null,
             loggedPR: loggedPR ? loggedPR.textContent.trim() : null,
             loggedPRClass: loggedPR ? loggedPR.className : null,
+            loggedPRBg: loggedPR ? getComputedStyle(loggedPR).backgroundColor : null,
+            loggedPRBorder: loggedPR ? getComputedStyle(loggedPR).borderTopColor : null,
             streak: streak ? streak.textContent.trim() : null,
+            streakBg: streak ? getComputedStyle(streak).backgroundColor : null,
+            streakBorder: streak ? getComputedStyle(streak).borderTopColor : null,
         };
     }, ACTIVE);
 }
@@ -111,6 +117,10 @@ async function logSet(page, exerciseId, weight, reps) {
         const before = await readHeader(page, 'chest-press');
         eq(before.streak, '🔥 1',
             'before logging, the card shows the numeric submitted-history streak');
+        eq(before.streakBg, BADGE_BG,
+            'numeric streak badge uses the shared transparent background');
+        eq(before.streakBorder, BADGE_BORDER,
+            'numeric streak badge uses the shared gold border');
         eq(before.loggedPR, null,
             'before logging, the current-session PR badge is absent');
 
@@ -121,6 +131,10 @@ async function logSet(page, exerciseId, weight, reps) {
             'a logged same-weight rep improvement shows the current-session PR badge');
         ok(improved.loggedPRClass.includes('streak-badge'),
             'the logged PR badge reuses the flame badge container');
+        eq(improved.loggedPRBg, BADGE_BG,
+            'the logged PR badge uses the shared transparent background');
+        eq(improved.loggedPRBorder, BADGE_BORDER,
+            'the logged PR badge uses the shared gold border');
         eq(improved.streak, null,
             'a logged PR review replaces the numeric pre-session streak');
 
