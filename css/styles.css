@@ -625,6 +625,170 @@
             border-color: rgba(var(--accent-rgb), 0.8);
         }
 
+        .card.pr-celebrating {
+            border-color: rgba(255, 231, 134, 0.95);
+            background:
+                radial-gradient(92% 62% at 50% -12%, rgba(255, 243, 176, 0.28) 0%, rgba(212, 175, 55, 0.10) 40%, rgba(212, 175, 55, 0) 68%),
+                radial-gradient(66% 48% at 50% 24%, rgba(242, 207, 102, 0.12) 0%, rgba(242, 207, 102, 0) 72%),
+                radial-gradient(120% 80% at 50% 0%, rgba(var(--accent-rgb), 0.20) 0%, rgba(var(--accent-rgb), 0) 62%),
+                linear-gradient(180deg, #151322 0%, #0b0b16 100%);
+            animation: prLegendaryAura 2s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .card.pr-celebrating::before {
+            left: 6%;
+            right: 6%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #fff4b0 18%, #f2cf66 50%, #fff4b0 82%, transparent);
+            box-shadow:
+                0 0 18px rgba(255, 244, 176, 0.72),
+                0 0 34px rgba(212, 175, 55, 0.34);
+            animation: prHaloLine 2s ease-in-out both;
+        }
+
+        .card.pr-celebrating::after {
+            content: '';
+            position: absolute;
+            inset: -42% -108%;
+            pointer-events: none;
+            background: linear-gradient(
+                105deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.00) 40%,
+                rgba(255, 244, 176, 0.58) 47%,
+                rgba(255, 255, 255, 0.24) 50%,
+                rgba(242, 207, 102, 0.18) 55%,
+                transparent 66%
+            );
+            mix-blend-mode: screen;
+            transform: translateX(-48%) rotate(8deg);
+            animation: prShimmer 1.55s 0.22s cubic-bezier(0.2, 1, 0.3, 1) both;
+        }
+
+        .card.pr-celebrating .logged-pr-badge {
+            animation:
+                prBadgePop 1.05s cubic-bezier(0.16, 1, 0.3, 1) both,
+                prBadgeGlow 2s ease-in-out both;
+        }
+
+        @keyframes prLegendaryAura {
+            0% {
+                transform: scale(1);
+                border-color: rgba(212, 175, 55, 0.56);
+                box-shadow:
+                    0 18px 50px rgba(0, 0, 0, 0.55),
+                    0 0 0 0 rgba(212, 175, 55, 0),
+                    inset 0 0 0 rgba(255, 231, 134, 0);
+                filter: saturate(1);
+            }
+            16% {
+                transform: scale(1.018);
+                border-color: rgba(255, 244, 176, 1);
+                box-shadow:
+                    0 24px 64px rgba(0, 0, 0, 0.60),
+                    0 0 0 1px rgba(255, 244, 176, 0.78),
+                    0 0 34px rgba(255, 231, 134, 0.44),
+                    0 0 76px rgba(212, 175, 55, 0.22),
+                    inset 0 0 28px rgba(255, 231, 134, 0.18);
+                filter: saturate(1.18);
+            }
+            44% {
+                transform: scale(1.008);
+                border-color: rgba(242, 207, 102, 0.96);
+                box-shadow:
+                    0 22px 58px rgba(0, 0, 0, 0.58),
+                    0 0 0 5px rgba(212, 175, 55, 0.06),
+                    0 0 48px rgba(255, 231, 134, 0.28),
+                    0 0 100px rgba(212, 175, 55, 0.12),
+                    inset 0 0 22px rgba(255, 231, 134, 0.13);
+                filter: saturate(1.1);
+            }
+            70% {
+                transform: scale(1.012);
+                border-color: rgba(255, 238, 154, 0.98);
+                box-shadow:
+                    0 23px 60px rgba(0, 0, 0, 0.59),
+                    0 0 0 2px rgba(255, 244, 176, 0.34),
+                    0 0 44px rgba(255, 231, 134, 0.32),
+                    0 0 92px rgba(212, 175, 55, 0.16),
+                    inset 0 0 26px rgba(255, 231, 134, 0.16);
+                filter: saturate(1.14);
+            }
+            100% {
+                transform: scale(1);
+                border-color: rgba(var(--accent-rgb), 0.8);
+                box-shadow:
+                    0 18px 50px rgba(0, 0, 0, 0.55),
+                    0 0 36px rgba(255, 231, 134, 0.20),
+                    0 0 86px rgba(212, 175, 55, 0.08),
+                    inset 0 0 18px rgba(255, 231, 134, 0.10);
+                filter: saturate(1.04);
+            }
+        }
+
+        @keyframes prHaloLine {
+            0% {
+                opacity: 0.35;
+                transform: scaleX(0.72);
+            }
+            18% {
+                opacity: 1;
+                transform: scaleX(1);
+            }
+            58% {
+                opacity: 0.74;
+                transform: scaleX(0.88);
+            }
+            78% {
+                opacity: 0.96;
+                transform: scaleX(0.98);
+            }
+            100% {
+                opacity: 0.66;
+                transform: scaleX(0.84);
+            }
+        }
+
+        @keyframes prShimmer {
+            0%   { opacity: 0; transform: translateX(-48%) rotate(8deg); }
+            18%  { opacity: 0.98; }
+            100% { opacity: 0; transform: translateX(48%) rotate(8deg); }
+        }
+
+        @keyframes prBadgePop {
+            0%   { transform: scale(0.88); opacity: 0; }
+            38%  { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes prBadgeGlow {
+            0% {
+                box-shadow: 0 0 10px rgba(212, 175, 55, 0.16);
+            }
+            22% {
+                box-shadow:
+                    0 0 0 1px rgba(255, 244, 176, 0.50),
+                    0 0 22px rgba(255, 231, 134, 0.38);
+            }
+            62% {
+                box-shadow:
+                    0 0 0 2px rgba(212, 175, 55, 0.18),
+                    0 0 16px rgba(242, 207, 102, 0.28);
+            }
+            100% {
+                box-shadow: 0 0 12px rgba(212, 175, 55, 0.22);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .card.pr-celebrating,
+            .card.pr-celebrating::before,
+            .card.pr-celebrating::after,
+            .card.pr-celebrating .logged-pr-badge {
+                animation: none;
+            }
+        }
+
         /* ---- Front face ---- */
         .card-front {
             align-items: center;

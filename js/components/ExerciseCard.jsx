@@ -253,7 +253,7 @@
             );
         }
 
-        function ExerciseCard({ exercise, previous, isLogged, isRevealed, data, workoutHistory,
+        function ExerciseCard({ exercise, previous, isLogged, isCelebrating, isRevealed, data, workoutHistory,
                                 currentWeek, handleInputChange, onLog }) {
             // Fit the revealed contents to the card instead of scrolling them.
             //
@@ -341,7 +341,7 @@
 
             return (
                 <div data-exercise-id={exercise.id}
-                    className={'card card-open' + (isLogged ? ' is-done' : '')}>
+                     className={'card card-open' + (isLogged ? ' is-done' : '') + (isCelebrating ? ' pr-celebrating' : '')}>
                     <div className="card-open-head">
                         <div className="card-open-name">{exercise.name}</div>
                         {loggedPR ? (

@@ -2,7 +2,7 @@
 // ----------------------
 // A card that has been logged but not yet submitted is a review of today's
 // saved row. If that saved row is a PR under the same rule as Day Breakdown
-// and History, the review shows a green "🔥 PR" pill beside the name.
+// and History, the review shows a gold-outlined "🔥 PR" pill beside the name.
 //
 // The important distinction is timing:
 //   - before LOG: the card may show the numeric submitted-history streak
@@ -15,7 +15,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { ACTIVE, goToCardById, revealCard, logCard } = require('../lib/deck');
+const { ACTIVE, deckIndex, goToCardById, revealCard, logCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -94,9 +94,25 @@ async function readHeader(page, exerciseId) {
     }, ACTIVE);
 }
 
-async function logSet(page, exerciseId, weight, reps) {
+async function readActiveReview(page) {
+    return page.evaluate((sel) => {
+        const card = document.querySelector(sel + ' .card[data-exercise-id]');
+        const loggedPR = card?.querySelector('[data-logged-pr-badge]');
+        return {
+            id: card ? card.getAttribute('data-exercise-id') : null,
+            className: card ? card.className : null,
+            celebrating: !!card?.classList.contains('pr-celebrating'),
+            cardAnimation: card ? getComputedStyle(card).animationName : null,
+            loggedPR: loggedPR ? loggedPR.textContent.trim() : null,
+        };
+    }, ACTIVE);
+}
+
+async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
     await enterSet(page, exerciseId, weight, reps);
-    const clicked = await logCard(page);
+    const clicked = await logCard(page, settle === undefined
+        ? undefined
+        : { settle, waitForAutoAdvance: false });
     ok(clicked, `${exerciseId}: LOG button clicked`);
 }
 
@@ -124,7 +140,31 @@ async function logSet(page, exerciseId, weight, reps) {
         eq(before.loggedPR, null,
             'before logging, the current-session PR badge is absent');
 
-        await logSet(page, 'chest-press', '100', '6');
+        await logSet(page, 'chest-press', '100', '6', { settle: 250 });
+        const celebrating = await readActiveReview(page);
+        eq(celebrating.id, 'chest-press',
+            'a PR log stays on the current logged card before advancing');
+        eq(celebrating.celebrating, true,
+            'a PR log runs the card celebration class');
+        ok((celebrating.cardAnimation || '').includes('prLegendaryAura'),
+            'the PR logged card uses the gold legendary aura animation');
+        eq(celebrating.loggedPR, '🔥 PR',
+            'the held logged card shows the PR badge during the celebration');
+
+        await new Promise(r => setTimeout(r, 1300));
+        const lingering = await readActiveReview(page);
+        eq(lingering.id, 'chest-press',
+            'the PR celebration keeps the logged card visible for the two-second aura hold');
+        eq(lingering.celebrating, true,
+            'the PR aura is still pulsing before the delayed auto-advance');
+
+        await page.waitForFunction((sel, id) => {
+            const card = document.querySelector(sel + ' .card[data-exercise-id]');
+            return card && card.getAttribute('data-exercise-id') !== id;
+        }, { timeout: 4000 }, ACTIVE, 'chest-press');
+        eq(await deckIndex(page), 2,
+            'after the celebration, the deck advances to the next unlogged card');
+
         const improved = await readHeader(page, 'chest-press');
         eq(improved.logged, 'logged', 'the PR row is in the logged review state');
         eq(improved.loggedPR, '🔥 PR',
@@ -139,6 +179,8 @@ async function logSet(page, exerciseId, weight, reps) {
             'a logged PR review replaces the numeric pre-session streak');
 
         await logSet(page, 'incline-chest-press', '100', '5');
+        eq(await deckIndex(page), 3,
+            'a non-PR log still advances without the PR celebration delay');
         const identical = await readHeader(page, 'incline-chest-press');
         eq(identical.logged, 'logged', 'the identical row is also in review state');
         eq(identical.loggedPR, null,

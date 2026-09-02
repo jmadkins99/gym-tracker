@@ -36,6 +36,7 @@
         // only after the rail has carried it off-stage — closing it any sooner
         // snaps it from open to nameplate while it is still in full view.
         const RAIL_MS = 300;
+        const PR_CELEBRATION_MS = 2000;
 
         function SwipeDeck({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout,
                              logExercise, completeDay, getCurrentExercises, currentWeek,
@@ -69,16 +70,26 @@
             const raf = React.useRef(null);
             const paintFrame = React.useRef(null);
             const collapseTimer = React.useRef(null);
+            const celebrationTimer = React.useRef(null);
+            const [celebratingId, setCelebratingId] = React.useState(null);
+
+            const clearCelebration = () => {
+                clearTimeout(celebrationTimer.current);
+                celebrationTimer.current = null;
+                setCelebratingId(null);
+            };
 
             // A day switch swaps the whole roster, so an index into the old one
             // is meaningless.
             React.useEffect(() => {
+                clearCelebration();
                 setIndex(0); setOffset(0); closeWeightBreakdown();
             }, [activeDayType]);
             React.useEffect(() => () => {
                 cancelAnimationFrame(raf.current);
                 cancelAnimationFrame(paintFrame.current);
                 clearTimeout(collapseTimer.current);
+                clearTimeout(celebrationTimer.current);
             }, []);
 
             const clamp = (i) => Math.max(0, Math.min(finishIndex, i));
@@ -89,6 +100,7 @@
             // glitch. One card of movement in the right direction is the honest
             // signal — where you landed is what the counter is for.
             const goTo = (target, dir) => {
+                clearCelebration();
                 if (target === index) { setOffset(0); return; }
 
                 // Leaving an open card closes it. Walking back to a machine
@@ -304,14 +316,29 @@
             //
             // `loggedExercises` has not caught up at this point — logExercise
             // sets it — so the card just logged is treated as done explicitly,
-            // or the scan would find it and jump straight back onto it.
+            // or the scan would find it and jump straight back onto it. A PR is
+            // the one exception to the instant jump: keep the logged review in
+            // front of the user long enough for the gold celebration to read,
+            // then auto-advance to the same target.
             const onLog = (id) => {
-                logExercise(id);
+                const result = logExercise(id);
+                if (!result?.logged) return;
+
                 const done = (ex) => ex.id === id || !!loggedExercises[ex.id];
 
                 let target = finishIndex;
                 for (let i = 0; i < finishIndex; i++) {
                     if (!done(exercises[i])) { target = i; break; }
+                }
+
+                if (result.isPR) {
+                    clearTimeout(celebrationTimer.current);
+                    setCelebratingId(id);
+                    celebrationTimer.current = setTimeout(() => {
+                        celebrationTimer.current = null;
+                        goTo(target, target > index ? 1 : -1);
+                    }, PR_CELEBRATION_MS);
+                    return;
                 }
 
                 goTo(target, target > index ? 1 : -1);
@@ -375,6 +402,7 @@
                                 exercise={ex}
                                 previous={getPreviousWorkout(ex.id)}
                                 isLogged={!!loggedExercises[ex.id]}
+                                isCelebrating={celebratingId === ex.id}
                                 isRevealed={revealedFor(ex)}
                                 data={workoutData[ex.id] || {}}
                                 workoutHistory={workoutHistory}

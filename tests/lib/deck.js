@@ -81,8 +81,12 @@ const isRevealed = (page) =>
     page.evaluate((sel) => !!document.querySelector(sel + ' .card-open'), ACTIVE);
 
 // Tap LOG on the open card. The deck jumps to the earliest unlogged card
-// afterwards, so the caller is somewhere new when this resolves.
-async function logCard(page, { settle = 750 } = {}) {
+// afterwards, so the caller is somewhere new when this resolves. PR logs hold
+// on the logged review for their celebration first; by default callers wait for
+// that auto-advance, but cases can opt out when they need to inspect the
+// in-progress shimmer.
+async function logCard(page, opts = {}) {
+    const { settle = 750, waitForAutoAdvance = opts.settle === undefined } = opts;
     const clicked = await page.evaluate((sel) => {
         const btn = document.querySelector(sel + ' .log-btn');
         if (!btn || btn.disabled) return false;
@@ -90,6 +94,16 @@ async function logCard(page, { settle = 750 } = {}) {
         return true;
     }, ACTIVE);
     await new Promise((r) => setTimeout(r, settle));
+    if (clicked && waitForAutoAdvance) {
+        const celebrating = await page.evaluate((sel) =>
+            !!document.querySelector(sel + ' .card.pr-celebrating'), ACTIVE);
+        if (celebrating) {
+            await page.waitForFunction((sel) =>
+                !document.querySelector(sel + ' .card.pr-celebrating'),
+                { timeout: 4000 }, ACTIVE);
+            await new Promise((r) => setTimeout(r, SETTLE));
+        }
+    }
     return clicked;
 }
 

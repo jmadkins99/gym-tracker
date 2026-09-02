@@ -463,6 +463,7 @@
 
             const logExercise = (exerciseId) => {
                 const exercise = getCurrentExercises().find(e => e.id === exerciseId);
+                if (!exercise) return { logged: false, isPR: false };
                 let data = workoutData[exerciseId] || {};
 
                 if (exercise.type === 'standard') {
@@ -520,12 +521,12 @@
                     }
                 }
 
-                if (!data || Object.keys(data).length === 0) return;
+                if (!data || Object.keys(data).length === 0) return { logged: false, isPR: false };
 
-                if (exercise.type === 'assault-bike' && !data.intensity) return;
-                if (exercise.type === 'stairmaster' && !data.time) return;
-                if (exercise.type === 'bodyweight' && !data.reps) return;
-                if (exercise.type === 'standard' && !data.weight && !data.reps) return;
+                if (exercise.type === 'assault-bike' && !data.intensity) return { logged: false, isPR: false };
+                if (exercise.type === 'stairmaster' && !data.time) return { logged: false, isPR: false };
+                if (exercise.type === 'bodyweight' && !data.reps) return { logged: false, isPR: false };
+                if (exercise.type === 'standard' && !data.weight && !data.reps) return { logged: false, isPR: false };
 
                 let finalData = { ...data };
                 const timestamp = new Date().toISOString();
@@ -596,6 +597,7 @@
                 }
 
                 let updatedHistory;
+                let savedWorkout;
                 if (existingWorkoutIndex !== -1) {
                     updatedHistory = [...workoutHistory];
                     const workout = updatedHistory[existingWorkoutIndex];
@@ -608,6 +610,7 @@
                     }
 
                     workout.date = timestamp;
+                    savedWorkout = workout;
                 } else {
                     const allExercises = getCurrentExercises().map(ex => {
                         if (ex.id === exerciseId) {
@@ -635,7 +638,10 @@
                     };
 
                     updatedHistory = [newWorkout, ...workoutHistory];
+                    savedWorkout = newWorkout;
                 }
+
+                const isPR = isExercisePRInWorkout(exerciseToSave, savedWorkout, updatedHistory);
 
                 setWorkoutHistory(updatedHistory);
                 window.repo.saveHistory(updatedHistory);
@@ -664,6 +670,8 @@
                 setSuccessMessage('Exercise logged!');
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 2000);
+
+                return { logged: true, isPR };
             };
 
             const completeDay = () => {
