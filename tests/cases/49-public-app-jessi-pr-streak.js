@@ -95,6 +95,9 @@ async function enterSet(page, name, weight, reps) {
     await new Promise(r => setTimeout(r, 100));
 }
 
+// A PR log holds the logged review on screen for its gold celebration before
+// the deck auto-advances, so every round after the baseline has to wait that
+// out — Submit Day lives on the finish slot the deck is still travelling to.
 async function logCard(page, name) {
     await goToCard(page, name);
     await page.evaluate((sel) => {
@@ -104,6 +107,14 @@ async function logCard(page, name) {
         if (btn) btn.click();
     }, ACTIVE);
     await new Promise(r => setTimeout(r, 300));
+    const celebrating = await page.evaluate((sel) =>
+        !!document.querySelector(sel + ' .card.pr-celebrating'), ACTIVE);
+    if (celebrating) {
+        await page.waitForFunction((sel) =>
+            !document.querySelector(sel + ' .card.pr-celebrating'),
+            { timeout: 5000 }, ACTIVE);
+        await new Promise(r => setTimeout(r, 300));
+    }
 }
 
 async function submitDay(page) {
