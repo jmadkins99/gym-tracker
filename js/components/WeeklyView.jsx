@@ -94,7 +94,13 @@
                                         </div>
                                         {allExercises.map((expectedExercise) => {
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
-                                            const isPR = workout.submitted && completedExercise &&
+                                            // Not gated on workout.submitted: today's in-progress
+                                            // entry is already in this list, and the badge should
+                                            // land the moment the set is logged. Safe because the
+                                            // baseline isExercisePRInWorkout compares against is
+                                            // always a SUBMITTED session older than this one, so
+                                            // the answer cannot change when the day is submitted.
+                                            const isPR = completedExercise &&
                                                 isExercisePRInWorkout(completedExercise, workout, workoutHistory);
                                             return (
                                                 <div key={expectedExercise.id} className="history-exercise">

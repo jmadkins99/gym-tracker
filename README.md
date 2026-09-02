@@ -30,7 +30,7 @@ Earlier splits — Upper/Lower from August 2026, Full Body / Cardio before that,
 
 - A JSON backup downloads on every day submission.
 - Export, import, and reset are available from the Settings gear.
-- The History tab browses by week, counting up from your first workout. Each day is editable via the pencil button, and a ⏱️ beside it opens that session's timing — the same per-movement breakdown the Day Breakdown modal shows, still readable long after the day it was logged. Standard exercises that count toward "PRs Smashed" show the same gold-outlined flame badge used on the workout card, labeled "PR".
+- The History tab browses by week, counting up from your first workout. Each day is editable via the pencil button, and a ⏱️ beside it opens that session's timing — the same per-movement breakdown the Day Breakdown modal shows, still readable long after the day it was logged. Standard exercises that count toward "PRs Smashed" show the same gold-outlined flame badge used on the workout card, labeled "PR". It does not wait for Submit Day — today's in-progress entry is in this list too, so the badge appears as soon as the set is logged, and cannot change when the day is submitted because the baseline it compares against is always an older submitted session.
 
 ## Appearance
 

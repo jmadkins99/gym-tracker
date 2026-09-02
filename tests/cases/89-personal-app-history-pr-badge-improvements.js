@@ -1,8 +1,15 @@
 // What this test covers
 // ----------------------
 // History's "🔥 PR" badge mirrors the "PRs Smashed" count from Day Breakdown.
-// It is not a range-top marker: it appears when a submitted standard row
-// improves on that exercise's previous submitted valid row.
+// It is not a range-top marker: it appears when a standard row improves on
+// that exercise's previous submitted valid row.
+//
+// It also does not wait for Submit Day. Today's in-progress entry is already
+// in the History list, so the badge lands the moment the set is logged — the
+// tail of this case logs two sets and reads History without submitting. That
+// cannot disagree with the badge shown after submitting, because the baseline
+// isExercisePRInWorkout compares against is always a SUBMITTED session older
+// than the entry being badged.
 //
 // Reverse/Cable Wrist Curls are the regression surface because their standard
 // rep range is 5-8 while nearly every other weighted exercise is 3-6. A 6-rep
@@ -22,7 +29,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { ACTIVE, bottomNav, goToCardById, revealCard } = require('../lib/deck');
+const { ACTIVE, bottomNav, goToCardById, logCard, revealCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -73,6 +80,52 @@ const LATEST = workoutEntry({
     ],
 });
 
+async function enterSet(page, exerciseId, weight, reps) {
+    await goToCardById(page, exerciseId);
+    await revealCard(page);
+    await page.evaluate((sel, w, r) => {
+        const card = document.querySelector(sel);
+
+        const input = card.querySelector('input[type="number"][inputmode="decimal"]');
+        const inputSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        inputSetter.call(input, w);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const select = card.querySelector('select[data-field="reps"]');
+        const selectSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLSelectElement.prototype, 'value').set;
+        selectSetter.call(select, r);
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    }, ACTIVE, weight, reps);
+    await new Promise(r => setTimeout(r, 120));
+}
+
+// The newest History entry, keyed by exercise name.
+async function readHistoryRows(page, names) {
+    return page.evaluate((wanted) => {
+        const rows = {};
+        const latest = document.querySelector('.history-item');
+        if (!latest) return rows;
+
+        latest.querySelectorAll('.history-exercise').forEach((row) => {
+            const name = row.querySelector('.history-exercise-name');
+            if (!name || !wanted.includes(name.textContent.trim())) return;
+
+            const badge = row.querySelector('[data-pr-badge]');
+            rows[name.textContent.trim()] = {
+                badgeText: badge ? badge.textContent.trim() : null,
+                badgeClass: badge ? badge.className : null,
+                badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
+                badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
+                badgeRightOfName: badge ? name.nextElementSibling === badge : false,
+            };
+        });
+
+        return rows;
+    }, names);
+}
+
 async function readCardBadge(page, exerciseId) {
     await goToCardById(page, exerciseId);
     await revealCard(page);
@@ -109,27 +162,7 @@ async function readCardBadge(page, exerciseId) {
         await bottomNav(page, 'History');
         await page.waitForSelector('.history-item', { timeout: 8000 });
 
-        const historyRows = await page.evaluate((names) => {
-            const rows = {};
-            const latest = document.querySelector('.history-item');
-            if (!latest) return rows;
-
-            latest.querySelectorAll('.history-exercise').forEach((row) => {
-                const name = row.querySelector('.history-exercise-name');
-                if (!name || !names.includes(name.textContent.trim())) return;
-
-                const badge = row.querySelector('[data-pr-badge]');
-                rows[name.textContent.trim()] = {
-                    badgeText: badge ? badge.textContent.trim() : null,
-                    badgeClass: badge ? badge.className : null,
-                    badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
-                    badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
-                    badgeRightOfName: badge ? name.nextElementSibling === badge : false,
-                };
-            });
-
-            return rows;
-        }, EXERCISES.map(([, name]) => name));
+        const historyRows = await readHistoryRows(page, EXERCISES.map(([, name]) => name));
 
         for (const [, name] of EXERCISES) {
             ok(historyRows[name], `History includes ${name}`);
@@ -155,6 +188,34 @@ async function readCardBadge(page, exerciseId) {
             'History PR badge uses the shared gold border');
         ok(historyRows['Cable Wrist Curls'].badgeRightOfName,
             'History PR badge sits immediately to the right of the exercise name');
+
+        // Log against LATEST without submitting: Preacher Curls 55x5 -> 55x6
+        // improves, Kelso Shrugs repeats 190x6 and does not. Today's entry is
+        // now the newest .history-item and is still unsubmitted.
+        await bottomNav(page, 'Workout');
+        await enterSet(page, 'preacher-curls', '55', '6');
+        ok(await logCard(page), 'preacher-curls: LOG button clicked');
+        await enterSet(page, 'kelso-shrugs', '190', '6');
+        ok(await logCard(page), 'kelso-shrugs: LOG button clicked');
+
+        await bottomNav(page, 'History');
+        await page.waitForSelector('.history-item', { timeout: 8000 });
+
+        const submitted = await page.evaluate(() => {
+            const hist = JSON.parse(localStorage.getItem('gym-local:gymWorkoutHistory') || '[]');
+            return hist.map(w => !!w.submitted);
+        });
+        eq(submitted[0], false, 'the newest history entry is still unsubmitted');
+
+        const todayRows = await readHistoryRows(page, EXERCISES.map(([, name]) => name));
+        eq(todayRows['Preacher Curls'].badgeText, '🔥 PR',
+            'History badges an improvement as soon as it is logged, before Submit Day');
+        eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
+            'the pre-submit History badge is the same gold-outlined pill');
+        eq(todayRows['Kelso Shrugs'].badgeText, null,
+            'a repeated session gets no pre-submit History badge');
+        eq(todayRows['Reverse Wrist Curls'].badgeText, null,
+            'an unlogged NA row in the in-progress entry gets no History badge');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: History PR badges mirror the Day Breakdown PR definition.');
