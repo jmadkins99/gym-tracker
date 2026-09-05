@@ -24,15 +24,33 @@
 // plateau-buster recovery that used to count and must not; the other four rows
 // pin that the count did not simply become zero.
 //
-// Lateral Raises covers the second half of the fix. Its most recent prior
-// appearance is in an ABANDONED, never-submitted session at an absurd 999 lbs.
-// The modal's baseline search had no `submitted` filter, so it compared against
-// a day that never happened. With the filter it compares against the real 55 lb
-// session and correctly reports a PR at 60.
+// Lateral Raises covers the baseline lookup, and its answer REVERSED in
+// September 2026. Its most recent prior appearance is a never-submitted session
+// at an absurd 999 lbs. That row used to be filtered out — the search took only
+// submitted days — so 60 lbs scored a PR against the real 55 lb session two days
+// back. It is not filtered out any more: Submit Day is a ceremony the user
+// performs, not a property of the training, and a day that was logged and never
+// submitted still happened. 60 against 999 is a weight drop, so Lateral Raises
+// is not a PR and the count is 2. See getPreviousExerciseForPR.
 //
-// Mutation check: restore the `||` rule in DayBreakdownModal and this case
-// fails with 4 instead of 3, and nothing else in the suite moves. Drop the
-// `submitted` filter and it fails with 2.
+// What forced the reversal: Thursday 3 September 2026 was logged in full and
+// never submitted, so Saturday's Sagittal Plane Pulldowns 152.5 x 5 was scored
+// against the Monday before it and took a PR badge for repeating Thursday's
+// exact set. Nothing else in the app gated on `submitted` — the "last session"
+// number on the card comes from getPreviousExercise in App.jsx, which has always
+// read those days — so this lookup was the odd one out, and the 999 lb row it
+// refused to compare against was already pre-filling the weight input.
+//
+// The cost of the choice, named here so it is not met by surprise: a day
+// abandoned with garbage in it now suppresses a real PR until that row is edited
+// or the day deleted. That is a visible, fixable wrong answer. The one it
+// replaces was silent — a session you did, erased from your own history because
+// you forgot to press a button.
+//
+// Mutation check: restore the `||` rule in DayBreakdownModal and this case fails
+// with 4 instead of 2. Put the `submitted` filter back in
+// getPreviousExerciseForPR and it fails with 3. Case 48 pins the same rule from
+// the streak side.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -118,9 +136,9 @@ const TODAY = workoutEntry({
 
         const prCount = await page.evaluate(() =>
             document.querySelector('[data-pr-count]').textContent.trim());
-        eq(prCount, '3',
-            'three PRs: weight up, reps up at the same weight, and one measured ' +
-            'against the last REAL session — but not the plateau-buster recovery');
+        eq(prCount, '2',
+            'two PRs: weight up, and reps up at the same weight — not the ' +
+            'plateau-buster recovery, and not a rise over an abandoned 999 lbs');
 
         // Name the rows individually, so a failure says which one moved rather
         // than only that the total is wrong.
@@ -130,7 +148,9 @@ const TODAY = workoutEntry({
                 'shoulder-press': { weight: '120', reps: '4' },
                 'chest-flies': { weight: '165', reps: '4' },
                 'incline-chest-press': { weight: '110', reps: '5' },
-                'lateral-raises': { weight: '55', reps: '6' },
+                // Yesterday's never-submitted row — the baseline the lookup
+                // now hands the modal for this exercise.
+                'lateral-raises': { weight: '999', reps: '3' },
             };
             const now = {
                 'chest-press': { weight: '195', reps: '6' },
@@ -149,7 +169,8 @@ const TODAY = workoutEntry({
         eq(verdicts['shoulder-press'], true, 'a weight increase is a PR');
         eq(verdicts['chest-flies'], true, 'same weight with more reps is a PR');
         eq(verdicts['incline-chest-press'], false, 'an identical session is not a PR');
-        eq(verdicts['lateral-raises'], true, 'a weight increase over the real baseline is a PR');
+        eq(verdicts['lateral-raises'], false,
+            'a drop from an abandoned day is still a drop — the lookup no longer skips it');
 
         // The badge and the count are now the same function. Chest Press has a
         // weight drop as its most recent move, so its streak must be absent —
@@ -168,7 +189,7 @@ const TODAY = workoutEntry({
             'the genuine PR does earn a flame badge, so the probe is not vacuous');
 
         eq(errors, [], 'no console errors');
-        console.log('PASS: a weight drop is no longer scored as a PR, and the streak agrees.');
+        console.log('PASS: a weight drop is no longer scored as a PR, an unsubmitted day still counts, and the streak agrees.');
     } finally {
         await browser.close();
         await server.stop();

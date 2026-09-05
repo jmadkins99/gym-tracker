@@ -93,7 +93,6 @@
                     workoutDate.setHours(0, 0, 0, 0);
                     if (workoutDate > today) return false;
                     if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
-                    if (!w.submitted) return false;
                     const exercise = w.exercises.find(e => e.id === exerciseId);
                     return isValidExercise(exercise);
                 })
@@ -148,13 +147,29 @@
             return newReps > oldReps;
         }
 
-        function getPreviousSubmittedExerciseForPR(exerciseId, workoutHistory, beforeDate) {
+        // The most recent session before `beforeDate` that actually logged this
+        // movement — the thing every PR verdict is measured against.
+        //
+        // Submit Day is deliberately NOT a condition here. It is a ceremony the
+        // user performs, not a property of the training: a day whose sets were
+        // logged and then left unsubmitted still happened, and the weight on the
+        // bar does not care. Gating on it lost Thursday 3 September 2026 — logged
+        // in full, never submitted — so Saturday's Sagittal Plane Pulldowns
+        // 152.5 x 5 was scored against the MONDAY before it, 152.5 x 4, and
+        // earned a PR badge for repeating Thursday's exact set.
+        //
+        // getSimplePR (above) has always read those days, so the app was already
+        // seeding Saturday's target off Thursday while refusing to compare
+        // against it. One history, one set of sessions, for suggestion and
+        // verdict alike.
+        //
+        // Today's own in-progress record cannot slip in as its own baseline:
+        // `beforeDate` is the caller's workout date, and a day only ever holds a
+        // second record once the first has been submitted.
+        function getPreviousExerciseForPR(exerciseId, workoutHistory, beforeDate) {
             const cutoff = new Date(beforeDate);
             const sortedWorkouts = workoutHistory
-                .filter(w => {
-                    if (!w.submitted) return false;
-                    return new Date(w.date) < cutoff;
-                })
+                .filter(w => new Date(w.date) < cutoff)
                 .sort((a, b) => new Date(b.date) - new Date(a.date));
 
             for (const workout of sortedWorkouts) {
@@ -182,7 +197,7 @@
                 return false;
             }
 
-            const previous = getPreviousSubmittedExerciseForPR(exercise.id, workoutHistory, workout.date);
+            const previous = getPreviousExerciseForPR(exercise.id, workoutHistory, workout.date);
             return !!previous && isImprovement(exercise, previous);
         }
 
@@ -198,6 +213,11 @@
         // the weight went up, or the weight held and the reps went up. It breaks
         // on an identical session, on a weight drop, and on fewer reps at the
         // same weight.
+        //
+        // Every past session counts, submitted or not — see
+        // getPreviousExerciseForPR for why. Only today's own in-progress record
+        // is held back, so the badge on a card cannot be moved by the set you
+        // are about to log.
         function getPRStreak(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
@@ -210,7 +230,6 @@
                     workoutDate.setHours(0, 0, 0, 0);
                     if (workoutDate > today) return false;
                     if (workoutDate.getTime() === today.getTime() && !w.submitted) return false;
-                    if (!w.submitted) return false;
                     const exercise = w.exercises.find(e => e.id === exerciseId);
                     return isValidExercise(exercise);
                 })

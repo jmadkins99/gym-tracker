@@ -1,15 +1,16 @@
 // What this test covers
 // ----------------------
 // History's "🔥 PR" badge mirrors the "PRs Smashed" count from Day Breakdown.
-// It is not a range-top marker: it appears when a standard row improves on
-// that exercise's previous submitted valid row.
+// It is not a range-top marker: it appears when a standard row improves on that
+// exercise's previous valid row.
 //
-// It also does not wait for Submit Day. Today's in-progress entry is already
-// in the History list, so the badge lands the moment the set is logged — the
-// tail of this case logs two sets and reads History without submitting. That
-// cannot disagree with the badge shown after submitting, because the baseline
-// isExercisePRInWorkout compares against is always a SUBMITTED session older
-// than the entry being badged.
+// It also does not wait for Submit Day, in either direction. Today's in-progress
+// entry is already in the History list, so the badge lands the moment the set is
+// logged — the tail of this case logs two sets and reads History without
+// submitting. That cannot disagree with the badge shown after submitting,
+// because the baseline isExercisePRInWorkout compares against is simply the last
+// session older than the entry being badged, submitted or not (case 67 and case
+// 48 pin that; getPreviousExerciseForPR says why).
 //
 // Reverse/Cable Wrist Curls are the regression surface because their standard
 // rep range is 5-8 while nearly every other weighted exercise is 3-6. A 6-rep
@@ -179,7 +180,7 @@ async function readCardBadge(page, exerciseId) {
         eq(historyRows['Transverse Plane Rows'].badgeText, null,
             'History does not show PR for top reps after a weight drop');
         eq(historyRows['Frontal Plane Pulldowns'].badgeText, null,
-            'History does not show PR for top reps without a previous submitted row');
+            'History does not show PR for top reps without any previous row');
         ok(historyRows['Cable Wrist Curls'].badgeClass.includes('streak-badge'),
             'History PR badge reuses the streak-badge container class');
         eq(historyRows['Cable Wrist Curls'].badgeBg, BADGE_BG,

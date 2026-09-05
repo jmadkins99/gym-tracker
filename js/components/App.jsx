@@ -682,13 +682,15 @@
                     return;
                 }
 
+                // Submission is not a condition on either history walk below:
+                // a day that was logged and never submitted is still a session
+                // that happened, and plateau busting reads the same history the
+                // PR badges do (see getPreviousExerciseForPR in plateauLogic).
+                // The day being submitted right now is excluded by date — it is
+                // the thing being judged, not a precedent for itself.
                 const findPreviousValidExercise = (exerciseId) => {
                     const previousWorkouts = workoutHistory
-                        .filter(w => {
-                            if (w.date === todayWorkout.date) return false;
-                            if (!w.submitted) return false;
-                            return true;
-                        })
+                        .filter(w => w.date !== todayWorkout.date)
                         .sort((a, b) => new Date(b.date) - new Date(a.date))
                         .slice(0, 5);
 
@@ -726,7 +728,6 @@
                             const previousWorkoutWithPlateau = workoutHistory
                                 .filter(w => {
                                     if (w.date === todayWorkout.date) return false;
-                                    if (!w.submitted) return false;
                                     const ex = w.exercises.find(e => e.id === exercise.id);
                                     return ex && ex.reps && ex.reps !== 'NA';
                                 })

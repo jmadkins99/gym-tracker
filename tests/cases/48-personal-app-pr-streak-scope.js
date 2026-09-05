@@ -6,8 +6,8 @@
 //
 // Four independent exercises, one concern each:
 //
-//   Chest Press          an unsubmitted entry is invisible to the streak, even
-//                        though it would break it if counted
+//   Chest Press          a past unsubmitted entry counts like any other, so a
+//                        regression there breaks the streak
 //   Incline Chest Press  an NA session is skipped by isValidExercise rather
 //                        than read as a change, so the run spans it
 //   Chest Flies          a non-numeric weight ('Body Weight') ends the run
@@ -62,8 +62,10 @@ const TIMELINE = [
         'chest-flies':         { weight: '100', reps: '6' },
         'chest-press':         { weight: '100', reps: '5' },
     } },
-    // Never submitted. Chest Press regresses here; if the streak counted it,
-    // the badge below would be gone instead of reading 2.
+    // Never submitted, and counted anyway since September 2026: Submit Day is a
+    // ceremony, not a property of the training. Chest Press regresses here, so
+    // the run ends and the badge below is gone. Before that change this read
+    // '🔥 1' — see getPreviousExerciseForPR for the session that forced it.
     { offset: 2,  submitted: false, sets: {
         'chest-press':         { weight: '100', reps: '4' },
     } },
@@ -115,8 +117,8 @@ async function readBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        eq(await readBadge(page, 'chest-press'), '🔥 1',
-            'an unsubmitted session neither extends nor breaks the streak');
+        eq(await readBadge(page, 'chest-press'), null,
+            'a past unsubmitted session breaks the streak like any other session');
 
         eq(await readBadge(page, 'incline-chest-press'), '🔥 2',
             'an NA session is skipped, not read as a change, so the run spans it');
@@ -137,10 +139,11 @@ async function readBadge(page, exerciseId) {
         }, ACTIVE);
         ok(plateau, 'the gold Plateau Detected banner still fires on that card');
 
-        // The badge is a SIBLING of the name node, never a child. One card at a
-        // time now, so each is visited in turn; the invariant is unchanged and
-        // still worth pinning, because several cases read that node expecting
-        // nothing but the name.
+        // The badge is a SIBLING of the name node, never a child — on a card
+        // that has one (Incline, Flies) and on a card that does not (Chest
+        // Press, whose streak the unsubmitted regression ended). One card at a
+        // time now, so each is visited in turn; the invariant is worth pinning
+        // because several cases read that node expecting nothing but the name.
         const names = [];
         for (const id of ['chest-press', 'incline-chest-press', 'chest-flies']) {
             await goToCardById(page, id);
@@ -151,10 +154,10 @@ async function readBadge(page, exerciseId) {
             }, ACTIVE));
         }
         eq(names, ['Chest Press', 'Incline Chest Press', 'Chest Flies'],
-            'the name node carries the bare name on every badged card');
+            'the name node carries the bare name, badge or no badge');
 
         eq(errors, [], 'no console errors');
-        console.log('PASS: the streak reads only submitted, valid, numeric sessions, and never shares a card with the plateau banner.');
+        console.log('PASS: the streak reads every past session with valid, numeric data, and never shares a card with the plateau banner.');
     } finally {
         await browser.close();
         await server.stop();

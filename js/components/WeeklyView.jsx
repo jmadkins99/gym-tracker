@@ -96,10 +96,10 @@
                                             const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
                                             // Not gated on workout.submitted: today's in-progress
                                             // entry is already in this list, and the badge should
-                                            // land the moment the set is logged. Safe because the
-                                            // baseline isExercisePRInWorkout compares against is
-                                            // always a SUBMITTED session older than this one, so
-                                            // the answer cannot change when the day is submitted.
+                                            // land the moment the set is logged. Submitting a day
+                                            // cannot change any badge either way — the baseline
+                                            // isExercisePRInWorkout compares against is simply the
+                                            // last session older than this one, submitted or not.
                                             const isPR = completedExercise &&
                                                 isExercisePRInWorkout(completedExercise, workout, workoutHistory);
                                             return (
