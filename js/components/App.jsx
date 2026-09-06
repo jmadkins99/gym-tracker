@@ -35,6 +35,16 @@
             const [timingWorkout, setTimingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
+            // Which card the deck is parked on. It lives up here for the same
+            // reason expandedWeightBreakdown does: SwipeDeck is unmounted while
+            // History is on screen, so anything it holds itself is gone by the
+            // time you come back. Keeping the position and the open panel
+            // together is what makes a trip to History a detour rather than a
+            // restart — you look something up, you come back, the card you were
+            // standing at is still open in front of you, its clock still
+            // running. Reaching for History mid-set is normal, and it is not a
+            // reason to make the user find their machine again.
+            const [deckIndex, setDeckIndex] = useState(0);
             // When each exercise's Weight Breakdown panel was first opened
             // today, keyed by id — the start half of every movement's clock.
             //
@@ -993,6 +1003,8 @@
                             openWeightBreakdown={openWeightBreakdown}
                             closeWeightBreakdown={(id) => setExpandedWeightBreakdown(
                                 (cur) => (id === undefined || cur === id ? null : cur))}
+                            deckIndex={deckIndex}
+                            setDeckIndex={setDeckIndex}
                             activeDayType={activeDayType}
                             setActiveDayType={setActiveDayType}
                             foregroundAt={lastForegroundAt}

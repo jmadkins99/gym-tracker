@@ -41,11 +41,17 @@
         function SwipeDeck({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout,
                              logExercise, completeDay, getCurrentExercises, currentWeek,
                              workoutHistory, expandedWeightBreakdown, openWeightBreakdown,
-                             closeWeightBreakdown, activeDayType, setActiveDayType, foregroundAt }) {
+                             closeWeightBreakdown, activeDayType, setActiveDayType, foregroundAt,
+                             deckIndex, setDeckIndex }) {
             const exercises = getCurrentExercises();
             // One slot past the last exercise is the finish card.
             const finishIndex = exercises.length;
-            const [index, setIndex] = React.useState(0);
+            // Owned by App, not held here — see the deckIndex comment there.
+            // Clamped on the way in because the roster can shrink underneath a
+            // stored position: a Settings reorder, or a day whose exercise list
+            // is shorter than the one the number was written against.
+            const index = Math.max(0, Math.min(finishIndex, deckIndex));
+            const setIndex = setDeckIndex;
             // Whether a finger is down. The drag ITSELF is deliberately not
             // React state: setDrag on every pointermove re-rendered this
             // component and all three mounted cards dozens of times a second
@@ -70,6 +76,9 @@
             const raf = React.useRef(null);
             const paintFrame = React.useRef(null);
             const collapseTimer = React.useRef(null);
+            // The card that timer is due to close, so an unmount can finish the
+            // job instead of cancelling it.
+            const collapsePending = React.useRef(null);
             const celebrationTimer = React.useRef(null);
             const [celebratingId, setCelebratingId] = React.useState(null);
 
@@ -81,7 +90,18 @@
 
             // A day switch swaps the whole roster, so an index into the old one
             // is meaningless.
+            //
+            // Guarded against firing on MOUNT, which is the whole point of the
+            // ref. This effect used to run on every mount as well as every
+            // change, and since the deck is unmounted while History is on
+            // screen, coming back from History ran the day-switch reset: card
+            // one, panel shut. Nothing had switched. The day pills live on this
+            // component, so a genuine change always happens while it is mounted
+            // and the ref sees it.
+            const lastDayType = React.useRef(activeDayType);
             React.useEffect(() => {
+                if (lastDayType.current === activeDayType) return;
+                lastDayType.current = activeDayType;
                 clearCelebration();
                 setIndex(0); setOffset(0); closeWeightBreakdown();
             }, [activeDayType]);
@@ -90,6 +110,16 @@
                 cancelAnimationFrame(paintFrame.current);
                 clearTimeout(collapseTimer.current);
                 clearTimeout(celebrationTimer.current);
+                // A card left mid-collapse has to still be closed. Now that the
+                // open panel outlives this component, dropping the pending
+                // close on unmount would leave the card you swiped OFF sitting
+                // open with its old anchor — so a swipe away followed straight
+                // away by a tap on History would preserve exactly the stale
+                // clock the delayed close exists to throw out.
+                if (collapsePending.current) {
+                    closeWeightBreakdown(collapsePending.current);
+                    collapsePending.current = null;
+                }
             }, []);
 
             const clamp = (i) => Math.max(0, Math.min(finishIndex, i));
@@ -121,8 +151,11 @@
                 const leaving = exercises[index];
                 if (leaving && expandedWeightBreakdown === leaving.id) {
                     clearTimeout(collapseTimer.current);
-                    collapseTimer.current = setTimeout(
-                        () => closeWeightBreakdown(leaving.id), RAIL_MS);
+                    collapsePending.current = leaving.id;
+                    collapseTimer.current = setTimeout(() => {
+                        collapsePending.current = null;
+                        closeWeightBreakdown(leaving.id);
+                    }, RAIL_MS);
                 }
 
                 const step = (stageRef.current ? stageRef.current.offsetWidth : 0) + DECK_GAP;
