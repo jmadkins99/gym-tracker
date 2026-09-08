@@ -1,0 +1,500 @@
+/* ==========================================================
+   WEIGHT PAGE
+   ==========================================================
+   Loaded AFTER styles.css and additive to it. Everything structural —
+   .app, .header, .content, .card, .hero, .modal, .bottom-nav, the accent
+   custom properties — comes from there unchanged, which is the point:
+   the two pages are one app and should not drift apart because someone
+   restyled a button in one of them. What lives here is only what the
+   weight page has that the workout page does not.
+   ========================================================== */
+
+/* The card fills the content area the way the deck does, minus the rail
+   and the gesture handling — there is one card and nothing to swipe to. */
+.weigh-stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+/* Badges and body are centred TOGETHER as one group. The body deliberately
+   does not take flex:1 — when it did, it ate the whole card and stranded the
+   badges alone against the top edge with a screen of nothing under them. */
+.weigh-card {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.weigh-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+}
+
+/* Both badges sit in a centred row. .streak-badge carries margin-right:auto
+   for its use inside gym-tracker's exercise header, which here would shove
+   the pair apart — so the margins are cancelled rather than the rule being
+   loosened over there. */
+.weigh-badges {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.weigh-badge {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* The date is a caption, not the headline — the number is. This started out
+   borrowing .card-name from the deck, which is sized to be an exercise
+   nameplate and turned "Monday, September 7" into two lines of 40px type
+   that dwarfed the field below it. */
+.weigh-date {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #e6e6f2;
+}
+
+.weigh-prompt {
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #4e4e63;
+}
+
+.weigh-entry {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin: 6px 0 2px;
+}
+
+/* Deliberately shaped like .hero-weight rather than like .input-field: the
+   number you are typing is the headline of the screen, and matching the
+   read-back state means the card does not jump when it commits. */
+.weigh-input {
+    /* Wide enough for "188.8" and no wider, so the underline hugs the number
+       instead of trailing off toward the unit. tabular-nums keeps the box from
+       twitching as digits change. */
+    width: 5ch;
+    font-variant-numeric: tabular-nums;
+    padding: 0;
+    background: none;
+    border: none;
+    border-bottom: 2px solid #24243a;
+    border-radius: 0;
+    color: #f0f0fa;
+    font-family: inherit;
+    font-size: clamp(44px, min(19vw, 12vh), 84px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.045em;
+    text-align: center;
+    -webkit-appearance: none;
+    transition: border-color 0.25s ease-out;
+}
+
+.weigh-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent-muted);
+}
+
+
+.weigh-input-unit {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #6a6a85;
+}
+
+.weigh-submit {
+    max-width: 280px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.weigh-link {
+    background: none;
+    border: none;
+    color: #4e4e63;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 6px;
+}
+
+.weigh-chip {
+    align-self: center;
+}
+
+.weigh-hero {
+    padding-bottom: 0;
+}
+
+/* The disclaimer under today's number. Quiet on purpose — it is a promise
+   the page is keeping, not a warning. */
+.weigh-ephemeral {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: #3d3d50;
+    margin-top: -6px;
+}
+
+.weigh-divider {
+    width: 60%;
+    max-width: 220px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #24243a, transparent);
+    margin: 4px 0;
+}
+
+.weigh-trend-label {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #4e4e63;
+    margin-bottom: 4px;
+}
+
+.weigh-trend-value {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--accent-muted);
+    line-height: 1;
+}
+
+/* Fixed hue, like .hero-tag.up in styles.css: green here means "moving the
+   way a cut wants", which is meaning rather than decoration and so must not
+   rotate with the daily palette. */
+.weigh-rate {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6a6a85;
+}
+
+.weigh-rate.good,
+.weigh-chart-rate.good {
+    color: #4CAF50;
+}
+
+/* ---- Cut plan dashboard ---- */
+
+/* Leads the History screen. Same card treatment as the chart below it so the
+   two read as one column rather than as a widget bolted on top. */
+.plan-card {
+    flex: none;
+    padding: 16px 16px 14px;
+    margin-bottom: 14px;
+    border-radius: 18px;
+    border: 1px solid #1c1c2c;
+    background:
+        radial-gradient(120% 90% at 50% 0%, rgba(var(--accent-rgb), 0.22) 0%, rgba(var(--accent-rgb), 0) 70%),
+        linear-gradient(180deg, #12121f 0%, #0b0b16 100%);
+}
+
+.plan-card-empty {
+    text-align: center;
+}
+
+.plan-empty-text {
+    font-size: 13px;
+    color: #4e4e63;
+    margin-bottom: 12px;
+}
+
+.plan-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.plan-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #e6e6f2;
+}
+
+.plan-edit {
+    flex: none;
+    background: none;
+    border: none;
+    color: var(--accent-muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 2px 0 2px 8px;
+}
+
+.plan-week {
+    margin-top: 2px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #4e4e63;
+}
+
+/* Borrows .finish-stats/.finish-stat-* from the deck's finish card — same
+   job, three numbers of equal weight — but centred and tightened, since this
+   sits in a list rather than filling a screen. */
+.plan-stats {
+    justify-content: center;
+    gap: 28px;
+    margin: 16px 0 14px;
+    text-align: center;
+}
+
+.plan-stats .finish-stat-value {
+    font-size: 30px;
+}
+
+/* Ahead of the plan is green, behind it is amber — deliberately never red.
+   Being behind on a cut is ordinary, and the palette should not file it as an
+   error. Fixed hues, like every other meaning-bearing colour here. */
+.plan-gap.good   { color: #4CAF50; }
+.plan-gap.behind { color: #ff9500; }
+
+.plan-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #16162a;
+    overflow: hidden;
+}
+
+.plan-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-hi), var(--accent-muted));
+    transition: width 0.4s ease-out;
+}
+
+.plan-bar-ends {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: #3d3d50;
+}
+
+.plan-lines {
+    margin-top: 14px;
+    border-top: 1px solid #1c1c2c;
+    padding-top: 10px;
+}
+
+.plan-line-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 0;
+    font-size: 12px;
+    color: #6a6a85;
+}
+
+.plan-line-row span:first-child {
+    color: #4e4e63;
+}
+
+/* ---- Plan editor (in Settings) ---- */
+
+.plan-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.plan-field-label {
+    flex: none;
+    font-size: 13px;
+    color: #8a8aa0;
+}
+
+.plan-field-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.plan-field-input .input-field {
+    width: 130px;
+    padding: 8px 10px;
+    font-size: 14px;
+}
+
+.plan-field-suffix {
+    flex: none;
+    width: 42px;
+    font-size: 11px;
+    color: #4e4e63;
+}
+
+/* ---- History ---- */
+
+.weigh-range {
+    flex: none;
+    margin-bottom: 14px;
+}
+
+.weigh-chart-card {
+    flex: none;
+    padding: 16px 14px 14px;
+    border-radius: 18px;
+    border: 1px solid #1c1c2c;
+    background: linear-gradient(180deg, #12121f 0%, #0b0b16 100%);
+}
+
+/* preserveAspectRatio="none" on the SVG lets the plot stretch to the card
+   width while the height stays fixed here, so the line always fills the box
+   at any screen width. Stroke width is held constant by vector-effect on the
+   path, which is what stops the stretch from smearing it. */
+.weigh-chart {
+    display: block;
+    width: 100%;
+    height: 120px;
+}
+
+/* The only labels the chart gets. There is no y axis by design — the shape
+   answers "which way", the rate below answers "how fast", and a value axis
+   would only add the ability to read a single morning off the line. */
+.weigh-chart-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: #3d3d50;
+}
+
+.weigh-chart-rate {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #6a6a85;
+}
+
+.weigh-week {
+    flex: none;
+}
+
+.weigh-week-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.weigh-week-avg {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #e6e6f2;
+}
+
+.weigh-week-unit {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #4e4e63;
+    margin-left: 6px;
+}
+
+.weigh-week-delta {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6a6a85;
+}
+
+.weigh-week-delta.good { color: #4CAF50; }
+.weigh-week-delta.up   { color: #ff9500; }
+
+/* Which plan week this row is, when the plan covers it. */
+.weigh-week-plan-tag {
+    margin-left: 8px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #3d3d50;
+}
+
+.weigh-week-vs {
+    margin-top: 6px;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: #4e4e63;
+}
+
+.weigh-week-vs.good   { color: #4CAF50; }
+.weigh-week-vs.behind { color: #ff9500; }
+
+.weigh-chart-key {
+    color: #4e4e63;
+}
+
+.weigh-week-count {
+    margin-left: auto;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: #3d3d50;
+}
+
+/* ---- Settings ---- */
+
+.weigh-setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid #1c1c2c;
+}
+
+.weigh-setting-label {
+    font-size: 14px;
+    color: #8a8aa0;
+}
+
+.weigh-setting-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-muted);
+}
+
+.weigh-setting-note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #4e4e63;
+    padding: 8px 0 4px;
+}
+
+/* Short screens, matching the breakpoint styles.css already uses. */
+@media (max-height: 700px) {
+    .weigh-body { gap: 10px; }
+    .weigh-trend-value { font-size: 32px; }
+    .weigh-chart { height: 96px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .weigh-input,
+    .weigh-submit,
+    .weigh-link {
+        transition: none;
+    }
+}

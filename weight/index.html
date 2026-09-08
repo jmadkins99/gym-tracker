@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Weight</title>
+    <!-- A dial rather than the dumbbell. Same accent purple and the same mass
+         test as the workout mark: a ring this thick plus one needle is the most
+         that still resolves at 16px, and it has to be distinguishable from the
+         dumbbell at that size because both tabs are usually open at once. -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%236a5a8a' stroke-width='4.5' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='11.5'/%3E%3Cpath d='M16 16 L9.5 10.5'/%3E%3C/g%3E%3C/svg%3E">
+    <!-- Same reasoning as the workout page: a plain script above the stylesheet,
+         because everything below is text/babel and would flash the fallback
+         purple before the day's palette landed. -->
+    <script src="../js/accentColor.js?v=1"></script>
+    <script>
+        (function () {
+            var icon = document.querySelector("link[rel='icon']");
+            if (!icon) return;
+            var dev = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+            var tint = dev ? '#ffffff' : (window.accentColor && window.accentColor.paletteFor(new Date()).muted);
+            if (tint) icon.setAttribute('href', icon.getAttribute('href').replace('%236a5a8a', '%23' + tint.slice(1)));
+        }());
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+    <link rel="stylesheet" href="../css/styles.css?v=61">
+    <link rel="stylesheet" href="../css/weight.css?v=1">
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- utils.js is loaded whole for three things: the APP_NAMESPACE rule, the
+         `storage` helper, and getMondayOfWeek. The namespace rule especially
+         must not be copied — it is the one piece that has to agree between the
+         two pages, and /gym-tracker/weight/ still contains '/gym-tracker/', so
+         this page lands in the live namespace with no extra work. The rest of
+         the file is workout-specific and simply goes uncalled; nothing in it
+         touches config.js at the top level, so config.js is not loaded here. -->
+    <script type="text/babel" src="../js/utils.js?v=61"></script>
+    <script type="text/babel" src="../js/weight/weightLogic.js?v=1"></script>
+    <script type="text/babel" src="../js/weight/weightSeed.js?v=1"></script>
+    <script type="text/babel" src="../js/weight/planLogic.js?v=1"></script>
+    <script type="text/babel" src="../js/components/weight/StreakBadges.jsx?v=1"></script>
+    <script type="text/babel" src="../js/components/weight/PlanSummary.jsx?v=1"></script>
+    <script type="text/babel" src="../js/components/weight/CheckInView.jsx?v=1"></script>
+    <script type="text/babel" src="../js/components/weight/WeightHistory.jsx?v=1"></script>
+    <script type="text/babel" src="../js/components/weight/WeightSettingsModal.jsx?v=1"></script>
+    <script type="text/babel" src="../js/components/weight/WeightApp.jsx?v=1"></script>
+</body>
+</html>
