@@ -551,7 +551,9 @@
                         const prior = weeks[i + 1];
                         const delta = prior ? wk.avg - prior.avg : null;
                         const planRow = planByWeek.get(wk.weekStart);
-                        const vsPlan = planRow && planRow.week > 0 ? wk.avg - planRow.planWeight : null;
+                        // Every plan row is a real week now that the baseline
+                        // week-0 row is gone, so there is no row to skip here.
+                        const vsPlan = planRow ? wk.avg - planRow.planWeight : null;
                         const open = openWeek === wk.weekStart;
                         return (
                             <div className={'history-item weigh-week' + (open ? ' open' : '')} key={wk.weekStart}>
@@ -578,10 +580,10 @@
                                 </div>
                                 {vsPlan !== null && (
                                     <div className={'weigh-week-vs' + (vsPlan <= 0 ? ' good' : ' behind')}>
-                                        plan {formatWeight(planRow.planWeight)} ·{' '}
+                                        target {formatWeight(planRow.planWeight)} ·{' '}
                                         {Math.abs(vsPlan) < 0.05
-                                            ? 'on plan'
-                                            : formatWeight(Math.abs(vsPlan)) + ' lb ' + (vsPlan < 0 ? 'ahead' : 'behind')}
+                                            ? 'on target'
+                                            : formatWeight(Math.abs(vsPlan)) + ' lb ' + (vsPlan < 0 ? 'under' : 'over')}
                                     </div>
                                 )}
                               </button>

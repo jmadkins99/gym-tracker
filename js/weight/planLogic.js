@@ -12,6 +12,21 @@
         // years. The EMA stays what it was — the live daily signal — and the
         // two answer different questions rather than competing.
         //
+        // Weeks are numbered from 1, which is a deliberate departure from the
+        // sheet. The sheet opened with a row 0 whose target was just the
+        // starting weight, because a spreadsheet needs somewhere to put the
+        // baseline; the effect was that a 12-week plan had thirteen rows and
+        // the week you actually began dieting asked nothing of you. Here the
+        // start weight is the anchor rather than a week, week 1 is the first
+        // week you are chasing something, and a 12-week plan has twelve rows.
+        //
+        // What a week's target MEANS follows from that: `planWeightForWeek(n)`
+        // is where the line has arrived by the END of week n — the number to be
+        // at or under when that week closes, not where you should already be on
+        // its Monday. Both are Monday boundaries either way; this is the one
+        // that reads as a goal to beat rather than as a verdict on a week that
+        // has barely started.
+        //
         // Note what this module does NOT do. It reports the gap to the plan and
         // stops there: no re-baselining prompt, no verdict. Two of the three
         // sheets it replaces are titled "FAILED", and an app that says so out
@@ -21,8 +36,8 @@
         // saved plan overrides this.
         const DEFAULT_CUT_PLAN = {
             name: '2026 September – November Cut',
-            startDate: '2026-08-24',  // Monday of week 0
-            startWeight: 170,         // week 0 actual, per the sheet
+            startDate: '2026-08-24',  // Monday week 1 starts on
+            startWeight: 170,         // the weight it starts from, per the sheet
             goalWeight: 145,          // the sheet's 25 lb goal, as a weight
             ratePerWeek: 2,           // the plan line's slope
             weeks: 12,
@@ -54,9 +69,11 @@
             return plan.startWeight - plan.goalWeight;
         }
 
-        // The target line at week `i`. Week 0 is the starting weight itself,
-        // matching the sheet, where the Estimated column is blank on row 0 and
-        // starts from the week-0 actual.
+        // The target line at week `i`: where the plan has arrived by the end of
+        // that week, and so the number to beat during it. Week 1 already asks
+        // for a week's worth of loss, which is the point — the first week of a
+        // cut is a week of dieting like any other. `i` of 0 is the start weight
+        // and is the plan's anchor rather than a week of its own.
         function planWeightForWeek(plan, i) {
             return plan.startWeight - plan.ratePerWeek * i;
         }
@@ -69,13 +86,15 @@
             return planWeightForWeek(plan, Math.max(0, Math.min(plan.weeks, weeksIn)));
         }
 
-        // Whole weeks elapsed since the plan's start, by Monday. Can exceed
-        // `plan.weeks` — a plan you have run past is not an error state, and
-        // the UI says "week 14 of 12" rather than pretending it ended.
-        function planWeekIndex(plan, dayKey) {
+        // Which plan week a day falls in, counting from 1 on the plan's own
+        // starting Monday. Can exceed `plan.weeks` — a plan you have run past
+        // is not an error state, and the UI says so rather than pretending it
+        // ended. Can also come out below 1, for a plan whose start date is
+        // still in the future.
+        function planWeekNumber(plan, dayKey) {
             const from = parseDayKey(plan.startDate);
             const to = getMondayOfWeek(parseDayKey(dayKey));
-            return Math.round((to - from) / MS_PER_WEEK);
+            return Math.round((to - from) / MS_PER_WEEK) + 1;
         }
 
         // The ledger: one row per plan week, joined to whatever weekly average
@@ -89,9 +108,9 @@
             let prevActual = null;
             let cumulative = 0;
 
-            for (let i = 0; i <= plan.weeks; i++) {
+            for (let i = 1; i <= plan.weeks; i++) {
                 const start = parseDayKey(plan.startDate);
-                start.setDate(start.getDate() + i * 7);
+                start.setDate(start.getDate() + (i - 1) * 7);
                 const weekStart = localDayKey(start);
                 const wk = byWeek.get(weekStart);
                 const actual = wk ? wk.avg : null;
@@ -106,7 +125,7 @@
                 rows.push({
                     week: i,
                     weekStart,
-                    planWeight: i === 0 ? plan.startWeight : planWeightForWeek(plan, i),
+                    planWeight: planWeightForWeek(plan, i),
                     actual,
                     count: wk ? wk.count : 0,
                     delta,
@@ -126,7 +145,7 @@
             if (!plan) return null;
 
             const rows = planRows(plan, log);
-            const weekIndex = planWeekIndex(plan, todayKey);
+            const weekNumber = planWeekNumber(plan, todayKey);
             const withData = rows.filter((r) => r.actual !== null);
             const latest = withData.length ? withData[withData.length - 1] : null;
 
@@ -136,10 +155,12 @@
             const toGo = goalPounds - lost;
             const goalWeight = plan.goalWeight;
 
-            // The plan line at the CURRENT week, even if this week has no
-            // readings yet — the gap is "where should I be today", and today
-            // does not stop happening because the scale went unused.
-            const planWeight = planWeightForWeek(plan, Math.max(0, Math.min(plan.weeks, weekIndex)));
+            // This week's target, even if this week has no readings yet — the
+            // number you are chasing does not stop being the number you are
+            // chasing because the scale went unused. Clamped to the plan's own
+            // span so a plan not yet started shows week 1's target and one run
+            // past its end keeps showing its last.
+            const planWeight = planWeightForWeek(plan, Math.max(1, Math.min(plan.weeks, weekNumber)));
             const gap = actual - planWeight;
 
             // Mean weekly change over the weeks that have one, which is the
@@ -160,7 +181,7 @@
             }
 
             return {
-                plan, rows, weekIndex, actual, lost, toGo, goalWeight, goalPounds,
+                plan, rows, weekNumber, actual, lost, toGo, goalWeight, goalPounds,
                 planWeight, gap, avgRate, projectedFinish,
                 latestWeekStart: latest ? latest.weekStart : null,
                 // Guarded: a goal weight at or above the start weight makes

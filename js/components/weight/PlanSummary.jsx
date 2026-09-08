@@ -17,21 +17,25 @@
                 );
             }
 
-            const { plan, weekIndex, lost, toGo, gap, pct, avgRate, goalWeight,
+            const { plan, weekNumber, lost, toGo, gap, pct, avgRate, goalWeight,
                     goalPounds, planWeight, actual, projectedFinish, targetDate } = progress;
 
             // Past the last planned week the counter would read "week 14 of
-            // 12", so it stops counting up and says so instead.
-            const weekLabel = weekIndex > plan.weeks
+            // 12", so it stops counting up and says so instead. Floored at 1
+            // for a plan whose start Monday has not arrived yet.
+            const weekLabel = weekNumber > plan.weeks
                 ? 'Past week ' + plan.weeks
-                : 'Week ' + Math.max(0, weekIndex) + ' of ' + plan.weeks;
+                : 'Week ' + Math.max(1, weekNumber) + ' of ' + plan.weeks;
 
-            // Ahead of the line is green, behind it is amber — never red. Being
-            // behind on a cut is ordinary, and the palette should not treat it
-            // as an error.
+            // Under the line is green, over it is amber — never red. Being over
+            // on a cut is ordinary, and the palette should not treat it as an
+            // error. It is especially ordinary now that the week's target is
+            // the one to beat by Sunday: most of a week is spent above it, and
+            // that is the plan working rather than failing, so the word for it
+            // is what is left to beat rather than "behind".
             const gapClass = gap < -0.05 ? 'good' : gap > 0.05 ? 'behind' : '';
-            const gapLabel = Math.abs(gap) < 0.05 ? 'on plan'
-                : (gap < 0 ? 'ahead' : 'behind');
+            const gapLabel = Math.abs(gap) < 0.05 ? 'on target'
+                : (gap < 0 ? 'under' : 'to beat');
 
             return (
                 <div className="plan-card">
@@ -69,8 +73,8 @@
 
                     <div className="plan-lines">
                         <div className="plan-line-row">
-                            <span>Plan says</span>
-                            <span>{formatWeight(planWeight)} lb this week</span>
+                            <span>Beat this week</span>
+                            <span>{formatWeight(planWeight)} lb</span>
                         </div>
                         <div className="plan-line-row">
                             <span>Your average</span>
