@@ -8,8 +8,11 @@
         // styling choice, it is a data choice: nothing in here can hand back a
         // historical raw weight. `withTrend` is the only function that touches
         // the raw series, and everything downstream consumes the smoothed
-        // value. Today's own reading is exposed by `entryFor` alone, because a
-        // number you cannot see is a number you cannot correct.
+        // value. The exceptions are the two functions that exist so a reading
+        // can be CORRECTED — `entryFor` for today's own number, and
+        // `entriesForWeek` for the days inside one week of the ledger — because
+        // a number you cannot see is a number you cannot correct. Both are
+        // reached by asking for a specific day or week, never by scrolling.
 
         // How far each new reading pulls the trend toward itself. 0.25 is
         // roughly a one-week time constant: a single salty-dinner spike moves
@@ -56,6 +59,46 @@
             const rest = (log || []).filter((e) => e.date !== dayKey);
             rest.push({ date: dayKey, weight, loggedAt: new Date().toISOString() });
             return sortedLog(rest);
+        }
+
+        // Corrects a day that is already in the log. Deliberately not the same
+        // call as upsertEntry, for one reason: `loggedAt` is left alone and an
+        // `editedAt` stamp is added beside it. The original records when the
+        // scale was actually stood on, which is a fact a later correction does
+        // not get to overwrite.
+        //
+        // A day with no entry is left untouched rather than created. Typing a
+        // weight for a morning that has already passed is a different act from
+        // fixing a mistyped one, and the history screen only offers the second.
+        function editEntry(log, dayKey, weight) {
+            return sortedLog((log || []).map((e) => (
+                e.date === dayKey
+                    ? Object.assign({}, e, { weight, editedAt: new Date().toISOString() })
+                    : e
+            )));
+        }
+
+        // Drops a day from the log. The escape hatch for a reading that should
+        // never have been recorded at all — a second person on the scale, a
+        // number typed into the wrong day — as opposed to one that is merely
+        // wrong, which is what editEntry is for.
+        function removeEntry(log, dayKey) {
+            return sortedLog((log || []).filter((e) => e.date !== dayKey));
+        }
+
+        // The raw readings inside one week of the ledger, newest first, keyed
+        // by the same Monday `weeklyAverages` buckets on so a row and its
+        // entries cannot disagree about which week a day belongs to.
+        //
+        // This is the one function that hands back historical raw weights, and
+        // it exists for corrections. The history screen keeps that narrow: the
+        // days are collapsed until a specific week is opened, so the page still
+        // opens on aggregates and there is still no view that scrolls back
+        // through dailies.
+        function entriesForWeek(log, weekStart) {
+            return sortedLog(log)
+                .filter((e) => localDayKey(getMondayOfWeek(parseDayKey(e.date))) === weekStart)
+                .reverse();
         }
 
         // The raw series with an exponential trend attached to each point.

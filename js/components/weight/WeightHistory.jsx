@@ -1,9 +1,17 @@
-        // History. The counterpart to gym-tracker's weekly list, and still
-        // subject to the check-in card's rule: no daily RAW reading appears
-        // here. What survives into history is the smoothed trend and the weekly
-        // average — a single morning's weight is mostly water and is not
-        // information about a cut, so there is deliberately no view that
-        // scrolls back through dailies.
+        // History. The counterpart to gym-tracker's weekly list. What it shows
+        // on arrival is the smoothed trend and the weekly average — a single
+        // morning's weight is mostly water and is not information about a cut,
+        // so there is still no view that SCROLLS back through dailies.
+        //
+        // A week row now opens, though, and inside it are that week's readings
+        // with an edit and a delete on each. That is a deliberate narrowing of
+        // the original rule rather than an abandonment of it, and the reason is
+        // that the rule had a hole: a fat-fingered 187 for 178 was correctable
+        // only until midnight, after which it sat in the trend, the weekly
+        // average and the plan gap forever, wrong and unreachable. A number the
+        // app derives everything from has to be fixable. What keeps the spirit
+        // is that the dailies stay CLOSED: opening History still shows nothing
+        // raw, and reading one takes a deliberate tap on the week it is in.
         //
         // The chart does carry a labelled y-axis. That is a change of mind, and
         // a narrow one: the axis is scaled to the TREND, so what a value can be
@@ -46,7 +54,7 @@
         const HOLD_MS = 180;
         const HOLD_SLOP = 10;
 
-        function formatScrubDay(dayKey) {
+        function formatWeekdayDay(dayKey) {
             return parseDayKey(dayKey).toLocaleDateString('en-US', {
                 weekday: 'short', month: 'short', day: 'numeric',
             });
@@ -349,7 +357,7 @@
                             <div className="weigh-scrub-weight">
                                 {formatWeight(at.trend)}<span> lb</span>
                             </div>
-                            <div className="weigh-scrub-date">{formatScrubDay(at.date)} · trend</div>
+                            <div className="weigh-scrub-date">{formatWeekdayDay(at.date)} · trend</div>
                         </div>
                     )}
                 </div>
@@ -357,11 +365,107 @@
             );
         }
 
-        function WeightHistory({ log, range, setRange, progress, onEditPlan }) {
+        // The readings inside one opened week, newest first, each with a way
+        // to correct it.
+        //
+        // Editing is inline rather than a modal, and that is the same decision
+        // the check-in card makes for today's number: a correction is one field
+        // and two taps, and a modal over a list you are scanning loses your
+        // place in it. Only one row is open at a time — the state is a day key,
+        // not a set — so a half-typed correction can never be sitting in a row
+        // that has scrolled off screen.
+        function WeekEntries({ entries, onSave, onDelete }) {
+            const [editing, setEditing] = React.useState(null);
+            const [draft, setDraft] = React.useState('');
+            const inputRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (editing && inputRef.current) inputRef.current.select();
+            }, [editing]);
+
+            // Same keystroke filter as the check-in field, and deliberately the
+            // same one: a correction that accepts input the original did not
+            // would let a value into the log by the back door.
+            const onDraftChange = (e) => {
+                const v = e.target.value;
+                if (v === '' || /^\d{0,3}(\.\d?)?$/.test(v)) setDraft(v);
+            };
+
+            const parsed = parseFloat(draft);
+            const valid = draft !== '' && !isNaN(parsed) && parsed > 0;
+
+            const begin = (entry) => {
+                setEditing(entry.date);
+                setDraft(formatWeight(entry.weight));
+            };
+
+            const commit = (dayKey) => {
+                if (!valid) return;
+                onSave(dayKey, parsed);
+                setEditing(null);
+            };
+
+            // Confirmed, unlike the edit: a mistyped correction is visible in
+            // the row you just typed it into, a deleted morning is gone from
+            // the record with nothing left on screen to notice.
+            const drop = (entry) => {
+                if (!confirm('Delete the ' + formatWeekdayDay(entry.date) + ' reading? '
+                             + 'It is removed from the trend and the weekly average.')) return;
+                onDelete(entry.date);
+                setEditing(null);
+            };
+
+            return (
+                <div className="weigh-days">
+                    {entries.map((entry) => (
+                        <div className={'weigh-day' + (editing === entry.date ? ' editing' : '')}
+                             key={entry.date}>
+                            <div className="weigh-day-date">
+                                {formatWeekdayDay(entry.date)}
+                                {entry.editedAt && <span className="weigh-day-edited">edited</span>}
+                            </div>
+                            {editing === entry.date ? (
+                                <div className="weigh-day-edit">
+                                    <input
+                                        ref={inputRef}
+                                        className="weigh-day-input"
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={draft}
+                                        onChange={onDraftChange}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') commit(entry.date);
+                                            if (e.key === 'Escape') setEditing(null);
+                                        }}
+                                        aria-label={'Weight for ' + formatWeekdayDay(entry.date)}
+                                    />
+                                    <button className="weigh-day-btn save" disabled={!valid}
+                                            onClick={() => commit(entry.date)}>Save</button>
+                                    <button className="weigh-day-btn" onClick={() => setEditing(null)}>Cancel</button>
+                                    <button className="weigh-day-btn danger" onClick={() => drop(entry)}>Delete</button>
+                                </div>
+                            ) : (
+                                <button className="weigh-day-value" onClick={() => begin(entry)}>
+                                    {formatWeight(entry.weight)}<span className="weigh-day-unit">lbs</span>
+                                    <span className="weigh-day-pencil">✎</span>
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        function WeightHistory({ log, range, setRange, progress, onEditPlan, onEditEntry, onDeleteEntry }) {
             const points = trendSeries(log, range || 0);
             const weeks = weeklyAverages(log).slice().reverse();
             const rate = weeklyRate(log);
             const rangeAvg = rangeAverage(log, range || 0);
+            // Which week's dailies are open, by its Monday. One at a time: the
+            // ledger runs to a hundred-odd rows on the All range, and a screen
+            // with several weeks unfolded is the scrollable list of raw
+            // readings this page does not have.
+            const [openWeek, setOpenWeek] = React.useState(null);
 
             // Plan week rows keyed by their Monday, so the ledger below can
             // show "vs plan" on the weeks the plan actually covers.
@@ -439,9 +543,16 @@
                         const delta = prior ? wk.avg - prior.avg : null;
                         const planRow = planByWeek.get(wk.weekStart);
                         const vsPlan = planRow && planRow.week > 0 ? wk.avg - planRow.planWeight : null;
+                        const open = openWeek === wk.weekStart;
                         return (
-                            <div className="history-item weigh-week" key={wk.weekStart}>
+                            <div className={'history-item weigh-week' + (open ? ' open' : '')} key={wk.weekStart}>
+                              <button
+                                  className="weigh-week-head"
+                                  aria-expanded={open}
+                                  onClick={() => setOpenWeek(open ? null : wk.weekStart)}
+                              >
                                 <div className="history-date">
+                                    <span className="weigh-week-caret">{open ? '▾' : '▸'}</span>
                                     Week of {formatShortDay(wk.weekStart)}
                                     {planRow && <span className="weigh-week-plan-tag">plan wk {planRow.week}</span>}
                                 </div>
@@ -464,6 +575,14 @@
                                             : formatWeight(Math.abs(vsPlan)) + ' lb ' + (vsPlan < 0 ? 'ahead' : 'behind')}
                                     </div>
                                 )}
+                              </button>
+                              {open && (
+                                  <WeekEntries
+                                      entries={entriesForWeek(log, wk.weekStart)}
+                                      onSave={onEditEntry}
+                                      onDelete={onDeleteEntry}
+                                  />
+                              )}
                             </div>
                         );
                     })}

@@ -604,6 +604,164 @@
     color: #3d3d50;
 }
 
+/* ---- Opened week: the day rows ---- */
+
+/* The whole summary block is the toggle, so the tap target is the row rather
+   than a caret a thumb has to find. It has to be un-buttoned back to a block
+   first — a <button> brings its own font, centring and background along. */
+.weigh-week-head {
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.weigh-week-caret {
+    display: inline-block;
+    width: 14px;
+    color: #4e4e63;
+    font-size: 11px;
+}
+
+.weigh-week.open .weigh-week-caret {
+    color: var(--accent-muted);
+}
+
+.weigh-days {
+    margin-top: 12px;
+    padding-top: 4px;
+    border-top: 1px solid #1a1a2a;
+}
+
+.weigh-day {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid #14141f;
+}
+
+.weigh-day:last-child {
+    border-bottom: none;
+}
+
+/* The edit row is two lines on a phone; letting it wrap beats shrinking the
+   buttons below the 44px-ish target they already sit at. */
+.weigh-day.editing {
+    flex-wrap: wrap;
+}
+
+.weigh-day-date {
+    font-size: 13px;
+    color: #8a8aa0;
+}
+
+.weigh-day-edited {
+    margin-left: 6px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #3d3d50;
+}
+
+/* The reading itself is the edit control — same "tap the number to change it"
+   the check-in card uses, so there is no separate pencil button to hunt for.
+   The glyph is a hint, not the target. */
+.weigh-day-value {
+    margin-left: auto;
+    padding: 4px 0 4px 8px;
+    background: none;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    color: #e6e6f2;
+    cursor: pointer;
+}
+
+.weigh-day-unit {
+    margin-left: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #4e4e63;
+}
+
+.weigh-day-pencil {
+    margin-left: 8px;
+    font-size: 12px;
+    color: #4e4e63;
+}
+
+.weigh-day-edit {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+/* The wrapped case: the controls have dropped to their own line, so they need
+   the breathing room the flex gap was providing beside the date. */
+.weigh-day.editing .weigh-day-edit {
+    margin-top: 6px;
+}
+
+.weigh-day-input {
+    width: 68px;
+    padding: 6px 8px;
+    background: #14141f;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    color: #e6e6f2;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    text-align: center;
+}
+
+.weigh-day-input:focus {
+    outline: none;
+    border-color: var(--accent-muted);
+}
+
+.weigh-day-btn {
+    padding: 6px 10px;
+    background: #1a1a2a;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    color: #8a8aa0;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.weigh-day-btn.save {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #b8b8d0;
+}
+
+.weigh-day-btn.save:disabled {
+    background: #1a1a2a;
+    border-color: #2a2a3a;
+    color: #4e4e63;
+}
+
+.weigh-day-btn.danger {
+    background: #3a1a2a;
+    border-color: #3a1a2a;
+    color: #b8b8d0;
+}
+
+.weigh-day-btn:active {
+    transform: scale(0.96);
+}
+
 /* ---- Settings ---- */
 
 .weigh-setting-row {
@@ -646,5 +804,9 @@
     .weigh-submit,
     .weigh-link {
         transition: none;
+    }
+
+    .weigh-day-btn:active {
+        transform: none;
     }
 }

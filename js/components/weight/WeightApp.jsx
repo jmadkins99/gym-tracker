@@ -152,6 +152,21 @@
                 }
             };
 
+            // Corrections from the History ledger. Separate handlers rather
+            // than one upsert, because these two acts are not the same as a
+            // check-in: neither restamps `loggedAt`, and neither can invent a
+            // day. Deliberately no celebration either — the gold aura is for
+            // standing on the scale, not for fixing a typo about it.
+            const handleEditEntry = (dayKey, weight) => {
+                persist(editEntry(log, dayKey, weight));
+                flash('Updated');
+            };
+
+            const handleDeleteEntry = (dayKey) => {
+                persist(removeEntry(log, dayKey));
+                flash('Deleted');
+            };
+
             const exportData = () => {
                 const blob = new Blob([JSON.stringify({
                     weightLog: log,
@@ -249,6 +264,8 @@
                                 setRange={setRange}
                                 progress={progress}
                                 onEditPlan={() => { setSettingsOnPlan(true); setShowSettings(true); }}
+                                onEditEntry={handleEditEntry}
+                                onDeleteEntry={handleDeleteEntry}
                             />
                         )}
                     </div>
