@@ -23,7 +23,10 @@
             const [log, setLog] = React.useState([]);
             const [loaded, setLoaded] = React.useState(false);
             const [view, setView] = React.useState('checkin');
-            const [range, setRange] = React.useState(30);
+            // History opens on the last week. The 30d view was the first
+            // default, but the question this page gets opened with is "how did
+            // this week go" — 7d answers it without a scrub.
+            const [range, setRange] = React.useState(7);
             const [plan, setPlan] = React.useState(null);
             const [showSettings, setShowSettings] = React.useState(false);
             const [settingsOnPlan, setSettingsOnPlan] = React.useState(false);
