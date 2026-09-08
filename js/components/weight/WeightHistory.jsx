@@ -379,10 +379,6 @@
             const [draft, setDraft] = React.useState('');
             const inputRef = React.useRef(null);
 
-            React.useEffect(() => {
-                if (editing && inputRef.current) inputRef.current.select();
-            }, [editing]);
-
             // Same keystroke filter as the check-in field, and deliberately the
             // same one: a correction that accepts input the original did not
             // would let a value into the log by the back door.
@@ -394,9 +390,22 @@
             const parsed = parseFloat(draft);
             const valid = draft !== '' && !isNaN(parsed) && parsed > 0;
 
+            // The focus has to happen inside the tap that opens the editor.
+            // iOS raises the keyboard only for a focus() that runs in the same
+            // task as the user gesture, and focusing from an effect after the
+            // re-render is one task too late: the field takes the caret and the
+            // keyboard stays down, so it costs a second tap to type into. The
+            // input does not exist yet when the tap arrives, so flushSync
+            // renders it immediately — that is the whole reason for reaching
+            // for it here rather than letting the update batch as usual.
             const begin = (entry) => {
-                setEditing(entry.date);
-                setDraft(formatWeight(entry.weight));
+                ReactDOM.flushSync(() => {
+                    setEditing(entry.date);
+                    setDraft(formatWeight(entry.weight));
+                });
+                // select() focuses as well, so the keyboard comes up on a field
+                // whose contents are ready to be typed over.
+                if (inputRef.current) inputRef.current.select();
             };
 
             const commit = (dayKey) => {
