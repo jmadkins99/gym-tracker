@@ -1,22 +1,25 @@
-        // History. The counterpart to gym-tracker's weekly list, and subject to
-        // the same rule as the check-in card: no daily raw reading appears
-        // here, ever. What survives into history is the smoothed trend (as a
-        // shape) and the weekly average (as a number). A single day's weight is
-        // mostly water and is not information about a cut, so this screen is
-        // built so that there is no version of it you can scroll back through.
+        // History. The counterpart to gym-tracker's weekly list, and still
+        // subject to the check-in card's rule: no daily RAW reading appears
+        // here. What survives into history is the smoothed trend and the weekly
+        // average — a single morning's weight is mostly water and is not
+        // information about a cut, so there is deliberately no view that
+        // scrolls back through dailies.
         //
-        // The chart carries no y-axis labels for the same reason. The useful
-        // question is "which way and how fast", which the shape and the
-        // lb/week figure underneath both answer; a labelled axis only adds the
-        // ability to read a value off a specific morning.
+        // The chart does carry a labelled y-axis. That is a change of mind, and
+        // a narrow one: the axis is scaled to the TREND, so what a value can be
+        // read off it is a smoothed figure, never the number that was on the
+        // scale on a given morning. The rule that survives is about raw
+        // readings, not about arithmetic in general — and without a scale the
+        // same picture is drawn by half a pound of drift and by ten, which made
+        // the chart's shape genuinely hard to read against the plan line.
         //
         // The cut-plan dashboard leads the screen, because "am I on track" is
         // the question this page gets opened for once a plan exists.
 
         const RANGE_OPTIONS = [
+            { key: 7, label: '7d' },
             { key: 30, label: '30d' },
-            { key: 90, label: '90d' },
-            { key: 365, label: '1y' },
+            { key: 183, label: '6mo' },
             { key: 0, label: 'All' },
         ];
 
@@ -26,7 +29,131 @@
         const CHART_H = 120;
         const CHART_PAD = 10;
 
+        // A round gridline interval near span/targetTicks — 1, 2, 5 or 10 lb
+        // and their decades. Ticks at 3.7 lb intervals would be arithmetically
+        // fine and unreadable.
+        function niceStep(span, targetTicks) {
+            const raw = span / Math.max(1, targetTicks);
+            const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+            const norm = raw / mag;
+            return (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+        }
+
+        // How long a finger must hold still before the chart takes the gesture,
+        // and how far it may wander in that time. 180ms is short enough not to
+        // feel like a wait, long enough that a flick down the page never trips
+        // it.
+        const HOLD_MS = 180;
+        const HOLD_SLOP = 10;
+
+        function formatScrubDay(dayKey) {
+            return parseDayKey(dayKey).toLocaleDateString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric',
+            });
+        }
+
         function TrendChart({ points, plan }) {
+            // Index into `points` currently under the finger, or null. The
+            // hooks sit above the early return so their order is fixed across
+            // every render, which is what the rules of hooks are about.
+            const [scrub, setScrub] = React.useState(null);
+            const [held, setHeld] = React.useState(false);
+            const plotRef = React.useRef(null);
+            // Lets the touch effect below — mounted once — call into the
+            // current render's pickIndex without re-binding listeners on every
+            // frame of a drag.
+            const pickRef = React.useRef(null);
+
+            // A range change swaps the series out from under a held finger, and
+            // a stale index can point past the end of the new one.
+            React.useEffect(() => { setScrub(null); }, [points.length]);
+
+            // ---- Touch ----
+            //
+            // Touch cannot reuse the mouse path, and the reason is specific:
+            // React attaches its handlers at the root, which makes the
+            // touchmove listener PASSIVE on iOS, so preventDefault() from an
+            // onPointerMove prop is silently ignored. The scrub then spends
+            // every gesture fighting the page scroll and losing — the browser
+            // wins, starts scrolling, and fires pointercancel, which yanks the
+            // readout away mid-drag. Hence a real addEventListener with
+            // { passive: false }.
+            //
+            // The gesture is long-press to engage, which is what
+            // react-beautiful-dnd's touch sensor and amCharts' tapToActivate
+            // both settled on for the same reason: a chart that claims every
+            // touch is a chart you cannot scroll past on a phone. Move before
+            // the hold expires and it is a scroll, so we bow out; hold still
+            // and the gesture becomes ours, and from then on preventDefault
+            // keeps the page still under the finger.
+            React.useEffect(() => {
+                const el = plotRef.current;
+                if (!el) return undefined;
+
+                let holdTimer = null;
+                let engaged = false;
+                let startX = 0;
+                let startY = 0;
+
+                const clearHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+
+                const onTouchStart = (e) => {
+                    if (e.touches.length !== 1) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    engaged = false;
+                    clearHold();
+                    holdTimer = setTimeout(() => {
+                        engaged = true;
+                        setHeld(true);
+                        setScrub(pickRef.current(startX));
+                        // Same confirmation react-beautiful-dnd offers on drag
+                        // start. Absent on iOS Safari, which exposes no
+                        // vibrate() — the visual change carries it there.
+                        if (navigator.vibrate) navigator.vibrate(8);
+                    }, HOLD_MS);
+                };
+
+                const onTouchMove = (e) => {
+                    const t = e.touches[0];
+                    if (!t) return;
+                    if (!engaged) {
+                        // Still deciding. Movement past the slop means the
+                        // finger is scrolling, so stand down and let it.
+                        if (Math.abs(t.clientX - startX) > HOLD_SLOP ||
+                            Math.abs(t.clientY - startY) > HOLD_SLOP) {
+                            clearHold();
+                        }
+                        return;
+                    }
+                    // Engaged: this gesture is ours, and this is the call that
+                    // needs the non-passive listener to have any effect.
+                    e.preventDefault();
+                    setScrub(pickRef.current(t.clientX));
+                };
+
+                const onTouchEnd = () => {
+                    clearHold();
+                    if (engaged) {
+                        engaged = false;
+                        setHeld(false);
+                        setScrub(null);
+                    }
+                };
+
+                el.addEventListener('touchstart', onTouchStart, { passive: true });
+                el.addEventListener('touchmove', onTouchMove, { passive: false });
+                el.addEventListener('touchend', onTouchEnd);
+                el.addEventListener('touchcancel', onTouchEnd);
+                return () => {
+                    clearHold();
+                    el.removeEventListener('touchstart', onTouchStart);
+                    el.removeEventListener('touchmove', onTouchMove);
+                    el.removeEventListener('touchend', onTouchEnd);
+                    el.removeEventListener('touchcancel', onTouchEnd);
+                };
+            }, []);
+
             if (points.length === 0) return null;
 
             const xs = points.map((p) => parseDayKey(p.date).getTime());
@@ -65,13 +192,27 @@
             const yMin = Math.min.apply(null, ys);
             const yMax = Math.max.apply(null, ys);
 
-            // A flat stretch would otherwise divide by zero and, worse, get
-            // stretched to fill the box — turning half a pound of drift into a
-            // dramatic slope. Pad the range to at least 2 lbs so a quiet week
-            // looks like a quiet week.
-            const span = Math.max(yMax - yMin, 2);
-            const mid = (yMin + yMax) / 2;
-            const lo = mid - span / 2;
+            // The domain is snapped OUT to whole gridline intervals, so every
+            // label is a round number and the top and bottom lines sit exactly
+            // on the edges of the plot.
+            //
+            // The floor of 2 lb is what stops a flat stretch dividing by zero
+            // and, worse, being stretched to fill the box — half a pound of
+            // drift rendered as a dramatic slope. With a labelled axis that
+            // floor now also shows its work: a quiet week reads as a quiet week
+            // because the scale beside it says so.
+            const step = niceStep(Math.max(yMax - yMin, 2), 4);
+            let lo = Math.floor(yMin / step) * step;
+            let hi = Math.ceil(yMax / step) * step;
+            if (hi - lo < step * 2) {
+                lo = Math.floor(((yMin + yMax) / 2 - step) / step) * step;
+                hi = lo + step * 2;
+            }
+            const span = hi - lo;
+
+            const ticks = [];
+            for (let v = lo; v <= hi + 1e-9; v += step) ticks.push(v);
+            const tickLabel = (v) => (step >= 1 ? String(Math.round(v)) : v.toFixed(1));
 
             const x = (t) => (xMax === xMin
                 ? CHART_W / 2
@@ -87,26 +228,132 @@
                 ? planPts.map((p, i) => (i === 0 ? 'M' : 'L') + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' ')
                 : null;
 
+            // ---- Scrub ----
+            //
+            // Press and drag along the plot to read a point off it. The value
+            // shown is the TREND at that date, not that morning's raw reading —
+            // the line under your finger is the trend line, so anything else
+            // would be labelling one number with another's position, and the
+            // raw dailies stay unrecallable as they are everywhere else here.
+            //
+            // Hand-written pointer events, matching SwipeDeck: no gesture
+            // library, no build step to add one, and pointer events cover mouse
+            // and touch in a single path.
+            const pickIndex = (clientX) => {
+                const rect = plotRef.current && plotRef.current.getBoundingClientRect();
+                if (!rect || !rect.width) return null;
+                // Undo x(): pixels -> viewBox units -> fraction -> timestamp.
+                const vx = ((clientX - rect.left) / rect.width) * CHART_W;
+                const f = (vx - CHART_PAD) / (CHART_W - CHART_PAD * 2);
+                const t = xMin + f * (xMax - xMin);
+                let best = 0;
+                let bestD = Infinity;
+                for (let i = 0; i < xs.length; i++) {
+                    const d = Math.abs(xs[i] - t);
+                    if (d < bestD) { bestD = d; best = i; }
+                }
+                return best;
+            };
+            pickRef.current = pickIndex;
+
+            // Mouse only. Touch is handled separately below, and these same
+            // events fire for touch too — without this guard every tap runs
+            // both paths and they fight over `scrub`.
+            const onDown = (e) => {
+                if (e.pointerType === 'touch') return;
+                // Capture, so a drag that wanders off the chart keeps reporting
+                // here instead of being swallowed by whatever it crosses.
+                if (e.currentTarget.setPointerCapture) {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                }
+                setScrub(pickIndex(e.clientX));
+            };
+            const onMove = (e) => {
+                if (e.pointerType === 'touch' || scrub === null) return;
+                setScrub(pickIndex(e.clientX));
+            };
+            const endScrub = (e) => {
+                if (e && e.pointerType === 'touch') return;
+                setScrub(null);
+            };
+
+            const at = scrub !== null && scrub < points.length ? points[scrub] : null;
+            const atX = at ? coords[scrub][0] : 0;
+            const atPct = (atX / CHART_W) * 100;
+            // Anchor the readout so it never hangs off the card at either end.
+            const anchor = atPct < 18 ? 'start' : atPct > 82 ? 'end' : 'mid';
+            // Flip it below when the point sits high, so the pill does not
+            // cover the very line being read.
+            const flip = at && coords[scrub][1] < CHART_H * 0.42;
+
+            // The axis labels live in an HTML gutter beside the SVG rather than
+            // in <text> inside it, and so does the scrub readout. The plot is
+            // drawn with preserveAspectRatio=none so the line always fills the
+            // card's width, and that same stretch would smear any text sharing
+            // those coordinates. Lines are immune — a horizontal one stays
+            // horizontal, a vertical one stays vertical — so the gridlines and
+            // the scrub rule stay in the SVG.
             return (
-                <svg className="weigh-chart" viewBox={'0 0 ' + CHART_W + ' ' + CHART_H} preserveAspectRatio="none" role="img"
-                     aria-label="Weight trend line against the cut plan, direction only — no values shown">
-                    <defs>
-                        <linearGradient id="weighFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--accent-muted)" stopOpacity="0.30" />
-                            <stop offset="100%" stopColor="var(--accent-muted)" stopOpacity="0" />
-                        </linearGradient>
-                    </defs>
-                    {coords.length > 1 && <path d={area} fill="url(#weighFill)" />}
-                    {planPath && (
-                        <path d={planPath} fill="none" stroke="#4e4e63" strokeWidth="1.5"
-                              strokeDasharray="5 4" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              <div className="weigh-chart-wrap">
+                <div className="weigh-chart-yaxis">
+                    {ticks.map((v) => (
+                        <span key={v} style={{ top: ((y(v) / CHART_H) * 100).toFixed(2) + '%' }}>
+                            {tickLabel(v)}
+                        </span>
+                    ))}
+                </div>
+                <div
+                    className={'weigh-chart-plot' + (held ? ' held' : '')}
+                    ref={plotRef}
+                    onPointerDown={onDown}
+                    onPointerMove={onMove}
+                    onPointerUp={endScrub}
+                    onPointerCancel={endScrub}
+                >
+                    <svg className="weigh-chart" viewBox={'0 0 ' + CHART_W + ' ' + CHART_H} preserveAspectRatio="none" role="img"
+                         aria-label={'Weight trend from ' + tickLabel(lo) + ' to ' + tickLabel(hi) + ' lb'
+                                     + (plan ? ', against the cut plan line' : '')}>
+                        <defs>
+                            <linearGradient id="weighFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--accent-muted)" stopOpacity="0.30" />
+                                <stop offset="100%" stopColor="var(--accent-muted)" stopOpacity="0" />
+                            </linearGradient>
+                        </defs>
+                        {ticks.map((v) => (
+                            <line key={v} x1="0" x2={CHART_W} y1={y(v)} y2={y(v)}
+                                  stroke="#1c1c2c" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                        ))}
+                        {coords.length > 1 && <path d={area} fill="url(#weighFill)" />}
+                        {planPath && (
+                            <path d={planPath} fill="none" stroke="#4e4e63" strokeWidth="1.5"
+                                  strokeDasharray="5 4" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                        )}
+                        {coords.length > 1 && (
+                            <path d={line} fill="none" stroke="var(--accent-muted)" strokeWidth="2.5"
+                                  strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                        )}
+                        {at && (
+                            <line x1={atX} x2={atX} y1="0" y2={CHART_H}
+                                  stroke="#f0f0fa" strokeWidth="1" strokeOpacity="0.45"
+                                  vectorEffect="non-scaling-stroke" />
+                        )}
+                        <circle cx={last[0]} cy={last[1]} r="4" fill="#f0f0fa" />
+                        {at && (
+                            <circle cx={atX} cy={coords[scrub][1]} r="5" fill="#f0f0fa"
+                                    stroke="#0b0b16" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                        )}
+                    </svg>
+                    {at && (
+                        <div className={'weigh-scrub ' + anchor + (flip ? ' flip' : '')}
+                             style={{ left: atPct.toFixed(2) + '%' }}>
+                            <div className="weigh-scrub-weight">
+                                {formatWeight(at.trend)}<span> lb</span>
+                            </div>
+                            <div className="weigh-scrub-date">{formatScrubDay(at.date)} · trend</div>
+                        </div>
                     )}
-                    {coords.length > 1 && (
-                        <path d={line} fill="none" stroke="var(--accent-muted)" strokeWidth="2.5"
-                              strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                    )}
-                    <circle cx={last[0]} cy={last[1]} r="4" fill="#f0f0fa" />
-                </svg>
+                </div>
+              </div>
             );
         }
 
@@ -114,6 +361,7 @@
             const points = trendSeries(log, range || 0);
             const weeks = weeklyAverages(log).slice().reverse();
             const rate = weeklyRate(log);
+            const rangeAvg = rangeAverage(log, range || 0);
 
             // Plan week rows keyed by their Monday, so the ledger below can
             // show "vs plan" on the weeks the plan actually covers.
@@ -158,10 +406,27 @@
                             {progress && <span className="weigh-chart-key">╌╌ plan</span>}
                             <span>{points.length ? formatShortDay(points[points.length - 1].date) : ''}</span>
                         </div>
-                        <div className={'weigh-chart-rate' + (rate !== null && rate < -0.05 ? ' good' : '')}>
-                            {rate === null
-                                ? 'Not enough data for a weekly rate yet'
-                                : (rate < 0 ? '↓ ' : rate > 0 ? '↑ ' : '→ ') + formatWeight(Math.abs(rate)) + ' lb / week'}
+                        <div className="weigh-chart-foot">
+                            {/* The average for whatever window is selected, so
+                                the range buttons answer "what have I been
+                                lately" as well as "what does it look like".
+                                Mean of the raw readings in the window, not of
+                                the trend: the trend is weighted toward its most
+                                recent points by construction, which makes it
+                                the wrong thing to call an average. */}
+                            {rangeAvg && (
+                                <div className="weigh-chart-avg">
+                                    <span className="weigh-chart-avg-value">{formatWeight(rangeAvg.avg)}</span>
+                                    <span className="weigh-chart-avg-label">
+                                        lb avg · {rangeAvg.count} day{rangeAvg.count === 1 ? '' : 's'}
+                                    </span>
+                                </div>
+                            )}
+                            <div className={'weigh-chart-rate' + (rate !== null && rate < -0.05 ? ' good' : '')}>
+                                {rate === null
+                                    ? 'Not enough data for a weekly rate yet'
+                                    : (rate < 0 ? '↓ ' : rate > 0 ? '↑ ' : '→ ') + formatWeight(Math.abs(rate)) + ' lb / week'}
+                            </div>
                         </div>
                     </div>
 

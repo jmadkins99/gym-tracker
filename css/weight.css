@@ -362,31 +362,179 @@
     background: linear-gradient(180deg, #12121f 0%, #0b0b16 100%);
 }
 
-/* preserveAspectRatio="none" on the SVG lets the plot stretch to the card
-   width while the height stays fixed here, so the line always fills the box
-   at any screen width. Stroke width is held constant by vector-effect on the
-   path, which is what stops the stretch from smearing it. */
+/* Width of the y-axis label gutter. The x-axis row below the plot indents by
+   the same amount, so the two axes share an origin — one value, so they
+   cannot drift apart. */
+.weigh-chart-card {
+    --yaxis-w: 30px;
+}
+
+.weigh-chart-wrap {
+    display: flex;
+    align-items: stretch;
+}
+
+/* Labels are positioned by percentage of the plot's height, from the same y()
+   the gridlines use. They sit OUTSIDE the SVG on purpose: the plot stretches
+   horizontally (see .weigh-chart below) and text in that coordinate space
+   would be smeared by the same transform. */
+.weigh-chart-yaxis {
+    position: relative;
+    flex: none;
+    width: var(--yaxis-w);
+    height: 120px;
+}
+
+.weigh-chart-yaxis span {
+    position: absolute;
+    right: 7px;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: #3d3d50;
+    white-space: nowrap;
+}
+
+/* preserveAspectRatio="none" on the SVG lets the plot stretch to whatever
+   width is left beside the gutter while the height stays fixed here, so the
+   line always fills the box at any screen width. Stroke width is held
+   constant by vector-effect on the paths, which is what stops the stretch
+   from smearing them. min-width:0 lets the flex item actually shrink. */
+.weigh-chart-plot {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    /* pan-y, not none: a vertical drag still scrolls the History list, so the
+       chart is never a dead zone you cannot scroll past on a phone. Once a
+       long press engages the scrub, the touchmove handler calls
+       preventDefault() and that is what actually holds the page still — see
+       the touch effect in WeightHistory.jsx. This property only sets the
+       browser's starting assumption. */
+    touch-action: pan-y;
+    cursor: crosshair;
+
+    /* Without these, a long press on iOS raises the selection callout and the
+       magnifier, and Android offers to select text — on top of the readout,
+       during the exact gesture that summons it. The whole interaction reads as
+       broken and there is nothing in the JS to explain why. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Belt and braces once the gesture is ours. preventDefault does the real work
+   (this cannot change an in-flight gesture) but it keeps a second finger, or
+   a gesture starting after a re-render, from panning the page. */
+.weigh-chart-plot.held {
+    touch-action: none;
+}
+
 .weigh-chart {
     display: block;
     width: 100%;
     height: 120px;
 }
 
-/* The only labels the chart gets. There is no y axis by design — the shape
-   answers "which way", the rate below answers "how fast", and a value axis
-   would only add the ability to read a single morning off the line. */
+/* ---- Scrub readout ---- */
+
+/* Positioned by percentage across the plot, with the anchor swapped at either
+   end so the pill never hangs off the card. pointer-events:none keeps it from
+   stealing the very drag that summoned it. */
+.weigh-scrub {
+    position: absolute;
+    top: 4px;
+    /* A thumb covers roughly this much of the plot. The readout sits at the
+       opposite end from the point being read (see .flip), and stays clear of
+       the finger rather than under it. */
+    z-index: 2;
+    padding: 5px 9px;
+    border-radius: 10px;
+    background: rgba(8, 8, 18, 0.92);
+    border: 1px solid #2a2a3a;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.weigh-scrub.mid   { transform: translateX(-50%); }
+.weigh-scrub.start { transform: translateX(0); }
+.weigh-scrub.end   { transform: translateX(-100%); }
+
+/* Point sits high, pill drops to the bottom so it is not covering the line
+   being read. */
+.weigh-scrub.flip {
+    top: auto;
+    bottom: 4px;
+}
+
+.weigh-scrub-weight {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #f0f0fa;
+    font-variant-numeric: tabular-nums;
+}
+
+.weigh-scrub-weight span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: #6a6a85;
+}
+
+.weigh-scrub-date {
+    margin-top: 1px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: #4e4e63;
+}
+
 .weigh-chart-axis {
     display: flex;
     justify-content: space-between;
     margin-top: 6px;
+    padding-left: var(--yaxis-w);
     font-size: 11px;
     letter-spacing: 0.06em;
     color: #3d3d50;
 }
 
-.weigh-chart-rate {
+/* Range average and weekly rate, side by side under the plot: what you have
+   been over the selected window, and which way it is going. */
+.weigh-chart-foot {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 14px;
     margin-top: 12px;
-    text-align: center;
+    flex-wrap: wrap;
+}
+
+.weigh-chart-avg {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.weigh-chart-avg-value {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #e6e6f2;
+    font-variant-numeric: tabular-nums;
+}
+
+.weigh-chart-avg-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: #4e4e63;
+}
+
+.weigh-chart-rate {
     font-size: 14px;
     font-weight: 700;
     color: #6a6a85;
@@ -488,7 +636,9 @@
 @media (max-height: 700px) {
     .weigh-body { gap: 10px; }
     .weigh-trend-value { font-size: 32px; }
-    .weigh-chart { height: 96px; }
+    .weigh-chart,
+    .weigh-chart-yaxis { height: 96px; }
+    .weigh-chart-foot { gap: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

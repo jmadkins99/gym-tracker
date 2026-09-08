@@ -165,15 +165,36 @@
             return ((last.trend - first.trend) / days) * 7;
         }
 
-        // Trend points for the sparkline. `days` trims to a recent window;
+        // Trend points for the chart. `days` trims to a recent window;
         // omitting it returns the whole history.
+        //
+        // The window is inclusive of both ends, so it reaches back days-1 from
+        // the last reading: a 7-day window is the last reading plus the six
+        // before it, not seven days before it as well. Subtracting the full
+        // `days` returns eight, which nobody would call a week — and the range
+        // average prints that count, so the off-by-one was on screen.
         function trendSeries(log, days) {
             const series = withTrend(log);
             if (series.length === 0 || !days) return series;
             const lastDate = parseDayKey(series[series.length - 1].date);
             const cutoff = new Date(lastDate);
-            cutoff.setDate(cutoff.getDate() - days);
+            cutoff.setDate(cutoff.getDate() - (days - 1));
             return series.filter((e) => parseDayKey(e.date) >= cutoff);
+        }
+
+        // Mean of the RAW readings inside a range window, plus how many there
+        // were. An aggregate over a window, which is the same kind of number
+        // the weekly rows already show — the rule this page keeps is that no
+        // individual morning's reading is recallable, not that averages are
+        // off-limits. `count` rides along because "169.4 lb over 3 days" and
+        // "169.4 lb over 180 days" are not the same claim.
+        function rangeAverage(log, days) {
+            const pts = trendSeries(log, days);
+            if (pts.length === 0) return null;
+            return {
+                avg: pts.reduce((s, p) => s + p.weight, 0) / pts.length,
+                count: pts.length,
+            };
         }
 
         function formatWeight(n) {
