@@ -179,6 +179,12 @@
     color: #4CAF50;
 }
 
+/* Still short of the week's target. Same amber .plan-gap.behind uses on the
+   dashboard, because it is the same fact stated on a different screen. */
+.weigh-rate.behind {
+    color: #ff9500;
+}
+
 /* ---- Cut plan dashboard ---- */
 
 /* Leads the History screen. Same card treatment as the chart below it so the

@@ -258,6 +258,7 @@
                                 todayKey={todayKey}
                                 onCheckIn={handleCheckIn}
                                 celebrating={celebrating}
+                                progress={progress}
                             />
                         )}
                         {view === 'history' && (

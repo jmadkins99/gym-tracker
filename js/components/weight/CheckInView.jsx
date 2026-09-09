@@ -12,7 +12,7 @@
         // rather than hunted down later.
         const PR_CELEBRATION_MS = 2000;
 
-        function CheckInView({ log, todayKey, onCheckIn, celebrating }) {
+        function CheckInView({ log, todayKey, onCheckIn, celebrating, progress }) {
             const today = entryFor(log, todayKey);
             const [draft, setDraft] = React.useState('');
             const [editing, setEditing] = React.useState(false);
@@ -58,13 +58,57 @@
                 setEditing(false);
             };
 
-            // Kept to one line: this sits directly under the weekly average and
-            // a wrapping sentence shoves the whole card around on the day it
-            // appears, which is every day of the first fortnight.
+            // Kept to one line: this sits directly under the headline number
+            // and a wrapping sentence shoves the whole card around on the day
+            // it appears, which is every day of the first fortnight.
             const rateLine = rate === null
                 ? 'rate after a second week'
                 : (rate < -0.05 ? '↓ ' : rate > 0.05 ? '↑ ' : '→ ') +
                   formatWeight(Math.abs(rate)) + ' lb / week';
+
+            // With a plan running, the card is about the number being chased
+            // rather than the one already reached: the week's target, and how
+            // far off it this week's average currently sits. `gap` is that
+            // distance, positive while there is still weight to come off, and
+            // it is read off planProgress rather than recomputed so the card
+            // and the plan dashboard cannot disagree about the same week.
+            //
+            // Without a plan there is nothing to beat, so the card falls back
+            // to reporting where the week actually is.
+            //
+            // Three states, and the middle one exists because of the rounding
+            // rather than in spite of it: the distance prints to a tenth, so
+            // anything inside half a tenth of the target would otherwise read
+            // "0.0 pounds away" — a sentence that says you have arrived while
+            // insisting you have not. That band is the target met.
+            const MET_BAND = 0.05;
+            const target = progress ? {
+                weight: progress.planWeight,
+                behind: progress.gap > MET_BAND,
+                line: progress.gap > MET_BAND
+                    ? formatWeight(progress.gap) + ' pounds away'
+                    : (progress.gap >= -MET_BAND
+                        ? 'Target met'
+                        : formatWeight(-progress.gap) + ' pounds over goal'),
+            } : null;
+
+            // The hero is the number the line below it is measured FROM: this
+            // week's average, read off planProgress so it is literally the
+            // figure the distance was computed against rather than a second
+            // opinion about the same week. Without a plan it is the same
+            // average by the other route.
+            //
+            // Not the reading just typed in, which is a single morning of water
+            // and is not what the target is scored against. It stays reachable
+            // through "Edit today's entry", which is the one place it is still
+            // the right number to show.
+            const heroWeight = progress ? progress.actual : weekAvg;
+
+            const headline = target
+                ? { label: 'Weight to beat', value: target.weight,
+                    tone: target.behind ? ' behind' : ' good', foot: target.line }
+                : { label: 'Weekly average weight', value: weekAvg,
+                    tone: rate !== null && rate < -0.05 ? ' good' : '', foot: rateLine };
 
             return (
                 <div className="weigh-stage">
@@ -105,20 +149,27 @@
                             </div>
                         ) : (
                             <div className="weigh-body">
-                                <div className="logged-chip weigh-chip">✓ Checked in</div>
+                                {/* Carries the raw reading, because the hero
+                                    below is now the week's average and without
+                                    this there is nothing on the card saying
+                                    what was actually typed. Bare number, no
+                                    unit: the chip is a receipt, not a stat. */}
+                                <div className="logged-chip weigh-chip">
+                                    ✓ Checked in @ {formatWeight(today.weight)}
+                                </div>
 
                                 <div className="hero weigh-hero">
                                     <div className="hero-weight">
-                                        {formatWeight(today.weight)}<span className="hero-unit">lbs</span>
+                                        {formatWeight(heroWeight)}<span className="hero-unit">lbs</span>
                                     </div>
                                 </div>
                                 <div className="weigh-divider" />
 
                                 <div className="weigh-trend">
-                                    <div className="weigh-trend-label">Weekly average weight</div>
-                                    <div className="weigh-trend-value">{formatWeight(weekAvg)}</div>
-                                    <div className={'weigh-rate' + (rate !== null && rate < -0.05 ? ' good' : '')}>
-                                        {rateLine}
+                                    <div className="weigh-trend-label">{headline.label}</div>
+                                    <div className="weigh-trend-value">{formatWeight(headline.value)}</div>
+                                    <div className={'weigh-rate' + headline.tone}>
+                                        {headline.foot}
                                     </div>
                                 </div>
 
