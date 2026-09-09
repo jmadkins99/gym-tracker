@@ -138,6 +138,53 @@
                                     <span className="weigh-input-unit">lbs</span>
                                 </div>
 
+                                {/* The target block, before the reading rather
+                                    than only after it. What the card is for at
+                                    the moment it is opened is the number being
+                                    walked onto the scale to beat, and holding
+                                    that back until check-in meant the one
+                                    screen that could have said it was the one
+                                    screen that did not — the figure was a tap
+                                    into History, or a memory, exactly when it
+                                    was about to matter.
+
+                                    Identical markup to the read-back state
+                                    below, off the same `headline`, so the two
+                                    cannot drift into two opinions about one
+                                    week and the card does not reflow when the
+                                    reading commits: the input sits where the
+                                    hero will, and everything under the divider
+                                    stays put.
+
+                                    The gap is measured against the latest week
+                                    that HAS readings — planProgress's `actual`
+                                    — so before today's entry it reads from
+                                    where the week currently stands, and typing
+                                    a number nudges it. That is the honest
+                                    reading of "how far off am I", not a
+                                    placeholder waiting to be filled in.
+
+                                    Skipped only when there is no number at all
+                                    to state — a cleared plan and an empty log,
+                                    which is a first-ever check-in on a page
+                                    with nothing to beat and no week to average.
+                                    A plan alone is enough: planProgress falls
+                                    back to the plan's own start weight, so the
+                                    target stands before the first reading
+                                    does. */}
+                                {headline.value !== null ? (
+                                    <>
+                                        <div className="weigh-divider" />
+                                        <div className="weigh-trend">
+                                            <div className="weigh-trend-label">{headline.label}</div>
+                                            <div className="weigh-trend-value">{formatWeight(headline.value)}</div>
+                                            <div className={'weigh-rate' + headline.tone}>
+                                                {headline.foot}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : null}
+
                                 <button className="save-btn weigh-submit" onClick={submit} disabled={!valid}>
                                     {today ? 'SAVE CORRECTION' : 'CHECK IN'}
                                 </button>
