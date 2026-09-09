@@ -140,15 +140,6 @@
     padding-bottom: 0;
 }
 
-/* The disclaimer under today's number. Quiet on purpose — it is a promise
-   the page is keeping, not a warning. */
-.weigh-ephemeral {
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    color: #3d3d50;
-    margin-top: -6px;
-}
-
 .weigh-divider {
     width: 60%;
     max-width: 220px;

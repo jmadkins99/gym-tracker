@@ -3,27 +3,21 @@
         // the rules about what is and isn't displayable live in one readable
         // place rather than scattered through JSX.
         //
-        // The governing constraint is that this page is built to be safe to use
-        // daily without turning into a scale-watching loop. That is not a
-        // styling choice, it is a data choice: nothing in here can hand back a
-        // historical raw weight. `withTrend` is the only function that touches
-        // the raw series, and everything downstream consumes the smoothed
-        // value. The exceptions are the two functions that exist so a reading
-        // can be CORRECTED — `entryFor` for today's own number, and
-        // `entriesForWeek` for the days inside one week of the ledger — because
-        // a number you cannot see is a number you cannot correct. Both are
-        // reached by asking for a specific day or week, never by scrolling.
-
-        // How far each new reading pulls the trend toward itself. 0.25 is
-        // roughly a one-week time constant: a single salty-dinner spike moves
-        // the line about a quarter pound per pound of noise and is gone within
-        // days, while a genuine week-long drift comes through nearly in full.
-        // Lower is smoother but laggier; below ~0.1 the line stops responding
-        // to real change fast enough to be worth checking daily.
-        const TREND_ALPHA = 0.25;
-
-        // Days of trend the rate calculation looks back over.
-        const RATE_WINDOW_DAYS = 14;
+        // This page used to be built around a rule that no historical raw
+        // reading could be handed back: everything downstream of the log read
+        // an exponential moving average instead, and the chart drew that
+        // smoothed line. The rule is gone, deliberately. The chart plots the
+        // readings themselves and the scrubber reads them off, because a
+        // smoothed line answers "roughly which way am I going" and the question
+        // being asked of this page is "what did the scale actually say".
+        //
+        // What replaced the EMA as the page's steady number is the WEEKLY
+        // AVERAGE: `weeklyAverages` and the two functions built on it are what
+        // the check-in card and the ledger both show, so the smoothing that
+        // remains is an honest mean over a week rather than a decay constant.
+        // Nothing here computes an average twice — `currentWeekAverage` and
+        // `weeklyAverageRate` read out of the same buckets the ledger renders,
+        // which is what stops the card and the History screen disagreeing.
 
         // A day key is the LOCAL calendar date, not a UTC slice of an ISO
         // string. Those differ for anyone west of Greenwich for part of every
@@ -101,29 +95,6 @@
                 .reverse();
         }
 
-        // The raw series with an exponential trend attached to each point.
-        // Seeded at the first reading rather than at zero, so the line is
-        // meaningful from day one instead of spending a fortnight climbing up
-        // out of nothing.
-        //
-        // Missed days need no special handling and deliberately get none: the
-        // trend is a running value, not a windowed one, so a gap simply means
-        // no update happened. This is the whole reason for choosing an EMA over
-        // a 7-day mean — a mean has to decide what an absent day is worth, and
-        // every available answer to that is wrong.
-        function withTrend(log) {
-            let trend = null;
-            return sortedLog(log).map((e) => {
-                trend = trend === null ? e.weight : trend + TREND_ALPHA * (e.weight - trend);
-                return { date: e.date, weight: e.weight, trend };
-            });
-        }
-
-        function currentTrend(log) {
-            const series = withTrend(log);
-            return series.length ? series[series.length - 1].trend : null;
-        }
-
         // Consecutive most-recent check-ins that each came in at or below the
         // one before. This is the daily badge, and it is a Cut-goal rule:
         // equal holds the streak, higher ends it.
@@ -166,6 +137,43 @@
                 }));
         }
 
+        // The average for the week in progress — the same number the top row of
+        // the History ledger shows, because it comes from the same buckets. The
+        // check-in card and the ledger must never disagree about this week; the
+        // way to guarantee that is to read it off `weeklyAverages` rather than
+        // computing a second version of the arithmetic here.
+        //
+        // Partial by construction: on a Tuesday it is the mean of Monday and
+        // Tuesday. That is the honest number for a week that has not finished.
+        function currentWeekAverage(log) {
+            const weeks = weeklyAverages(log);
+            return weeks.length ? weeks[weeks.length - 1].avg : null;
+        }
+
+        // Pounds per week, as the difference between this week's average and the
+        // one before it. Already a per-week figure by construction, so nothing
+        // is scaled: it is the same subtraction the History week rows print as
+        // their delta, and the card must not disagree with the ledger about it.
+        //
+        // Normalised by the gap between the two buckets so a skipped week does
+        // not get reported as one week's loss. With no gap — the ordinary case —
+        // the divisor is 1 and this is exactly the ledger's delta.
+        //
+        // Null until a second week exists. A first week has nothing to be a
+        // change from, and inventing one would put a number on screen that is
+        // really just "you weigh what you weigh".
+        function weeklyAverageRate(log) {
+            const weeks = weeklyAverages(log);
+            if (weeks.length < 2) return null;
+            const current = weeks[weeks.length - 1];
+            const prior = weeks[weeks.length - 2];
+            const spanWeeks = Math.round(
+                (parseDayKey(current.weekStart) - parseDayKey(prior.weekStart)) / (7 * 86400000)
+            );
+            if (spanWeeks < 1) return null;
+            return (current.avg - prior.avg) / spanWeeks;
+        }
+
         // Consecutive most-recent weeks whose average came in below the week
         // before. Unlike the daily streak the first week cannot count: a week
         // with no predecessor has not gone down, it has merely happened.
@@ -184,40 +192,16 @@
             return streak;
         }
 
-        // Pounds per week, read off the TREND rather than off the raw readings,
-        // over the last fortnight. Returns null rather than a shaky number when
-        // the data cannot support one — a rate computed from three days of
-        // water weight is noise wearing a decimal point, and showing it would
-        // invite exactly the daily over-reading this page exists to avoid.
-        function weeklyRate(log) {
-            const series = withTrend(log);
-            if (series.length < 4) return null;
-
-            const last = series[series.length - 1];
-            const lastDate = parseDayKey(last.date);
-            const cutoff = new Date(lastDate);
-            cutoff.setDate(cutoff.getDate() - RATE_WINDOW_DAYS);
-
-            const inWindow = series.filter((e) => parseDayKey(e.date) >= cutoff);
-            if (inWindow.length < 4) return null;
-
-            const first = inWindow[0];
-            const days = (lastDate - parseDayKey(first.date)) / 86400000;
-            if (days < 5) return null;
-
-            return ((last.trend - first.trend) / days) * 7;
-        }
-
-        // Trend points for the chart. `days` trims to a recent window;
-        // omitting it returns the whole history.
+        // The readings for the chart. `days` trims to a recent window; omitting
+        // it returns the whole history.
         //
         // The window is inclusive of both ends, so it reaches back days-1 from
         // the last reading: a 7-day window is the last reading plus the six
         // before it, not seven days before it as well. Subtracting the full
         // `days` returns eight, which nobody would call a week — and the range
         // average prints that count, so the off-by-one was on screen.
-        function trendSeries(log, days) {
-            const series = withTrend(log);
+        function readingSeries(log, days) {
+            const series = sortedLog(log);
             if (series.length === 0 || !days) return series;
             const lastDate = parseDayKey(series[series.length - 1].date);
             const cutoff = new Date(lastDate);
@@ -232,7 +216,7 @@
         // off-limits. `count` rides along because "169.4 lb over 3 days" and
         // "169.4 lb over 180 days" are not the same claim.
         function rangeAverage(log, days) {
-            const pts = trendSeries(log, days);
+            const pts = readingSeries(log, days);
             if (pts.length === 0) return null;
             return {
                 avg: pts.reduce((s, p) => s + p.weight, 0) / pts.length,

@@ -3,12 +3,13 @@
         // through here — a day has exactly one weigh-in — so the card is the
         // whole screen rather than a rail of them.
         //
-        // Two states, and the difference between them is the entire privacy
-        // design of this page. Before you log, the card is an input. After you
-        // log, it shows the number you just typed and nothing else raw, and at
-        // midnight even that is gone: tomorrow's card has no route back to
-        // today's reading. Today stays visible only so a fat-fingered 187 for
-        // 178 can be corrected before it skews the trend.
+        // Two states. Before you log, the card is an input. After you log, it
+        // shows the number you just typed above the week's average, and at
+        // midnight the raw number goes: tomorrow's card opens on the average
+        // rather than on yesterday's reading. The reading itself is not gone —
+        // the History chart plots it — but this card is about where the week
+        // sits, and a fat-fingered 187 for 178 can be corrected here on the day
+        // rather than hunted down later.
         const PR_CELEBRATION_MS = 2000;
 
         function CheckInView({ log, todayKey, onCheckIn, celebrating }) {
@@ -30,9 +31,11 @@
                 if (showInput && inputRef.current) inputRef.current.focus();
             }, [showInput]);
 
-            const trend = currentTrend(log);
-            const rate = weeklyRate(log);
             const weeks = weeklyAverages(log);
+            // The mean of this week's readings, not the EMA — the card and the
+            // History ledger's top row are the same number by construction.
+            const weekAvg = currentWeekAverage(log);
+            const rate = weeklyAverageRate(log);
             const dayStreak = checkInStreak(log);
             const wkStreak = weekStreak(weeks);
 
@@ -55,11 +58,11 @@
                 setEditing(false);
             };
 
-            // Kept to one line: this sits directly under the trend value and a
-            // wrapping sentence shoves the whole card around on the day it
-            // appears, which is every day of the first week.
+            // Kept to one line: this sits directly under the weekly average and
+            // a wrapping sentence shoves the whole card around on the day it
+            // appears, which is every day of the first fortnight.
             const rateLine = rate === null
-                ? 'rate after ~a week'
+                ? 'rate after a second week'
                 : (rate < -0.05 ? '↓ ' : rate > 0.05 ? '↑ ' : '→ ') +
                   formatWeight(Math.abs(rate)) + ' lb / week';
 
@@ -109,16 +112,11 @@
                                         {formatWeight(today.weight)}<span className="hero-unit">lbs</span>
                                     </div>
                                 </div>
-                                {/* Says out loud that the number above is on a
-                                    timer. Without this the disappearance reads
-                                    as data loss rather than as the point. */}
-                                <div className="weigh-ephemeral">today only — not shown again after tonight</div>
-
                                 <div className="weigh-divider" />
 
                                 <div className="weigh-trend">
-                                    <div className="weigh-trend-label">Trend</div>
-                                    <div className="weigh-trend-value">{formatWeight(trend)}</div>
+                                    <div className="weigh-trend-label">Weekly average weight</div>
+                                    <div className="weigh-trend-value">{formatWeight(weekAvg)}</div>
                                     <div className={'weigh-rate' + (rate !== null && rate < -0.05 ? ' good' : '')}>
                                         {rateLine}
                                     </div>

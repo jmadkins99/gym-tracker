@@ -1,25 +1,21 @@
-        // History. The counterpart to gym-tracker's weekly list. What it shows
-        // on arrival is the smoothed trend and the weekly average — a single
-        // morning's weight is mostly water and is not information about a cut,
-        // so there is still no view that SCROLLS back through dailies.
+        // History. The counterpart to gym-tracker's weekly list. The chart
+        // plots the check-ins themselves against a labelled y-axis, and the
+        // scrubber reads any one of them off.
         //
-        // A week row now opens, though, and inside it are that week's readings
-        // with an edit and a delete on each. That is a deliberate narrowing of
-        // the original rule rather than an abandonment of it, and the reason is
-        // that the rule had a hole: a fat-fingered 187 for 178 was correctable
-        // only until midnight, after which it sat in the trend, the weekly
-        // average and the plan gap forever, wrong and unreachable. A number the
-        // app derives everything from has to be fixable. What keeps the spirit
-        // is that the dailies stay CLOSED: opening History still shows nothing
-        // raw, and reading one takes a deliberate tap on the week it is in.
+        // That is a reversal. The screen was built around a rule that a single
+        // morning's weight is mostly water and so should not be recallable at
+        // all: the chart drew an exponential moving average, the scrubber
+        // reported the smoothed value, and only a deliberately opened week row
+        // showed dailies. The rule went in stages — first a week row that
+        // opens, so a fat-fingered 187 for 178 could be corrected after
+        // midnight instead of sitting in the aggregates forever, then this.
         //
-        // The chart does carry a labelled y-axis. That is a change of mind, and
-        // a narrow one: the axis is scaled to the TREND, so what a value can be
-        // read off it is a smoothed figure, never the number that was on the
-        // scale on a given morning. The rule that survives is about raw
-        // readings, not about arithmetic in general — and without a scale the
-        // same picture is drawn by half a pound of drift and by ten, which made
-        // the chart's shape genuinely hard to read against the plan line.
+        // What makes the reversal safe is that the page's HEADLINE number is
+        // still an aggregate. The check-in card shows the weekly average and
+        // the week rows show the same figure, so the number being tracked is a
+        // mean over seven days; the chart is where the underlying readings are
+        // available to look at, which is a different job from the one the
+        // headline does.
         //
         // The cut-plan dashboard leads the screen, because "am I on track" is
         // the question this page gets opened for once a plan exists.
@@ -168,7 +164,7 @@
             const xMin = Math.min.apply(null, xs);
             const xMax = Math.max.apply(null, xs);
 
-            // The plan line is sampled over the SAME x-range as the trend —
+            // The plan line is sampled over the SAME x-range as the readings —
             // clipped to what has actually happened rather than running on into
             // future weeks. Where the plan is heading is a sentence ("goal 145
             // by Nov 16"), not a line inviting you to measure yourself against
@@ -195,8 +191,11 @@
             }
 
             // Both series share one scale, so "above the dashed line" means
-            // what it looks like it means.
-            const ys = points.map((p) => p.trend).concat(planPts.map((p) => p.v));
+            // what it looks like it means. Raw readings swing wider than the
+            // smoothed line they replaced, so the domain is wider too — that is
+            // the point rather than a defect: a four-pound Monday IS four
+            // pounds away from the plan.
+            const ys = points.map((p) => p.weight).concat(planPts.map((p) => p.v));
             const yMin = Math.min.apply(null, ys);
             const yMax = Math.max.apply(null, ys);
 
@@ -227,7 +226,7 @@
                 : CHART_PAD + ((t - xMin) / (xMax - xMin)) * (CHART_W - CHART_PAD * 2));
             const y = (v) => CHART_PAD + (1 - (v - lo) / span) * (CHART_H - CHART_PAD * 2);
 
-            const coords = points.map((p, i) => [x(xs[i]), y(p.trend)]);
+            const coords = points.map((p, i) => [x(xs[i]), y(p.weight)]);
             const line = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c[0].toFixed(1) + ' ' + c[1].toFixed(1)).join(' ');
             const area = line + ' L' + coords[coords.length - 1][0].toFixed(1) + ' ' + (CHART_H - CHART_PAD) +
                          ' L' + coords[0][0].toFixed(1) + ' ' + (CHART_H - CHART_PAD) + ' Z';
@@ -239,10 +238,9 @@
             // ---- Scrub ----
             //
             // Press and drag along the plot to read a point off it. The value
-            // shown is the TREND at that date, not that morning's raw reading —
-            // the line under your finger is the trend line, so anything else
-            // would be labelling one number with another's position, and the
-            // raw dailies stay unrecallable as they are everywhere else here.
+            // shown is that morning's actual reading, which is what the line
+            // under your finger is drawn from — the two cannot disagree,
+            // because they are the same number.
             //
             // Hand-written pointer events, matching SwipeDeck: no gesture
             // library, no build step to add one, and pointer events cover mouse
@@ -319,7 +317,7 @@
                     onPointerCancel={endScrub}
                 >
                     <svg className="weigh-chart" viewBox={'0 0 ' + CHART_W + ' ' + CHART_H} preserveAspectRatio="none" role="img"
-                         aria-label={'Weight trend from ' + tickLabel(lo) + ' to ' + tickLabel(hi) + ' lb'
+                         aria-label={'Weight readings from ' + tickLabel(lo) + ' to ' + tickLabel(hi) + ' lb'
                                      + (plan ? ', against the cut plan line' : '')}>
                         <defs>
                             <linearGradient id="weighFill" x1="0" y1="0" x2="0" y2="1">
@@ -355,9 +353,9 @@
                         <div className={'weigh-scrub ' + anchor + (flip ? ' flip' : '')}
                              style={{ left: atPct.toFixed(2) + '%' }}>
                             <div className="weigh-scrub-weight">
-                                {formatWeight(at.trend)}<span> lb</span>
+                                {formatWeight(at.weight)}<span> lb</span>
                             </div>
-                            <div className="weigh-scrub-date">{formatWeekdayDay(at.date)} · trend</div>
+                            <div className="weigh-scrub-date">{formatWeekdayDay(at.date)}</div>
                         </div>
                     )}
                 </div>
@@ -419,7 +417,7 @@
             // the record with nothing left on screen to notice.
             const drop = (entry) => {
                 if (!confirm('Delete the ' + formatWeekdayDay(entry.date) + ' reading? '
-                             + 'It is removed from the trend and the weekly average.')) return;
+                             + 'It is removed from the chart and the weekly average.')) return;
                 onDelete(entry.date);
                 setEditing(null);
             };
@@ -466,9 +464,9 @@
         }
 
         function WeightHistory({ log, range, setRange, progress, onEditPlan, onEditEntry, onDeleteEntry }) {
-            const points = trendSeries(log, range || 0);
+            const points = readingSeries(log, range || 0);
             const weeks = weeklyAverages(log).slice().reverse();
-            const rate = weeklyRate(log);
+            const rate = weeklyAverageRate(log);
             const rangeAvg = rangeAverage(log, range || 0);
             // Which week's dailies are open, by its Monday. One at a time: the
             // ledger runs to a hundred-odd rows on the All range, and a screen
@@ -523,10 +521,8 @@
                             {/* The average for whatever window is selected, so
                                 the range buttons answer "what have I been
                                 lately" as well as "what does it look like".
-                                Mean of the raw readings in the window, not of
-                                the trend: the trend is weighted toward its most
-                                recent points by construction, which makes it
-                                the wrong thing to call an average. */}
+                                A plain mean of the readings in the window —
+                                the same kind of number the week rows show. */}
                             {rangeAvg && (
                                 <div className="weigh-chart-avg">
                                     <span className="weigh-chart-avg-value">{formatWeight(rangeAvg.avg)}</span>

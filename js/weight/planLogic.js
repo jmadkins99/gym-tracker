@@ -4,13 +4,13 @@
         // weight, the actual weekly average beside it, and the running total of
         // what has come off against what was promised.
         //
-        // Everything here runs on WEEKLY AVERAGES, not on the EMA trend the
-        // check-in card shows. That is deliberate and it is what the
+        // Everything here runs on WEEKLY AVERAGES. That is what the
         // spreadsheet did: the plan is a week-by-week ledger, its rows have to
         // be comparable with the rows in the sheet they replace, and the mean
         // of a week's readings is the figure Josh has been reading for two
-        // years. The EMA stays what it was — the live daily signal — and the
-        // two answer different questions rather than competing.
+        // years. The check-in card now shows that same weekly figure, so the
+        // plan and the card no longer answer in different currencies — an
+        // earlier version of this file had to explain why they differed.
         //
         // Weeks are numbered from 1, which is a deliberate departure from the
         // sheet. The sheet opened with a row 0 whose target was just the
