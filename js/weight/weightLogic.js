@@ -95,19 +95,65 @@
                 .reverse();
         }
 
-        // Consecutive most-recent check-ins that each came in at or below the
-        // one before. This is the daily badge, and it is a Cut-goal rule:
-        // equal holds the streak, higher ends it.
+        // The weeks that were typed in rather than weighed. Both badges treat
+        // one of these as a wall: a run of readings that never varied is not a
+        // run that was earned, and neither streak may be built on top of it or
+        // carried through it.
         //
-        // The very first check-in ever has nothing to compare against, so it
-        // counts — there is no reading it could have failed to beat.
-        function checkInStreak(log) {
+        // Derived from `weeklyAverages` rather than re-bucketed here, so there
+        // is exactly one answer in the codebase to what week a day falls in.
+        function flatWeekStarts(log) {
+            return new Set(weeklyAverages(log).filter((w) => w.flat).map((w) => w.weekStart));
+        }
+
+        // Consecutive days you stood on the scale, ending today. This is the
+        // daily badge and it is about ADHERENCE, not about the number.
+        //
+        // It used to reward a reading that held or fell against the one before,
+        // which is a coin flip on water, salt and glycogen: it paid out for
+        // being dehydrated on a Tuesday and broke on a legitimate refeed. Run
+        // over Josh's real history that rule broke 285 times in 729 days, and
+        // every softer version of it — a trailing average, a tolerance band —
+        // either broke MORE often or could be held indefinitely while gaining a
+        // pound a week. Weight moves in cycles, so any daily rule about the
+        // number spends long stretches at zero, and it goes darkest during a
+        // regain, which is exactly when there is most reason to keep logging.
+        //
+        // So the badge rewards the part that is a choice. Whether the scale is
+        // kind on a given morning is not one; standing on it is. The weekly
+        // badge still carries "is this working", at the only timescale where
+        // that question has an honest answer.
+        //
+        // A missed day ends the run — consecutive means consecutive — and so
+        // does letting it go stale: if the last reading is older than
+        // yesterday, the streak has already been broken and the badge says
+        // nothing. Yesterday still counts as live so the card can show what
+        // today's check-in is about to extend.
+        //
+        // Days inside a flat week are typed-in history rather than mornings
+        // anyone showed up for, and cannot be credited as adherence.
+        function checkInStreak(log, todayKey) {
             const series = sortedLog(log);
+            if (series.length === 0) return 0;
+
+            const flat = flatWeekStarts(series);
+            const today = todayKey || localDayKey(new Date());
+            const dayBefore = (key) => {
+                const d = parseDayKey(key);
+                d.setDate(d.getDate() - 1);
+                return localDayKey(d);
+            };
+
+            const last = series[series.length - 1];
+            if (last.date !== today && last.date !== dayBefore(today)) return 0;
+
             let streak = 0;
+            let expected = last.date;
             for (let i = series.length - 1; i >= 0; i--) {
-                if (i === 0) { streak++; break; }
-                if (series[i].weight <= series[i - 1].weight) streak++;
-                else break;
+                if (series[i].date !== expected) break;
+                if (flat.has(localDayKey(getMondayOfWeek(parseDayKey(series[i].date))))) break;
+                streak++;
+                expected = dayBefore(expected);
             }
             return streak;
         }
@@ -134,6 +180,14 @@
                     weekStart: pair[0],
                     count: pair[1].length,
                     avg: pair[1].reduce((s, w) => s + w, 0) / pair[1].length,
+                    // A full seven days on which the scale never moved by so
+                    // much as a tenth. Real mornings do not do this; typed-in
+                    // history does, which is the whole reason the flag exists.
+                    // Six matching days and a seventh that differs is a real
+                    // week, and so is a partial week of matching readings —
+                    // the test is deliberately the narrowest one that still
+                    // catches a bootstrapped week.
+                    flat: pair[1].length === 7 && pair[1].every((w) => w === pair[1][0]),
                 }));
         }
 
@@ -186,6 +240,10 @@
         function weekStreak(weeks) {
             let streak = 0;
             for (let i = (weeks || []).length - 1; i >= 1; i--) {
+                // A flat week neither scores nor can be scored against: the
+                // week after one starts from nothing, exactly as the first week
+                // of all does.
+                if (weeks[i].flat || weeks[i - 1].flat) break;
                 if (weeks[i].avg < weeks[i - 1].avg) streak++;
                 else break;
             }

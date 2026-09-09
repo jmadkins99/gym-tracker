@@ -36,7 +36,7 @@
             // History ledger's top row are the same number by construction.
             const weekAvg = currentWeekAverage(log);
             const rate = weeklyAverageRate(log);
-            const dayStreak = checkInStreak(log);
+            const dayStreak = checkInStreak(log, todayKey);
             const wkStreak = weekStreak(weeks);
 
             // Accepts a bare number with at most one decimal place. Rejecting
