@@ -102,13 +102,25 @@
                                             // last session older than this one, submitted or not.
                                             const isPR = completedExercise &&
                                                 isExercisePRInWorkout(completedExercise, workout, workoutHistory);
+                                            // A lone PR keeps reading "PR", exactly as it
+                                            // always has. Once the entry sits on a run of two
+                                            // or more, it borrows the Workout card's pill
+                                            // instead and says how long the run is — the same
+                                            // flame and the same count, so the ledger and the
+                                            // card never describe one streak two ways. Counted
+                                            // as of this entry, not today, so an older row in
+                                            // the run keeps the number it earned.
+                                            const prStreak = isPR && PR_STREAK_TRACKING
+                                                ? getPRStreakInWorkout(completedExercise, workout, workoutHistory)
+                                                : 0;
                                             return (
                                                 <div key={expectedExercise.id} className="history-exercise">
                                                     <div className="history-exercise-title">
                                                         <div className="history-exercise-name">{expectedExercise.name}</div>
                                                         {isPR ? (
-                                                            <div className="streak-badge history-pr-badge" data-pr-badge>
-                                                                🔥 PR
+                                                            <div className="streak-badge history-pr-badge" data-pr-badge
+                                                                 data-streak={prStreak > 1 ? prStreak : undefined}>
+                                                                {prStreak > 1 ? '🔥 ' + prStreak : '🔥 PR'}
                                                             </div>
                                                         ) : null}
                                                     </div>

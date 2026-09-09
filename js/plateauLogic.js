@@ -249,6 +249,43 @@
             return streak >= PR_STREAK_MIN ? streak : null;
         }
 
+        // The same run, counted as it stood at the end of `workout` rather than
+        // as it stands today. getPRStreak always walks back from the present,
+        // which is what the Workout card wants — it is about the set you are
+        // walking up to. History is a ledger: each row has to be read on its own
+        // day, or every entry in a run would carry the run's final number.
+        //
+        // Same arbiter (isImprovement), same skip rules (isValidExercise), same
+        // "strictly older than this entry" baseline as getPreviousExerciseForPR,
+        // and Submit Day is no more a condition here than it is there. Only the
+        // starting point differs: this session, not the newest one.
+        //
+        // Returns the number of consecutive improvements ending at this session,
+        // so 1 is a lone PR and 2+ is a run. Callers pair it with
+        // isExercisePRInWorkout, which is the thing that decides whether a badge
+        // appears at all; this only decides what the badge says.
+        function getPRStreakInWorkout(exercise, workout, workoutHistory) {
+            if (!exercise || !workout || !workoutHistory) return 0;
+            if (!isValidExercise(exercise)) return 0;
+
+            const cutoff = new Date(workout.date);
+            const older = workoutHistory
+                .filter(w => new Date(w.date) < cutoff)
+                .filter(w => isValidExercise(w.exercises.find(e => e.id === exercise.id)))
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(w => w.exercises.find(e => e.id === exercise.id));
+
+            const entries = [exercise, ...older];
+
+            let streak = 0;
+            for (let i = 0; i + 1 < entries.length; i++) {
+                if (!isImprovement(entries[i], entries[i + 1])) break;
+                streak++;
+            }
+
+            return streak;
+        }
+
         // Helper function to check if this is a PR Weight Recovery week (week after plateau buster)
         function getPRWeightRecovery(exerciseId, workoutHistory) {
             if (!workoutHistory || workoutHistory.length < 2) return null;

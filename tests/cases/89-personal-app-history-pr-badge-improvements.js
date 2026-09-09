@@ -209,7 +209,12 @@ async function readCardBadge(page, exerciseId) {
         eq(submitted[0], false, 'the newest history entry is still unsubmitted');
 
         const todayRows = await readHistoryRows(page, EXERCISES.map(([, name]) => name));
-        eq(todayRows['Preacher Curls'].badgeText, '🔥 PR',
+        // 55x4 -> 55x5 -> 55x6 is a run of two, so this row reads the count
+        // rather than "PR" — the pre-submit badge is the streak pill from the
+        // moment the set is logged, exactly as the lone-PR badge above is.
+        // Case 100 owns that rule; what this line pins is that logging alone,
+        // with no Submit Day, is enough to earn it.
+        eq(todayRows['Preacher Curls'].badgeText, '🔥 2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
             'the pre-submit History badge is the same gold-outlined pill');
