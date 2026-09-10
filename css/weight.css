@@ -344,6 +344,45 @@
     color: #4e4e63;
 }
 
+/* The solved-for field. Same box as the input beside it so the rows line up,
+   dashed rather than solid and in the accent so it reads as an answer rather
+   than as a field that has been taken away from you. */
+.plan-field-derived {
+    box-sizing: border-box;
+    width: 130px;
+    padding: 8px 10px;
+    border: 1px dashed #33334a;
+    border-radius: 8px;
+    background: #0d0d1a;
+    color: var(--accent-muted);
+    font-size: 14px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The "solve for" picker sits between the start weight and the three fields it
+   governs, and stacks rather than sitting on one line: three pills plus a label
+   do not fit beside each other at 390px. */
+.plan-solve {
+    margin: 14px 0 10px;
+}
+
+.plan-solve .plan-field-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.plan-solve-toggle .day-pill {
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+/* Amber, matching the plan gap's "over the line" colour rather than an error
+   red: a plan whose numbers do not meet is something to fix, not a fault. */
+.plan-warn {
+    color: #ff9500;
+}
+
 /* ---- History ---- */
 
 .weigh-range {

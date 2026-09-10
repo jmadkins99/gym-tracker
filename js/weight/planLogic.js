@@ -34,13 +34,20 @@
 
         // Hardcoded from the workbook's active sheet. Editable in Settings; a
         // saved plan overrides this.
+        //
+        // Its four numbers agree, which the sheet's did not: 25 lb at 2 lb/wk is
+        // twelve and a half weeks, and the sheet rounded that DOWN to 12, so its
+        // last row asked for 146 while its header promised 145. Thirteen weeks
+        // is the same plan with the fractional week it always needed — the same
+        // rounding the editor now does when it solves for a length.
         const DEFAULT_CUT_PLAN = {
             name: '2026 September – November Cut',
             startDate: '2026-08-24',  // Monday week 1 starts on
             startWeight: 170,         // the weight it starts from, per the sheet
             goalWeight: 145,          // the sheet's 25 lb goal, as a weight
             ratePerWeek: 2,           // the plan line's slope
-            weeks: 12,
+            weeks: 13,                // 25 lb at 2 lb/wk, rounded up to whole Mondays
+            solveFor: 'weeks',        // and so the field the editor opens on
         };
 
         const MS_PER_WEEK = 7 * 86400000;
@@ -67,6 +74,46 @@
 
         function planGoalPounds(plan) {
             return plan.startWeight - plan.goalWeight;
+        }
+
+        // The plan's four numbers are over-determined: start, goal, rate and
+        // length state the same line twice, and any three of them fix the
+        // fourth. Typing all four is how a plan ends up asking for 40 lb while
+        // reporting against 30 — the line runs off `ratePerWeek * weeks` and
+        // the progress bar off `goalWeight`, so a disagreement between them is
+        // silent and permanent.
+        //
+        // So the editor solves for one of the three (start weight is a fact
+        // rather than a choice, and is always an input) and this is where that
+        // arithmetic lives. `values` carries the other three as numbers, with
+        // the solved-for one null; null comes back when they cannot answer.
+        //
+        // Weeks is the one that rounds, because it is a count of Mondays and
+        // 30 lb at 2.8 lb/wk is not ten and a bit weeks of dieting. It rounds
+        // UP so the plan reaches the goal rather than stopping just short,
+        // which leaves the last week's target a little under the goal weight —
+        // the residue of a rate that does not divide, and the direction to err
+        // in.
+        function derivePlanField(solveFor, values) {
+            const start = values.startWeight;
+            const goal = values.goalWeight;
+            const rate = values.ratePerWeek;
+            const weeks = values.weeks;
+            const known = (n) => typeof n === 'number' && isFinite(n);
+
+            if (solveFor === 'goalWeight') {
+                if (!known(start) || !known(rate) || !known(weeks)) return null;
+                return start - rate * weeks;
+            }
+            if (solveFor === 'ratePerWeek') {
+                if (!known(start) || !known(goal) || !known(weeks) || weeks <= 0) return null;
+                return (start - goal) / weeks;
+            }
+            if (solveFor === 'weeks') {
+                if (!known(start) || !known(goal) || !known(rate) || rate <= 0) return null;
+                return Math.ceil((start - goal) / rate);
+            }
+            return null;
         }
 
         // The target line at week `i`: where the plan has arrived by the end of

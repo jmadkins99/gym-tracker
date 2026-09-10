@@ -17,9 +17,11 @@
 // The fixture is a 4-week plan at 2 lb/week from 180 to 170, started two
 // Mondays ago, so today is week 3 and the arithmetic is exact at every row:
 // 178 / 176 / 174 / 172. Week 4's target being 172 rather than the 170 goal is
-// not a bug in the fixture — it is the rate and the goal disagreeing, which the
-// settings modal permits, and pinning it here is what would catch a later
-// change that silently derives one from the other.
+// not a bug in the fixture — it is the rate and the goal disagreeing. The
+// settings editor no longer lets a plan be SAVED that way (it solves for one of
+// the three, see derivePlanField), but planRows still reads whatever the stored
+// plan says, including a hand-edited import, and that is what is pinned here:
+// the line comes off startWeight and ratePerWeek, never off goalWeight.
 //
 // Dates are computed inside the page rather than in node: the week bucket is a
 // LOCAL Monday, and a fixture built in one timezone and bucketed in another
