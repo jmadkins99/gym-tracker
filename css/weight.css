@@ -210,32 +210,11 @@
     margin-bottom: 12px;
 }
 
-.plan-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-}
-
 .plan-name {
     font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: #e6e6f2;
-}
-
-.plan-edit {
-    flex: none;
-    background: none;
-    border: none;
-    color: var(--accent-muted);
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    padding: 2px 0 2px 8px;
 }
 
 .plan-week {

@@ -7,25 +7,27 @@
         // shows the number you just typed above the week's average, and at
         // midnight the raw number goes: tomorrow's card opens on the average
         // rather than on yesterday's reading. The reading itself is not gone —
-        // the History chart plots it — but this card is about where the week
-        // sits, and a fat-fingered 187 for 178 can be corrected here on the day
-        // rather than hunted down later.
+        // the History chart plots it.
+        //
+        // Correcting a reading is not one of the two states. It was, through an
+        // "edit today's entry" link that reopened the input, and that made this
+        // card the second place a weight could be changed — History's week rows
+        // already do it, for today like any other day. One card, one job: today
+        // is either logged or it is not.
         const PR_CELEBRATION_MS = 2000;
 
         function CheckInView({ log, todayKey, onCheckIn, celebrating, progress }) {
             const today = entryFor(log, todayKey);
             const [draft, setDraft] = React.useState('');
-            const [editing, setEditing] = React.useState(false);
             const inputRef = React.useRef(null);
 
             // A day rollover while the tab sat open must not leave yesterday's
             // draft in the field.
             React.useEffect(() => {
                 setDraft('');
-                setEditing(false);
             }, [todayKey]);
 
-            const showInput = !today || editing;
+            const showInput = !today;
 
             React.useEffect(() => {
                 if (showInput && inputRef.current) inputRef.current.focus();
@@ -55,7 +57,6 @@
                 if (!valid) return;
                 onCheckIn(parsed);
                 setDraft('');
-                setEditing(false);
             };
 
             // Kept to one line: this sits directly under the headline number
@@ -99,9 +100,8 @@
             // average by the other route.
             //
             // Not the reading just typed in, which is a single morning of water
-            // and is not what the target is scored against. It stays reachable
-            // through "Edit today's entry", which is the one place it is still
-            // the right number to show.
+            // and is not what the target is scored against. That number is on
+            // the card too, as the receipt chip below.
             const heroWeight = progress ? progress.actual : weekAvg;
 
             const headline = target
@@ -112,7 +112,7 @@
 
             return (
                 <div className="weigh-stage">
-                    <div className={'card weigh-card' + (celebrating ? ' pr-celebrating' : '') + (today && !editing ? ' is-done' : '')}>
+                    <div className={'card weigh-card' + (celebrating ? ' pr-celebrating' : '') + (today ? ' is-done' : '')}>
                         <StreakBadges dayStreak={dayStreak} weekStreak={wkStreak} />
 
                         {showInput ? (
@@ -186,13 +186,8 @@
                                 ) : null}
 
                                 <button className="save-btn weigh-submit" onClick={submit} disabled={!valid}>
-                                    {today ? 'SAVE CORRECTION' : 'CHECK IN'}
+                                    CHECK IN
                                 </button>
-                                {today && (
-                                    <button className="weigh-link" onClick={() => { setDraft(''); setEditing(false); }}>
-                                        Cancel
-                                    </button>
-                                )}
                             </div>
                         ) : (
                             <div className="weigh-body">
@@ -219,10 +214,6 @@
                                         {headline.foot}
                                     </div>
                                 </div>
-
-                                <button className="weigh-link" onClick={() => { setDraft(formatWeight(today.weight)); setEditing(true); }}>
-                                    Edit today’s entry
-                                </button>
                             </div>
                         )}
                     </div>

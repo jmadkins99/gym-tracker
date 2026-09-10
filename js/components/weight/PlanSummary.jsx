@@ -7,6 +7,12 @@
         // pounds of CHANGE rather than absolute weight, which is both what the
         // sheet's summary row did and the framing that keeps this screen about
         // the plan rather than about a number on a scale.
+        //
+        // Read-only, deliberately. It used to carry an Edit button of its own,
+        // which put the plan editor behind two different affordances on two
+        // screens; the gear is where every setting on this page is changed, and
+        // the plan is a setting. The one button left is on the empty card,
+        // because "no cut plan set" has to offer a way to set one.
         function PlanSummary({ progress, onEdit }) {
             if (!progress) {
                 return (
@@ -39,10 +45,7 @@
 
             return (
                 <div className="plan-card">
-                    <div className="plan-head">
-                        <div className="plan-name">{plan.name}</div>
-                        <button className="plan-edit" onClick={onEdit}>Edit</button>
-                    </div>
+                    <div className="plan-name">{plan.name}</div>
                     <div className="plan-week">{weekLabel}</div>
 
                     <div className="finish-stats plan-stats">
