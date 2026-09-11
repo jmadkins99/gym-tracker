@@ -9,8 +9,9 @@
 //
 // Locks in, for a fresh install (DEFAULT_EXERCISES — what a brand new device
 // renders):
-//   1. The weekday defaulting rule: POSTERIOR_DAYS (Mon/Wed/Fri) open on
-//      Posterior, every other weekday — including Sunday — opens on Anterior.
+//   1. The weekday defaulting rule: POSTERIOR_DAYS (Wed/Fri/Sun) open on
+//      Posterior, every other weekday — including Monday, the rest day — opens
+//      on Anterior.
 //   2. Anterior renders its 10 weighted lifts in canonical order and nothing else.
 //   3. Posterior renders its 9 lifts in canonical order.
 //   4. The two day types are disjoint and together cover the whole program.
@@ -99,7 +100,7 @@ async function sectionTitles(page) {
     const POSTERIOR_DAYS = extractArrayLiteral(configSrc, 'POSTERIOR_DAYS');
     const expectedDefaultIsPosterior = POSTERIOR_DAYS.includes(new Date().getDay());
 
-    eq(POSTERIOR_DAYS, [1, 3, 5], 'POSTERIOR_DAYS is Mon/Wed/Fri');
+    eq(POSTERIOR_DAYS, [0, 3, 5], 'POSTERIOR_DAYS is Wed/Fri/Sun');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();

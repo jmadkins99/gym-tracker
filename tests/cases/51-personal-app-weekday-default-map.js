@@ -4,7 +4,12 @@
 //
 // getDefaultDayType is what decides which card you see when you open the app
 // without touching the toggle, so it is the rule you actually live with:
-// Mon/Wed/Fri open on Posterior, Tue/Thu/Sat and Sunday open on Anterior.
+// Wed/Fri/Sun open on Posterior, Tue/Thu/Sat and Monday open on Anterior.
+//
+// Monday is the rest day (Sunday was, until Sep 2026) and the app has no rest
+// day type, so Monday falls through to Anterior. That fall-through is asserted
+// here deliberately: it is what the code does, and a future rest-day feature
+// should have to change this line on purpose.
 //
 // Test 42 checks the default too, but only for whichever weekday the suite
 // happens to run on — so a mapping that is wrong on Thursdays would sail past
@@ -25,8 +30,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // Sun=0 .. Sat=6, matching Date.getDay().
 const EXPECTED_BY_WEEKDAY = [
-    'anterior',   // Sunday
-    'posterior',  // Monday
+    'posterior',  // Sunday
+    'anterior',   // Monday - rest day, falls through to Anterior
     'anterior',   // Tuesday
     'posterior',  // Wednesday
     'anterior',   // Thursday
@@ -44,8 +49,8 @@ function extractArrayLiteral(source, name) {
 
 (async () => {
     const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-    eq(extractArrayLiteral(configSrc, 'POSTERIOR_DAYS'), [1, 3, 5],
-        'POSTERIOR_DAYS is Mon/Wed/Fri');
+    eq(extractArrayLiteral(configSrc, 'POSTERIOR_DAYS'), [0, 3, 5],
+        'POSTERIOR_DAYS is Wed/Fri/Sun');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();
@@ -74,7 +79,7 @@ function extractArrayLiteral(source, name) {
         eq(weekdays, [0, 1, 2, 3, 4, 5, 6], 'the fixture dates run Sunday through Saturday');
 
         eq(actual, EXPECTED_BY_WEEKDAY,
-            'every weekday maps to its canonical day type (Mon/Wed/Fri Posterior, rest Anterior)');
+            'every weekday maps to its canonical day type (Wed/Fri/Sun Posterior, rest Anterior)');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: all seven weekdays default to the right day type.');

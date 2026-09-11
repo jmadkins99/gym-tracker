@@ -373,11 +373,15 @@
         // than a commented-out block.
 
         // Which weekdays default to the Posterior card (Date.getDay(): Sun=0 …
-        // Sat=6). Mon/Wed/Fri are Posterior; every other day — Tue/Thu/Sat,
-        // plus Sunday — defaults to Anterior, so the larger 12-movement push day
-        // comes round four times a week. A manual toggle overrides for the
-        // session only. Consumed by getDefaultDayType in utils.js.
-        const POSTERIOR_DAYS = [1, 3, 5];
+        // Sat=6). Wed/Fri/Sun are Posterior; every other day — Tue/Thu/Sat,
+        // plus Monday — defaults to Anterior, so the week is an even three
+        // sessions each. A manual toggle overrides for the session only.
+        // Consumed by getDefaultDayType in utils.js.
+        //
+        // The rest day is Monday (it was Sunday until Sep 2026). Nothing in the
+        // app models a rest day: Monday simply falls through to Anterior the way
+        // Sunday used to, and the card goes unused because the app isn't opened.
+        const POSTERIOR_DAYS = [0, 3, 5];
 
         // Bodyweight rep config, keyed by exercise id. Reps carry over from the
         // last session (no progression); the field is a dropdown over [min, max]
