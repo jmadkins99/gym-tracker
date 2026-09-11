@@ -12,15 +12,15 @@
 // session older than the entry being badged, submitted or not (case 67 and case
 // 48 pin that; getPreviousExerciseForPR says why).
 //
-// Reverse/Cable Wrist Curls are the regression surface because their standard
-// rep range is 5-8 while nearly every other weighted exercise is 3-6. A 6-rep
-// wrist-curl improvement should badge here, because "PR" means improvement,
-// not "hit the top of the dropdown":
+// The regression it guards is reading the badge as a range-top marker. The
+// wrist pair used to be the sharpest probe for that — a 5-8 range meant a 6-rep
+// improvement was unambiguously mid-range — but both movements left the program
+// in Sep 2026 and the 5-8 range went with them. Preacher Curls carries that
+// half now: 55x4 -> 55x5 improves without coming near the top of its 3-6
+// dropdown, so a "badge only at the range top" reading still fails here.
 //
-//   Reverse Wrist Curls  30x5 -> 30x6  card streak yes, History PR yes
-//   Cable Wrist Curls    90x7 -> 90x8  card streak yes, History PR yes
 //   Kelso Shrugs        190x5 -> 190x6 card streak yes, History PR yes
-//   Preacher Curls       55x4 -> 55x5  card streak yes, History PR yes
+//   Preacher Curls       55x4 -> 55x5  card streak yes, History PR yes  <- mid-range
 //
 // The controls catch the old range-top interpretation:
 //
@@ -50,8 +50,6 @@ const EXERCISES = [
     ['upper-back-row', 'Transverse Plane Rows'],
     ['kelso-shrugs', 'Kelso Shrugs'],
     ['preacher-curls', 'Preacher Curls'],
-    ['reverse-wrist-curls', 'Reverse Wrist Curls'],
-    ['cable-wrist-curls', 'Cable Wrist Curls'],
 ];
 
 const BASELINE = workoutEntry({
@@ -62,8 +60,6 @@ const BASELINE = workoutEntry({
         { id: 'upper-back-row', name: 'Transverse Plane Rows', weight: '100', reps: '6' },
         { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '5' },
         { id: 'preacher-curls', name: 'Preacher Curls', weight: '55', reps: '4' },
-        { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', weight: '30', reps: '5' },
-        { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', weight: '90', reps: '7' },
     ],
 });
 
@@ -76,8 +72,6 @@ const LATEST = workoutEntry({
         { id: 'upper-back-row', name: 'Transverse Plane Rows', weight: '95', reps: '6' },
         { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '6' },
         { id: 'preacher-curls', name: 'Preacher Curls', weight: '55', reps: '5' },
-        { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', weight: '30', reps: '6' },
-        { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', weight: '90', reps: '8' },
     ],
 });
 
@@ -149,12 +143,8 @@ async function readCardBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'posterior');
 
-        eq(await readCardBadge(page, 'reverse-wrist-curls'), '🔥 1',
-            'card streak still counts wrist-curl rep progress below 8 as an improvement');
         eq(await readCardBadge(page, 'preacher-curls'), '🔥 1',
-            'card streak counts normal rep progress below 6 as an improvement');
-        eq(await readCardBadge(page, 'cable-wrist-curls'), '🔥 1',
-            'card streak also counts the wrist-curl top-range session as an improvement');
+            'card streak counts mid-range rep progress (4 -> 5) as an improvement');
         eq(await readCardBadge(page, 'kelso-shrugs'), '🔥 1',
             'normal 3-6 exercise still gets the same card streak behavior');
         eq(await readCardBadge(page, 'upper-back-row'), null,
@@ -169,25 +159,21 @@ async function readCardBadge(page, exerciseId) {
             ok(historyRows[name], `History includes ${name}`);
         }
 
-        eq(historyRows['Reverse Wrist Curls'].badgeText, '🔥 PR',
-            'History shows PR at 6 reps when an 8-rep-range wrist curl improved');
-        eq(historyRows['Cable Wrist Curls'].badgeText, '🔥 PR',
-            'History shows PR at 8 reps when an 8-rep-range wrist curl improved');
         eq(historyRows['Kelso Shrugs'].badgeText, '🔥 PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
         eq(historyRows['Preacher Curls'].badgeText, '🔥 PR',
-            'History shows PR at 5 reps when a normal 3-6 exercise improved');
+            'History shows PR at 5 reps — mid-range, so not a range-top marker');
         eq(historyRows['Transverse Plane Rows'].badgeText, null,
             'History does not show PR for top reps after a weight drop');
         eq(historyRows['Frontal Plane Pulldowns'].badgeText, null,
             'History does not show PR for top reps without any previous row');
-        ok(historyRows['Cable Wrist Curls'].badgeClass.includes('streak-badge'),
+        ok(historyRows['Kelso Shrugs'].badgeClass.includes('streak-badge'),
             'History PR badge reuses the streak-badge container class');
-        eq(historyRows['Cable Wrist Curls'].badgeBg, BADGE_BG,
+        eq(historyRows['Kelso Shrugs'].badgeBg, BADGE_BG,
             'History PR badge uses the shared transparent background');
-        eq(historyRows['Cable Wrist Curls'].badgeBorder, BADGE_BORDER,
+        eq(historyRows['Kelso Shrugs'].badgeBorder, BADGE_BORDER,
             'History PR badge uses the shared gold border');
-        ok(historyRows['Cable Wrist Curls'].badgeRightOfName,
+        ok(historyRows['Kelso Shrugs'].badgeRightOfName,
             'History PR badge sits immediately to the right of the exercise name');
 
         // Log against LATEST without submitting: Preacher Curls 55x5 -> 55x6
@@ -220,7 +206,11 @@ async function readCardBadge(page, exerciseId) {
             'the pre-submit History badge is the same gold-outlined pill');
         eq(todayRows['Kelso Shrugs'].badgeText, null,
             'a repeated session gets no pre-submit History badge');
-        eq(todayRows['Reverse Wrist Curls'].badgeText, null,
+        // Transverse Plane Rows is the NA probe: it has a baseline in history,
+        // so an unlogged row here is the case where a badge is conceivable and
+        // must not appear. (Reverse Wrist Curls held this probe until the wrist
+        // pair left the program.)
+        eq(todayRows['Transverse Plane Rows'].badgeText, null,
             'an unlogged NA row in the in-progress entry gets no History badge');
 
         eq(errors, [], 'no console errors');

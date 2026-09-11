@@ -333,6 +333,17 @@
             const loggedExercise = loggedWorkout?.exercises.find(e => e.id === exercise.id);
             const loggedPR = isLogged && isExercisePRInWorkout(loggedExercise, loggedWorkout, workoutHistory);
 
+            // How long the run is *including* the set just logged. The header's
+            // own prStreak cannot answer this: getPRStreak deliberately holds
+            // back today's unsubmitted record, because that pill is about the
+            // set you are walking up to. Once the set is logged the question
+            // reverses — you want the number you just reached — so this reads
+            // it the way History will once the day is submitted, through the
+            // same getPRStreakInWorkout, from the same entry.
+            const loggedPRStreak = loggedPR && PR_STREAK_TRACKING
+                ? getPRStreakInWorkout(loggedExercise, loggedWorkout, workoutHistory)
+                : 0;
+
             const lastLine = !previous ? null
                 : exercise.type === 'assault-bike' ? 'Last: ' + previous.intensity + ' @ ' + previous.watts + 'W'
                 : exercise.type === 'stairmaster' ? 'Last: ' + (previous.level || 'Level 7') + ' · ' + previous.time
@@ -345,8 +356,9 @@
                     <div className="card-open-head">
                         <div className="card-open-name">{exercise.name}</div>
                         {loggedPR ? (
-                            <div className="streak-badge logged-pr-badge" data-logged-pr-badge>
-                                🔥 PR
+                            <div className="streak-badge logged-pr-badge" data-logged-pr-badge
+                                 data-streak={loggedPRStreak > 1 ? loggedPRStreak : undefined}>
+                                {loggedPRStreak > 1 ? '🔥 ' + loggedPRStreak : '🔥 PR'}
                             </div>
                         ) : null}
                         {isLogged ? <div className="logged-chip">logged</div> : null}

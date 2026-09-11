@@ -3,8 +3,6 @@
             'curls-shoulder-extension': '25',
             'overhead-tricep-extensions': '47.5',
             'lateral-raises': '27.5',
-            'reverse-wrist-curls': '30',
-            'cable-wrist-curls': '90',
             'preacher-curls': '56.25',
             'tricep-pushdown': '36.25',
             'chest-flies': '165',
@@ -49,6 +47,11 @@
             'chest-flies': 2.5,
             'chest-press': 2.5,
             'incline-chest-press': 2.5,
+            // Back Extensions: 5 was one plate step a side when this was a
+            // two-sided sled, and it is exactly one notch now that the machine
+            // is a pin stack. The number survives the Sep 2026
+            // reclassification unchanged for that reason — not because the two
+            // loadings share a step by rule.
             'leg-curls': 5,
             'shoulder-press': 2.5,
             'preacher-curls': 2.5,
@@ -69,19 +72,22 @@
             // capped at 405.
             'calf-raise': 5,
             'ab-crunch': 2.5,
-            'cable-wrist-curls': 2.5,
-            'reverse-wrist-curls': 2.5,
             'actual-leg-extensions': 2.5
         };
 
-        // Standard weighted rep dropdowns. Almost every movement keeps the
-        // historical 3-6 range; the wrist pair is deliberately higher. Overrides
-        // are keyed by frozen exercise id because display names are user-owned.
+        // Standard weighted rep dropdowns. Every movement in the program uses
+        // the historical 3-6 range. The override map is empty as of Sep 2026:
+        // its only two entries were the wrist pair's 5-8 range, and that range
+        // was built for those two movements alone, so it left with them.
+        //
+        // The mechanism stays because it is the read path — every caller goes
+        // through getStandardRepRange rather than the constant — and because
+        // the next movement that wants its own range needs one line here, not a
+        // re-plumb. Editing a past wrist-curl session still offers its stored
+        // 7 or 8: EditWorkoutModal unions the saved value into the dropdown,
+        // which is what makes deleting the override safe for history.
         const DEFAULT_STANDARD_REP_RANGE = { min: 3, max: 6 };
-        const STANDARD_REP_RANGE_OVERRIDES = {
-            'reverse-wrist-curls': { min: 5, max: 8 },
-            'cable-wrist-curls': { min: 5, max: 8 }
-        };
+        const STANDARD_REP_RANGE_OVERRIDES = {};
 
         function getStandardRepRange(exerciseId) {
             return STANDARD_REP_RANGE_OVERRIDES[exerciseId] || DEFAULT_STANDARD_REP_RANGE;
@@ -124,21 +130,36 @@
         const LOAD_TYPES = ['pin', 'plate-one-sided', 'plate-two-sided'];
 
         // Hard ceilings on pin stacks, keyed by id. Above the cap the breakdown
-        // renders "pin at max + loose plates" for the excess. Deliberately NOT
-        // part of loadType and NOT user-editable: a cap is a property of one
-        // specific machine, not a way of loading one, and only one machine in
-        // the program has a known ceiling. Applies only when loadType is 'pin';
-        // ignored otherwise, so a cap left behind on a reclassified exercise is
-        // inert rather than wrong. Test 16 fails on a cap naming a non-pin id.
+        // renders "pin at max + loose plates" for the excess — the *overflow*
+        // shape, which is the only thing a cap does. Deliberately NOT part of
+        // loadType and NOT user-editable: a cap is a property of one specific
+        // machine, not a way of loading one. Applies only when loadType is
+        // 'pin'; ignored otherwise, so a cap left behind on a reclassified
+        // exercise is inert rather than wrong. Test 16 fails on a cap naming a
+        // non-pin id — a cap on a plate machine reads as intent while doing
+        // nothing, which is worse than no cap at all.
+        //
+        // Lateral Raises (Sep 2026) is recorded ahead of need: the stack tops
+        // out at 100, but the Jun 2026 backup has it working at 32.5-35.25, so
+        // nothing overflows today and nothing will for a long time. It is here
+        // as a fact about the machine, not a live constraint — do not read the
+        // entry as evidence the ceiling is being approached.
+        //
+        // Back Extensions (Sep 2026) is the machine that moved: it is a pin
+        // stack, capped at 260, and its seed below changed from
+        // 'plate-two-sided' to 'pin' in the same trip. The cap and the seed go
+        // together — the cap is unreachable config without the reclassification.
         //
         // Cable Wrist Curls was capped at 97.5 until Aug 2026, when the user
         // moved to a different cable machine whose working weights are nowhere
-        // near its ceiling — uncapped since, and its max does not matter until
-        // it is approached. Leg Press was briefly capped at 390 in the same
-        // period, when the gym looked to have swapped its plate sled for a
+        // near its ceiling — uncapped from then until it left the program
+        // entirely in Sep 2026. Leg Press was briefly capped at 390 in the same
+        // Aug period, when the gym looked to have swapped its plate sled for a
         // stack; that turned out not to hold. Calf Raises has always been a
         // different machine, close number notwithstanding.
         const PIN_STACK_CAPS = {
+            'lateral-raises': 100,
+            'leg-curls': 260,
             'calf-raise': 405
         };
 
@@ -241,7 +262,17 @@
         // a way it was not for reorders 7 through 13: a device that has set a
         // load type must come through this bump still holding it. Case 59 is
         // what stops that regressing.
-        const EXERCISE_CONFIG_VERSION = 18;
+        //
+        // 19 drops the wrist pair (Sep 2026). Unlike every bump from 7 on, the
+        // id set genuinely changes here, so migrateExerciseConfig's setsEqual
+        // check would catch it on its own — the bump is belt and braces, and it
+        // is what guarantees the reorder *behind* the removal (Back Extensions,
+        // Hip Adduction and Calf Raises each shift up two places) lands on a
+        // device that reloads mid-flight. The same bump carries Back Extensions'
+        // seed change to 'pin', but only to installs that never touched the
+        // dropdown: loadType is user-owned and preserved by name, so a device
+        // that chose two-sided keeps it and must change it in Settings.
+        const EXERCISE_CONFIG_VERSION = 19;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -257,12 +288,11 @@
         //
         // The split is anatomical with a push/pull flavour rather than strict
         // anatomy — the arms are grouped by function, so triceps sit on Anterior
-        // and biceps on Posterior. Two movements cross what pure anatomy would
-        // say, both deliberately: Hip Adduction is on Posterior because adductor
-        // magnus is a hip extensor, and Cable Wrist Curls (a flexor, so anterior
-        // forearm) stays on Anterior next to the other pressing work while the
-        // extensors go the other way. 12 Anterior, 9 Posterior — the push side
-        // carries more volume on purpose.
+        // and biceps on Posterior. One movement crosses what pure anatomy would
+        // say, deliberately: Hip Adduction is on Posterior because adductor
+        // magnus is a hip extensor. (The wrist pair used to be the other
+        // exception, and the flexor/extensor argument went with them when they
+        // left in Sep 2026.) 10 Anterior, 9 Posterior.
         //
         // Anterior comes first here, matching the day toggle and the Settings
         // list. All three orderings are independent — keep them in step.
@@ -303,34 +333,44 @@
             { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 13 },
             { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
             { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 15 },
-            // The wrist pair moved here from Anterior (Aug 2026). They are
-            // forearm work and belong with the pulling day's other arm
-            // movements, immediately after the curls rather than tacked onto
-            // the end of a pressing day. Splitting them by flexor/extensor
-            // across the two days was the older idea and it never earned its
-            // keep — they are done back to back at the same cable.
-            { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls',      category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 16 },
-            { id: 'cable-wrist-curls',   name: 'Cable Wrist Curls',        category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 17 },
+            // The wrist pair sat here — Reverse Wrist Curls then Cable Wrist
+            // Curls, moved over from Anterior in Aug 2026 — until Sep 2026
+            // dropped both from the program. They took the 5-8 rep range with
+            // them; see STANDARD_REP_RANGE_OVERRIDES.
+            //
             // `leg-curls` is its frozen id — it has not been a leg curl in a
-            // long time.
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-two-sided', order: 18 },
+            // long time. Pin-loaded and capped at 260 since Sep 2026: it had
+            // been read as a two-sided plate sled since Aug 2026, and that was
+            // simply wrong about the machine. loadType is user-owned, so this
+            // seed only reaches a fresh install — a device that already set the
+            // dropdown keeps its own answer through the version bump.
+            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 16 },
             // Adductor magnus is a hip extensor, which is why this sits with the
             // posterior chain. `leg-extensions` is its frozen id — it has not
             // been a leg extension since the Upper/Lower split, and the row on
             // Anterior above is the one that actually renders Leg Extensions.
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 19 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 20 }
+            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 17 },
+            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 18 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and
-        // `assault-bike` (August 2026 Lower/Upper switch), and `stairmaster`
+        // `assault-bike` (August 2026 Lower/Upper switch), `stairmaster`
         // (dropped off Lower a few days later — it had been the lone 'Cardio'
-        // category entry, so Lower no longer renders a Cardio heading at all).
+        // category entry, so Lower no longer renders a Cardio heading at all),
+        // and `reverse-wrist-curls` + `cable-wrist-curls` (Sep 2026).
         // Every rendering branch stays put — the stairmaster arms in
         // WorkoutView / EditWorkoutModal / WeeklyView / DayBreakdownModal,
         // getStairmasterSuggestion in plateauLogic, and the rep configs in
         // BODYWEIGHT_REP_DEFAULTS — because workout history still references
-        // all four ids and must keep rendering and editing.
+        // those ids and must keep rendering and editing.
+        //
+        // The wrist pair is the one retirement that left nothing behind in
+        // config: they were plain `standard` movements, so they need no
+        // rendering arm of their own, and their WEEK_1_DEFAULTS, increment and
+        // rep-range entries are all read per *rostered* exercise. Past sessions
+        // render from the stored entry either way. Everything about them is
+        // recoverable from git — that is the reason this was a deletion rather
+        // than a commented-out block.
 
         // Which weekdays default to the Posterior card (Date.getDay(): Sun=0 …
         // Sat=6). Mon/Wed/Fri are Posterior; every other day — Tue/Thu/Sat,

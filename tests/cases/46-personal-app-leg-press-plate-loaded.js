@@ -19,9 +19,10 @@
 // the two branches render different shapes for the same set, so a half-applied
 // revert (config moved, stale PIN_STACK entry left behind) fails here.
 //
-// The 390 cap went with the pin-stack classification. Overflow rendering now
-// lives entirely on Calf Raises in 08-personal-app-pin-stack-overflow, which is
-// the program's only capped stack.
+// The 390 cap went with the pin-stack classification. Overflow rendering lives
+// on Calf Raises in 08-personal-app-pin-stack-overflow and on Back Extensions
+// in 26-personal-app-back-extensions-pin; this case is the one that says Leg
+// Press is not among them.
 //
 // At 200 lbs, two-sided:
 //   - Warmup 1 = 70% of 200 = 140 total → 70/side (exact, no rounding) → 45+25
@@ -70,8 +71,8 @@ function extractLiteral(source, name, open, close) {
     eq(INCREMENTS['hip-adduction'], 5,
         'hip-adduction PR increment is 5, which is 2.5/side');
 
-    // Calf Raises is the only capped stack left now that Leg Press's 390 went
-    // with its pin-stack classification. Asserted here rather than only in test
+    // Leg Press's own 390 went with its pin-stack classification and has not
+    // come back. The surviving caps are asserted here rather than only in test
     // 16 because this is where the cap/increment pairing is checked — the two
     // have to be read together, and 405 is exactly the kind of number that
     // invites being copied onto a neighbouring machine.
@@ -79,13 +80,21 @@ function extractLiteral(source, name, open, close) {
     eq(PIN_STACK_CAPS['calf-raise'], 405, 'calf-raise is capped at 405');
     eq(INCREMENTS['calf-raise'], 5,
         'calf-raise PR increment is 5, exactly one pin-stack step');
+    ok(!('hip-adduction' in PIN_STACK_CAPS),
+        'Leg Press carries no cap — the 390 left with the stack classification');
 
-    // Back Extensions is the program's other two-sided plate machine. It moved
-    // single-plate -> two-side in the same Aug 2026 trip that took Leg Press to
-    // a stack, and it does NOT move back — the two changes are independent and
-    // reverting both together is the mistake worth catching.
-    eq(loadTypeById['leg-curls'], 'plate-two-sided',
-        'leg-curls (Back Extensions) still seeds as two-sided plate-loaded');
+    // Back Extensions went single-plate -> two-side in the Aug 2026 trip that
+    // took Leg Press to a stack, and pin-loaded in Sep 2026 when the machine
+    // was finally read correctly. The pairing to watch is its cap and its
+    // increment: 5 was one plate step a side and is now one stack notch, so the
+    // number stayed while everything around it moved. Leg Press does NOT
+    // follow it — these two have been reclassified in opposite directions
+    // twice now, and moving them together is the mistake worth catching.
+    eq(loadTypeById['leg-curls'], 'pin',
+        'leg-curls (Back Extensions) seeds as a pin stack');
+    eq(PIN_STACK_CAPS['leg-curls'], 260, 'leg-curls is capped at 260');
+    eq(INCREMENTS['leg-curls'], 5,
+        'leg-curls PR increment is 5, exactly one pin-stack step');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();

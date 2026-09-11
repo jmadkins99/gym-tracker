@@ -34,8 +34,7 @@ const EXPECTED_ANTERIOR = [
 const EXPECTED_POSTERIOR = [
     'Recline Curls', 'Frontal Plane Pulldowns', 'Sagittal Plane Pulldowns',
     'Transverse Plane Rows', 'Kelso Shrugs', 'Preacher Curls',
-    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
-    'Reverse Wrist Curls', 'Cable Wrist Curls',
+    // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both.
     'Back Extensions', 'Hip Adduction', 'Calf Raises',
 ];
 
@@ -102,7 +101,7 @@ const EXPECTED_POSTERIOR = [
         });
 
         eq(grouped['Anterior'], EXPECTED_ANTERIOR,
-            'the Anterior group lists its 12 movements in canonical order');
+            'the Anterior group lists its 10 movements in canonical order');
         eq(grouped['Posterior'], EXPECTED_POSTERIOR,
             'the Posterior group lists its 9 movements in canonical order');
 
@@ -120,14 +119,15 @@ const EXPECTED_POSTERIOR = [
                 };
             };
             // The boundary is derived, not a literal: it moved when the wrist
-            // pair went to Posterior in Aug 2026, and hardcoding 11/12 is what
-            // made this assertion fail for the wrong reason.
+            // pair went to Posterior in Aug 2026 and again when the pair was
+            // dropped in Sep, and hardcoding it is what made this assertion
+            // fail for the wrong reason.
             const boundary = window.ANTERIOR_COUNT;
             return { count: rows.length, first: at(0), lastAnterior: at(boundary - 1),
                      firstPosterior: at(boundary), last: at(rows.length - 1) };
         });
 
-        eq(arrowState.count, 21, 'all 21 movements are listed across the two groups');
+        eq(arrowState.count, 19, 'all 19 movements are listed across the two groups');
         ok(arrowState.first.up, 'the first Anterior row cannot move up');
         ok(arrowState.lastAnterior.down, 'the last Anterior row cannot move down past the boundary');
         ok(arrowState.firstPosterior.up, 'the first Posterior row cannot move up past the boundary');

@@ -4,7 +4,10 @@
 //   - Hit 4 or 5 last session  -> dropdown carries that over (NOT +1).
 //   - Hit 6 last session       -> weight auto-bumps (simplePR) and reps reset
 //                                 to 4 for the new heavier weight.
-//   - Wrist curls use their id-keyed 5/6/7/8 dropdown and only bump at 8.
+// The id-keyed override that let the wrist pair run a 5/6/7/8 dropdown was
+// covered here too, until both movements left the program in Sep 2026 and took
+// the 5-8 range with them. STANDARD_REP_RANGE_OVERRIDES is empty now, so every
+// rostered movement uses the 3-6 range this case asserts.
 //   - No history               -> defaults to the exercise's start reps.
 // And one-tap LOG (no interaction) persists the pre-selected reps + pre-filled
 // weight.
@@ -12,7 +15,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { ACTIVE, goToCard, goToCardById, revealCard, goToCardAndLog } = require('../lib/deck');
+const { ACTIVE, goToCard, revealCard, goToCardAndLog } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -39,25 +42,6 @@ async function readStandardCard(page, name) {
     }, ACTIVE);
 }
 
-async function readStandardCardById(page, id) {
-    await goToCardById(page, id);
-    await revealCard(page);
-    return page.evaluate((sel) => {
-        const slot = document.querySelector(sel);
-        if (!slot) return null;
-        const card = slot.querySelector('.card[data-exercise-id]');
-        const weightInput = slot.querySelector('input[type="number"][inputmode="decimal"]');
-        const repsSelect = slot.querySelector('select[data-field="reps"]');
-        return {
-            exerciseId: card ? card.getAttribute('data-exercise-id') : null,
-            weightValue: weightInput ? weightInput.value : null,
-            repsValue: repsSelect ? repsSelect.value : null,
-            repsIsSelect: !!repsSelect,
-            repsOptions: repsSelect ? Array.from(repsSelect.options).map(o => o.value) : null,
-        };
-    }, ACTIVE);
-}
-
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();
@@ -66,18 +50,15 @@ async function readStandardCardById(page, id) {
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
-        // Last session: shoulder-press 5 reps (carry over), kelso-shrugs 6 reps
-        // (weight bump -> reps reset to 4), reverse-wrist-curls 7 reps (carry
-        // over), and cable-wrist-curls 8 reps (wrist bump -> reps reset to 6).
-        // Dated weeks back so we're past Week 1.
+        // Last session: shoulder-press 5 reps (carry over) and kelso-shrugs
+        // 6 reps (weight bump -> reps reset to 4). Dated weeks back so we're
+        // past Week 1.
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-25T20:00:00Z', day: 'fullbody',
                 exercises: [
                     { id: 'shoulder-press', name: 'Shoulder Press', weight: '100', reps: '5' },
                     { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '6' },
-                    { id: 'reverse-wrist-curls', name: 'Reverse Wrist Curls', weight: '30', reps: '7' },
-                    { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', weight: '90', reps: '8' },
                 ],
             }),
         ];
@@ -87,7 +68,7 @@ async function readStandardCardById(page, id) {
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        // Most standard exercises still use exactly 3/4/5/6.
+        // Every standard exercise uses exactly 3/4/5/6.
         const sp = await readStandardCard(page, 'Shoulder Press');
         ok(sp && sp.repsIsSelect, 'Shoulder Press reps is a <select>');
         eq(sp.repsOptions, ['3', '4', '5', '6'], 'reps dropdown offers exactly 3/4/5/6');
@@ -108,17 +89,9 @@ async function readStandardCardById(page, id) {
         eq(ks.repsValue, '4', 'after hitting 6, reps reset to 4 for the new weight');
         eq(ks.weightValue, '192.5', 'after hitting 6, weight auto-bumps by the PR increment');
 
-        const reverse = await readStandardCardById(page, 'reverse-wrist-curls');
-        eq(reverse.exerciseId, 'reverse-wrist-curls', 'reverse wrist curls are found by id');
-        eq(reverse.repsOptions, ['5', '6', '7', '8'], 'reverse wrist curls use the 5/6/7/8 dropdown');
-        eq(reverse.repsValue, '7', 'reverse wrist curls carry over 7 reps without bumping');
-        eq(reverse.weightValue, '30', 'reverse wrist curls do not bump below 8 reps');
-
-        const cable = await readStandardCardById(page, 'cable-wrist-curls');
-        eq(cable.exerciseId, 'cable-wrist-curls', 'cable wrist curls are found by id');
-        eq(cable.repsOptions, ['5', '6', '7', '8'], 'cable wrist curls use the 5/6/7/8 dropdown');
-        eq(cable.repsValue, '6', 'after hitting 8, wrist curls reset to 6 for the new weight');
-        eq(cable.weightValue, '92.5', 'after hitting 8, cable wrist curls auto-bump by the PR increment');
+        // Kelso Shrugs' own dropdown is the 3-6 one, like every other card.
+        eq(ks.repsOptions, ['3', '4', '5', '6'],
+            'the Posterior day offers the same 3/4/5/6 range — no override survives');
 
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.
         // On the deck that means navigating to it and opening it — LOG exists

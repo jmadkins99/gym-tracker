@@ -107,9 +107,8 @@ const EXPECTED_POSTERIOR = [
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Preacher Curls',
-    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
+    // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both from
+    // the program.
     'Back Extensions',
     'Hip Adduction',
     'Calf Raises',
@@ -172,7 +171,12 @@ async function readSavedConfig(page) {
         const saved = await readSavedConfig(page);
         eq(saved.version, currentConfigVersion(),
             'reconciled config is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(saved.ids.length, 21, 'leg extensions + chest press bring the saved config to 21');
+        // 19 in, 19 out, but not the same 19: leg extensions and chest press
+        // arrive, and the wrist pair — retired from the roster in Sep 2026 —
+        // leaves. The count alone would hide that, so both halves are asserted.
+        eq(saved.ids.length, 19, 'leg extensions + chest press in, the wrist pair out: 19 ids');
+        ok(!saved.byId['reverse-wrist-curls'] && !saved.byId['cable-wrist-curls'],
+            'the retired wrist pair is dropped from a saved config that still carried it');
         ok(!saved.byId['stairmaster'],
             'stairmaster is not added — it is retired from the active program');
         // The fresh id is what keeps this distinct from `leg-extensions`, which
@@ -208,10 +212,10 @@ async function readSavedConfig(page) {
         eq(days.filter(d => d !== 'anterior' && d !== 'posterior'), [],
             'no exercise is left without a day');
 
-        // `order` must stay a dense 0..20 run, since moveExercise and the
+        // `order` must stay a dense 0..18 run, since moveExercise and the
         // load-time sort both index off it.
-        eq(saved.orders, Array.from({ length: 21 }, (_, i) => i),
-            'order is a dense 0..20 sequence across both days');
+        eq(saved.orders, Array.from({ length: 19 }, (_, i) => i),
+            'order is a dense 0..18 sequence across both days');
 
         // 5. Second load changes nothing.
         await page.reload({ waitUntil: 'networkidle0' });
@@ -225,12 +229,12 @@ async function readSavedConfig(page) {
 
         // ---- Phase 2: an id the defaults dropped must leave a saved config ----
         // Rebuild the version-5 state every real device was in: the migrated
-        // config above plus Stairmaster appended at order 21.
+        // config above plus Stairmaster appended past the end of the roster.
         await page.evaluate((ns) => {
             const cfg = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
             cfg.exercises.push({
                 id: 'stairmaster', name: 'Stairmaster', category: 'Cardio',
-                day: 'posterior', type: 'stairmaster', order: 21,
+                day: 'posterior', type: 'stairmaster', order: 19,
             });
             cfg.version = 5;
             localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify(cfg));
@@ -244,8 +248,8 @@ async function readSavedConfig(page) {
             'stairmaster is dropped from a saved config that still carried it');
         eq(dropped.version, currentConfigVersion(),
             'the drop is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(dropped.ids.length, 21, 'the saved config is back to 21 ids');
-        eq(dropped.orders, Array.from({ length: 21 }, (_, i) => i),
+        eq(dropped.ids.length, 19, 'the saved config is back to 19 ids');
+        eq(dropped.orders, Array.from({ length: 19 }, (_, i) => i),
             'order stays dense after the removal — no hole where stairmaster sat');
         eq(dropped, saved, 'the dropped config matches the canonical one exactly');
 

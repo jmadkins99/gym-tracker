@@ -2,7 +2,7 @@
 // ----------------------
 // The canonical Anterior/Posterior roster, as declared in DEFAULT_EXERCISES.
 // This is the single source-level pin on the August 2026 switch away from
-// Upper/Lower: which day every one of the 21 movements lives on, in what
+// Upper/Lower: which day every one of the 19 movements lives on, in what
 // order, and with a `category` that agrees with its `day`.
 //
 // Deliberately source-only — it parses config.js and never opens a browser, so
@@ -39,12 +39,10 @@ const ANTERIOR = [
     ['shoulder-press', 'Shoulder Press'],
     ['lateral-raises', 'Lateral Raises'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair, Aug 2026.
+    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026.
     ['ab-crunch', 'Ab Crunches'],
     ['actual-leg-extensions', 'Leg Extensions'],
     ['tricep-pushdown', 'Tricep Extensions'],
-    // The wrist pair used to sit here. It moved to Posterior in Aug 2026 — see
-    // the note in POSTERIOR below.
     // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
     // the movement actually named Hip Adduction is `leg-extensions`, on
     // Posterior. Both mismatches are frozen.
@@ -58,12 +56,9 @@ const POSTERIOR = [
     ['upper-back-row', 'Transverse Plane Rows'],
     ['kelso-shrugs', 'Kelso Shrugs'],
     ['preacher-curls', 'Preacher Curls'],
-    // The wrist pair, moved here from Anterior in Aug 2026 and placed directly
-    // after the curls. They are forearm work done back to back at the same
-    // cable, so splitting them flexor/extensor across the two days never earned
-    // its keep, and tacking them onto the end of a pressing day was worse.
-    ['reverse-wrist-curls', 'Reverse Wrist Curls'],
-    ['cable-wrist-curls', 'Cable Wrist Curls'],
+    // The wrist pair sat here — moved over from Anterior in Aug 2026, directly
+    // after the curls — until Sep 2026 dropped both from the program. They took
+    // the 5-8 rep range with them, which had been built for those two alone.
     ['leg-curls', 'Back Extensions'],
     // Adductor magnus is a hip extensor, which is why this sits with the
     // posterior chain rather than with the quads.
@@ -85,7 +80,7 @@ function extractLiteral(source, name, open, close) {
     const exercises = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
 
     // 1. Nothing was added or dropped by the reassignment.
-    eq(exercises.length, 21, 'the program is 21 movements');
+    eq(exercises.length, 19, 'the program is 19 movements');
 
     // 2. Every id lands on the right day. One assertion, whole reassignment.
     const expectedDayById = {};
@@ -94,7 +89,7 @@ function extractLiteral(source, name, open, close) {
     const actualDayById = {};
     for (const ex of exercises) actualDayById[ex.id] = ex.day;
     eq(actualDayById, expectedDayById,
-        'every one of the 21 ids is assigned to its canonical day');
+        'every one of the 19 ids is assigned to its canonical day');
 
     // 3. Each day renders its movements in canonical order.
     const anterior = exercises.filter(e => e.day === 'anterior');
@@ -112,14 +107,15 @@ function extractLiteral(source, name, open, close) {
         .map(e => `${e.id}: day=${e.day} category=${e.category}`);
     eq(mismatched, [], 'every exercise category agrees with its day');
 
-    // 5. `order` is a dense 0..20 run and the two days are contiguous blocks
+    // 5. `order` is a dense 0..18 run and the two days are contiguous blocks
     // with Anterior first. moveExercise reindexes across the flat list and the
     // load-time sort is a plain numeric sort, so both properties are load-bearing.
-    eq(exercises.map(e => e.order), Array.from({ length: 21 }, (_, i) => i),
-        'order is a dense 0..20 run');
+    eq(exercises.map(e => e.order), Array.from({ length: 19 }, (_, i) => i),
+        'order is a dense 0..18 run');
     const firstPosterior = exercises.findIndex(e => e.day === 'posterior');
-    // Derived, not hardcoded: the split moved once already (the wrist pair
-    // went to Posterior in Aug 2026) and a literal here just goes stale.
+    // Derived, not hardcoded: the boundary has moved twice already (the wrist
+    // pair went to Posterior in Aug 2026, then left the program in Sep) and a
+    // literal here just goes stale.
     eq(firstPosterior, ANTERIOR.length,
         `the Anterior block is the first ${ANTERIOR.length} entries`);
     ok(exercises.slice(firstPosterior).every(e => e.day === 'posterior'),

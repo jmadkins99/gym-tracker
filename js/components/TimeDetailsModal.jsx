@@ -2,13 +2,17 @@
         // that show them: the Day Breakdown that pops on Complete Day, and the
         // History tab's ⏱️ button, which is the only way to see them again once
         // the day has rolled over. One copy so the timing display cannot drift;
-        // Day Breakdown can pass PR ids to annotate the rows it just counted.
+        // Day Breakdown can pass PR ids to annotate the rows it just counted,
+        // plus `prStreaksById` for how long each of those runs is. The badge
+        // then reads the way it does in History and on the logged card: "🔥 PR"
+        // for a lone PR, "🔥 N" once the run is two or more. History's own ⏱️
+        // modal below passes neither, so its rows stay unannotated.
         //
         // `timing` is a getSessionTiming result and is never null here — both
         // callers guard on it, because a workout with no timestamps at all
         // (anything logged before August 2026) should render nothing rather
         // than an empty list.
-        function TimingDetails({ timing, prExerciseIds = [] }) {
+        function TimingDetails({ timing, prExerciseIds = [], prStreaksById = {} }) {
             const hasEstimatedRow = timing.rows.some(r => r.estimated);
             const prSet = new Set(prExerciseIds);
 
@@ -16,6 +20,7 @@
                 <div data-timing-details style={{ marginBottom: '20px', fontSize: '14px' }}>
                     {timing.rows.map(row => {
                         const isPR = prSet.has(row.id);
+                        const prStreak = prStreaksById[row.id] || 0;
                         return (
                             <div
                                 key={row.id}
@@ -32,8 +37,9 @@
                             <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
                                 <span>{row.name}</span>
                                 {isPR ? (
-                                    <span className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge>
-                                        🔥 PR
+                                    <span className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge
+                                          data-streak={prStreak > 1 ? prStreak : undefined}>
+                                        {prStreak > 1 ? '🔥 ' + prStreak : '🔥 PR'}
                                     </span>
                                 ) : null}
                             </span>

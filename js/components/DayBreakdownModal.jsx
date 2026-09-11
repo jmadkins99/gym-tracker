@@ -20,6 +20,11 @@
             // Calculate PRs (just count them)
             let prCount = 0;
             const prExerciseIds = [];
+            // How long each of those runs is, by id, for the badge on the
+            // timing row. isExercisePRInWorkout still decides whether a badge
+            // appears at all; this only decides what it says, exactly as in
+            // History — same getPRStreakInWorkout, counted as of this session.
+            const prStreaksById = {};
             currentDayWorkoutExercises.forEach(exercise => {
                 // Day Breakdown's PR count, History's PR badge, and the
                 // workout-card flame streak all use the same "lift moved
@@ -29,6 +34,9 @@
                     console.log('PR detected for:', exercise.name);
                     prCount++;
                     prExerciseIds.push(exercise.id);
+                    prStreaksById[exercise.id] = PR_STREAK_TRACKING
+                        ? getPRStreakInWorkout(exercise, todayWorkout, workoutHistory)
+                        : 0;
                 }
             });
 
@@ -101,7 +109,8 @@
                             </div>
                         )}
 
-                        {timing && <TimingDetails timing={timing} prExerciseIds={prExerciseIds} />}
+                        {timing && <TimingDetails timing={timing} prExerciseIds={prExerciseIds}
+                                                  prStreaksById={prStreaksById} />}
 
                         <button className="modal-btn primary" onClick={onClose}>
                             Close

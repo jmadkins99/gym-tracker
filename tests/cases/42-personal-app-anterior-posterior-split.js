@@ -11,7 +11,7 @@
 // renders):
 //   1. The weekday defaulting rule: POSTERIOR_DAYS (Mon/Wed/Fri) open on
 //      Posterior, every other weekday — including Sunday — opens on Anterior.
-//   2. Anterior renders its 12 weighted lifts in canonical order and nothing else.
+//   2. Anterior renders its 10 weighted lifts in canonical order and nothing else.
 //   3. Posterior renders its 9 lifts in canonical order.
 //   4. The two day types are disjoint and together cover the whole program.
 //   5. The retired Cardio day is gone, and so are the Upper/Lower toggles:
@@ -51,15 +51,13 @@ const EXPECTED_ANTERIOR = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair, Aug 2026, so the
+    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026, so the
     // big movements are done before the small isolation work.
     'Ab Crunches',
     // Its id is `actual-leg-extensions` — the `leg-extensions` id renders as
     // Hip Adduction, over on Posterior.
     'Leg Extensions',
     'Tricep Extensions',
-    // The wrist pair splits by anatomy under this program: flexors here,
-    // extensors on Posterior. They shared a day under Upper/Lower.
     // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
     // the row named Hip Adduction is `leg-extensions`. Both mismatches frozen.
     'Leg Press',
@@ -73,9 +71,8 @@ const EXPECTED_POSTERIOR = [
     'Transverse Plane Rows',
     'Kelso Shrugs',
     'Preacher Curls',
-    // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
+    // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both from
+    // the program.
     'Back Extensions',
     // Adductor magnus is a hip extensor, hence the posterior chain.
     'Hip Adduction',
@@ -144,7 +141,7 @@ async function sectionTitles(page) {
         // 2. Anterior.
         ok(await selectDayType(page, 'anterior'), 'Anterior toggle exists and is clickable');
         const anterior = await readDeckNames(page);
-        eq(anterior, EXPECTED_ANTERIOR, 'Anterior renders its 12 movements in canonical order');
+        eq(anterior, EXPECTED_ANTERIOR, 'Anterior renders its 10 movements in canonical order');
         eq(await sectionTitles(page), [],
             'Anterior has no Cardio section now that Stairmaster is retired');
 
@@ -157,7 +154,7 @@ async function sectionTitles(page) {
         // 4. Disjoint, and together the whole program.
         const overlap = anterior.filter(n => posterior.includes(n));
         eq(overlap, [], 'no exercise appears on both days');
-        eq(anterior.length + posterior.length, 21, 'the two days cover all 21 movements');
+        eq(anterior.length + posterior.length, 19, 'the two days cover all 19 movements');
 
         // 5b. The four retired cardio movements are unreachable.
         for (const name of RETIRED) {

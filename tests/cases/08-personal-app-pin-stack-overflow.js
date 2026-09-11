@@ -6,11 +6,14 @@
 // This case has been handed down twice. It first ran against Cable Wrist Curls
 // at a 97.5 cap; in Aug 2026 the user moved to a different cable machine far
 // from its ceiling and it moved onto Leg Press at a 390 cap. Leg Press then
-// went back to two-side plate-loaded, taking its cap with it, which leaves
-// Calf Raises (`calf-raise`, cap 405) as the program's ONLY capped stack and
-// therefore the only place this rendering can be exercised. If Calf Raises is
-// ever retired or uncapped, this coverage needs a new home rather than
-// deletion — losing it means the overflow branch ships untested.
+// went back to two-side plate-loaded, taking its cap with it, which left Calf
+// Raises (`calf-raise`, cap 405) as the program's only capped stack for a
+// while. Sep 2026 added two more — Back Extensions at 260, covered by case 26,
+// and Lateral Raises at 100, which is ~3x its working weight and so has no
+// overflow to render yet. Calf Raises is still the subject here because its
+// history seeds a weight that clears the cap by 95 lbs, which is what makes the
+// plate arithmetic below worth asserting. If it is ever retired or uncapped,
+// this coverage needs a new home rather than deletion.
 //
 // Calf Raises seeded at 500 lbs (cap 405):
 //   - Warmup 1 = 70% of 500 = 350 → fits on pin → just "350 lbs"
@@ -18,12 +21,10 @@
 //   - Top set  = 500 → overflow → 405 pin + 45 + 45 + 5 = 500 lbs
 //
 // Top set is shown only in overflow mode (otherwise redundant with the
-// Weight (lbs) input field) — which is also what the Cable Wrist Curls half
-// of this test asserts the absence of. The two exercises sit on opposite days
-// under the Anterior/Posterior split (Calf Raises on Posterior, Cable Wrist
-// Curls on Anterior), so the test hops the toggle between the two halves.
-// They were both Lower-day beforehand, which is why this used to need only
-// one day selection.
+// Weight (lbs) input field) — which is what the uncapped half of this test
+// asserts the absence of. Both subjects are on Posterior now, so the case
+// selects the day once and stays there; it used to hop the toggle when the
+// control lived on Anterior.
 //
 // To verify this test is real: in js/config.js, delete the 'calf-raise' entry
 // from PIN_STACK_CAPS. Top Set and the "pin 405" rows disappear and the
@@ -64,15 +65,16 @@ async function readCard(page, exerciseName) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
         // Seed Calf Raises at 500 lbs — over the 405 pin cap, so all three set
-        // entries appear and warmup 2 + top set overflow. Cable Wrist Curls is
-        // seeded at 115, the weight that used to overflow its old 97.5 cap, so
-        // the guard below is a real regression check rather than a vacuous one.
+        // entries appear and warmup 2 + top set overflow. Hip Adduction is
+        // seeded at 115 as the uncapped control: an uncapped stack must render
+        // plain pin positions at any weight, so the contrast is what proves the
+        // overflow rows above come from the CAP rather than from the weight.
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
                 exercises: [
                     { id: 'calf-raise', name: 'Calf Raises', weight: '500', reps: '5' },
-                    { id: 'cable-wrist-curls', name: 'Cable Wrist Curls', weight: '115', reps: '5' },
+                    { id: 'leg-extensions', name: 'Hip Adduction', weight: '115', reps: '5' },
                 ],
             }),
         ];
@@ -124,21 +126,24 @@ async function readCard(page, exerciseName) {
         ok(!/\/side/.test(calfRaises),
             'overflow plates render as a single pile, never "Per side"');
 
-        // --- Un-capped stack: Cable Wrist Curls must NOT overflow at 115 ---
-        // It moved from Anterior to Posterior in Aug 2026, so it is already on
-        // the day selected above and the toggle hop this case used to need is
-        // gone.
+        // --- Un-capped stack: Hip Adduction must NOT overflow at 115 ---
+        // This half ran against Cable Wrist Curls for as long as that movement
+        // existed — first at its 97.5 cap, then as the proof the cap was really
+        // gone — and moved to Hip Adduction when the wrist pair left the
+        // program in Sep 2026. Any uncapped stack on this day serves: what is
+        // being pinned is that a stack with no PIN_STACK_CAPS entry never
+        // renders the overflow shape, however heavy the set.
 
-        const clickedCable = await clickBreakdown(page, 'Cable Wrist Curls');
-        ok(clickedCable, 'Cable Wrist Curls card has a Weight Breakdown button');
+        const clickedControl = await clickBreakdown(page, 'Hip Adduction');
+        ok(clickedControl, 'Hip Adduction card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));
 
-        const cable = await readCard(page, 'Cable Wrist Curls');
+        const cable = await readCard(page, 'Hip Adduction');
 
         ok(!/pin \d/.test(cable),
-            'Cable Wrist Curls (cap removed) renders no pin-at-max overflow row at 115');
+            'Hip Adduction (uncapped) renders no pin-at-max overflow row at 115');
         ok(!/Top Set/.test(cable),
-            'Cable Wrist Curls shows no Top Set row (top set is overflow-only)');
+            'Hip Adduction shows no Top Set row (top set is overflow-only)');
 
         // It should still render plain pin warmups. Under the Aug 2026 rule
         // these round to the nearest 10 rather than to the nearest achievable
@@ -151,7 +156,7 @@ async function readCard(page, exerciseName) {
             'and neither warmup asks for a fractional plate');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Calf Raises renders pin+plate overflow at 500 over a 405 cap; Cable Wrist Curls no longer overflows.');
+        console.log('PASS: Calf Raises renders pin+plate overflow at 500 over a 405 cap; an uncapped stack never overflows.');
     } finally {
         await browser.close();
         await server.stop();

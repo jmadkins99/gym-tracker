@@ -27,6 +27,13 @@
 // to an over-long span: a stale foreground stamp, and a panel left open for
 // hours and then logged without being reopened.
 //
+// The Day Breakdown's row-level PR badges ride along here, because this is the
+// case that already opens that modal. Since Sep 2026 they read the way History
+// and the logged card read: "🔥 PR" for a lone PR, "🔥 N" once the run is two
+// or more. Both branches are seeded below — Chest Press sits on a run of two,
+// Chest Flies improves off a single prior session — so a regression that always
+// prints one or the other fails here.
+//
 // The second half calls getSessionTiming directly. The first movement of a day
 // with no anchor of its own falls back to when the app last came to the
 // foreground, and whether that stamp is recent enough decides between a real
@@ -49,6 +56,10 @@ const base = new Date();
 base.setHours(9, 0, 0, 0);
 const at = (min, sec = 0) => new Date(base.getTime() + min * 60000 + sec * 1000).toISOString();
 const baselineAt = () => new Date(base.getTime() - 2 * 86400000).toISOString();
+// One session older than the baseline, so a lift can sit on a RUN rather than
+// on a lone improvement. Only Chest Press appears in it, which is what makes
+// the two badge branches differ across rows of the same modal.
+const olderAt = () => new Date(base.getTime() - 4 * 86400000).toISOString();
 
 // Seeded OUT OF LOGGED ORDER on purpose: array order is 4, 1, 3, 2.
 const EXERCISES = [
@@ -60,7 +71,9 @@ const EXERCISES = [
     { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '6',
       startedAt: at(0), loggedAt: at(6) },
     // Anchored: 09:20 -> 09:25:30 = 5:30.
-    { id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '6',
+    // 170x6 -> 175x6 against the baseline: an improvement, and its only prior
+    // session is that baseline, so it is a lone PR.
+    { id: 'chest-flies', name: 'Chest Flies', weight: '175', reps: '6',
       startedAt: at(20), loggedAt: at(25, 30) },
     // Un-anchored: previous log 09:06, so 09:08 -> 09:14 = 6:00.
     { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '6',
@@ -83,9 +96,12 @@ const EXPECTED_ROWS = [
     ['lateral-raises', 'NA'],
 ];
 const EXPECTED_BADGES = [
-    ['chest-press', '🔥 PR'],
+    // 200x4 -> 200x5 -> 200x6: a run of two, so the row carries the count.
+    ['chest-press', '🔥 2'],
     ['incline-chest-press', null],
-    ['chest-flies', null],
+    // 170x6 -> 175x6 off a single prior session: a lone PR, so the row keeps
+    // the word.
+    ['chest-flies', '🔥 PR'],
     ['shoulder-press', null],
     ['lateral-raises', null],
 ];
@@ -110,6 +126,14 @@ const EXPECTED_TOTAL = '35m';
                     day: 'anterior',
                     submitted: false,
                     exercises: EXERCISES,
+                }),
+                workoutEntry({
+                    date: olderAt(),
+                    day: 'anterior',
+                    submitted: true,
+                    exercises: [
+                        { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '4' },
+                    ],
                 }),
                 workoutEntry({
                     date: baselineAt(),

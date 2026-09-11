@@ -61,7 +61,7 @@ function daysAgo(n) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // --- Unit half: sweep all 21 through the real helper ---------------
+        // --- Unit half: sweep the whole roster through the real helper -----
         // config.js is loaded as type="text/babel", so its top-level consts land
         // in lexical global scope — bare identifiers here, never window.X.
         const table = await page.evaluate(() => DEFAULT_EXERCISES.map(ex => ({
@@ -72,7 +72,11 @@ function daysAgo(n) {
             twoSided: getWeightIncrement(ex.id, 'plate-two-sided'),
         })));
 
-        eq(table.length, 21, 'swept all 21 exercises');
+        // 19 since Sep 2026, when the wrist pair left; 21 before that. The
+        // number is asserted rather than derived so a roster change has to come
+        // through here deliberately — the sweep below is only as good as its
+        // coverage of the whole list.
+        eq(table.length, 19, 'swept all 19 exercises');
         ok(table.every(r => typeof r.raw === 'number'),
             'every exercise has a raw PR increment to adjust');
 

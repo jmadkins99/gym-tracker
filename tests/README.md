@@ -152,7 +152,8 @@ migration chain; `41` and `33` are the ones that pin her split.
 
 Everything else is per-feature: weight breakdowns and load-type
 classification (`07`, `08`, `13`, `16`, `17`, `18`, `26`, `28`, `45`,
-`46`), the user-chosen load type itself (`57`–`61`, see below), PR
+`46` — note `26` covers Back Extensions' pin-stack OVERFLOW since Sep 2026,
+not the two-sided shape it was named for; `46` holds the two-sided coverage), the user-chosen load type itself (`57`–`61`, see below), PR
 streaks (`47`, `48`, `49`), cardio-era history (`21`, `22`, `24`),
 storage and hydration (`34`, `35`, `36`, `38`), and the day-filter
 regression that started all this (`02`, `03`).
@@ -250,6 +251,30 @@ Note that `16` is weaker than it looks now: with every exercise carrying a
 `loadType`, "shows a breakdown button" is unconditionally true, so its
 browser half only catches a card rendering no button at all. Its teeth are
 the source-level check that every entry declares a legal type.
+
+**The PR pill, three surfaces, one rule.** A PR badge says "🔥 PR" for a lone
+improvement and "🔥 N" once the run is two or more, and it says it identically
+on the logged card (`90`), in History (`89`, `100`) and on the Day Breakdown
+that Submit Day opens (`66`). All three count through `getPRStreakInWorkout`,
+as of the entry being badged rather than as of today — the pre-log pill on a
+card is the one exception, and deliberately so: `getPRStreak` holds back
+today's unsubmitted row because that pill is about the set you are walking up
+to, not the one you just finished. History took the count in Sep 2026 and the
+other two followed a few days later; each surface has both branches seeded, so
+a regression that always prints the word (or always prints a count, "🔥 1"
+included) reddens all three. If you add a fourth surface, read `WeeklyView.jsx`
+and copy the `> 1` test rather than inventing a rule.
+
+**The wrist pair** — `reverse-wrist-curls` and `cable-wrist-curls` — left the
+program in Sep 2026, and with them `STANDARD_REP_RANGE_OVERRIDES`, whose only
+entries were their 5-8 rep range. Three cases had leaned on them and were
+repointed rather than deleted: `25` lost its 5/6/7/8 probes (Preacher Curls'
+mid-range 4 → 5 is what now stops the PR badge being read as a range-top
+marker in `89`), `08` moved its uncapped-stack control onto Hip Adduction, and
+`54` dropped them from its constructed v13 seed — that seed has to match
+today's id set exactly or `setsEqual` fires and the case stops pinning the
+version bump. `43` gained the assertion that a saved config carrying a retired
+id has it removed.
 
 **Coach presets.** `63-…-ian-coach-code.js` and `64-…-ian-not-clawed-back.js`
 cover Ian's program. `64` is the one that matters: three of the Jessi one-shots

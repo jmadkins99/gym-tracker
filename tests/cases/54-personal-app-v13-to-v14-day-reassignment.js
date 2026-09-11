@@ -10,9 +10,9 @@
 //     if (config.version === EXERCISE_CONFIG_VERSION && setsEqual(savedIds, defaultIds))
 //         return null;
 //
-// The Anterior/Posterior switch moved 21 exercises between days and reordered
-// them, but added and removed NOTHING. So the id-set half of that guard is
-// true, and the version is the entire trigger. Revert the bump and every
+// The Anterior/Posterior switch moved every exercise between days and
+// reordered them, but added and removed NOTHING. So the id-set half of that
+// guard is true, and the version is the entire trigger. Revert the bump and every
 // existing device — including the signed-in phone — keeps rendering Upper and
 // Lower forever, with no error and nothing on screen to suggest anything is
 // wrong.
@@ -21,9 +21,18 @@
 // differs from defaults and its migration re-runs on the id-set check alone.
 // It passes with the bump reverted. This one does not.
 //
-// The seed below is therefore the exact live v13 shape: all 21 ids, the v13
+// The seed below is therefore the v13 shape with today's id set: the v13
 // Upper/Lower day assignment, the v13 order, version 13, plus one user rename
 // so the reassignment cannot quietly wipe display names on its way through.
+//
+// It is a CONSTRUCTED v13 config, not a captured one, and it has to stay that
+// way: the live v13 roster also carried `reverse-wrist-curls` and
+// `cable-wrist-curls`, which left the program in Sep 2026. Leaving them in the
+// seed would make the saved id set differ from defaults, the setsEqual half of
+// the guard would fire on membership, and the migration would run with the
+// version reverted — which is precisely the failure this case exists to catch.
+// Whenever the roster changes, this seed follows it. Dropping a retired id is
+// covered by test 43 instead.
 //
 // To verify this test is real: set EXERCISE_CONFIG_VERSION back to 13 in
 // js/config.js. This case fails on the first day assertion; tests 42 and 43
@@ -47,8 +56,9 @@ function currentConfigVersion() {
     return Number(m[1]);
 }
 
-// The v13 layout, exactly as it shipped: 13 Upper then 8 Lower, order 0..20.
-// Same 21 ids as v14 — that is the point.
+// The v13 layout as it shipped, minus ids the roster has since retired:
+// 13 Upper then 6 Lower, order 0..18. Same id set as the current defaults —
+// that is the point.
 const V13_LAYOUT = [
     ['chest-flies', 'Chest Flies', 'upper'],
     ['incline-chest-press', 'Incline Chest Press', 'upper'],
@@ -65,10 +75,9 @@ const V13_LAYOUT = [
     ['hammer-row', 'Sagittal Plane Pulldowns', 'upper'],
     ['tricep-pushdown', 'Tricep Extensions', 'upper'],
     ['preacher-curls', 'Preacher Curls', 'upper'],
-    // Moved to Posterior in Aug 2026. The third column is the LEGACY
+    // The wrist pair sat here in the real v13 config. See the header for why
+    // this constructed seed leaves them out. The third column is the LEGACY
     // Upper/Lower day the old config recorded, which does not change.
-    ['reverse-wrist-curls', 'Reverse Wrist Curls', 'lower'],
-    ['cable-wrist-curls', 'Cable Wrist Curls', 'lower'],
     ['leg-curls', 'Back Extensions', 'lower'],
     ['ab-crunch', 'Ab Crunches', 'lower'],
     ['actual-leg-extensions', 'Leg Extensions', 'lower'],
@@ -85,9 +94,9 @@ const EXPECTED_DAY_BY_ID = {
     'shoulder-press': 'anterior',
     'lateral-raises': 'anterior',
     'overhead-tricep-extensions': 'anterior',
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist pair,
-    // Aug 2026. Key order matters here: the assertion compares serialised
-    // maps, so this literal tracks the roster order.
+    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026. Key order
+    // matters here: the assertion compares serialised maps, so this literal
+    // tracks the roster order.
     'ab-crunch': 'anterior',
     'actual-leg-extensions': 'anterior',
     'tricep-pushdown': 'anterior',
@@ -98,11 +107,9 @@ const EXPECTED_DAY_BY_ID = {
     'upper-back-row': 'posterior',
     'kelso-shrugs': 'posterior',
     'preacher-curls': 'posterior',
-    // Moved from Anterior in Aug 2026. This map is exactly what the version
-    // bump has to deliver to a saved config, so it is the assertion that
-    // catches a forgotten EXERCISE_CONFIG_VERSION.
-    'reverse-wrist-curls': 'posterior',
-    'cable-wrist-curls': 'posterior',
+    // This map is exactly what the version bump has to deliver to a saved
+    // config, so it is the assertion that catches a forgotten
+    // EXERCISE_CONFIG_VERSION.
     'leg-curls': 'posterior',
     'leg-extensions': 'posterior',
     'calf-raise': 'posterior',
@@ -170,25 +177,25 @@ async function readSavedConfig(page) {
         // how it broke once already.
         ok(saved.version > 13, 'that version is past 13, so the v13 layout really was stale');
 
-        // 2. Every one of the 21 ids moved to its v14 day.
+        // 2. Every one of the 19 ids moved to its v14 day.
         eq(saved.dayById, EXPECTED_DAY_BY_ID,
-            'all 21 ids are reassigned to their Anterior/Posterior day');
+            'all 19 ids are reassigned to their Anterior/Posterior day');
 
         // 3. Nothing was added or dropped on the way through.
-        eq(saved.ids.length, 21, 'the saved config still holds exactly 21 ids');
+        eq(saved.ids.length, 19, 'the saved config still holds exactly 19 ids');
 
         // 4. The user's rename survived a move across days.
         eq(saved.nameById['frontal-pulldowns'], 'My Renamed Pulldowns',
             'a user rename survives the reassignment, including across a day change');
 
         // 5. order is re-densified 0..20 in the new layout.
-        eq(saved.orders, Array.from({ length: 21 }, (_, i) => i),
-            'order is a dense 0..20 run in the new layout');
+        eq(saved.orders, Array.from({ length: 19 }, (_, i) => i),
+            'order is a dense 0..18 run in the new layout');
 
         // 6. It reaches the screen, not just storage.
         ok(await selectDayType(page, 'posterior'), 'Posterior toggle present after the migration');
         const posterior = await readDeckNames(page);
-        eq(posterior.length, 11, 'Posterior renders 11 cards');
+        eq(posterior.length, 9, 'Posterior renders 9 cards');
         ok(posterior.includes('My Renamed Pulldowns'),
             'the renamed pulldowns card renders on its new day');
 
