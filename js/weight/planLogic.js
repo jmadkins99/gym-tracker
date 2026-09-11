@@ -246,6 +246,95 @@
             };
         }
 
+        // The rest of the plan, drawn at the rate actually being achieved
+        // rather than the one it asks for. History puts these behind a button:
+        // they are a projection, not a record, and they are not in the ledger
+        // until a scale says so.
+        //
+        // The rate comes from `projectionRate` below — normally `avgRate`, the
+        // mean of the weekly deltas the plan has collected so far, which is the
+        // sheet's AVERAGE(E3:E14) and the same number `projectedFinish`
+        // extrapolates from. One rate feeds both wherever both exist, on
+        // purpose: a week-by-week projection and a finish date that disagreed
+        // about the future would be worse than either on its own.
+        //
+        // The rows start after the LAST week that has readings, so a projected
+        // week never lands on a week the log can already answer for, and they
+        // stop at whichever comes first: the plan's last week, or the week the
+        // line arrives at the goal. Running past the goal would draw weeks of
+        // a cut that would already be over.
+        //
+        // Empty is the answer wherever the projection would be arithmetic
+        // dressed as a forecast — no plan, no readings yet, a rate that is flat
+        // or rising, a plan already at its end. The button is hidden in exactly
+        // those cases rather than opening onto nothing.
+        function projectionRate(progress) {
+            if (!progress) return null;
+            const withData = progress.rows.filter((r) => r.actual !== null);
+            let rate = progress.avgRate;
+
+            // Week 1 of a plan has no week-to-week delta to average — the row
+            // before it is the start weight rather than a week — so `avgRate`
+            // is null for the whole of it and the projection would be missing
+            // exactly when a new plan is most worth extrapolating. The fallback
+            // measures the same thing against the only anchor there is: what
+            // has come off since the plan started, over the weeks it has run.
+            //
+            // It is a fallback and not the primary because it is the worse
+            // forecast once there is a choice. Week 1 of a cut sheds water, so
+            // a rate anchored on the start weight runs hot for a month; the
+            // mean of the week-to-week deltas does not, and it is also the
+            // number the plan card already calls Pace. Two rates on one screen
+            // is worth avoiding, and this only ever fires where the other one
+            // does not exist.
+            if (rate === null && withData.length === 1 && withData[0].week > 0) {
+                rate = (withData[0].actual - progress.plan.startWeight) / withData[0].week;
+            }
+            // Same threshold `projectedFinish` uses, and for the same reason: a
+            // twentieth of a pound a week is noise, and extrapolating it names
+            // a date in the next decade.
+            return rate !== null && rate < -0.05 ? rate : null;
+        }
+
+        function projectedWeeks(progress) {
+            if (!progress) return [];
+            const plan = progress.plan;
+            const avgRate = projectionRate(progress);
+            if (avgRate === null) return [];
+
+            const withData = progress.rows.filter((r) => r.actual !== null);
+            if (!withData.length) return [];
+            const last = withData[withData.length - 1];
+
+            const out = [];
+            let prev = last.actual;
+            for (let i = last.week + 1; i <= plan.weeks; i++) {
+                const raw = last.actual + avgRate * (i - last.week);
+                // Clamped at the goal, which is also where the loop stops. The
+                // last row is the week the goal lands, and it lands ON the goal
+                // rather than wherever the line happened to be pointing.
+                const atGoal = raw <= plan.goalWeight;
+                const weight = atGoal ? plan.goalWeight : raw;
+                const start = parseDayKey(plan.startDate);
+                start.setDate(start.getDate() + (i - 1) * 7);
+                const planWeight = planWeightForWeek(plan, i);
+                out.push({
+                    week: i,
+                    weekStart: localDayKey(start),
+                    planWeight,
+                    projected: weight,
+                    // Measured off the row before it, so the goal week reports
+                    // the part-week it actually takes rather than a full one.
+                    delta: weight - prev,
+                    vsPlan: weight - planWeight,
+                    atGoal,
+                });
+                prev = weight;
+                if (atGoal) break;
+            }
+            return out;
+        }
+
         function formatMonthDay(dayKey) {
             return parseDayKey(dayKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }

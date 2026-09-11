@@ -474,6 +474,16 @@
             // readings this page does not have.
             const [openWeek, setOpenWeek] = React.useState(null);
 
+            // The projection is opt-in and never sticky. It is a guess about
+            // weeks that have not happened, so it lives behind a button and
+            // goes away again the next time the tab is opened — the ledger's
+            // resting state is the record and nothing else.
+            const [showProjection, setShowProjection] = React.useState(false);
+            const projected = React.useMemo(() => projectedWeeks(progress), [progress]);
+            // The button names the rate the rows were drawn at, which is not
+            // always `progress.avgRate` — see projectionRate.
+            const projectRate = projectionRate(progress);
+
             // Plan week rows keyed by their Monday, so the ledger below can
             // show "vs plan" on the weeks the plan actually covers.
             const planByWeek = React.useMemo(() => {
@@ -539,7 +549,82 @@
                         </div>
                     </div>
 
+                    {/* The projection toggle sits between the chart and the
+                        ledger because that is the seam it straddles: the chart
+                        is where the line so far is, the ledger is where the
+                        weeks are, and this draws the weeks the line implies.
+                        Hidden entirely when there is nothing honest to
+                        project — see projectedWeeks — rather than offered as a
+                        button that opens onto an empty space. */}
+                    {projected.length > 0 && (
+                        <button
+                            className={'weigh-project-btn' + (showProjection ? ' open' : '')}
+                            aria-expanded={showProjection}
+                            onClick={() => setShowProjection(!showProjection)}
+                        >
+                            <span className="weigh-project-label">
+                                <span className="weigh-project-dash" aria-hidden="true">╌╌</span>
+                                Projected Weight
+                            </span>
+                            <span className="weigh-project-rate">
+                                at ↓{formatWeight(Math.abs(projectRate))} lb/wk
+                            </span>
+                        </button>
+                    )}
+
                     <div className="section-title">By week</div>
+
+                    {/* The projected rows go ABOVE the real ones because the
+                        ledger is newest-first and these are the newest weeks
+                        there are. They stay mounted so closing animates as well
+                        as opening; the wrapper's 0fr→1fr grid row is what the
+                        real weeks slide against, and the rows inside stagger
+                        out of the present and back into it. */}
+                    {projected.length > 0 && (
+                        <div className={'weigh-projection' + (showProjection ? ' open' : '')}
+                             aria-hidden={!showProjection}>
+                          <div className="weigh-projection-inner">
+                            {projected.slice().reverse().map((row, i) => {
+                                // Index 0 is the furthest week out. Opening
+                                // reveals the nearest week first and runs
+                                // outward; closing retracts from the far end
+                                // back toward the present, which is the same
+                                // order read backwards.
+                                const n = projected.length;
+                                const step = showProjection ? (n - 1 - i) : i;
+                                return (
+                                    <div className={'history-item weigh-week projected' + (row.atGoal ? ' goal' : '')}
+                                         key={row.weekStart}
+                                         style={{ transitionDelay: (step * 55) + 'ms' }}>
+                                        <div className="history-date">
+                                            <span className="weigh-week-caret" aria-hidden="true">╌</span>
+                                            Week of {formatShortDay(row.weekStart)}
+                                            <span className="weigh-week-plan-tag">plan wk {row.week}</span>
+                                        </div>
+                                        <div className="weigh-week-row">
+                                            <div className="weigh-week-avg">
+                                                {formatWeight(row.projected)}
+                                                <span className="weigh-week-unit">lbs proj</span>
+                                            </div>
+                                            <div className="weigh-week-delta">
+                                                ↓ {formatWeight(Math.abs(row.delta))}
+                                            </div>
+                                            <div className="weigh-week-count">
+                                                {row.atGoal ? 'goal lands here' : 'projected'}
+                                            </div>
+                                        </div>
+                                        <div className={'weigh-week-vs' + (row.vsPlan <= 0 ? ' good' : ' behind')}>
+                                            target {formatWeight(row.planWeight)} ·{' '}
+                                            {Math.abs(row.vsPlan) < 0.05
+                                                ? 'on target'
+                                                : formatWeight(Math.abs(row.vsPlan)) + ' lb ' + (row.vsPlan < 0 ? 'under' : 'over')}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                          </div>
+                        </div>
+                    )}
 
                     {weeks.map((wk, i) => {
                         // `weeks` is newest-first, so the previous week in time

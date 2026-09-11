@@ -619,6 +619,147 @@
     color: #3d3d50;
 }
 
+/* ---- The projection: the rest of the plan at the rate so far ---- */
+
+/* Dashed all the way through, matching the chart's "╌╌ plan" key: on this
+   screen a dashed edge means a line that was computed rather than weighed. */
+.weigh-project-btn {
+    display: flex;
+    flex: none;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 11px 14px;
+    border: 1px dashed #26263a;
+    border-radius: 14px;
+    background: none;
+    font: inherit;
+    color: #6a6a85;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color .25s ease, color .25s ease, background .25s ease;
+}
+
+.weigh-project-btn.open {
+    border-color: var(--accent-muted);
+    background: rgba(var(--accent-rgb), 0.14);
+    color: #e6e6f2;
+}
+
+.weigh-project-label {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* The dash rotates a quarter turn on open — the horizontal "plan line" tips
+   into a caret's worth of downward, which is the one bit of state the button
+   has to carry. */
+.weigh-project-dash {
+    display: inline-block;
+    margin-right: 8px;
+    color: var(--accent-muted);
+    letter-spacing: -0.12em;
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+
+.weigh-project-btn.open .weigh-project-dash {
+    transform: rotate(90deg);
+}
+
+.weigh-project-rate {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #4e4e63;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 0fr -> 1fr is what gives the real week rows something to slide against
+   without anyone having to measure a height. The inner box aligns its content
+   to the BOTTOM so the clip opens upward, out of the present and into the
+   future — which is the direction the rows stagger in as well. */
+.weigh-projection {
+    display: grid;
+    flex: none;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .45s cubic-bezier(.22, 1, .36, 1);
+    /* Closing waits for the rows to fade before the box collapses; opening
+       does not wait for anything. */
+    transition-delay: .16s;
+}
+
+.weigh-projection.open {
+    grid-template-rows: 1fr;
+    transition-delay: 0s;
+}
+
+.weigh-projection-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Grey, dashed, and slightly transparent: three ways of saying the same thing,
+   because one row of a ledger that is otherwise all record has to be
+   unmistakable at a glance. The blur is the tell while they move — a number
+   that arrives out of focus is a number nobody has weighed. */
+.weigh-week.projected {
+    border-style: dashed;
+    border-color: #23233a;
+    background: rgba(13, 13, 26, 0.45);
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+    filter: blur(7px);
+    transition: opacity .34s ease, transform .40s cubic-bezier(.22, 1, .36, 1),
+                filter .34s ease;
+}
+
+.weigh-projection.open .weigh-week.projected {
+    opacity: 1;
+    transform: none;
+    filter: none;
+}
+
+.weigh-week.projected .history-date,
+.weigh-week.projected .weigh-week-avg {
+    color: #8a8aa0;
+}
+
+.weigh-week.projected .weigh-week-caret {
+    letter-spacing: -0.1em;
+}
+
+/* Muted rather than the ledger's green and orange. Being under a target you
+   have not reached yet is not a win to bank. */
+.weigh-week.projected .weigh-week-delta,
+.weigh-week.projected .weigh-week-vs.good,
+.weigh-week.projected .weigh-week-vs.behind {
+    color: #5c5c74;
+}
+
+.weigh-week.projected .weigh-week-count {
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+}
+
+/* Except the week the goal lands on, which is the one row in the block worth
+   going looking for. */
+.weigh-week.projected.goal {
+    border-color: var(--accent-muted);
+}
+
+.weigh-week.projected.goal .weigh-week-count,
+.weigh-week.projected.goal .weigh-week-avg {
+    color: var(--accent-pale);
+}
+
 /* ---- Opened week: the day rows ---- */
 
 /* The whole summary block is the toggle, so the tap target is the row rather
@@ -817,8 +958,19 @@
 @media (prefers-reduced-motion: reduce) {
     .weigh-input,
     .weigh-submit,
-    .weigh-link {
+    .weigh-link,
+    .weigh-project-btn,
+    .weigh-project-dash,
+    .weigh-projection,
+    .weigh-week.projected {
         transition: none;
+    }
+
+    /* Without the transition the rows would sit at their start state forever,
+       so drop the offset too and let them simply be there. */
+    .weigh-week.projected {
+        transform: none;
+        filter: none;
     }
 
     .weigh-day-btn:active {
