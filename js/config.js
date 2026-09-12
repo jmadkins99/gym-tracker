@@ -139,11 +139,26 @@
         // non-pin id — a cap on a plate machine reads as intent while doing
         // nothing, which is worse than no cap at all.
         //
-        // Lateral Raises (Sep 2026) is recorded ahead of need: the stack tops
-        // out at 100, but the Jun 2026 backup has it working at 32.5-35.25, so
-        // nothing overflows today and nothing will for a long time. It is here
-        // as a fact about the machine, not a live constraint — do not read the
-        // entry as evidence the ceiling is being approached.
+        // Lateral Raises (Sep 2026) reads 100 for two different machines, and
+        // the entry is worth reading slowly for that reason.
+        //
+        // It was recorded on 11 Sep as a ceiling nobody was near: the Jun 2026
+        // backup has the old machine worked at 32.5-35.25, three times under the
+        // cap, and this comment said in as many words that nothing would
+        // overflow for a long time. That was true when written and false the
+        // next day — the user moved to a machine that feels much lighter and
+        // went straight to 132.5.
+        //
+        // The number survived the move by coincidence. The new stack also tops
+        // out at 100 and its notch is also 2.5, so neither this entry nor the
+        // increment below needed touching; only the reasoning did. Treat that as
+        // a warning rather than a convenience. A machine swap normally moves the
+        // ceiling, the notch, and the comparability of everything logged before
+        // it — Cable Wrist Curls and Back Extensions each moved at least one —
+        // and this one happened to move none of them.
+        //
+        // So it is now the deepest overflow in the program rather than the only
+        // dormant cap in it: 32.5 over, rendering pin 100 + 25 + 5 + 2.5.
         //
         // Shoulder Press (Sep 2026) is the opposite entry to Lateral Raises and
         // the only one here that is already live on the day it lands: the stack
