@@ -1,8 +1,8 @@
-        // Storage repository seam. All persistence for workout history and
-        // exercise config goes through `repo`, an async interface with two
-        // implementations: localStorage (tests, signed-out, local dev) and
-        // Firestore (signed in, non-local namespace). Selection happens once
-        // at startup; the components only ever see the interface.
+        // Storage repository seam. All persistence for workout history,
+        // exercise config and the weight log goes through `repo`, an async
+        // interface with two implementations: localStorage (tests, signed-out,
+        // local dev) and Firestore (signed in, non-local namespace). Selection
+        // happens once at startup; the components only ever see the interface.
         //
         // NOTE: written in Promise/.then style on purpose — @babel/standalone
         // lowers async/await to regenerator form, which crashes at runtime
@@ -11,6 +11,22 @@
         // Device-local keys (firstWorkoutMonday, migration
         // sentinels) intentionally bypass the repo: they describe this device,
         // not the training data, and are never synced.
+        //
+        // The weight page is the third data kind, added September 2026. Its
+        // storage keys live here rather than in WeightApp.jsx because both
+        // implementations below need them and these files share one global
+        // scope — a second `const WEIGHT_LOG_KEY` in WeightApp would be a
+        // redeclaration error, not a shadow.
+        const WEIGHT_LOG_KEY = 'gymWeightLog';
+        const WEIGHT_PLAN_KEY = 'gymWeightPlan';
+        const WEIGHT_SEED_KEY = 'weightHistorySeeded';
+
+        // Which page booted the repo, read from the path the way APP_NAMESPACE
+        // is. It gates one thing only: which first-sign-in local import runs.
+        // Both pages get every method — but the workout page must not haul the
+        // weight log up to the cloud (or spring a pre-sync backup download) on
+        // a visit that never opened the weight app, and vice versa.
+        const REPO_SCOPE = window.location.pathname.includes('/weight/') ? 'weight' : 'workout';
 
         function createLocalStorageRepo() {
             const parse = (raw) => {
@@ -41,6 +57,34 @@
                     storage.setItem('gymExerciseConfig', JSON.stringify(config));
                 },
 
+                // Resolves { weightLog, weightPlan, weightSeeded }.
+                //
+                // `weightPlan` carries three states, not two, and the
+                // difference is load-bearing: undefined means this account has
+                // never had a plan and should get the workbook default, null
+                // means one was deliberately cleared and the default must not
+                // spring back. An absent key is the first; the literal string
+                // 'null' is the second.
+                loadWeight: () => Promise.resolve({
+                    weightLog: parse(storage.getItem(WEIGHT_LOG_KEY)),
+                    weightPlan: storage.getItem(WEIGHT_PLAN_KEY) === null
+                        ? undefined
+                        : parse(storage.getItem(WEIGHT_PLAN_KEY)),
+                    weightSeeded: storage.getItem(WEIGHT_SEED_KEY) === 'true',
+                }),
+
+                saveWeightLog: (log) => {
+                    storage.setItem(WEIGHT_LOG_KEY, JSON.stringify(log));
+                },
+
+                saveWeightPlan: (plan) => {
+                    storage.setItem(WEIGHT_PLAN_KEY, JSON.stringify(plan || null));
+                },
+
+                markWeightSeeded: () => {
+                    storage.setItem(WEIGHT_SEED_KEY, 'true');
+                },
+
                 clearAll: () => {
                     storage.removeItem('gymWorkoutHistory');
                     storage.removeItem('gymExerciseConfig');
@@ -62,10 +106,19 @@
             const userDoc = db.collection('users').doc(user.uid);
             const workoutsCol = userDoc.collection('workouts');
             const configDoc = userDoc.collection('settings').doc('exerciseConfig');
+            // Weight readings are one per calendar day and the day key never
+            // moves, so the day IS the document id — no invented entryId like
+            // workouts need, and a correction rewrites the same document the
+            // original reading wrote.
+            const weightCol = userDoc.collection('weightLog');
+            const weightPlanDoc = userDoc.collection('settings').doc('weightPlan');
+            const weightMetaDoc = userDoc.collection('settings').doc('weightMeta');
 
             // entryId -> serialized entry, for diffing saves down to the
             // documents that actually changed.
             const lastSaved = new Map();
+            // dayKey -> serialized entry, the same diff for the weight log.
+            const lastSavedWeight = new Map();
             let pendingWrites = 0;
 
             // Firestore rejects undefined values; a JSON round-trip strips them.
@@ -150,6 +203,95 @@
                 saveExerciseConfig: (config) => {
                     track(configDoc.set(sanitize(config)), 'config');
                     mirror.saveExerciseConfig(config);
+                },
+
+                // orderBy('date') ascending to match sortedLog, so the array
+                // handed to the page is in the order the page already assumes.
+                loadWeight: () => Promise.all([
+                    weightCol.orderBy('date').get(),
+                    weightPlanDoc.get(),
+                    weightMetaDoc.get(),
+                ]).then(([logSnap, planSnap, metaSnap]) => {
+                    const log = logSnap.docs.map((d) => d.data());
+                    log.forEach((e) => lastSavedWeight.set(e.date, JSON.stringify(e)));
+
+                    // The plan doc wraps the plan rather than being it, because
+                    // Firestore cannot store a null document — and "cleared" has
+                    // to be distinguishable from "never set", which here is the
+                    // document not existing at all.
+                    const plan = planSnap.exists ? (planSnap.data().plan || null) : undefined;
+                    const seeded = !!(metaSnap.exists && metaSnap.data().seededAt);
+
+                    // An EMPTY cloud log is authoritative as long as the meta
+                    // doc exists, and this is the one place that matters: meta
+                    // existing means this account has been through the weight
+                    // import, so an empty log is a Reset somebody actually
+                    // performed, not a cold cache. Falling back to the local
+                    // mirror here is exactly how a reset on the phone would
+                    // undo itself the next time the laptop loaded.
+                    if (!metaSnap.exists) {
+                        return mirror.loadWeight().then((local) => ({
+                            weightLog: log.length > 0 ? log : local.weightLog,
+                            weightPlan: plan === undefined ? local.weightPlan : plan,
+                            weightSeeded: seeded || local.weightSeeded,
+                        }));
+                    }
+
+                    mirror.saveWeightLog(log);
+                    if (plan !== undefined) mirror.saveWeightPlan(plan);
+                    if (seeded) mirror.markWeightSeeded();
+                    return { weightLog: log, weightPlan: plan, weightSeeded: seeded };
+                }).catch((e) => {
+                    console.warn('[repo] Firestore weight load failed, using local mirror:', e);
+                    return mirror.loadWeight();
+                }),
+
+                // Batched rather than per-document like saveHistory, because
+                // this one has a mass-write case the workout log does not: the
+                // first load on a fresh device folds in ~900 days of workbook
+                // history in a single call, and Reset deletes them all again.
+                // A batch of one is a single round trip either way, so the
+                // ordinary one-reading-changed save costs nothing for it.
+                saveWeightLog: (log) => {
+                    const seen = new Set();
+                    const ops = [];
+                    (log || []).forEach((e) => {
+                        seen.add(e.date);
+                        const serialized = JSON.stringify(e);
+                        if (lastSavedWeight.get(e.date) !== serialized) {
+                            lastSavedWeight.set(e.date, serialized);
+                            ops.push({ set: e });
+                        }
+                    });
+                    Array.from(lastSavedWeight.keys()).forEach((dayKey) => {
+                        if (!seen.has(dayKey)) {
+                            lastSavedWeight.delete(dayKey);
+                            ops.push({ del: dayKey });
+                        }
+                    });
+
+                    // Firestore caps a batch at 500 operations.
+                    for (let i = 0; i < ops.length; i += 400) {
+                        const batch = db.batch();
+                        ops.slice(i, i + 400).forEach((op) => {
+                            if (op.del) batch.delete(weightCol.doc(op.del));
+                            else batch.set(weightCol.doc(op.set.date), sanitize(op.set));
+                        });
+                        track(batch.commit(), 'weight log');
+                    }
+                    mirror.saveWeightLog(log);
+                },
+
+                saveWeightPlan: (plan) => {
+                    track(weightPlanDoc.set({ plan: plan ? sanitize(plan) : null }), 'weight plan');
+                    mirror.saveWeightPlan(plan);
+                },
+
+                // Merged, not set: the same doc carries importedFromLocalAt.
+                markWeightSeeded: () => {
+                    track(weightMetaDoc.set({ seededAt: new Date().toISOString() }, { merge: true }),
+                          'weight meta');
+                    mirror.markWeightSeeded();
                 },
 
                 clearAll: () => {
@@ -268,6 +410,94 @@
             });
         }
 
+        // The weight page's equivalent of the import above, run on the FIRST
+        // sign-in for this account from the weight page. Same contract: cloud
+        // days win, local days fill the gaps, a JSON backup downloads before
+        // anything is uploaded, and settings/weightMeta is the "already done"
+        // marker so a failure simply retries next load.
+        //
+        // The one extra thing it carries up is the seed sentinel. That flag is
+        // device-local by design — it records that this device has already been
+        // offered the workbook history — but once an account syncs it has to
+        // become account-wide, or Reset stops working: clear the log on the
+        // phone, and the laptop, whose own sentinel the reset never touched,
+        // folds all ~900 workbook days straight back into the shared log.
+        function migrateLocalWeightToFirestore(user) {
+            const db = firebase.firestore();
+            const userDoc = db.collection('users').doc(user.uid);
+            const weightCol = userDoc.collection('weightLog');
+            const weightPlanDoc = userDoc.collection('settings').doc('weightPlan');
+            const weightMetaDoc = userDoc.collection('settings').doc('weightMeta');
+            const local = createLocalStorageRepo();
+            const sanitize = (obj) => JSON.parse(JSON.stringify(obj));
+
+            const downloadPreSyncBackup = (localData) => {
+                try {
+                    const dataStr = JSON.stringify({
+                        weightLog: localData.weightLog || [],
+                        weightPlan: localData.weightPlan === undefined ? null : localData.weightPlan,
+                        exportDate: new Date().toISOString(),
+                    }, null, 2);
+                    const url = URL.createObjectURL(new Blob([dataStr], { type: 'application/json' }));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'weight-PRE-SYNC-BACKUP-' +
+                        new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+                    link.click();
+                    URL.revokeObjectURL(url);
+                } catch (e) {
+                    console.warn('[repo] weight pre-sync backup download failed:', e);
+                }
+            };
+
+            return weightMetaDoc.get().then((meta) => {
+                if (meta.exists && meta.data().importedFromLocalAt) {
+                    return; // import already happened (this or another device)
+                }
+                return Promise.all([local.loadWeight(), weightCol.get(), weightPlanDoc.get()])
+                    .then(([localData, cloudSnap, cloudPlan]) => {
+                        const localLog = localData.weightLog || [];
+                        const cloudDays = new Set(cloudSnap.docs.map((d) => d.id));
+                        const toUpload = localLog.filter((e) => e && e.date && !cloudDays.has(e.date));
+
+                        if (toUpload.length > 0) {
+                            downloadPreSyncBackup(localData);
+                        }
+
+                        let chain = Promise.resolve();
+                        for (let i = 0; i < toUpload.length; i += 400) {
+                            const chunk = toUpload.slice(i, i + 400);
+                            chain = chain.then(() => {
+                                const batch = db.batch();
+                                chunk.forEach((e) => batch.set(weightCol.doc(e.date), sanitize(e)));
+                                return batch.commit();
+                            });
+                        }
+
+                        return chain.then(() => {
+                            const writes = [];
+                            if (!cloudPlan.exists && localData.weightPlan !== undefined) {
+                                writes.push(weightPlanDoc.set({
+                                    plan: localData.weightPlan ? sanitize(localData.weightPlan) : null,
+                                }));
+                            }
+                            const meta = {
+                                importedFromLocalAt: new Date().toISOString(),
+                                importedCount: toUpload.length,
+                                schemaVersion: 1,
+                            };
+                            if (localData.weightSeeded) {
+                                meta.seededAt = new Date().toISOString();
+                            }
+                            writes.push(weightMetaDoc.set(meta, { merge: true }));
+                            return Promise.all(writes);
+                        }).then(() => {
+                            console.log('[repo] imported ' + toUpload.length + ' local weight entries to Firestore');
+                        });
+                    });
+            });
+        }
+
         // Sign-in/out actions for the Settings UI and sync banner. Popup, not
         // redirect: signInWithRedirect breaks on browsers that partition
         // third-party storage when authDomain differs from the app's domain
@@ -303,8 +533,11 @@
                         resolve(createLocalStorageRepo());
                         return;
                     }
+                    const importLocal = REPO_SCOPE === 'weight'
+                        ? migrateLocalWeightToFirestore
+                        : migrateLocalToFirestore;
                     resolve(
-                        migrateLocalToFirestore(user)
+                        importLocal(user)
                             .catch((e) => console.warn('[repo] local import failed (will retry next load):', e))
                             .then(() => createFirestoreRepo(user))
                     );

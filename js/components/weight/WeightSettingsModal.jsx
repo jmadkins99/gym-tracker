@@ -310,6 +310,37 @@
 
                         <div className="section-title">Data</div>
 
+                        {/* The same sync row the workout app's Settings carries,
+                            pointing at the same account — auth is per-origin, so
+                            whichever page you sign in on signs in both. It stays
+                            hidden entirely when Firebase is not up (localhost,
+                            tests), where there is no account to talk about. */}
+                        {window.FIREBASE_READY && window.repo && (
+                            window.repo.mode === 'firestore' ? (
+                                <div style={{
+                                    background: '#1a1a2a',
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    marginBottom: '8px',
+                                    border: '1px solid #2a2a3a',
+                                    fontSize: '14px'
+                                }}>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        ☁️ Syncing as <strong>{window.repo.status().email}</strong>
+                                        {window.repo.status().pendingWrites > 0 &&
+                                            <span style={{ color: '#8a8aa0' }}> ({window.repo.status().pendingWrites} pending)</span>}
+                                    </div>
+                                    <button className="modal-btn" onClick={() => window.repoSignOut()}>
+                                        Sign out
+                                    </button>
+                                </div>
+                            ) : (
+                                <button className="modal-btn" onClick={() => window.repoSignIn()}>
+                                    ☁️ Sign in with Google to sync
+                                </button>
+                            )
+                        )}
+
                         <button className="modal-btn" onClick={onExport}>📥 Export Data</button>
                         <button className="modal-btn" onClick={() => fileInputRef.current.click()}>
                             📤 Import Data

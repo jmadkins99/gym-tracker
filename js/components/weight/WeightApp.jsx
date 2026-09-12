@@ -4,20 +4,15 @@
         // where Workout stands and History stands where History stands, so the
         // muscle memory carries between the two pages.
         //
-        // PROTOTYPE SCOPE: persistence is localStorage only, through the same
-        // namespaced `storage` helper as the rest of the app. It gets the
-        // namespace right for free — /gym-tracker/weight/ still matches the
+        // Persistence goes through `repo` — localStorage when signed out or
+        // under tests, Firestore when signed in — exactly as the workout app's
+        // does. The storage keys and the three weight methods live in
+        // storageRepo.js; nothing here knows which implementation it got.
+        //
+        // The namespace comes free: /gym-tracker/weight/ still matches the
         // '/gym-tracker/' test in utils.js, so this page shares the live
         // namespace with the workout app and is isolated from it on localhost
-        // exactly as the workout app is. Firestore sync would mean teaching
-        // storageRepo a third data kind; that is a follow-up, not this pass.
-        const WEIGHT_LOG_KEY = 'gymWeightLog';
-        const WEIGHT_PLAN_KEY = 'gymWeightPlan';
-        // Device-local sentinel, in the same spirit as migrations.js: it says
-        // what this device has already done, not anything about the training
-        // data, and it is what stops the hardcoded workbook history reappearing
-        // after a deliberate Reset.
-        const SEED_SENTINEL_KEY = 'weightHistorySeeded';
+        // exactly as the workout app is.
 
         function WeightApp() {
             const [log, setLog] = React.useState([]);
@@ -81,37 +76,37 @@
             //
             // The seed is a MERGE, not a replace — a stored entry always wins
             // for its day, so re-seeding can never overwrite something typed on
-            // this device. Combined with the sentinel that makes the import
-            // idempotent and reversible: Reset clears the sentinel too, so a
-            // reset really does empty the app rather than springing 918 days
-            // back the next time it loads.
+            // this device. The `weightSeeded` flag is what makes the import
+            // idempotent and reversible: Reset leaves it set, so a reset really
+            // does empty the app rather than springing 918 days back the next
+            // time it loads. Signed in, that flag is account-wide rather than
+            // device-local, which is what stops a second device undoing a reset
+            // performed on the first.
+            //
+            // Three plan states, not two: undefined is "never had one" and
+            // takes the workbook default, null is "deliberately cleared" and
+            // stays cleared. See loadWeight in storageRepo.js.
             React.useEffect(() => {
-                let stored = [];
-                try {
-                    const raw = storage.getItem(WEIGHT_LOG_KEY);
-                    if (raw) stored = sortedLog(JSON.parse(raw));
-                } catch (e) {
-                    console.warn('[weight] ignoring unparseable log:', e);
-                }
+                window.repoReady
+                    .then((repo) => repo.loadWeight())
+                    .then(({ weightLog, weightPlan, weightSeeded }) => {
+                        let stored = sortedLog(weightLog || []);
 
-                if (!storage.getItem(SEED_SENTINEL_KEY)) {
-                    const have = new Set(stored.map((e) => e.date));
-                    const merged = stored.concat(expandHistorySeed().filter((e) => !have.has(e.date)));
-                    stored = sortedLog(merged);
-                    storage.setItem(WEIGHT_LOG_KEY, JSON.stringify(stored));
-                    storage.setItem(SEED_SENTINEL_KEY, 'true');
-                }
-                setLog(stored);
+                        if (!weightSeeded) {
+                            const have = new Set(stored.map((e) => e.date));
+                            stored = sortedLog(stored.concat(
+                                expandHistorySeed().filter((e) => !have.has(e.date))));
+                            window.repo.saveWeightLog(stored);
+                            window.repo.markWeightSeeded();
+                        }
+                        setLog(stored);
 
-                try {
-                    const rawPlan = storage.getItem(WEIGHT_PLAN_KEY);
-                    setPlan(rawPlan ? normalizePlan(JSON.parse(rawPlan)) : DEFAULT_CUT_PLAN);
-                } catch (e) {
-                    console.warn('[weight] ignoring unparseable plan:', e);
-                    setPlan(DEFAULT_CUT_PLAN);
-                }
+                        setPlan(weightPlan === undefined
+                            ? DEFAULT_CUT_PLAN
+                            : (weightPlan ? normalizePlan(weightPlan) : null));
 
-                setLoaded(true);
+                        setLoaded(true);
+                    });
             }, []);
 
             React.useEffect(() => () => clearTimeout(celebrationTimer.current), []);
@@ -122,16 +117,17 @@
             // empty array would race the load and blank real data.
             const persist = (next) => {
                 setLog(next);
-                storage.setItem(WEIGHT_LOG_KEY, JSON.stringify(next));
+                window.repo.saveWeightLog(next);
             };
 
-            // A cleared plan is stored as the literal `null`, not by removing
-            // the key. An absent key means "never had a plan" and loads the
-            // workbook default; storing null is how "I deliberately cleared it"
-            // survives a reload instead of the default springing back.
+            // A cleared plan is written as an explicit null rather than by
+            // removing the record. Nothing stored means "never had a plan" and
+            // loads the workbook default; a stored null is how "I deliberately
+            // cleared it" survives a reload instead of the default springing
+            // back.
             const persistPlan = (next) => {
                 setPlan(next);
-                storage.setItem(WEIGHT_PLAN_KEY, JSON.stringify(next || null));
+                window.repo.saveWeightPlan(next || null);
             };
 
             const progress = React.useMemo(
@@ -209,13 +205,14 @@
                 if (!confirm('Delete every weight check-in, including the imported history? '
                              + 'This cannot be undone.')) return;
                 persist([]);
-                // The sentinel deliberately STAYS set. It records that this
-                // device has already been offered the workbook history, and
-                // that is exactly what has to survive a reset — clear it here
-                // and the next load re-imports all 918 days, so the reset
-                // silently undoes itself. Getting the history back after a
-                // reset is a job for Import, not for a reset that does not
-                // reset.
+                // The seeded flag deliberately STAYS set. It records that the
+                // workbook history has already been offered, and that is
+                // exactly what has to survive a reset — clear it here and the
+                // next load re-imports all 918 days, so the reset silently
+                // undoes itself. Signed in it is account-wide, so the reset
+                // survives the next load on every device rather than only this
+                // one. Getting the history back after a reset is a job for
+                // Import, not for a reset that does not reset.
                 setShowSettings(false);
                 flash('Cleared');
             };
