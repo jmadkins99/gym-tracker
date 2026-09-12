@@ -70,22 +70,26 @@ function extractLiteral(source, name, open, close) {
     // Every card must show a button — see the header on why this is weak now.
     const expectedByName = new Map(DEFAULT_EXERCISES.map(e => [e.name, true]));
 
-    // Pin-stack caps. Three machines have a known ceiling as of Sep 2026. Leg
+    // Pin-stack caps. Four machines have a known ceiling as of Sep 2026. Leg
     // Press was briefly capped at 390 while it was classified as a stack, and
     // Cable Wrist Curls held a 97.5 cap until Aug 2026 — it left the program
     // entirely in Sep, so its absence here is now a roster fact rather than a
     // classification one. The overflow *rendering* is covered by
-    // 08-personal-app-pin-stack-overflow and 26-personal-app-back-extensions-pin.
+    // 08-personal-app-pin-stack-overflow, 26-personal-app-back-extensions-pin
+    // and 105-personal-app-shoulder-press-microplate-overflow.
     eq(loadTypeById['calf-raise'], 'pin', 'Calf Raises seeds as a pin stack');
     eq(PIN_STACK_CAPS['calf-raise'], 405, 'Calf Raises caps at 405');
     eq(loadTypeById['lateral-raises'], 'pin', 'Lateral Raises seeds as a pin stack');
     eq(PIN_STACK_CAPS['lateral-raises'], 100, 'Lateral Raises caps at 100');
     eq(loadTypeById['leg-curls'], 'pin', 'Back Extensions seeds as a pin stack');
     eq(PIN_STACK_CAPS['leg-curls'], 260, 'Back Extensions caps at 260');
+    eq(loadTypeById['shoulder-press'], 'pin', 'Shoulder Press seeds as a pin stack');
+    eq(PIN_STACK_CAPS['shoulder-press'], 250, 'Shoulder Press caps at 250');
     ok(!('cable-wrist-curls' in PIN_STACK_CAPS),
         'Cable Wrist Curls is uncapped');
-    eq(Object.keys(PIN_STACK_CAPS), ['lateral-raises', 'leg-curls', 'calf-raise'],
-        'exactly three capped stacks in the program');
+    eq(Object.keys(PIN_STACK_CAPS),
+        ['lateral-raises', 'shoulder-press', 'leg-curls', 'calf-raise'],
+        'exactly four capped stacks in the program, ordered by ceiling');
 
     // A cap is keyed by id and read only when loadType is 'pin', so a cap on a
     // non-pin id — or on an id that does not exist — is dead config that reads

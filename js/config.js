@@ -145,6 +145,18 @@
         // as a fact about the machine, not a live constraint — do not read the
         // entry as evidence the ceiling is being approached.
         //
+        // Shoulder Press (Sep 2026) is the opposite entry to Lateral Raises and
+        // the only one here that is already live on the day it lands: the stack
+        // tops out at 250 and the user is working at 255 for 5, having come up
+        // from 232.5-233.75 in the June backup. So this cap does not describe a
+        // ceiling being approached — it describes one that has been passed, and
+        // every top set from here renders the overflow shape. Today that is pin
+        // 250 plus a 5; at the 2.5 lb step the next session is 257.5, which is
+        // pin 250 plus a 5 and a 2.5. Case 105 pins both, and the boundary below
+        // them. It is the first micro-plate overflow the SUITE renders, not the
+        // first in the program — Lateral Raises above has been landing on a 2.5
+        // in the gym since before either was written.
+        //
         // Back Extensions (Sep 2026) is the machine that moved: it is a pin
         // stack, capped at 260, and its seed below changed from
         // 'plate-two-sided' to 'pin' in the same trip. The cap and the seed go
@@ -159,6 +171,7 @@
         // different machine, close number notwithstanding.
         const PIN_STACK_CAPS = {
             'lateral-raises': 100,
+            'shoulder-press': 250,
             'leg-curls': 260,
             'calf-raise': 405
         };
