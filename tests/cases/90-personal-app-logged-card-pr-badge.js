@@ -6,8 +6,8 @@
 //
 // What the pill SAYS follows History's rule exactly (Sep 2026): "🔥 PR" for a
 // lone PR, "🔥 N" once the run is two or more. Both branches are exercised
-// below — Chest Press lands on a run of two, Chest Flies on a run of one — and
-// the number comes from getPRStreakInWorkout counted as of today's entry, so
+// below — Tricep Extensions lands on a run of two, Chest Flies on a run of one —
+// and the number comes from getPRStreakInWorkout counted as of today's entry, so
 // the card shows what History will show for the same row after Submit Day.
 // Before Sep 2026 this pill always read "PR", which understated a run the
 // numeric streak pill on the same card had been counting all along.
@@ -45,8 +45,8 @@ const OLDER = workoutEntry({
     day: 'anterior',
     submitted: true,
     exercises: [
+        { id: 'tricep-pushdown', name: 'Tricep Extensions', weight: '100', reps: '4' },
         { id: 'chest-press', name: 'Chest Press', weight: '100', reps: '4' },
-        { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '100', reps: '4' },
     ],
 });
 
@@ -55,8 +55,8 @@ const PREVIOUS = workoutEntry({
     day: 'anterior',
     submitted: true,
     exercises: [
+        { id: 'tricep-pushdown', name: 'Tricep Extensions', weight: '100', reps: '5' },
         { id: 'chest-press', name: 'Chest Press', weight: '100', reps: '5' },
-        { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '100', reps: '5' },
         { id: 'shoulder-press', name: 'Shoulder Press', weight: '120', reps: '5' },
         // Only in PREVIOUS, deliberately: one prior session means an
         // improvement today is a run of ONE, which is the "🔥 PR" branch.
@@ -148,7 +148,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await waitForApp(page);
         await selectDayType(page, 'anterior');
 
-        const before = await readHeader(page, 'chest-press');
+        const before = await readHeader(page, 'tricep-pushdown');
         eq(before.streak, '🔥 1',
             'before logging, the card shows the numeric submitted-history streak');
         eq(before.streakBg, BADGE_BG,
@@ -158,9 +158,9 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(before.loggedPR, null,
             'before logging, the current-session PR badge is absent');
 
-        await logSet(page, 'chest-press', '100', '6', { settle: 250 });
+        await logSet(page, 'tricep-pushdown', '100', '6', { settle: 250 });
         const celebrating = await readActiveReview(page);
-        eq(celebrating.id, 'chest-press',
+        eq(celebrating.id, 'tricep-pushdown',
             'a PR log stays on the current logged card before advancing');
         eq(celebrating.celebrating, true,
             'a PR log runs the card celebration class');
@@ -173,7 +173,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
 
         await new Promise(r => setTimeout(r, 1300));
         const lingering = await readActiveReview(page);
-        eq(lingering.id, 'chest-press',
+        eq(lingering.id, 'tricep-pushdown',
             'the PR celebration keeps the logged card visible for the two-second aura hold');
         eq(lingering.celebrating, true,
             'the PR aura is still pulsing before the delayed auto-advance');
@@ -181,11 +181,17 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await page.waitForFunction((sel, id) => {
             const card = document.querySelector(sel + ' .card[data-exercise-id]');
             return card && card.getAttribute('data-exercise-id') !== id;
-        }, { timeout: 4000 }, ACTIVE, 'chest-press');
+        }, { timeout: 4000 }, ACTIVE, 'tricep-pushdown');
+        // The two deck-index assertions here need the logged card to be the
+        // EARLIEST unlogged one, because the deck jumps back to that (test 77)
+        // rather than simply stepping forward. Hence Tricep Extensions and
+        // Chest Press, the first two cards on Anterior since the Sep 2026
+        // reorder — probing a card further down would assert a jump backwards
+        // and prove nothing about advancing.
         eq(await deckIndex(page), 2,
             'after the celebration, the deck advances to the next unlogged card');
 
-        const improved = await readHeader(page, 'chest-press');
+        const improved = await readHeader(page, 'tricep-pushdown');
         eq(improved.logged, 'logged', 'the PR row is in the logged review state');
         eq(improved.loggedPR, '🔥 2',
             'a logged same-weight rep improvement shows the current-session run count');
@@ -200,10 +206,10 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(improved.streak, null,
             'a logged PR review replaces the numeric pre-session streak');
 
-        await logSet(page, 'incline-chest-press', '100', '5');
+        await logSet(page, 'chest-press', '100', '5');
         eq(await deckIndex(page), 3,
             'a non-PR log still advances without the PR celebration delay');
-        const identical = await readHeader(page, 'incline-chest-press');
+        const identical = await readHeader(page, 'chest-press');
         eq(identical.logged, 'logged', 'the identical row is also in review state');
         eq(identical.loggedPR, null,
             'an identical logged row does not show the current-session PR badge');

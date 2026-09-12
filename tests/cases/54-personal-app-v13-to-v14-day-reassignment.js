@@ -87,26 +87,28 @@ const V13_LAYOUT = [
 ];
 
 // Where each id must end up after the migration.
+// Key order matters here: the assertion compares serialised maps, so this
+// literal tracks the roster order in DEFAULT_EXERCISES and has to be resorted
+// on every reorder. The day MAPPING has not changed since v14 — only the
+// sequence below has — so a diff here that moves lines without changing any
+// value is the expected shape of a reorder landing.
 const EXPECTED_DAY_BY_ID = {
+    'tricep-pushdown': 'anterior',
     'chest-press': 'anterior',
     'incline-chest-press': 'anterior',
     'chest-flies': 'anterior',
     'shoulder-press': 'anterior',
     'lateral-raises': 'anterior',
     'overhead-tricep-extensions': 'anterior',
-    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026. Key order
-    // matters here: the assertion compares serialised maps, so this literal
-    // tracks the roster order.
     'ab-crunch': 'anterior',
-    'actual-leg-extensions': 'anterior',
-    'tricep-pushdown': 'anterior',
     'hip-adduction': 'anterior',
+    'actual-leg-extensions': 'anterior',
     'curls-shoulder-extension': 'posterior',
-    'frontal-pulldowns': 'posterior',
+    'preacher-curls': 'posterior',
     'hammer-row': 'posterior',
     'upper-back-row': 'posterior',
     'kelso-shrugs': 'posterior',
-    'preacher-curls': 'posterior',
+    'frontal-pulldowns': 'posterior',
     // This map is exactly what the version bump has to deliver to a saved
     // config, so it is the assertion that catches a forgotten
     // EXERCISE_CONFIG_VERSION.

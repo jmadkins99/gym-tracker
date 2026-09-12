@@ -46,32 +46,37 @@ const { eq, ok } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 const EXPECTED_ANTERIOR = [
+    // Moved to the front of the day, Sep 2026, so the cable station is done
+    // and free before the rest of the work.
+    'Tricep Extensions',
     'Chest Press',
     'Incline Chest Press',
     'Chest Flies',
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026, so the
-    // big movements are done before the small isolation work.
     'Ab Crunches',
+    // Quad-dominant, so the two leg movements close the day. Its id is
+    // `hip-adduction`; the row named Hip Adduction is `leg-extensions`. Both
+    // mismatches frozen.
+    'Leg Press',
     // Its id is `actual-leg-extensions` — the `leg-extensions` id renders as
     // Hip Adduction, over on Posterior.
     'Leg Extensions',
-    'Tricep Extensions',
-    // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
-    // the row named Hip Adduction is `leg-extensions`. Both mismatches frozen.
-    'Leg Press',
 ];
 
 const EXPECTED_POSTERIOR = [
     // Biceps are grouped with the pulling work rather than with the arms.
     'Recline Curls',
-    'Frontal Plane Pulldowns',
-    'Sagittal Plane Pulldowns',
+    // Renamed from Preacher Curls, Sep 2026 — a fresh install is the only
+    // place that rename shows up, since the migration preserves saved names.
+    'Shoulder Flexion Curls',
+    // Renamed from Sagittal Plane Pulldowns, same caveat.
+    'Sagittal Plane Pullovers',
     'Transverse Plane Rows',
     'Kelso Shrugs',
-    'Preacher Curls',
+    // Down from second to sixth, Sep 2026.
+    'Frontal Plane Pulldowns',
     // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both from
     // the program.
     'Back Extensions',

@@ -15,12 +15,14 @@
 // The regression it guards is reading the badge as a range-top marker. The
 // wrist pair used to be the sharpest probe for that — a 5-8 range meant a 6-rep
 // improvement was unambiguously mid-range — but both movements left the program
-// in Sep 2026 and the 5-8 range went with them. Preacher Curls carries that
-// half now: 55x4 -> 55x5 improves without coming near the top of its 3-6
-// dropdown, so a "badge only at the range top" reading still fails here.
+// in Sep 2026 and the 5-8 range went with them. Shoulder Flexion Curls carries
+// that half now: 55x4 -> 55x5 improves without coming near the top of its 3-6
+// dropdown, so a "badge only at the range top" reading still fails here. (It
+// was named Preacher Curls until Sep 2026; `preacher-curls` is still its id,
+// which is what the rep range and every seed row below key off.)
 //
 //   Kelso Shrugs        190x5 -> 190x6 card streak yes, History PR yes
-//   Preacher Curls       55x4 -> 55x5  card streak yes, History PR yes  <- mid-range
+//   Shoulder Flexion Curls 55x4 -> 55x5 card streak yes, History PR yes <- mid-range
 //
 // The controls catch the old range-top interpretation:
 //
@@ -49,7 +51,10 @@ const EXERCISES = [
     ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
     ['upper-back-row', 'Transverse Plane Rows'],
     ['kelso-shrugs', 'Kelso Shrugs'],
-    ['preacher-curls', 'Preacher Curls'],
+    // The display name comes from the live config, not from the stored rows —
+    // the seeds below still carry "Preacher Curls" as logged, and History
+    // renders them under today's label.
+    ['preacher-curls', 'Shoulder Flexion Curls'],
 ];
 
 const BASELINE = workoutEntry({
@@ -161,7 +166,7 @@ async function readCardBadge(page, exerciseId) {
 
         eq(historyRows['Kelso Shrugs'].badgeText, '🔥 PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
-        eq(historyRows['Preacher Curls'].badgeText, '🔥 PR',
+        eq(historyRows['Shoulder Flexion Curls'].badgeText, '🔥 PR',
             'History shows PR at 5 reps — mid-range, so not a range-top marker');
         eq(historyRows['Transverse Plane Rows'].badgeText, null,
             'History does not show PR for top reps after a weight drop');
@@ -176,7 +181,7 @@ async function readCardBadge(page, exerciseId) {
         ok(historyRows['Kelso Shrugs'].badgeRightOfName,
             'History PR badge sits immediately to the right of the exercise name');
 
-        // Log against LATEST without submitting: Preacher Curls 55x5 -> 55x6
+        // Log against LATEST without submitting: Shoulder Flexion Curls 55x5 -> 55x6
         // improves, Kelso Shrugs repeats 190x6 and does not. Today's entry is
         // now the newest .history-item and is still unsubmitted.
         await bottomNav(page, 'Workout');
@@ -200,9 +205,9 @@ async function readCardBadge(page, exerciseId) {
         // moment the set is logged, exactly as the lone-PR badge above is.
         // Case 100 owns that rule; what this line pins is that logging alone,
         // with no Submit Day, is enough to earn it.
-        eq(todayRows['Preacher Curls'].badgeText, '🔥 2',
+        eq(todayRows['Shoulder Flexion Curls'].badgeText, '🔥 2',
             'History badges an improvement as soon as it is logged, before Submit Day');
-        eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
+        eq(todayRows['Shoulder Flexion Curls'].badgeBorder, BADGE_BORDER,
             'the pre-submit History badge is the same gold-outlined pill');
         eq(todayRows['Kelso Shrugs'].badgeText, null,
             'a repeated session gets no pre-submit History badge');

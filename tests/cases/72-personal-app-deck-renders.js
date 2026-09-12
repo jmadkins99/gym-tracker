@@ -48,9 +48,14 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                 date: new Date(Date.now() - 86400000).toISOString(),
                 day: 'anterior', week: 1, submitted: true, plateauBusters: [],
                 exercises: [
-                    { id: 'chest-press', name: 'Chest Press', category: 'Anterior',
+                    // Whatever leads Anterior has to be in here: section 3
+                    // below asserts the OPEN card shows last session's weight,
+                    // so the active card needs history to show. Tricep
+                    // Extensions took the lead in Sep 2026; before that this
+                    // seed started at Chest Press for the same reason.
+                    { id: 'tricep-pushdown', name: 'Tricep Extensions', category: 'Anterior',
                       type: 'standard', weight: '200', reps: '6' },
-                    { id: 'incline-chest-press', name: 'Incline Chest Press', category: 'Anterior',
+                    { id: 'chest-press', name: 'Chest Press', category: 'Anterior',
                       type: 'standard', weight: '110', reps: '5' },
                 ],
             }],
@@ -72,7 +77,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const front = await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-front').innerText, ACTIVE);
 
-        eq(await activeName(page), 'Chest Press', 'it names the first Anterior movement');
+        // Tricep Extensions leads Anterior from Sep 2026; it was Chest Press
+        // before that.
+        eq(await activeName(page), 'Tricep Extensions', 'it names the first Anterior movement');
         eq(/\d/.test(front), false,
             'THE POINT: no digit appears on the front face — no weight, no reps, no ' +
             'last session. Leaking any of them removes the reason to swipe up, and ' +

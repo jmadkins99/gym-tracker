@@ -68,12 +68,24 @@ const FULL_BODY_ERA = [
     ['hip-adduction', 'Leg Press'],
 ];
 
-// Same 19 rows, in the same stored order, but with today's names for the two
+// getWorkoutExerciseList's stored branch keeps the stored ORDER but takes the
+// display NAME from the live config (js/utils.js), so every era table below is
+// stored-name data that has to be re-read through today's labels before it can
+// be asserted against the screen. This is the one place that conversion lives.
+//
+// Renames so far: curls-shoulder-extension in the Full Body era, and the two
+// from Sep 2026. A rename is by id, so it reaches back through history on
+// purpose — the machine is the same machine.
+const RENAMED_SINCE = {
+    'curls-shoulder-extension': 'Recline Curls',
+    'preacher-curls': 'Shoulder Flexion Curls',
+    'hammer-row': 'Sagittal Plane Pullovers',
+};
+const asRenderedToday = (era) => era.map(([id, name]) => RENAMED_SINCE[id] || name);
+
+// Same 19 rows, in the same stored order, but with today's names for the ones
 // the user has since renamed.
-const EXPECTED_FULL_BODY_ROWS = FULL_BODY_ERA.map(([id, name]) => {
-    if (id === 'curls-shoulder-extension') return 'Recline Curls';
-    return name;
-});
+const EXPECTED_FULL_BODY_ROWS = asRenderedToday(FULL_BODY_ERA);
 
 // The Anterior day, in the current DEFAULT_EXERCISES order. A workout stamped
 // `day: 'anterior'` renders against the LIVE config, so this list is what the
@@ -266,7 +278,7 @@ async function weeklyItems(page) {
         // `day: 'upper'` any more, so it falls back to the 13 rows stored on
         // the workout. It must show what was actually performed, not today's
         // Anterior 12.
-        eq(legacyUpperItem.rows, LEGACY_UPPER_IDS.map(([, name]) => name),
+        eq(legacyUpperItem.rows, asRenderedToday(LEGACY_UPPER_IDS),
             'a legacy Upper workout still renders the 13 movements it was performed with');
         eq(legacyUpperItem.rows.length, 13,
             'the legacy Upper day is 13 rows, not remapped to the current 12');
@@ -305,7 +317,7 @@ async function weeklyItems(page) {
 
         eq(await openEditRows(1), ANTERIOR_IDS.map(([, name]) => name),
             'the Edit modal offers the 12 Anterior fields, not all 21');
-        eq(await openEditRows(2), LEGACY_UPPER_IDS.map(([, name]) => name),
+        eq(await openEditRows(2), asRenderedToday(LEGACY_UPPER_IDS),
             'the Edit modal offers a legacy Upper workout its own 13 fields');
 
         eq(errors, [], 'no console errors during load');

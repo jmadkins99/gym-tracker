@@ -272,7 +272,25 @@
         // seed change to 'pin', but only to installs that never touched the
         // dropdown: loadType is user-owned and preserved by name, so a device
         // that chose two-sided keeps it and must change it in Settings.
-        const EXERCISE_CONFIG_VERSION = 19;
+        // 20 is the Sep 2026 reorder of both days, and it is the bump doing the
+        // whole job again: the id set is identical to 19, so setsEqual passes
+        // and nothing but this constant carries the new order. Tricep Extensions
+        // goes to the front of Anterior and Leg Press / Leg Extensions swap at
+        // the back; on Posterior, Shoulder Flexion Curls and Sagittal Plane
+        // Pullovers come up to second and third and Frontal Plane Pulldowns
+        // drops to sixth.
+        //
+        // The renames and load-type changes riding along with it are a
+        // different matter, and the asymmetry is worth stating plainly: `name`
+        // and `loadType` are USER-owned, so migrateExerciseConfig keeps whatever
+        // the device already has. Preacher Curls -> Shoulder Flexion Curls,
+        // Sagittal Plane Pulldowns -> Sagittal Plane Pullovers, both of those to
+        // 'pin', and Frontal Plane Pulldowns to 'plate-one-sided' therefore
+        // reach a FRESH INSTALL ONLY. An existing device takes the reorder from
+        // this bump and keeps its own names and dropdown answers; changing those
+        // there is a Settings job, not a deploy. That is the design (v15's note
+        // below says why) and not a gap to close here.
+        const EXERCISE_CONFIG_VERSION = 20;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -297,42 +315,57 @@
         // Anterior comes first here, matching the day toggle and the Settings
         // list. All three orderings are independent — keep them in step.
         const DEFAULT_EXERCISES = [
-            // --- Anterior (Tue / Thu / Sat, and Sun by default) ---
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 0 },
-            // Takes the plain `chest-press` id above — no existing id was
-            // squatting on it, unlike the leg-extensions case below, so there is
-            // no need for an `actual-` prefix there.
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 1 },
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 2 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 3 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 4 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 5 },
-            // Abs and quads moved up ahead of Tricep Extensions and the wrist
-            // pair (Aug 2026), so the big movements are done before the small
-            // isolation work rather than after it. Mirrored in Jessi's program.
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
+            // --- Anterior (Tue / Thu / Sat, and Mon by default) ---
+            // Tricep Extensions opens the day (Sep 2026). It had been eighth,
+            // behind the press work; it is first now, so the cable station is
+            // done and free before the rest of the day.
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 0 },
+            // Takes the plain `chest-press` id — no existing id was squatting on
+            // it, unlike the leg-extensions case below, so there is no need for
+            // an `actual-` prefix there.
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 1 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 2 },
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 3 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 5 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
+            // Quad-dominant, hence the back of the day. `hip-adduction` is its
+            // frozen id; the `leg-extensions` id below is the one that renders
+            // as Hip Adduction. Neither name matches its id and neither is safe
+            // to rename.
+            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'plate-two-sided', order: 8 },
             // NOT the `leg-extensions` id below, which renders as Hip Adduction.
             // There was no history to inherit, so this took a fresh id rather
             // than reclaiming one. `actual-` mirrors Jessi's
             // `actual-preacher-curls`; the two apps deliberately share the idiom.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 8 },
-            // Quad-dominant, and still the last thing on the day even with Leg
-            // Extensions moved up ahead of the arm work. `hip-adduction` is its
-            // frozen id; the `leg-extensions` id below is the one that renders
-            // as Hip Adduction. Neither name matches its id and neither is safe
-            // to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'plate-two-sided', order: 9 },
+            //
+            // Closes the day from Sep 2026 — it and Leg Press swapped, so the
+            // two-sided sled is loaded before the stack rather than after it.
+            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 9 },
 
-            // --- Posterior (Mon / Wed / Fri) ---
+            // --- Posterior (Wed / Fri / Sun) ---
             // Recline Curls opens Posterior: biceps are grouped with the pulling
             // work rather than with the other arm movements.
             { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 10 },
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 11 },
-            { id: 'hammer-row',          name: 'Sagittal Plane Pulldowns', category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 12 },
+            // Renamed from Preacher Curls and reclassified to a stack (Sep
+            // 2026) — the name now says the joint action rather than the bench,
+            // and the machine was never a plate sled. `preacher-curls` is its
+            // frozen id and stays put; Jessi's app has its own
+            // `actual-preacher-curls`, a different movement that is NOT renamed
+            // with this.
+            { id: 'preacher-curls',      name: 'Shoulder Flexion Curls',   category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 11 },
+            // Renamed from Sagittal Plane Pulldowns and reclassified to a stack
+            // (Sep 2026): it is a pullover, and the plane was the only accurate
+            // half of the old name. `hammer-row` is its frozen id — it has not
+            // been a hammer row since long before either name.
+            { id: 'hammer-row',          name: 'Sagittal Plane Pullovers', category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 12 },
             { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 13 },
             { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
-            { id: 'preacher-curls',      name: 'Preacher Curls',           category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 15 },
+            // Down from second to sixth, and plate-loaded from Sep 2026 rather
+            // than a stack. The same correction Back Extensions got in v19, in
+            // the other direction: the seed was simply wrong about the machine.
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 15 },
             // The wrist pair sat here — Reverse Wrist Curls then Cable Wrist
             // Curls, moved over from Anterior in Aug 2026 — until Sep 2026
             // dropped both from the program. They took the 5-8 rep range with

@@ -15,7 +15,7 @@
 //   leg-extensions         renders as Hip Adduction
 //   hip-adduction          renders as Leg Press
 //   actual-leg-extensions  renders as Leg Extensions (the real one)
-//   hammer-row             renders as Sagittal Plane Pulldowns
+//   hammer-row             renders as Sagittal Plane Pullovers
 //   tricep-pushdown        renders as Tricep Extensions
 //   curls-shoulder-extension renders as Recline Curls
 //
@@ -33,29 +33,33 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // [id, display name], in render order. Anterior is the first block.
 const ANTERIOR = [
+    // Moved to the front of the day, Sep 2026.
+    ['tricep-pushdown', 'Tricep Extensions'],
     ['chest-press', 'Chest Press'],
     ['incline-chest-press', 'Incline Chest Press'],
     ['chest-flies', 'Chest Flies'],
     ['shoulder-press', 'Shoulder Press'],
     ['lateral-raises', 'Lateral Raises'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
-    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026.
     ['ab-crunch', 'Ab Crunches'],
-    ['actual-leg-extensions', 'Leg Extensions'],
-    ['tricep-pushdown', 'Tricep Extensions'],
-    // Quad-dominant, so it closes the anterior day. Its id is `hip-adduction`;
-    // the movement actually named Hip Adduction is `leg-extensions`, on
-    // Posterior. Both mismatches are frozen.
+    // Quad-dominant, so the two leg movements close the day. Its id is
+    // `hip-adduction`; the movement actually named Hip Adduction is
+    // `leg-extensions`, on Posterior. Both mismatches are frozen.
     ['hip-adduction', 'Leg Press'],
+    ['actual-leg-extensions', 'Leg Extensions'],
 ];
 
 const POSTERIOR = [
     ['curls-shoulder-extension', 'Recline Curls'],
-    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
-    ['hammer-row', 'Sagittal Plane Pulldowns'],
+    // Renamed from Preacher Curls, Sep 2026. The id is frozen.
+    ['preacher-curls', 'Shoulder Flexion Curls'],
+    // Renamed from Sagittal Plane Pulldowns, Sep 2026. The id is frozen and has
+    // not described the movement for far longer than the name did.
+    ['hammer-row', 'Sagittal Plane Pullovers'],
     ['upper-back-row', 'Transverse Plane Rows'],
     ['kelso-shrugs', 'Kelso Shrugs'],
-    ['preacher-curls', 'Preacher Curls'],
+    // Down from second to sixth, Sep 2026.
+    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
     // The wrist pair sat here — moved over from Anterior in Aug 2026, directly
     // after the curls — until Sep 2026 dropped both from the program. They took
     // the 5-8 rep range with them, which had been built for those two alone.

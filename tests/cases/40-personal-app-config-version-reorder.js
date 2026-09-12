@@ -62,18 +62,16 @@ const OLD_ORDER_IDS = [
 // the Anterior/Posterior switch, and its rename survival is covered by tests
 // 43 and 54 anyway.
 const EXPECTED_NEW_ORDER = [
+    'Tricep Extensions',      // moved to the front of the day, Sep 2026
     'Chest Press',            // added Aug 2026; arrives via the migration
     'Incline Chest Press',
     'My Renamed Flies',       // chest-flies, renamed by the user below
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist
-    // pair, Aug 2026.
     'Ab Crunches',
-    'Leg Extensions',         // added Aug 2026; arrives via the migration
-    'Tricep Extensions',
     'Leg Press',
+    'Leg Extensions',         // added Aug 2026; arrives via the migration
 ];
 
 (async () => {
@@ -126,23 +124,24 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Tricep Extensions" (Anterior index 8) up one, above "Leg
-        // Extensions". It sat at index 6, behind Overhead Tricep Extensions,
-        // until the Aug 2026 reorder moved Ab Crunches and Leg Extensions in
-        // front of it.
+        // Move "Leg Extensions" (Anterior index 9, the last row) up one, above
+        // "Leg Press". Tricep Extensions was the probe here until Sep 2026 sent
+        // it to index 0, where there is no up arrow to click — the probe has to
+        // be a row with something above it, and the tail of the day is the
+        // stable place to find one.
         const moved = await page.evaluate(() => {
             // Match on the name element, not the row's textContent: the row
             // also holds a <select> whose textContent is every option label.
             const rows = Array.from(document.querySelectorAll('.exercise-row'));
             const row = rows.find(r =>
-                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Tricep Extensions');
+                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Leg Extensions');
             const up = Array.from(row.querySelectorAll('button'))
                 .find(b => b.textContent.trim() === '↑');
             if (!up) return false;
             up.click();
             return true;
         });
-        ok(moved, 'clicked the up arrow on Tricep Extensions in Manage Exercises');
+        ok(moved, 'clicked the up arrow on Leg Extensions in Manage Exercises');
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
@@ -150,7 +149,7 @@ const EXPECTED_NEW_ORDER = [
 
         const afterReorder = await readDeckNames(page);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(7, 0, expectedAfter.splice(8, 1)[0]); // Tricep Extensions up one
+        expectedAfter.splice(8, 0, expectedAfter.splice(9, 1)[0]); // Leg Extensions up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 

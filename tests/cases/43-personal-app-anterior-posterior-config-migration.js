@@ -76,6 +76,7 @@ const FULL_BODY = [
 const EXPECTED_ANTERIOR = [
     // Arrives purely via migrateExerciseConfig — the saved config below predates
     // it — and lands at its DEFAULT_EXERCISES position, not appended at the end.
+    'Tricep Extensions',
     'Chest Press',
     'Incline Chest Press',
     // The saved config below says "Unilateral Chest Flies" while the current
@@ -86,27 +87,33 @@ const EXPECTED_ANTERIOR = [
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    // Abs and quads moved up ahead of Tricep Extensions and the wrist
-    // pair, Aug 2026.
     'Ab Crunches',
-    // Like Chest Press above, added by the migration under its own fresh id.
-    'Leg Extensions',
-    'Tricep Extensions',
     // hip-adduction, renamed by the user below. Its position comes from
     // DEFAULT_EXERCISES, not from the saved config — the migration takes order
     // and day from defaults while preserving the user's name, and this row is
     // where those two rules meet. The saved config has it mid-list on the old
-    // layout, so landing last on Anterior proves defaults won on both counts.
+    // layout, so landing near the end of Anterior proves defaults won on both
+    // counts.
     'My Renamed Leg Press',
+    // Like Chest Press above, added by the migration under its own fresh id.
+    'Leg Extensions',
 ];
 
 const EXPECTED_POSTERIOR = [
     'Recline Curls',
-    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
+    // The Sep 2026 renames do NOT appear here, and that is the point: the saved
+    // config below carries "Preacher Curls" and "Sagittal Plane Pulldowns", and
+    // migrateExerciseConfig preserves a saved name by id even when the default
+    // label has since changed. These two rows take the new *position* from
+    // DEFAULT_EXERCISES and the old *name* from the device — exactly the split
+    // the Unilateral Chest Flies row above pins on Anterior. Only a fresh
+    // install sees Shoulder Flexion Curls / Sagittal Plane Pullovers; test 42
+    // is the pin on that half.
+    'Preacher Curls',
     'Sagittal Plane Pulldowns',
     'Transverse Plane Rows',
     'Kelso Shrugs',
-    'Preacher Curls',
+    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
     // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both from
     // the program.
     'Back Extensions',

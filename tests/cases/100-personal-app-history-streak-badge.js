@@ -25,7 +25,7 @@
 // Kelso Shrugs cover the restart: 100, 105, 105, 110, 115. The repeat ends the
 // first run, so 110 is a lone PR again ("PR", not "3") and 115 reads 2.
 //
-// Preacher Curls are the control — five flat sessions, no badge on any row.
+// Shoulder Flexion Curls are the control — five flat sessions, no badge on any row.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -54,7 +54,10 @@ function lastWeek(dayOffset) {
 
 const CURLS = 'Recline Curls';
 const SHRUGS = 'Kelso Shrugs';
-const PREACHER = 'Preacher Curls';
+// The display name History renders it under, which is the live config's, not
+// the one stored on the seeded rows. Renamed from Preacher Curls in Sep 2026;
+// `preacher-curls` is still the id the seeds below use.
+const PREACHER = 'Shoulder Flexion Curls';
 
 // One row per session, oldest first. The History screen renders them newest
 // first, which is the order EXPECTED below is written in.
@@ -156,7 +159,7 @@ async function readCardBadge(page, exerciseId) {
             eq(items[i][SHRUGS].text, want.shrugs,
                 `Kelso Shrugs, ${age}: badge reads the run as of that session`);
             eq(items[i][PREACHER].text, null,
-                `Preacher Curls, ${age}: a flat session never badges`);
+                `${PREACHER}, ${age}: a flat session never badges`);
         });
 
         // The counted badge is the card's pill, not a second thing that happens
