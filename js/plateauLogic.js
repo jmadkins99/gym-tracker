@@ -135,6 +135,11 @@
         // Non-numeric weights (bodyweight rows carry 'Body Weight', NA rows carry
         // 'NA') can't be compared, so they read as "no improvement" rather than
         // being mistaken for a change.
+        //
+        // The bottom of the dropdown is the other thing that is not a gain. Three
+        // reps is where the set died, not a rep count you chose, so a session that
+        // ends there is a failed set however much weight was on the machine — see
+        // isFailedSet below.
         function isImprovement(newer, older) {
             if (!newer || !older) return false;
             const newWeight = parseFloat(newer.weight);
@@ -142,9 +147,36 @@
             const newReps = parseInt(newer.reps);
             const oldReps = parseInt(older.reps);
             if ([newWeight, oldWeight, newReps, oldReps].some(isNaN)) return false;
+            if (isFailedSet(newer)) return false;
             if (newWeight > oldWeight) return true;
             if (newWeight < oldWeight) return false;
             return newReps > oldReps;
+        }
+
+        // A set that bottomed out the rep range. The dropdown runs 3 to 6 (per
+        // exercise — see getStandardRepRange), and the bottom value is not a
+        // target anyone trains for: it is the number you log when the set failed.
+        // Loading more weight and then failing on it is a failed attempt at a PR,
+        // not a PR, so isImprovement refuses it before the weight comparison — the
+        // one place that decision has to live, or the flame pill and the "PRs
+        // Smashed" count will disagree about the same set.
+        //
+        // Only the NEW session is judged. A failed set still stands as a baseline
+        // for the next one: come back and get four reps at the same weight and
+        // that is a real improvement on what the machine gave you last time.
+        //
+        // Cardio and bodyweight rows are left alone — they carry their own rep
+        // options (BODYWEIGHT_REP_DEFAULTS) or none at all, so the standard range
+        // says nothing about them. An entry with no type is treated as standard,
+        // the same reading isExercisePRInWorkout takes.
+        function isFailedSet(entry) {
+            if (!entry) return false;
+            if (entry.type === 'assault-bike' || entry.type === 'stairmaster' || entry.type === 'bodyweight') {
+                return false;
+            }
+            const reps = parseInt(entry.reps);
+            if (isNaN(reps)) return false;
+            return reps <= getStandardRepRange(entry.id).min;
         }
 
         // The most recent session before `beforeDate` that actually logged this

@@ -85,7 +85,11 @@ function buildHistory() {
         submitted: true,
         exercises: [
             { id: 'curls-shoulder-extension', name: CURLS, weight: s.curls, reps: '4' },
-            { id: 'kelso-shrugs', name: SHRUGS, weight: s.shrugs, reps: '3' },
+            // Four reps, not three: three is the bottom of the dropdown, which the
+            // app reads as a failed set and never badges however the weight moved.
+            // Nothing here is about rep counts — every run below is driven by weight —
+            // so the seed just has to sit above that floor.
+            { id: 'kelso-shrugs', name: SHRUGS, weight: s.shrugs, reps: '4' },
             { id: 'preacher-curls', name: PREACHER, weight: '60', reps: '4' },
         ],
     }));
