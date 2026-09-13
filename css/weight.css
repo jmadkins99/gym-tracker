@@ -847,6 +847,23 @@
     color: #4e4e63;
 }
 
+/* A day with no reading. Same control in the same place as a real one — it has
+   to be tappable and findable — but it must never read as a weight. Hence the
+   muted colour and the lighter weight: scanning an opened week, the numbers are
+   the figure and the NAs are the gaps between them, not entries whose value
+   happens to be "NA". The date beside it stays at full strength, because that
+   is the part you are looking for when you go back to fill one in. */
+.weigh-day-value.na {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: #4e4e63;
+}
+
+.weigh-day.empty .weigh-day-date {
+    color: #6e6e86;
+}
+
 .weigh-day-pencil {
     margin-left: 8px;
     font-size: 12px;

@@ -72,6 +72,28 @@
             )));
         }
 
+        // Fills in a morning that was never recorded. The third mutator, and
+        // deliberately not a fourth spelling of the other two.
+        //
+        // upsertEntry stamps `loggedAt` with the current time because it runs
+        // the moment the scale is stood on. This one cannot: the morning it
+        // records has already passed, so there is no honest value for when the
+        // reading was taken, and writing `now` would put a lie in the one field
+        // the rest of this file refuses to overwrite. It stamps `addedAt`
+        // instead and leaves `loggedAt` absent — the same distinction the log
+        // already draws with `imported` on the workbook days, a weight that is
+        // true without being a morning anybody witnessed.
+        //
+        // A day that already has an entry is left untouched. Overwriting from
+        // here would make the NA affordance a second edit path with no
+        // confirmation and no Delete beside it, which is editEntry's job.
+        function addEntry(log, dayKey, weight) {
+            if (entryFor(log, dayKey)) return sortedLog(log || []);
+            return sortedLog((log || []).concat([
+                { date: dayKey, weight, addedAt: new Date().toISOString() },
+            ]));
+        }
+
         // Drops a day from the log. The escape hatch for a reading that should
         // never have been recorded at all — a second person on the scale, a
         // number typed into the wrong day — as opposed to one that is merely
@@ -80,19 +102,51 @@
             return sortedLog((log || []).filter((e) => e.date !== dayKey));
         }
 
-        // The raw readings inside one week of the ledger, newest first, keyed
-        // by the same Monday `weeklyAverages` buckets on so a row and its
-        // entries cannot disagree about which week a day belongs to.
+        // One week of the ledger as seven SLOTS: every day the week covers,
+        // newest first, each carrying its entry or null. A slot with an entry
+        // is a reading to correct; a slot without one renders as NA and is
+        // somewhere to fill in a morning that was never recorded.
         //
         // This is the one function that hands back historical raw weights, and
         // it exists for corrections. The history screen keeps that narrow: the
         // days are collapsed until a specific week is opened, so the page still
         // opens on aggregates and there is still no view that scrolls back
-        // through dailies.
-        function entriesForWeek(log, weekStart) {
-            return sortedLog(log)
-                .filter((e) => localDayKey(getMondayOfWeek(parseDayKey(e.date))) === weekStart)
-                .reverse();
+        // through dailies. It replaced `entriesForWeek`, which returned only
+        // the readings — one function rather than two so a row and its days
+        // cannot disagree about which week a date falls in, the same reason
+        // flatWeekStarts defers to weeklyAverages.
+        //
+        // Two kinds of day are withheld, for the same reason — a slot is an
+        // invitation to fill it in, and neither of these is a morning the scale
+        // could have been stood on:
+        //   - anything after `todayKey`, which has not happened yet. Without
+        //     this the week in progress offers blanks for the rest of the week.
+        //   - anything before the log's first reading, which predates the
+        //     record entirely. This one only bites on the opening week of an
+        //     imported log, but there it matters: with nothing to anchor it the
+        //     first week would invite backfill into the days before tracking
+        //     began.
+        //
+        // A week with no readings at all never reaches here, because the ledger
+        // is built from weeklyAverages and those weeks are absent from it. So
+        // one forgotten morning can be filled in and an entirely missed week
+        // cannot — a deliberate limit, not an oversight.
+        function weekDaySlots(log, weekStart, todayKey) {
+            const series = sortedLog(log);
+            const first = series.length ? series[0].date : null;
+            const byDate = new Map(series.map((e) => [e.date, e]));
+            const today = todayKey || localDayKey(new Date());
+            const slots = [];
+            for (let i = 0; i < 7; i++) {
+                const d = parseDayKey(weekStart);
+                d.setDate(d.getDate() + i);
+                const key = localDayKey(d);
+                // Day keys are ISO, so lexicographic order is date order.
+                if (key > today) continue;
+                if (first && key < first) continue;
+                slots.push({ date: key, entry: byDate.get(key) || null });
+            }
+            return slots.reverse();
         }
 
         // The weeks that were typed in rather than weighed. Both badges treat

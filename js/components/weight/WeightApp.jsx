@@ -161,6 +161,18 @@
                 flash('Updated');
             };
 
+            // Filling in a morning that was never recorded, from an NA row in
+            // the ledger. A third handler rather than a branch inside
+            // handleEditEntry, because the two are not the same act and the
+            // stamps differ — see addEntry. Like the edit and unlike a check-in
+            // it does not celebrate: the gold aura is for standing on the
+            // scale, and this is the one case where that is definitely not what
+            // happened.
+            const handleAddEntry = (dayKey, weight) => {
+                persist(addEntry(log, dayKey, weight));
+                flash('Added');
+            };
+
             const handleDeleteEntry = (dayKey) => {
                 persist(removeEntry(log, dayKey));
                 flash('Deleted');
@@ -266,7 +278,9 @@
                                 progress={progress}
                                 onEditPlan={() => { setSettingsOnPlan(true); setShowSettings(true); }}
                                 onEditEntry={handleEditEntry}
+                                onAddEntry={handleAddEntry}
                                 onDeleteEntry={handleDeleteEntry}
+                                todayKey={todayKey}
                             />
                         )}
                     </div>

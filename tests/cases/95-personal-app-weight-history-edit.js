@@ -53,13 +53,21 @@ const readLog = (page) => page.evaluate((ns) =>
 const weekAverage = (page) => page.evaluate(() =>
     parseFloat(document.querySelector('.weigh-week-avg').textContent));
 
+// Only the rows that carry a READING. Since Sep 2026 an opened week also
+// renders an NA row for every past day it has no reading for, which is how a
+// forgotten morning gets filled in — those rows are case 106's subject, and
+// this case is about correcting readings that exist. Filtering here keeps each
+// assertion below saying what it has always said.
 const dayRows = (page) => page.evaluate(() =>
-    Array.from(document.querySelectorAll('.weigh-day')).map((row) => ({
-        date: row.querySelector('.weigh-day-date').textContent.trim(),
-        weight: row.querySelector('.weigh-day-value')
-            ? parseFloat(row.querySelector('.weigh-day-value').textContent)
-            : null,
-    })));
+    Array.from(document.querySelectorAll('.weigh-day'))
+        .filter((row) => {
+            const v = row.querySelector('.weigh-day-value');
+            return v && !v.classList.contains('na');
+        })
+        .map((row) => ({
+            date: row.querySelector('.weigh-day-date').textContent.trim(),
+            weight: parseFloat(row.querySelector('.weigh-day-value').textContent),
+        })));
 
 // React's onChange listens for the native input event, and setting .value
 // directly does not fire one — the same setter dance the workout cases use.

@@ -363,8 +363,8 @@
             );
         }
 
-        // The readings inside one opened week, newest first, each with a way
-        // to correct it.
+        // The days inside one opened week, newest first — each either a reading
+        // with a way to correct it, or an NA with a way to fill it in.
         //
         // Editing is inline rather than a modal, and that is the same decision
         // the check-in card makes for today's number: a correction is one field
@@ -372,7 +372,14 @@
         // place in it. Only one row is open at a time — the state is a day key,
         // not a set — so a half-typed correction can never be sitting in a row
         // that has scrolled off screen.
-        function WeekEntries({ entries, onSave, onDelete }) {
+        //
+        // The NA row reuses that editor rather than growing a second one, and
+        // the only differences are the ones that would be wrong to keep: the
+        // field opens empty instead of prefilled, there is no Delete beside it
+        // because there is nothing yet to delete, and Save routes to onAdd
+        // rather than onSave so the entry is stamped as filled-in rather than
+        // as a morning that was weighed. See addEntry in weightLogic.js.
+        function WeekEntries({ slots, onSave, onAdd, onDelete }) {
             const [editing, setEditing] = React.useState(null);
             const [draft, setDraft] = React.useState('');
             const inputRef = React.useRef(null);
@@ -396,19 +403,22 @@
             // input does not exist yet when the tap arrives, so flushSync
             // renders it immediately — that is the whole reason for reaching
             // for it here rather than letting the update batch as usual.
-            const begin = (entry) => {
+            // An NA slot opens on an empty field: there is no prior reading to
+            // type over, and prefilling a neighbouring day's weight would be
+            // offering a guess as a starting point.
+            const begin = (slot) => {
                 ReactDOM.flushSync(() => {
-                    setEditing(entry.date);
-                    setDraft(formatWeight(entry.weight));
+                    setEditing(slot.date);
+                    setDraft(slot.entry ? formatWeight(slot.entry.weight) : '');
                 });
                 // select() focuses as well, so the keyboard comes up on a field
                 // whose contents are ready to be typed over.
                 if (inputRef.current) inputRef.current.select();
             };
 
-            const commit = (dayKey) => {
+            const commit = (slot) => {
                 if (!valid) return;
-                onSave(dayKey, parsed);
+                (slot.entry ? onSave : onAdd)(slot.date, parsed);
                 setEditing(null);
             };
 
@@ -424,14 +434,24 @@
 
             return (
                 <div className="weigh-days">
-                    {entries.map((entry) => (
-                        <div className={'weigh-day' + (editing === entry.date ? ' editing' : '')}
-                             key={entry.date}>
+                    {slots.map((slot) => (
+                        <div className={'weigh-day'
+                                        + (editing === slot.date ? ' editing' : '')
+                                        + (slot.entry ? '' : ' empty')}
+                             key={slot.date}>
                             <div className="weigh-day-date">
-                                {formatWeekdayDay(entry.date)}
-                                {entry.editedAt && <span className="weigh-day-edited">edited</span>}
+                                {formatWeekdayDay(slot.date)}
+                                {slot.entry && slot.entry.editedAt &&
+                                    <span className="weigh-day-edited">edited</span>}
+                                {/* A day that was filled in afterwards says so.
+                                    Same reasoning as the edited badge: the
+                                    ledger does not pass off a typed weight as a
+                                    witnessed one. `imported` covers the workbook
+                                    days, which carry no addedAt. */}
+                                {slot.entry && slot.entry.addedAt && !slot.entry.loggedAt &&
+                                    <span className="weigh-day-edited">added</span>}
                             </div>
-                            {editing === entry.date ? (
+                            {editing === slot.date ? (
                                 <div className="weigh-day-edit">
                                     <input
                                         ref={inputRef}
@@ -441,20 +461,28 @@
                                         value={draft}
                                         onChange={onDraftChange}
                                         onKeyDown={(e) => {
-                                            if (e.key === 'Enter') commit(entry.date);
+                                            if (e.key === 'Enter') commit(slot);
                                             if (e.key === 'Escape') setEditing(null);
                                         }}
-                                        aria-label={'Weight for ' + formatWeekdayDay(entry.date)}
+                                        aria-label={'Weight for ' + formatWeekdayDay(slot.date)}
                                     />
                                     <button className="weigh-day-btn save" disabled={!valid}
-                                            onClick={() => commit(entry.date)}>Save</button>
+                                            onClick={() => commit(slot)}>Save</button>
                                     <button className="weigh-day-btn" onClick={() => setEditing(null)}>Cancel</button>
-                                    <button className="weigh-day-btn danger" onClick={() => drop(entry)}>Delete</button>
+                                    {slot.entry && (
+                                        <button className="weigh-day-btn danger"
+                                                onClick={() => drop(slot.entry)}>Delete</button>
+                                    )}
                                 </div>
-                            ) : (
-                                <button className="weigh-day-value" onClick={() => begin(entry)}>
-                                    {formatWeight(entry.weight)}<span className="weigh-day-unit">lbs</span>
+                            ) : slot.entry ? (
+                                <button className="weigh-day-value" onClick={() => begin(slot)}>
+                                    {formatWeight(slot.entry.weight)}<span className="weigh-day-unit">lbs</span>
                                     <span className="weigh-day-pencil">✎</span>
+                                </button>
+                            ) : (
+                                <button className="weigh-day-value na" onClick={() => begin(slot)}
+                                        aria-label={'Add a weight for ' + formatWeekdayDay(slot.date)}>
+                                    NA<span className="weigh-day-pencil">✎</span>
                                 </button>
                             )}
                         </div>
@@ -463,7 +491,8 @@
             );
         }
 
-        function WeightHistory({ log, range, setRange, progress, onEditPlan, onEditEntry, onDeleteEntry }) {
+        function WeightHistory({ log, range, setRange, progress, onEditPlan, onEditEntry,
+                                 onAddEntry, onDeleteEntry, todayKey }) {
             const points = readingSeries(log, range || 0);
             const weeks = weeklyAverages(log).slice().reverse();
             const rate = weeklyAverageRate(log);
@@ -670,8 +699,9 @@
                               </button>
                               {open && (
                                   <WeekEntries
-                                      entries={entriesForWeek(log, wk.weekStart)}
+                                      slots={weekDaySlots(log, wk.weekStart, todayKey)}
                                       onSave={onEditEntry}
+                                      onAdd={onAddEntry}
                                       onDelete={onDeleteEntry}
                                   />
                               )}
