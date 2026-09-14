@@ -149,10 +149,35 @@
         // an absent week, not a zero — and `delta` is measured against the
         // previous week that HAS data, so a week away from the scale does not
         // manufacture a huge swing on the week after it.
+        //
+        // Week 1 is measured against the last logged week BEFORE the plan
+        // began, when the log has one. That week is what week 1's loss actually
+        // came off, and it is already what the History row for week 1 prints as
+        // its delta — so the two agree, and the first week of a cut stops being
+        // silently absent from every average built on these rows. Which
+        // mattered: the first week is usually the biggest, and leaving it out
+        // made Pace read as whatever the most recent ordinary week did.
+        //
+        // The plan's own `startWeight` is deliberately NOT that anchor. It is a
+        // number typed into the editor rather than a week that was weighed, so
+        // a plan set up a fortnight after the weight it names would book that
+        // whole fortnight as week 1's loss. A plan whose log begins with it has
+        // no anchor at all, and week 1 carries no rate rather than a made-up
+        // one — see projectionRate for the one place that still needs a number
+        // there.
+        //
+        // `rate` is that delta PER WEEK, which is not the same figure whenever
+        // a week was skipped: a delta spanning two weeks is two weeks of loss,
+        // and averaging it in as one week's would flatter the pace. Ordinarily
+        // the span is 1 and the two are the same number. `cumulative` keeps
+        // summing the raw deltas, because a running total is a total.
         function planRows(plan, log) {
-            const byWeek = new Map(weeklyAverages(log).map((w) => [w.weekStart, w]));
+            const weeks = weeklyAverages(log);
+            const byWeek = new Map(weeks.map((w) => [w.weekStart, w]));
             const rows = [];
-            let prevActual = null;
+            // Day keys are ISO, so lexicographic order is date order.
+            const earlier = weeks.filter((w) => w.weekStart < plan.startDate);
+            let prev = earlier.length ? earlier[earlier.length - 1] : null;
             let cumulative = 0;
 
             for (let i = 1; i <= plan.weeks; i++) {
@@ -163,11 +188,16 @@
                 const actual = wk ? wk.avg : null;
 
                 let delta = null;
-                if (actual !== null && prevActual !== null) {
-                    delta = actual - prevActual;
+                let rate = null;
+                if (actual !== null && prev !== null) {
+                    delta = actual - prev.avg;
                     cumulative += delta;
+                    const spanWeeks = Math.round(
+                        (parseDayKey(weekStart) - parseDayKey(prev.weekStart)) / MS_PER_WEEK
+                    );
+                    if (spanWeeks >= 1) rate = delta / spanWeeks;
                 }
-                if (actual !== null) prevActual = actual;
+                if (actual !== null) prev = { weekStart, avg: actual };
 
                 rows.push({
                     week: i,
@@ -176,6 +206,7 @@
                     actual,
                     count: wk ? wk.count : 0,
                     delta,
+                    rate,
                     cumulative: actual !== null ? cumulative : null,
                 });
             }
@@ -210,10 +241,19 @@
             const planWeight = planWeightForWeek(plan, Math.max(1, Math.min(plan.weeks, weekNumber)));
             const gap = actual - planWeight;
 
-            // Mean weekly change over the weeks that have one, which is the
+            // Pace: the mean of every plan week's own weekly rate, which is the
             // sheet's AVERAGE(E3:E14). Negative means coming down.
-            const deltas = rows.map((r) => r.delta).filter((d) => d !== null);
-            const avgRate = deltas.length ? deltas.reduce((s, d) => s + d, 0) / deltas.length : null;
+            //
+            // Every week the plan has a rate for counts equally — a week that
+            // shed four pounds and a week that shed none average to two,
+            // whatever order they came in. This is not the latest week's
+            // number, and it is not meant to be: one week of a cut is mostly
+            // water, sodium and glycogen, and steering off the most recent one
+            // means being told the cut has stalled every time a single week
+            // holds. The card's own line says "lb/wk vs planned", and it is the
+            // average that belongs beside a planned rate.
+            const rates = rows.map((r) => r.rate).filter((r) => r !== null);
+            const avgRate = rates.length ? rates.reduce((s, r) => s + r, 0) / rates.length : null;
 
             // Projected finish at the rate actually being achieved, not the
             // planned one. Null when the rate is flat or rising — an
@@ -252,11 +292,14 @@
         // until a scale says so.
         //
         // The rate comes from `projectionRate` below — normally `avgRate`, the
-        // mean of the weekly deltas the plan has collected so far, which is the
-        // sheet's AVERAGE(E3:E14) and the same number `projectedFinish`
-        // extrapolates from. One rate feeds both wherever both exist, on
-        // purpose: a week-by-week projection and a finish date that disagreed
-        // about the future would be worse than either on its own.
+        // mean of every plan week's rate so far, which is the sheet's
+        // AVERAGE(E3:E14), the number the card prints as Pace, and the same
+        // number `projectedFinish` extrapolates from. One rate feeds all three
+        // wherever all three exist, on purpose: a Pace, a week-by-week
+        // projection and a finish date that disagreed about the future would be
+        // worse than any of them alone. So the projection is drawn off every
+        // week the plan has run rather than off the latest one — a good week
+        // does not redraw the rest of the cut, and neither does a bad one.
         //
         // The rows start after the LAST week that has readings, so a projected
         // week never lands on a week the log can already answer for, and they
@@ -273,20 +316,20 @@
             const withData = progress.rows.filter((r) => r.actual !== null);
             let rate = progress.avgRate;
 
-            // Week 1 of a plan has no week-to-week delta to average — the row
-            // before it is the start weight rather than a week — so `avgRate`
-            // is null for the whole of it and the projection would be missing
-            // exactly when a new plan is most worth extrapolating. The fallback
-            // measures the same thing against the only anchor there is: what
-            // has come off since the plan started, over the weeks it has run.
+            // A plan whose log begins with it has nothing for week 1 to be
+            // measured against — no earlier week was weighed — so `avgRate` is
+            // null for the whole of that week and the projection would be
+            // missing exactly when a new plan is most worth extrapolating. The
+            // fallback measures the same thing against the only anchor left:
+            // what has come off since the plan started, over the weeks it has
+            // run.
             //
             // It is a fallback and not the primary because it is the worse
             // forecast once there is a choice. Week 1 of a cut sheds water, so
-            // a rate anchored on the start weight runs hot for a month; the
-            // mean of the week-to-week deltas does not, and it is also the
-            // number the plan card already calls Pace. Two rates on one screen
-            // is worth avoiding, and this only ever fires where the other one
-            // does not exist.
+            // a rate anchored on a typed-in start weight runs hot for a month,
+            // and that weight is not a week anybody stood on a scale for. Where
+            // the log does reach back before the plan, `avgRate` already counts
+            // week 1 off a week that was — see planRows — and this never fires.
             if (rate === null && withData.length === 1 && withData[0].week > 0) {
                 rate = (withData[0].actual - progress.plan.startWeight) / withData[0].week;
             }
