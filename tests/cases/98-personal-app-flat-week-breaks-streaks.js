@@ -63,6 +63,12 @@ const seed = (page, opts) => page.evaluate((ns, flat, top, o) => {
     for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(d.getDate() - 7 + i);
+        // The gap goes wherever yesterday actually falls. On a Monday
+        // yesterday is the Sunday of THIS seeded week rather than a day of the
+        // week in progress, and a phase 3 that only skipped days from the
+        // latter left no gap at all one day in seven — the streak then ran the
+        // whole way back and the case failed every Monday.
+        if (o.skipYesterday && key(d) === key(yesterday)) continue;
         log.push({
             date: key(d),
             weight: (o.breakFlat && i === o.breakDay) ? o.breakTo : flat,
