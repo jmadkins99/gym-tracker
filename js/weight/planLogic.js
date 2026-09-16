@@ -303,13 +303,21 @@
         //
         // The rows start after the LAST week that has readings, so a projected
         // week never lands on a week the log can already answer for, and they
-        // stop at whichever comes first: the plan's last week, or the week the
-        // line arrives at the goal. Running past the goal would draw weeks of
-        // a cut that would already be over.
+        // stop at the week the line arrives at the goal. Running past the goal
+        // would draw weeks of a cut that would already be over.
+        //
+        // They do NOT stop at the plan's last week, which is the whole of what
+        // a plan being behind looks like: a twelve-week plan at a pace that
+        // needs fifteen does not end in week 12, it ends in week 12 with three
+        // pounds still on. So the numbering carries on — wk 13, wk 14 — against
+        // the goal weight, and the count of those extra rows IS the size of the
+        // shortfall, stated in the unit the plan was written in. See
+        // MAX_OVERRUN_WEEKS for where the drawing stops and a summary takes
+        // over.
         //
         // Empty is the answer wherever the projection would be arithmetic
         // dressed as a forecast — no plan, no readings yet, a rate that is flat
-        // or rising, a plan already at its end. The button is hidden in exactly
+        // or rising, a goal already reached. The button is hidden in exactly
         // those cases rather than opening onto nothing.
         function projectionRate(progress) {
             if (!progress) return null;
@@ -339,6 +347,16 @@
             return rate !== null && rate < -0.05 ? rate : null;
         }
 
+        // How many weeks past the plan's last the projection will draw before
+        // it stops drawing and starts summarizing. The cap is the difference
+        // between a ledger and a wall: a twentieth of a pound a week is still a
+        // rate, and a stone left to lose at that rate is fifty dashed rows
+        // nobody scrolls to the end of. Twelve is another quarter of a cut,
+        // which is as far out as a projection off a handful of weeks is worth
+        // reading week by week; past it the last row names the week the goal
+        // lands instead.
+        const MAX_OVERRUN_WEEKS = 12;
+
         function projectedWeeks(progress) {
             if (!progress) return [];
             const plan = progress.plan;
@@ -349,9 +367,15 @@
             if (!withData.length) return [];
             const last = withData[withData.length - 1];
 
+            // Measured from the plan's end, or from the last week with readings
+            // where that is later still — a plan run well past its last Monday
+            // is exactly the case that most needs the rows, and a cap anchored
+            // only on plan.weeks would have drawn none.
+            const lastRow = Math.max(plan.weeks, last.week) + MAX_OVERRUN_WEEKS;
+
             const out = [];
             let prev = last.actual;
-            for (let i = last.week + 1; i <= plan.weeks; i++) {
+            for (let i = last.week + 1; i <= lastRow; i++) {
                 const raw = last.actual + avgRate * (i - last.week);
                 // Clamped at the goal, which is also where the loop stops. The
                 // last row is the week the goal lands, and it lands ON the goal
@@ -360,7 +384,14 @@
                 const weight = atGoal ? plan.goalWeight : raw;
                 const start = parseDayKey(plan.startDate);
                 start.setDate(start.getDate() + (i - 1) * 7);
-                const planWeight = planWeightForWeek(plan, i);
+                const overrun = i > plan.weeks;
+                // Past the plan's last week the target line has nothing left to
+                // ask for, so these rows are measured against the goal weight —
+                // which is the number they exist to close on, and the one the
+                // plan was going to arrive at anyway. Extending the line
+                // instead would print targets below the goal for weeks the plan
+                // never claimed.
+                const planWeight = overrun ? plan.goalWeight : planWeightForWeek(plan, i);
                 out.push({
                     week: i,
                     weekStart: localDayKey(start),
@@ -371,9 +402,24 @@
                     delta: weight - prev,
                     vsPlan: weight - planWeight,
                     atGoal,
+                    // Past the plan's own length: numbered on rather than
+                    // stopped, because the weeks a slow cut still needs are the
+                    // answer to how far behind it is.
+                    overrun,
+                    // Set only on a last row that ran out of cap before it ran
+                    // out of pounds; see below.
+                    goalWeek: null,
                 });
                 prev = weight;
                 if (atGoal) break;
+            }
+
+            // The cap truncates the drawing, not the answer: a final row that
+            // never reached the goal carries the week that does, so twelve rows
+            // and a note say what forty rows would have.
+            const tail = out.length ? out[out.length - 1] : null;
+            if (tail && !tail.atGoal) {
+                tail.goalWeek = last.week + Math.ceil((plan.goalWeight - last.actual) / avgRate);
             }
             return out;
         }

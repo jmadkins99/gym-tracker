@@ -622,13 +622,20 @@
                                 const n = projected.length;
                                 const step = showProjection ? (n - 1 - i) : i;
                                 return (
-                                    <div className={'history-item weigh-week projected' + (row.atGoal ? ' goal' : '')}
+                                    <div className={'history-item weigh-week projected'
+                                                     + (row.atGoal ? ' goal' : '')
+                                                     + (row.overrun ? ' overrun' : '')}
                                          key={row.weekStart}
                                          style={{ transitionDelay: (step * 55) + 'ms' }}>
                                         <div className="history-date">
                                             <span className="weigh-week-caret" aria-hidden="true">╌</span>
                                             Week of {formatShortDay(row.weekStart)}
-                                            <span className="weigh-week-plan-tag">plan wk {row.week}</span>
+                                            {/* Past the plan's length there is no
+                                                plan week to name, so the tag drops
+                                                the word and just keeps counting. */}
+                                            <span className="weigh-week-plan-tag">
+                                                {row.overrun ? 'wk ' + row.week : 'plan wk ' + row.week}
+                                            </span>
                                         </div>
                                         <div className="weigh-week-row">
                                             <div className="weigh-week-avg">
@@ -639,7 +646,14 @@
                                                 ↓ {formatWeight(Math.abs(row.delta))}
                                             </div>
                                             <div className="weigh-week-count">
-                                                {row.atGoal ? 'goal lands here' : 'projected'}
+                                                {row.atGoal ? 'goal lands here'
+                                                    /* The cap stopped the rows
+                                                       short of the goal, so this
+                                                       one says where it lands
+                                                       rather than trailing off. */
+                                                    : row.goalWeek ? 'goal ~wk ' + row.goalWeek
+                                                    : row.overrun ? 'past plan'
+                                                    : 'projected'}
                                             </div>
                                         </div>
                                         <div className={'weigh-week-vs' + (row.vsPlan <= 0 ? ' good' : ' behind')}>

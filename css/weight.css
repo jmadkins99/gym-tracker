@@ -749,6 +749,20 @@
     letter-spacing: 0.08em;
 }
 
+/* Weeks the plan never asked for — the overrun a slow pace needs to reach the
+   goal after the last planned Monday has gone by. Amber rather than the block's
+   grey, because these rows are the one thing in the projection that is a verdict
+   on the plan rather than a continuation of it. Not the goal row, though: that
+   one keeps the accent border below, overrun or not. */
+.weigh-week.projected.overrun:not(.goal) {
+    border-color: rgba(255, 149, 0, 0.32);
+}
+
+.weigh-week.projected.overrun .weigh-week-plan-tag,
+.weigh-week.projected.overrun:not(.goal) .weigh-week-count {
+    color: #a4712a;
+}
+
 /* Except the week the goal lands on, which is the one row in the block worth
    going looking for. */
 .weigh-week.projected.goal {
