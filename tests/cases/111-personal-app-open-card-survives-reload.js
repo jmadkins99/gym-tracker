@@ -13,9 +13,9 @@
 // The restore is derived from the anchor alone, so the case also pins the rules
 // that make the anchor trustworthy as "the card that is open":
 //
-//   1. Open a card on the NON-default day, not card one, and reload: the day,
-//      the position and the reveal all come back, the anchor is untouched, and
-//      logging writes the original stamp as startedAt.
+//   1. Log card one, then open card three on the NON-default day, and reload:
+//      the day, the position and the reveal all come back, the anchor is
+//      untouched, and logging writes the original stamp as startedAt.
 //   2. After that log there is no anchor, so a reload opens nothing.
 //   3. Leaving an open card drops its anchor (closeWeightBreakdown), so a reload
 //      does not drag you back to a card you walked away from.
@@ -27,6 +27,15 @@
 // toggle, and choosing card three is what makes it non-vacuous for position:
 // a restore that forgot either would still pass on card one of today's default.
 //
+// Logging card one FIRST is the gym, and the first version of this case did
+// not do it. The first log of a day writes a row for every exercise on that
+// day, blank ones included, and the restore's "already logged today" check
+// tested presence in that record rather than data — so the moment one set was
+// logged, every open card counted as logged and nothing was ever restored. It
+// passed here and failed on the first real reload. It also hid behind the
+// logged card: card one renders open because it is logged, so "a card is open"
+// held while the deck sat on the wrong one. Hence the position and id checks.
+//
 // To verify this test is real: delete the restoreOpenCard(...) call in App.jsx's
 // hydration. (1) fails on the day pill. Or make closeWeightBreakdown only clear
 // expandedWeightBreakdown, as it used to: (3) fails, reopening the card you left.
@@ -34,7 +43,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
-const { goToCardById, revealCard, isRevealed, logCard, deckPosition, startAnchors, todayWorkout } = require('../lib/deck');
+const { goToCardById, revealCard, isRevealed, logCard, logCardById, deckPosition, startAnchors, todayWorkout } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -90,6 +99,9 @@ async function seedAnchor(page, id, dateString) {
 
         // === 1. Open card three on the other day, reload ==================
         await selectDayType(page, otherDay);
+        const first = await page.evaluate((day) => DEFAULT_EXERCISES
+            .filter(e => e.day === day).sort((a, b) => a.order - b.order)[0].id, otherDay);
+        ok(await logCardById(page, first), `logged ${first} first, as mid-session`);
         await goToCardById(page, target);
         await revealCard(page);
         ok(await isRevealed(page), `opened ${target}`);
@@ -129,14 +141,14 @@ async function seedAnchor(page, id, dateString) {
         await selectDayType(page, otherDay);
         const roster = await page.evaluate((day) => DEFAULT_EXERCISES
             .filter(e => e.day === day).sort((a, b) => a.order - b.order).map(e => e.id), otherDay);
-        await goToCardById(page, roster[0]);
+        await goToCardById(page, roster[3]);
         await revealCard(page);
-        ok((await startAnchors(page, NS))[roster[0]], `${roster[0]} is anchored while open`);
-        await goToCardById(page, roster[1]);   // walk away without opening the next one
+        ok((await startAnchors(page, NS))[roster[3]], `${roster[3]} is anchored while open`);
+        await goToCardById(page, roster[4]);   // walk away without opening the next one
         await waitFor(page, 'the left card\'s anchor to be dropped', (ns, id) => {
             const raw = JSON.parse(localStorage.getItem(ns + 'exerciseStartTimes') || 'null');
             return !raw || !raw.times || !raw.times[id];
-        }, NS, roster[0]);
+        }, NS, roster[3]);
         await reload(page);
         eq(await isRevealed(page), false, 'a card you walked away from is not reopened');
         eq(await activeDay(page), defaultDay, 'and the day is not dragged back to it');

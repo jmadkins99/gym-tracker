@@ -267,6 +267,20 @@
             }, [workoutHistory.length, currentWeek]);
 
             // Restore logged state and workout data from today's unsubmitted workout
+            // Whether a row in today's workout was actually logged. The first log
+            // of a day writes a row for EVERY exercise on it, blank ones
+            // included, so being present in the record means nothing on its
+            // own — only data does. Shared by the loggedExercises derivation
+            // below and restoreOpenCard, which got this wrong by checking
+            // presence and so never restored anything once a set was logged.
+            const hasLoggedData = (exercise) => {
+                const filled = (v) => !!v && v !== 'NA';
+                if (exercise.type === 'assault-bike') return filled(exercise.intensity);
+                if (exercise.type === 'stairmaster') return filled(exercise.time);
+                if (exercise.type === 'bodyweight') return filled(exercise.reps);
+                return filled(exercise.weight) || filled(exercise.reps);
+            };
+
             useEffect(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -282,17 +296,7 @@
                     const newWorkoutData = {};
 
                     todayWorkout.exercises.forEach(exercise => {
-                        let hasData = false;
-                        if (exercise.type === 'assault-bike') {
-                            hasData = exercise.intensity && exercise.intensity !== '' && exercise.intensity !== 'NA';
-                        } else if (exercise.type === 'stairmaster') {
-                            hasData = exercise.time && exercise.time !== '' && exercise.time !== 'NA';
-                        } else if (exercise.type === 'bodyweight') {
-                            hasData = exercise.reps && exercise.reps !== '' && exercise.reps !== 'NA';
-                        } else {
-                            hasData = (exercise.weight && exercise.weight !== '' && exercise.weight !== 'NA') ||
-                                     (exercise.reps && exercise.reps !== '' && exercise.reps !== 'NA');
-                        }
+                        const hasData = hasLoggedData(exercise);
 
                         if (hasData) {
                             newLoggedExercises[exercise.id] = true;
@@ -523,7 +527,11 @@
             const restoreOpenCard = (roster, history) => {
                 const today = new Date().toDateString();
                 const todayWorkout = history.find(w => new Date(w.date).toDateString() === today);
-                const loggedToday = new Set(todayWorkout ? todayWorkout.exercises.map(e => e.id) : []);
+                // Same rule as the loggedExercises derivation: a row with data,
+                // in a day not yet submitted (submitting re-enables every LOG).
+                const loggedToday = new Set(todayWorkout && !todayWorkout.submitted
+                    ? todayWorkout.exercises.filter(hasLoggedData).map(e => e.id)
+                    : []);
                 const exercise = Object.keys(exerciseStartTimes)
                     .map(id => roster.find(ex => ex.id === id))
                     .find(ex => ex && !loggedToday.has(ex.id));
