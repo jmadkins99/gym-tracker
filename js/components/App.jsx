@@ -233,6 +233,11 @@
                             setShowSyncPrompt(true);
                         }
 
+                        restoreOpenCard(
+                            migratedConfig ? migratedConfig.exercises
+                                : (savedConfig && savedConfig.exercises) || DEFAULT_EXERCISES,
+                            savedHistory || []);
+
                         setHydrated(true);
                     });
                 });
@@ -471,6 +476,65 @@
                 setExerciseStartTimes(() => saveStartTimes({
                     [exerciseId]: new Date().toISOString()
                 }));
+            };
+
+            // Closing a panel drops its anchor too. The anchor is the claim that
+            // a set is under way at that machine, and a shut card makes no such
+            // claim: LOG only exists on the open face, so a closed card cannot
+            // be logged against it, and reopening stamps a fresh one anyway.
+            // What this buys is that storage only ever names a card that is
+            // actually open — which is what lets restoreOpenCard trust it.
+            // No id closes whatever is open (a day switch), and drops every
+            // anchor with it.
+            const closeWeightBreakdown = (exerciseId) => {
+                setExpandedWeightBreakdown(cur =>
+                    (exerciseId === undefined || cur === exerciseId ? null : cur));
+                setExerciseStartTimes(prev => {
+                    if (exerciseId === undefined) {
+                        return Object.keys(prev).length ? saveStartTimes({}) : prev;
+                    }
+                    if (!prev[exerciseId]) return prev;
+                    const updated = { ...prev };
+                    delete updated[exerciseId];
+                    return saveStartTimes(updated);
+                });
+            };
+
+            // Reopen the card that was open when the page went away. Phones
+            // reload a backgrounded tab on their own — screen off between sets,
+            // patchy gym signal — and the open panel, the deck position and the
+            // day toggle are all plain state, so a reload used to land on card
+            // one, shut. The anchor survived in storage, but you had to swipe
+            // up again to reach LOG, and that swipe re-stamped it: a set that
+            // took two minutes logged as a few seconds.
+            //
+            // The surviving anchor is enough to put it all back. At most one
+            // exists, it only exists while its card is open (closeWeightBreakdown
+            // and logExercise both drop it), and it is date-stamped, so it names
+            // exactly the card to reopen. Its day and position follow from the
+            // roster. Because the panel is restored as already open,
+            // openWeightBreakdown's no-op on an open card keeps the original
+            // stamp rather than replacing it.
+            //
+            // Called during hydration, before the deck mounts, so the deck's
+            // day-switch reset never sees the day change. Skipped for an anchor
+            // whose exercise is gone from the roster or already logged today
+            // (possible via another synced device): there is nothing to resume.
+            const restoreOpenCard = (roster, history) => {
+                const today = new Date().toDateString();
+                const todayWorkout = history.find(w => new Date(w.date).toDateString() === today);
+                const loggedToday = new Set(todayWorkout ? todayWorkout.exercises.map(e => e.id) : []);
+                const exercise = Object.keys(exerciseStartTimes)
+                    .map(id => roster.find(ex => ex.id === id))
+                    .find(ex => ex && !loggedToday.has(ex.id));
+                if (!exercise) return;
+
+                const dayRoster = roster
+                    .filter(ex => ex.day === exercise.day)
+                    .sort((a, b) => a.order - b.order);
+                setActiveDayType(exercise.day);
+                setDeckIndex(dayRoster.findIndex(ex => ex.id === exercise.id));
+                setExpandedWeightBreakdown(exercise.id);
             };
 
             const handleInputChange = (exerciseId, field, value) => {
@@ -1014,8 +1078,7 @@
                             workoutHistory={workoutHistory}
                             expandedWeightBreakdown={expandedWeightBreakdown}
                             openWeightBreakdown={openWeightBreakdown}
-                            closeWeightBreakdown={(id) => setExpandedWeightBreakdown(
-                                (cur) => (id === undefined || cur === id ? null : cur))}
+                            closeWeightBreakdown={closeWeightBreakdown}
                             deckIndex={deckIndex}
                             setDeckIndex={setDeckIndex}
                             activeDayType={activeDayType}
