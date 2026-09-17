@@ -41,6 +41,11 @@
         // 5 lbs where a 5 is the natural step — two-sided plate-loaded (= 2.5
         // per side per move) and pin stacks moved a full stack notch at a time.
         // 2.5 or 1.25 elsewhere; both are legal micro-plate steps.
+        //
+        // These are SEEDS as of Sep 2026. The increment is a user setting,
+        // editable from the pencil in Settings > Manage Exercises and saved as
+        // `increment` on the exercise; this map is only read for an exercise
+        // that has no saved value (see resolveIncrement below).
         const PR_WEIGHT_INCREMENTS = {
             'curls-shoulder-extension': 2.5,
             'overhead-tricep-extensions': 2.5,
@@ -74,6 +79,11 @@
             'ab-crunch': 2.5,
             'actual-leg-extensions': 2.5
         };
+
+        // The only increments the Settings dropdown offers: the real plate
+        // steps. resolveIncrement also rejects a saved value outside this list,
+        // so a hand-edited backup cannot smuggle in a 3 no gym can load.
+        const PR_INCREMENT_OPTIONS = [1.25, 2.5, 5, 10];
 
         // Standard weighted rep dropdowns. Every movement in the program uses
         // the historical 3-6 range. The override map is empty as of Sep 2026:
@@ -203,24 +213,33 @@
             return (seed && seed.loadType) || 'pin';
         }
 
+        // The raw PR step for an exercise: the user's saved `increment` if it is
+        // a legal step, else the code seed by id, else undefined (which turns PR
+        // suggestions off for that exercise). Same shape as resolveLoadType, and
+        // the seed fallback is load-bearing for the same reason — an exercise
+        // nobody has edited carries no `increment` at all, so a code-side change
+        // to a seed still reaches it.
+        function resolveIncrement(exercise) {
+            const saved = exercise && exercise.increment;
+            if (PR_INCREMENT_OPTIONS.includes(saved)) return saved;
+            return PR_WEIGHT_INCREMENTS[exercise && exercise.id];
+        }
+
         // A two-sided machine splits the increment across both sides, so the
         // total has to land on a real plate: 1.25 would be 0.625/side, which
         // does not exist. 2.5 and 5 already halve legally (1.25 and 2.5/side)
         // and are passed through untouched — the bump is minimal, not a floor.
         //
-        // Derived rather than stored on purpose. Persisting a second, adjusted
-        // increment would mean a second user-owned field for migrateExerciseConfig
-        // to preserve, and switching an exercise back to a stack would leave the
-        // coarsened step behind. Computing it per read means the raw number in
-        // PR_WEIGHT_INCREMENTS stays the single source of truth.
-        // NOTE: as of Aug 2026 no exercise ships a 1.25 increment, so the
-        // two-sided branch below never fires against the current roster. It is
-        // kept because loadType is a runtime user setting and the next 1.25
-        // exercise — a new movement, or one of these dialled back — would
-        // otherwise suggest 0.625 a side, which is not a plate. Case 61
-        // exercises it with a synthetic increment for exactly this reason.
-        function getWeightIncrement(exerciseId, loadType) {
-            const base = PR_WEIGHT_INCREMENTS[exerciseId];
+        // The adjustment is derived on read, never stored. The saved increment
+        // is the raw step the user typed, so switching an exercise back to a
+        // stack restores the fine step instead of leaving a coarsened one
+        // behind. That is also why Settings shows the raw number.
+        //
+        // No seed is finer than 2.5, so against untouched config this branch
+        // never fires. Since the increment became editable (Sep 2026) it does
+        // the moment someone types 1.25 on a two-sided machine. Case 61 pins it.
+        function getWeightIncrement(exercise, loadType) {
+            const base = resolveIncrement(exercise);
             if (base === undefined) return undefined;
             if (loadType === 'plate-two-sided' && (base / 2) % 1.25 !== 0) return base * 2;
             return base;

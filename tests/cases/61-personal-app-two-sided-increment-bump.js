@@ -8,9 +8,11 @@
 // it is doubled to 2.5. 2.5 and 5 already halve legally (1.25 and 2.5 a side)
 // and must be left alone — the bump is minimal, not a floor.
 //
-// Aug 2026: every increment was raised to 2.5 or above, so NO exercise on the
-// roster triggers the branch any more. It is driven with a synthetic increment
-// below instead of being deleted — see the note there.
+// Aug 2026: every increment was raised to 2.5 or above, so no SEED triggers the
+// branch. Sep 2026: the increment became a user setting (Settings > Manage
+// Exercises accepts 1.25), so the branch is reachable again the moment someone
+// types 1.25 on a two-sided machine. The last pass below drives exactly that
+// through a saved config.
 //
 // This is the strengthened heir of a loop that used to live in case 45, which
 // swept PLATE_LOADED_EXERCISES asserting every two-sided entry's increment
@@ -26,8 +28,8 @@
 // progression even on a pin stack, and would hide a genuinely wrong raw value.
 //
 // To verify this test is real: delete the 'plate-two-sided' branch from
-// getWeightIncrement in config.js. The unit half fails naming every 1.25
-// exercise, and the end-to-end half reads 202.5 where it expects 202.5.
+// getWeightIncrement in config.js. The synthetic unit assertion fails, and the
+// last end-to-end pass reads 201.25 where it expects 202.5.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -67,9 +69,9 @@ function daysAgo(n) {
         const table = await page.evaluate(() => DEFAULT_EXERCISES.map(ex => ({
             id: ex.id,
             raw: PR_WEIGHT_INCREMENTS[ex.id],
-            pin: getWeightIncrement(ex.id, 'pin'),
-            oneSided: getWeightIncrement(ex.id, 'plate-one-sided'),
-            twoSided: getWeightIncrement(ex.id, 'plate-two-sided'),
+            pin: getWeightIncrement({ id: ex.id }, 'pin'),
+            oneSided: getWeightIncrement({ id: ex.id }, 'plate-one-sided'),
+            twoSided: getWeightIncrement({ id: ex.id }, 'plate-two-sided'),
         })));
 
         // 19 since Sep 2026, when the wrist pair left; 21 before that. The
@@ -111,22 +113,19 @@ function daysAgo(n) {
         // The rule is still worth keeping and still worth testing: loadType is a
         // runtime user setting, so the next 1.25 exercise — a new movement, or
         // one of these dialled back — would suggest 0.625 a side, which is not a
-        // plate. PR_WEIGHT_INCREMENTS is a plain object, so a synthetic id is
-        // enough to drive the branch directly.
+        // plate. A saved `increment` override drives the branch through the
+        // same path the Settings field writes to, so no global needs mutating.
         const synthetic = await page.evaluate(() => {
-            PR_WEIGHT_INCREMENTS['synthetic-fine-increment'] = 1.25;
-            const out = {
-                pin: getWeightIncrement('synthetic-fine-increment', 'pin'),
-                oneSided: getWeightIncrement('synthetic-fine-increment', 'plate-one-sided'),
-                twoSided: getWeightIncrement('synthetic-fine-increment', 'plate-two-sided'),
+            const ex = { id: 'chest-flies', increment: 1.25 };
+            return {
+                pin: getWeightIncrement(ex, 'pin'),
+                oneSided: getWeightIncrement(ex, 'plate-one-sided'),
+                twoSided: getWeightIncrement(ex, 'plate-two-sided'),
             };
-            delete PR_WEIGHT_INCREMENTS['synthetic-fine-increment'];
-            return out;
         });
         eq(synthetic.twoSided, 2.5,
             'a 1.25 increment on a two-sided machine is doubled to 2.5 — 0.625 a side is ' +
-            'not a plate. No exercise ships 1.25 today, so this is the only thing keeping ' +
-            'the branch honest');
+            'not a plate. No seed is 1.25, so an override is the only way to reach it');
         eq(synthetic.pin, 1.25, 'and a pin stack keeps the fine increment untouched');
         eq(synthetic.oneSided, 1.25, 'as does a one-sided machine, which needs no halving');
 
@@ -160,7 +159,7 @@ function daysAgo(n) {
         let flies = await readDeckCard(page, 'Chest Flies');
         ok(flies, 'found the Chest Flies card on Anterior');
         eq(flies.weightValue, '202.5',
-            'as a pin stack, a 6-rep PR suggests 200 + 1.25');
+            'as a pin stack, a 6-rep PR suggests the 2.5 seed: 200 + 2.5');
 
         // Now the same history with the exercise set two-sided. Read the
         // version out of the page rather than parsing config.js: the constant
@@ -179,6 +178,35 @@ function daysAgo(n) {
         ok(flies, 'found the Chest Flies card after switching it two-sided');
         eq(flies.weightValue, '202.5',
             'set two-sided, the same 6-rep PR suggests 200 + 2.5 (= 1.25 a side)');
+
+        // --- The override, end to end ----------------------------------------
+        // What the Settings field actually produces: 1.25 saved on the exercise.
+        // On a pin stack it passes through (201.25); set two-sided, the same
+        // saved step doubles to 2.5 (202.5). The pin pass is what makes the
+        // two-sided one non-vacuous — without it 202.5 could just be the seed.
+        await seedExerciseConfig(page, {
+            overrides: { 'chest-flies': { loadType: 'pin', increment: 1.25 } },
+            version,
+            ns: NS,
+        });
+        await page.reload({ waitUntil: 'networkidle0' });
+        await waitForApp(page);
+        await selectDayType(page, 'anterior');
+        flies = await readDeckCard(page, 'Chest Flies');
+        eq(flies.weightValue, '201.25',
+            'a saved 1.25 override on a pin stack suggests 200 + 1.25');
+
+        await seedExerciseConfig(page, {
+            overrides: { 'chest-flies': { loadType: 'plate-two-sided', increment: 1.25 } },
+            version,
+            ns: NS,
+        });
+        await page.reload({ waitUntil: 'networkidle0' });
+        await waitForApp(page);
+        await selectDayType(page, 'anterior');
+        flies = await readDeckCard(page, 'Chest Flies');
+        eq(flies.weightValue, '202.5',
+            'the same saved 1.25 on a two-sided machine is doubled to 200 + 2.5');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: two-sided increments bump to a real plate, minimally');

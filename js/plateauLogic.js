@@ -36,9 +36,10 @@
 
         // Simple PR tracking: if last session hit the top of this exercise's
         // rep range, suggest weight + increment highlighted green.
-        function getSimplePR(exerciseId, workoutHistory, loadType) {
+        function getSimplePR(exerciseConfig, workoutHistory, loadType) {
+            const exerciseId = exerciseConfig.id;
             if (!workoutHistory || workoutHistory.length === 0) return null;
-            if (!getWeightIncrement(exerciseId, loadType)) return null;
+            if (!getWeightIncrement(exerciseConfig, loadType)) return null;
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -62,7 +63,7 @@
             const range = getStandardRepRange(exerciseId);
             if (parseInt(previousExercise.reps, 10) >= range.max) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = getWeightIncrement(exerciseId, loadType);
+                const increment = getWeightIncrement(exerciseConfig, loadType);
                 return {
                     weight: (lastWeight + increment).toString(),
                     lastWeight: previousExercise.weight,
@@ -424,7 +425,8 @@
         }
 
         // Helper function to check if this is a PR Auto-Regulation week.
-        function getPRAutoRegulation(exerciseId, workoutHistory, loadType) {
+        function getPRAutoRegulation(exerciseConfig, workoutHistory, loadType) {
+            const exerciseId = exerciseConfig.id;
             console.log('[getPRAutoRegulation] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) {
                 console.log('[getPRAutoRegulation] No workout history');
@@ -463,9 +465,9 @@
             const range = getStandardRepRange(exerciseId);
             // Check if last week hit the top of the rep range and has a weight increment defined.
             if (previousExercise && previousExercise.reps && parseInt(previousExercise.reps, 10) >= range.max &&
-                previousExercise.weight && getWeightIncrement(exerciseId, loadType)) {
+                previousExercise.weight && getWeightIncrement(exerciseConfig, loadType)) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = getWeightIncrement(exerciseId, loadType);
+                const increment = getWeightIncrement(exerciseConfig, loadType);
                 const newWeight = (lastWeight + increment).toString();
 
                 console.log('[getPRAutoRegulation] PR DETECTED! Last:', lastWeight, 'lbs x', previousExercise.reps, 'New:', newWeight);
@@ -636,7 +638,8 @@
         }
 
         // Helper function for plateau buster weight decrement
-        function getPlateauBusterDecrement(exerciseId, workoutHistory, loadType) {
+        function getPlateauBusterDecrement(exerciseConfig, workoutHistory, loadType) {
+            const exerciseId = exerciseConfig.id;
             console.log('[getPlateauBusterDecrement] Checking for:', exerciseId);
             if (!workoutHistory || workoutHistory.length === 0) return null;
 
@@ -679,9 +682,9 @@
             }
 
             // Decrease weight by the increment amount after a true failure.
-            if (previousExercise && previousExercise.weight && getWeightIncrement(exerciseId, loadType)) {
+            if (previousExercise && previousExercise.weight && getWeightIncrement(exerciseConfig, loadType)) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = getWeightIncrement(exerciseId, loadType);
+                const increment = getWeightIncrement(exerciseConfig, loadType);
                 const newWeight = (lastWeight - increment).toString();
 
                 console.log('[getPlateauBusterDecrement] PLATEAU BUSTER! Last:', lastWeight, 'New:', newWeight);

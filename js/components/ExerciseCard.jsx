@@ -22,9 +22,9 @@
             const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory) : false;
             const prWeightRecovery = ADVANCED_PR_TRACKING ? getPRWeightRecovery(exercise.id, workoutHistory) : null;
             const failedPlateauBusterRetry = ADVANCED_PR_TRACKING && !prWeightRecovery ? getFailedPlateauBusterRetry(exercise.id, workoutHistory) : null;
-            const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise.id, workoutHistory, loadType) : null;
-            const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise.id, workoutHistory, loadType) : null;
-            const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise.id, workoutHistory, loadType) : null;
+            const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise, workoutHistory, loadType) : null;
+            const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise, workoutHistory, loadType) : null;
+            const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise, workoutHistory, loadType) : null;
             const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory) : null;
             const prStreak = PR_STREAK_TRACKING && exercise.type === 'standard'
                 ? getPRStreak(exercise.id, workoutHistory) : null;

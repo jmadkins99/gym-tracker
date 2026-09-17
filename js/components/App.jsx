@@ -363,6 +363,18 @@
                 });
             };
 
+            // The raw PR step, the third user-owned field. Absent means "use the
+            // code seed" (resolveIncrement), so only an explicit choice is saved.
+            const updateExerciseIncrement = (exerciseId, increment) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, increment } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
             // Reordering is scoped to the exercise's own day. Swapping across
             // the Lower/Upper boundary would move a card in the settings list
             // without changing which day it belongs to, so the arrow would look
@@ -944,6 +956,7 @@
                             exercises={exercises}
                             updateExerciseName={updateExerciseName}
                             updateExerciseLoadType={updateExerciseLoadType}
+                            updateExerciseIncrement={updateExerciseIncrement}
                             moveExercise={moveExercise}
                         />
                     )}

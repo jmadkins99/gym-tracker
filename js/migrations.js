@@ -75,9 +75,9 @@
             for (const defaultEx of DEFAULT_EXERCISES) {
                 if (savedById.has(defaultEx.id)) {
                     const saved = savedById.get(defaultEx.id);
-                    // Preserve the two USER-owned fields — the renamed display
-                    // name and the chosen loadType; everything else (category,
-                    // day, type, order) comes from defaults.
+                    // Preserve the three USER-owned fields — the renamed display
+                    // name, the chosen loadType and the PR increment; everything
+                    // else (category, day, type, order) comes from defaults.
                     //
                     // loadType has to be listed here or the Settings dropdown
                     // works right up until the next version bump, which rebuilds
@@ -89,7 +89,12 @@
                     result.push({
                         ...defaultEx,
                         name: saved.name,
-                        loadType: saved.loadType ?? defaultEx.loadType
+                        loadType: saved.loadType ?? defaultEx.loadType,
+                        // No `??` fallback on purpose: absent means "no override",
+                        // and resolveIncrement reads the seed from
+                        // PR_WEIGHT_INCREMENTS. Copying the seed in here would
+                        // freeze it, so a code-side change would never land.
+                        increment: saved.increment
                     });
                 } else {
                     result.push({ ...defaultEx });

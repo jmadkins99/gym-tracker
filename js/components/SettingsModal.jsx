@@ -1,27 +1,37 @@
         const { useState, useRef } = React;
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
             const [tempName, setTempName] = useState('');
+            const [tempIncrement, setTempIncrement] = useState('');
 
             const handleStartEdit = (exercise) => {
                 setEditingExercise(exercise.id);
                 setTempName(exercise.name);
+                const increment = resolveIncrement(exercise);
+                setTempIncrement(increment === undefined ? '' : String(increment));
             };
 
-            const handleSaveEdit = (exerciseId) => {
-                if (tempName.trim()) {
-                    updateExerciseName(exerciseId, tempName.trim());
+            // Each field is only written when it changed, so a plain rename is
+            // still one write. A blank increment (only possible for an exercise
+            // with no seed, which none has today) is left alone rather than saved.
+            const handleSaveEdit = (exercise) => {
+                if (tempName.trim() && tempName.trim() !== exercise.name) {
+                    updateExerciseName(exercise.id, tempName.trim());
                 }
-                setEditingExercise(null);
-                setTempName('');
+                const increment = Number(tempIncrement);
+                if (tempIncrement !== '' && increment !== resolveIncrement(exercise)) {
+                    updateExerciseIncrement(exercise.id, increment);
+                }
+                handleCancelEdit();
             };
 
             const handleCancelEdit = () => {
                 setEditingExercise(null);
                 setTempName('');
+                setTempIncrement('');
             };
 
             if (settingsView === 'exercises') {
@@ -67,7 +77,7 @@
                                                 />
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button
-                                                        onClick={() => handleSaveEdit(exercise.id)}
+                                                        onClick={() => handleSaveEdit(exercise)}
                                                         style={{
                                                             flex: 1,
                                                             padding: '6px',
@@ -167,6 +177,51 @@
                                             <option value="plate-two-sided">Plate-loaded on both sides</option>
                                             <option value="plate-one-sided">Plate-loaded on one side</option>
                                         </select>
+
+                                        {/* The raw PR step. Edit-mode only, below the
+                                            load-type dropdown, and committed by Save
+                                            above rather than on change, so Cancel
+                                            undoes it. The blank option only renders
+                                            for an exercise with no increment at all —
+                                            without it a <select> would silently show
+                                            1.25 for a value it does not have. The hint
+                                            covers the one case where the card shows a
+                                            different number: a two-sided machine
+                                            doubles a step that does not halve onto a
+                                            real plate. */}
+                                        {editingExercise === exercise.id ? (() => {
+                                            const chosen = tempIncrement === '' ? null : Number(tempIncrement);
+                                            const effective = chosen === null ? null
+                                                : getWeightIncrement({ id: exercise.id, increment: chosen }, resolveLoadType(exercise));
+                                            return (
+                                                <div style={{ marginTop: '8px' }}>
+                                                    <div style={{ fontSize: '12px', color: '#8a8aa0', marginBottom: '4px' }}>
+                                                        PR increment (lbs)
+                                                    </div>
+                                                    <select
+                                                        className="input-field"
+                                                        data-field="increment"
+                                                        value={tempIncrement}
+                                                        onChange={(e) => setTempIncrement(e.target.value)}
+                                                        style={{
+                                                            padding: '8px',
+                                                            fontSize: '14px',
+                                                            background: '#0d0d1a'
+                                                        }}
+                                                    >
+                                                        {tempIncrement === '' ? <option value="">—</option> : null}
+                                                        {PR_INCREMENT_OPTIONS.map(step => (
+                                                            <option key={step} value={String(step)}>{step}</option>
+                                                        ))}
+                                                    </select>
+                                                    {chosen !== null && effective !== chosen ? (
+                                                        <div data-field="increment-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
+                                                            Two-sided: suggests +{effective} lbs
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            );
+                                        })() : null}
                                     </div>
                                     ))}
                                 </div>
