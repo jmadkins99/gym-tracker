@@ -10,8 +10,10 @@
 // instead of a compile-time constant. This pins that the wiring survived.
 //
 // Round 4 is the point of the test. getMinimalistPR bumps the weight once you
-// hit maxReps, and the next session starts back at minReps — on Jessi's 5-8
-// dropdown that is 8 reps down to 5. getPRStreak treats any weight increase as
+// hit maxReps, and the next session starts back at the goal minimum — on
+// Jessi's 6-8 goal that is 8 reps down to 6. (Not 5: that is the bottom of her
+// dropdown, where a set died, and since Sep 2026 it is never a PR — case 117.)
+// getPRStreak treats any weight increase as
 // extending the streak precisely so the app's own reward for progressing does
 // not read as backsliding; without that, no streak here could ever exceed 3.
 //
@@ -160,8 +162,8 @@ const ROUNDS = [
     { weight: '100', reps: '6', daysAgo: 11, badge: null,   why: 'the first session is a baseline, not an improvement' },
     { weight: '100', reps: '7', daysAgo: 9,  badge: '🔥 1', why: 'reps up at the same weight is the first improvement; the badge turns on at 1' },
     { weight: '100', reps: '8', daysAgo: 7,  badge: '🔥 2', why: 'hitting the top of the range keeps it climbing' },
-    { weight: '105', reps: '5', daysAgo: 5,  badge: '🔥 3', why: 'the weight bump extends the streak despite reps resetting' },
-    { weight: '105', reps: '6', daysAgo: 3,  badge: '🔥 4', why: 'climbing resumes after the bump' },
+    { weight: '105', reps: '6', daysAgo: 5,  badge: '🔥 3', why: 'the weight bump extends the streak despite reps resetting' },
+    { weight: '105', reps: '7', daysAgo: 3,  badge: '🔥 4', why: 'climbing resumes after the bump' },
 ];
 
 (async () => {
