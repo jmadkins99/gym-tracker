@@ -4,12 +4,12 @@
 //
 // getDefaultDayType is what decides which card you see when you open the app
 // without touching the toggle, so it is the rule you actually live with:
-// Wed/Fri/Sun open on Posterior, Tue/Thu/Sat and Monday open on Anterior.
+// Tue/Thu/Fri/Sun open on Posterior, Mon/Wed/Sat open on Anterior.
 //
-// Monday is the rest day (Sunday was, until Sep 2026) and the app has no rest
-// day type, so Monday falls through to Anterior. That fall-through is asserted
-// here deliberately: it is what the code does, and a future rest-day feature
-// should have to change this line on purpose.
+// Friday is the rest day (Monday was until 18 Sep 2026, Sunday before that)
+// and the app has no rest day type, so Friday falls through to Posterior.
+// That fall-through is asserted here deliberately: it is what the code does,
+// and a future rest-day feature should have to change this line on purpose.
 //
 // Test 42 checks the default too, but only for whichever weekday the suite
 // happens to run on — so a mapping that is wrong on Thursdays would sail past
@@ -31,11 +31,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 // Sun=0 .. Sat=6, matching Date.getDay().
 const EXPECTED_BY_WEEKDAY = [
     'posterior',  // Sunday
-    'anterior',   // Monday - rest day, falls through to Anterior
-    'anterior',   // Tuesday
-    'posterior',  // Wednesday
-    'anterior',   // Thursday
-    'posterior',  // Friday
+    'anterior',   // Monday
+    'posterior',  // Tuesday
+    'anterior',   // Wednesday
+    'posterior',  // Thursday
+    'posterior',  // Friday - rest day, falls through to Posterior
     'anterior',   // Saturday
 ];
 
@@ -49,8 +49,8 @@ function extractArrayLiteral(source, name) {
 
 (async () => {
     const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-    eq(extractArrayLiteral(configSrc, 'POSTERIOR_DAYS'), [0, 3, 5],
-        'POSTERIOR_DAYS is Wed/Fri/Sun');
+    eq(extractArrayLiteral(configSrc, 'POSTERIOR_DAYS'), [0, 2, 4, 5],
+        'POSTERIOR_DAYS is Tue/Thu/Fri/Sun');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();

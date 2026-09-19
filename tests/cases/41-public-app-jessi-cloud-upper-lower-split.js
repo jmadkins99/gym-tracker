@@ -32,7 +32,8 @@
 //   7. A program that is NOT Jessi's is left completely alone.
 //   8. A config already split, on a STALE revision, is re-sorted to the current
 //      order — the lever for every future reorder of his program. Client-added
-//      movements survive and a customised schedule is left alone.
+//      movements survive. The schedule is replaced once, by revision 14's
+//      weekday push (case 119 pins that it happens only once).
 //
 // Day contents are read out of the saved config rather than off-screen, so the
 // test is weekday-independent; the on-screen checks drive the day selector
@@ -277,9 +278,9 @@ async function readSaved(page) {
 
         // 5. Schedule.
         eq(saved.schedule.days, [
-            ['Monday', 2], ['Tuesday', 1], ['Wednesday', 2], ['Thursday', 1],
-            ['Friday', 2], ['Saturday', 1], ['Sunday', 1],
-        ], 'weekday map is Posterior on Mon/Wed/Fri, Anterior on Tue/Thu/Sat and Sunday');
+            ['Monday', 1], ['Tuesday', 2], ['Wednesday', 1], ['Thursday', 2],
+            ['Friday', 2], ['Saturday', 1], ['Sunday', 2],
+        ], 'weekday map is Anterior on Mon/Wed/Sat, Posterior on Tue/Thu/Fri/Sun');
         eq(saved.schedule.total, 2, 'totalWorkoutDays is 2');
         eq(saved.schedule.explicit, true, 'schedule is explicit so the app opens on today\'s day');
 
@@ -447,10 +448,12 @@ async function readSaved(page) {
             're-run stamps the current splitRevision');
         eq(rerun.gympinMode, true, 're-run leaves top-level flags alone');
 
-        // The schedule is a calendar, not part of the program. A revision bump
-        // is a program edit, so a day the client had moved must stay moved.
-        eq(rerun.schedule.days, [['Monday', 1], ['Thursday', 2]],
-            're-run does NOT overwrite a schedule the client has customised');
+        // Crossing revision 14 pushes the Sep 2026 weekday map once, over
+        // whatever the device held. Case 119 pins that later bumps leave it be.
+        eq(rerun.schedule.days, [
+            ['Monday', 1], ['Tuesday', 2], ['Wednesday', 1], ['Thursday', 2],
+            ['Friday', 2], ['Saturday', 1], ['Sunday', 2],
+        ], 're-run crossing revision 14 installs the new weekday map');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: the Anterior/Posterior split reaches a signed-in device, ids intact.');

@@ -77,9 +77,9 @@
         }
 
         // Which day type the app should default to for a given date:
-        // 'posterior' on the configured POSTERIOR_DAYS (Wed/Fri/Sun), otherwise
-        // 'anterior' — including Monday, which is the rest day and so never
-        // reaches a user who follows the schedule.
+        // 'posterior' on the configured POSTERIOR_DAYS (Tue/Thu/Fri/Sun),
+        // otherwise 'anterior'. Friday is the rest day and so never reaches a
+        // user who follows the schedule.
         function getDefaultDayType(date = new Date()) {
             return POSTERIOR_DAYS.includes(date.getDay()) ? 'posterior' : 'anterior';
         }

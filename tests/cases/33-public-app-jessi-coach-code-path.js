@@ -243,12 +243,13 @@ const JESSI_CODE = 'D1O9O9M2';
         eq(legExt.startingWeight, '50', 'preset seeds the Leg Extensions starting weight');
 
         // The schedule has to come from scheduleDays, not the round-robin
-        // fallback — Sat and Sun are both Anterior, which alternation can't express.
+        // fallback — Thu and Fri are both Posterior, which alternation can't
+        // express. Friday is the rest day and falls through to Posterior.
         const sched = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymScheduleConfig')), NS);
         eq(sched.workoutDays.map(d => [d.dayOfWeek, d.workoutDayNumber]), [
-            ['Monday', 2], ['Tuesday', 1], ['Wednesday', 2], ['Thursday', 1],
-            ['Friday', 2], ['Saturday', 1], ['Sunday', 1],
+            ['Monday', 1], ['Tuesday', 2], ['Wednesday', 1], ['Thursday', 2],
+            ['Friday', 2], ['Saturday', 1], ['Sunday', 2],
         ], 'coach code yields the exact weekday map, not an alternating round-robin');
 
         // The deck mounts three cards, not the whole roster, so "what renders"

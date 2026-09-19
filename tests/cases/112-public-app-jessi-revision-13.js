@@ -24,7 +24,8 @@
 //
 //   5. A load type the client set on any OTHER movement survives it.
 //   6. A client-added movement survives it, at the bottom of Posterior.
-//   7. The schedule is left alone.
+//   7. The schedule is revision 14's business, not 13's; case 119 covers it.
+//      Crossing both at once, as this device does, lands on 14's map.
 //   8. Once on 13, the client's own later changes to those same fields stick.
 //      A migration that re-applied its load types on every load would quietly
 //      undo the Settings dropdown.
@@ -220,8 +221,11 @@ const readSaved = (page) => page.evaluate((ns) => {
         eq(saved.increments, { 'Leg Press': 5, 'Back Extensions': 5 },
             'Leg Press and Back Extensions step by 5; nothing else is saved');
 
-        // 7: the calendar is not part of the program.
-        eq(saved.schedule, [['Tuesday', 1], ['Wednesday', 2]], 'the schedule is left alone');
+        // 7: this device crosses 14 as well, so it lands on the new map.
+        eq(saved.schedule, [
+            ['Monday', 1], ['Tuesday', 2], ['Wednesday', 1], ['Thursday', 2],
+            ['Friday', 2], ['Saturday', 1], ['Sunday', 2],
+        ], 'crossing revision 14 on the way installs the new weekday map');
 
         // History follows the rename: the card reads its own last session.
         await selectDeckDay(page, 2);
