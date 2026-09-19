@@ -4,10 +4,9 @@
         // whole screen rather than a rail of them.
         //
         // Two states. Before you log, the card is an input. After you log, it
-        // shows the number you just typed above the week's average, and at
-        // midnight the raw number goes: tomorrow's card opens on the average
-        // rather than on yesterday's reading. The reading itself is not gone —
-        // the History chart plots it.
+        // shows the number you just typed above the week's standing, and at
+        // midnight tomorrow's card opens on the input again. The reading
+        // itself is not gone — the History chart plots it.
         //
         // Correcting a reading is not one of the two states. It was, through an
         // "edit today's entry" link that reopened the input, and that made this
@@ -15,6 +14,12 @@
         // already do it, for today like any other day. One card, one job: today
         // is either logged or it is not.
         const PR_CELEBRATION_MS = 2000;
+
+        // A plan's weekly goal in running text: "170", but "172.5".
+        function formatGoal(n) {
+            const s = formatWeight(n);
+            return s.endsWith('.0') ? s.slice(0, -2) : s;
+        }
 
         function CheckInView({ log, todayKey, onCheckIn, celebrating, progress }) {
             const today = entryFor(log, todayKey);
@@ -82,27 +87,24 @@
             // anything inside half a tenth of the target would otherwise read
             // "0.0 pounds away" — a sentence that says you have arrived while
             // insisting you have not. That band is the target met.
+            //
+            // Once the week's average is under its target, the target is no
+            // longer the number worth beating — the average is. So "Weight to
+            // beat" becomes that average, and because the plan's figure has
+            // then left the headline, the line below names it: "1.6 pounds
+            // over 170 goal".
             const MET_BAND = 0.05;
+            const beaten = progress ? progress.gap < -MET_BAND : false;
             const target = progress ? {
-                weight: progress.planWeight,
+                weight: beaten ? progress.actual : progress.planWeight,
                 behind: progress.gap > MET_BAND,
                 line: progress.gap > MET_BAND
                     ? formatWeight(progress.gap) + ' pounds away'
-                    : (progress.gap >= -MET_BAND
+                    : (!beaten
                         ? 'Target met'
-                        : formatWeight(-progress.gap) + ' pounds over goal'),
+                        : formatWeight(-progress.gap) + ' pounds over ' +
+                          formatGoal(progress.planWeight) + ' goal'),
             } : null;
-
-            // The hero is the number the line below it is measured FROM: this
-            // week's average, read off planProgress so it is literally the
-            // figure the distance was computed against rather than a second
-            // opinion about the same week. Without a plan it is the same
-            // average by the other route.
-            //
-            // Not the reading just typed in, which is a single morning of water
-            // and is not what the target is scored against. That number is on
-            // the card too, as the receipt chip below.
-            const heroWeight = progress ? progress.actual : weekAvg;
 
             const headline = target
                 ? { label: 'Weight to beat', value: target.weight,
@@ -191,18 +193,11 @@
                             </div>
                         ) : (
                             <div className="weigh-body">
-                                {/* Carries the raw reading, because the hero
-                                    below is now the week's average and without
-                                    this there is nothing on the card saying
-                                    what was actually typed. Bare number, no
-                                    unit: the chip is a receipt, not a stat. */}
-                                <div className="logged-chip weigh-chip">
-                                    ✓ Checked in @ {formatWeight(today.weight)}
-                                </div>
-
+                                {/* The hero is the reading just typed in. The
+                                    week's standing is the block below it. */}
                                 <div className="hero weigh-hero">
                                     <div className="hero-weight">
-                                        {formatWeight(heroWeight)}<span className="hero-unit">lbs</span>
+                                        {formatWeight(today.weight)}<span className="hero-unit">lbs</span>
                                     </div>
                                 </div>
                                 <div className="weigh-divider" />

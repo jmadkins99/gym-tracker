@@ -13,12 +13,13 @@
 //
 // So the input state now renders the same block, off the same `headline`, and
 // what is asserted here is that sameness rather than two similar-looking
-// screens: the label, the target and the distance are read before the check-in
-// and again after it, and the TARGET is the same number both times. Only the
-// distance is allowed to move, because only the week's average moved.
+// screens: the label, the number and the distance are read before the check-in
+// and again after it. Here the reading pulls the week's average under its
+// target, so after it the weight to beat becomes that average and the line
+// names the plan's goal instead.
 //
 // The pre-check-in card is still the input state and not a preview of the
-// read-back one: the field is present and the "Checked in @" receipt is not.
+// read-back one: the field is present and the reading's hero is not.
 //
 // The plan is anchored to this week's Monday so week 5's target is 172.5
 // whatever weekday the suite runs on, and every reading is seeded in COMPLETED
@@ -77,7 +78,8 @@ const card = (page) => page.evaluate(() => {
         foot: el('.weigh-rate') ? el('.weigh-rate').textContent.trim() : null,
         tone: el('.weigh-rate') ? el('.weigh-rate').className : null,
         hasInput: !!el('.weigh-input'),
-        hasChip: !!el('.weigh-chip'),
+        hasHero: !!el('.weigh-hero'),
+        hero: el('.hero-weight') ? parseFloat(el('.hero-weight').textContent) : null,
     };
 });
 
@@ -90,7 +92,7 @@ const checkIn = async (page, weight) => {
     }, String(weight));
     await new Promise(r => setTimeout(r, 120));
     await page.evaluate(() => document.querySelector('.weigh-submit').click());
-    await waitFor(page, 'the read-back state', () => !!document.querySelector('.weigh-chip'));
+    await waitFor(page, 'the read-back state', () => !!document.querySelector('.weigh-hero'));
 };
 
 (async () => {
@@ -109,7 +111,7 @@ const checkIn = async (page, weight) => {
         // === Before the reading =========================================
         const before = await card(page);
         ok(before.hasInput, 'the card is still the input state before check-in');
-        ok(!before.hasChip, 'and carries no "Checked in @" receipt yet');
+        ok(!before.hasHero, 'and shows no reading yet');
         eq(before.label, 'Weight to beat',
             'the target block is on screen before the reading, not only after it');
         eq(before.target, TARGET, "the target is the plan's week, read before check-in");
@@ -121,14 +123,16 @@ const checkIn = async (page, weight) => {
         // === After it ===================================================
         await checkIn(page, TODAY_WEIGHT);
         const after = await card(page);
-        ok(after.hasChip, 'checking in switches the card to the read-back state');
+        ok(after.hasHero, 'checking in switches the card to the read-back state');
+        eq(after.hero, TODAY_WEIGHT, 'the hero is the reading just entered');
         ok(!after.hasInput, 'and the field is gone');
         eq(after.label, before.label, 'the block is the same one, not a second version of it');
-        eq(after.target, before.target,
-            'the target does not move when the reading lands — only the distance may');
         // The week in progress had no readings, so today's is its whole
-        // average: 170.0 against a 172.5 target is 2.5 under.
-        eq(after.foot, (TARGET - TODAY_WEIGHT).toFixed(1) + ' pounds over goal',
+        // average: 170.0 against a 172.5 target is 2.5 under, which makes the
+        // average the weight to beat.
+        eq(after.target, TODAY_WEIGHT,
+            'a beaten target gives way to the week average as the weight to beat');
+        eq(after.foot, (TARGET - TODAY_WEIGHT).toFixed(1) + ' pounds over ' + TARGET + ' goal',
             'the distance follows the new week average: ' + after.foot);
         ok(after.tone.includes('good'), 'a beaten target reads as a win: ' + after.tone);
 

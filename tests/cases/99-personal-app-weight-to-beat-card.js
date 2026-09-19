@@ -19,6 +19,10 @@
 // lands on it exactly. A case that only ever saw one state would pass against a
 // card that had the colours hardcoded.
 //
+// Under the target (September 2026), the target is no longer the number worth
+// beating: "Weight to beat" becomes the week's average, and the line below
+// names the plan's goal it has left behind — "8.0 pounds over 178 goal".
+//
 // The middle state is not decoration. The distance prints to a tenth, so a week
 // sitting within half a tenth of its target would otherwise read "0.0 pounds
 // away" — a sentence claiming both that you arrived and that you did not. That
@@ -28,38 +32,31 @@
 // week in progress, whatever day the suite runs. Its arithmetic is exact:
 // start 180.0, 2 lb/week, so week 1's target is 178.0.
 //
-// Phase 4 is the one that pins the hero. The other phases hold this week flat,
-// which makes the average and the morning's reading identical — an assertion
-// that cannot tell them apart. Dragging today well below the rest of the week
-// separates them.
+// Phase 4 is the one that pins the hero: the reading just typed in, not the
+// week's average. The other phases hold this week flat, which makes the two
+// identical — an assertion that cannot tell them apart. Dragging today well
+// below the rest of the week separates them.
 //
-// Phase 4 also pins the chip, which is where the raw reading went when the hero
-// became the average: with today dragged away from the rest of the week the two
-// numbers are distinguishable, so "shows what was typed" is a real assertion
-// rather than one satisfied by either value.
-//
-// Mutation checks: point the hero back at today.weight and phase 4 fails; drop
-// the MET_BAND branch and phase 3 reads "0.0 pounds over
-// goal"; drop the progress prop and every phase falls back to "Weekly average
-// weight"; point the value at weekAvg again and phase 1 reads 178.0 only by
-// coincidence of the fixture, which is why phase 2 moves the readings and
-// re-checks the target has NOT moved with them.
+// Mutation checks: point the hero at the week's average and phase 4 fails;
+// drop the MET_BAND branch and phase 3 reads "0.0 pounds over 178 goal"; drop
+// the progress prop and every phase falls back to "Weekly average weight";
+// keep the plan's target when it is beaten and phase 2 reads 178.0.
 
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitFor } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
-// Phase 4's expected wording, derived rather than transcribed, because the
+// Phase 4's expected block, derived rather than transcribed, because the
 // week's average moves with the weekday the suite runs on. This deliberately
 // mirrors the card's own three-way split: what phase 4 is testing is WHICH
-// number the line is measured from, and phases 1-3 already pin the wording
+// number the block is measured from, and phases 1-3 already pin the wording
 // itself against literals.
-const formatDistance = (gap) => {
-    const r = Math.round(gap * 10) / 10;
-    if (r > 0) return r.toFixed(1) + ' pounds away';
-    if (r === 0) return 'Target met';
-    return (-r).toFixed(1) + ' pounds over goal';
+const expectedBlock = (avg, target) => {
+    const r = Math.round((avg - target) * 10) / 10;
+    if (r > 0) return { value: target, foot: r.toFixed(1) + ' pounds away' };
+    if (r === 0) return { value: target, foot: 'Target met' };
+    return { value: avg, foot: (-r).toFixed(1) + ' pounds over ' + target + ' goal' };
 };
 
 const NS = 'gym-local:';
@@ -103,7 +100,7 @@ const seed = (page, weight, todayWeight) => page.evaluate((ns, w, todayW, start,
 }, NS, weight, todayWeight === undefined ? null : todayWeight, START_WEIGHT, RATE);
 
 const card = (page) => page.evaluate(() => ({
-    chip: document.querySelector('.logged-chip').textContent.trim(),
+    hasChip: !!document.querySelector('.logged-chip'),
     hero: parseFloat(document.querySelector('.hero-weight').textContent),
     label: document.querySelector('.weigh-trend-label').textContent.trim(),
     value: parseFloat(document.querySelector('.weigh-trend-value').textContent),
@@ -144,12 +141,13 @@ const load = async (page, weight, todayWeight) => {
             'still short of target should read as behind: ' + above.tone);
         ok(!above.tone.includes('good'), 'and must not read as good: ' + above.tone);
 
-        // === 2. Under the target: green, and the target has not moved ====
+        // === 2. Under the target: green, and the average is the one to beat
         const under = await load(page, UNDER);
         eq(under.label, 'Weight to beat', 'the label does not change with the state');
-        eq(under.value, WEEK_1_TARGET,
-            'the target is the plan\'s, so it must not follow the readings down');
-        eq(under.foot, '8.0 pounds over goal', 'a beaten target reads as over: ' + under.foot);
+        eq(under.value, UNDER,
+            'a beaten target gives way to the week average as the weight to beat');
+        eq(under.foot, '8.0 pounds over 178 goal',
+            'the line names the plan goal the average beat: ' + under.foot);
         ok(under.tone.includes('good'), 'a beaten target should read as good: ' + under.tone);
         ok(!under.tone.includes('behind'), 'and must not read as behind: ' + under.tone);
 
@@ -161,7 +159,7 @@ const load = async (page, weight, todayWeight) => {
         ok(exact.tone.includes('good'), 'a met target should read as a win: ' + exact.tone);
         ok(!exact.tone.includes('behind'), 'and must not read as behind: ' + exact.tone);
 
-        // === 4. The hero is the average the distance is measured from ====
+        // === 4. The hero is the reading just typed in ====================
         //
         // Every earlier phase holds this week flat, where the average and the
         // morning's reading are the same number and the assertion would pass
@@ -171,26 +169,16 @@ const load = async (page, weight, todayWeight) => {
         const n = await daysThisWeek(page);
         const HERO_REST = 180.0;
         const HERO_TODAY = 172.0;
-        const expected = Math.round(((HERO_REST * (n - 1) + HERO_TODAY) / n) * 10) / 10;
+        const avg = Math.round(((HERO_REST * (n - 1) + HERO_TODAY) / n) * 10) / 10;
         const varied = await load(page, HERO_REST, HERO_TODAY);
-        eq(varied.hero, expected,
-            "the hero must be this week's average (" + expected + '), not the morning reading');
-        if (n > 1) {
-            ok(varied.hero !== HERO_TODAY,
-                'and with a varied week it must differ from what was typed today');
-        }
-        // The chip is the one place the morning's own reading survives, which
-        // is what keeps the card from looking like it discarded what was typed.
-        ok(varied.chip.includes(HERO_TODAY.toFixed(1)),
-            'the chip must show the reading actually entered: ' + varied.chip);
-        if (n > 1) {
-            ok(!varied.chip.includes(String(expected)),
-                'and not the average, which the hero already carries: ' + varied.chip);
-        }
+        eq(varied.hero, HERO_TODAY, 'the hero must be the reading entered today');
+        ok(!varied.hasChip, 'and the "Checked in @" chip is gone');
 
-        // The distance below it is measured from that same number.
-        eq(varied.foot, formatDistance(expected - WEEK_1_TARGET),
-            'the distance must derive from the hero: ' + varied.foot);
+        // The block below is measured from the week's average, not the hero.
+        const block = expectedBlock(avg, WEEK_1_TARGET);
+        eq(varied.value, block.value,
+            'the weight to beat follows the week average (' + avg + ')');
+        eq(varied.foot, block.foot, 'the distance derives from the average: ' + varied.foot);
 
         // === 5. The dashboard agrees about the same week =================
         await page.evaluate(() => {
