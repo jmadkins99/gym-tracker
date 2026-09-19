@@ -10,6 +10,13 @@
 //
 // Also needs to NOT render as pin-stack (no "Pin: X lbs" rows).
 //
+// Since Sep 2026 this pins the NAME GUESS only, not parity. The personal app's
+// hammer-row became a pin stack ("Sagittal Plane Pullovers"), and Jessi's
+// program follows it through an explicit loadType set by revision 13 (case
+// 112), not through this rule. This fixture is too sparse to be recognised as
+// Jessi's program, so it never migrates and still reads the /sagittal/ guess,
+// which stays one-sided for clients who type the name themselves.
+//
 // To verify this test is real: flip /sagittal/ back into the pin-stack
 // block in getWeightBreakdownConfig. Test should fail.
 

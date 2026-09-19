@@ -28,7 +28,7 @@
 // and still produces the canonical 14-slot Full Body list — that is the
 // branch under test, and stage 3 (the rename) belongs to it — but
 // migrateJessiSplit fires on the same load and reshapes the result
-// into Anterior + Posterior, restoring four movements and adding Preacher Curls.
+// into Anterior + Posterior, restoring two movements and adding Shoulder Flexion Curls.
 // Full Body is therefore never the stored end state, so the expectations
 // below are the split ones. Test 41 covers the split in isolation.
 //
@@ -126,32 +126,28 @@ const HISTORY_WEIGHTS = {
 // migrateJessiSplit now runs on the same load and re-shapes it, so
 // Full Body is never what ends up stored. Asserting the intermediate would be
 // asserting a value no device can ever hold.
+// Revision 13 (Sep 2026) mirrors the personal app's config version 20.
 const EXPECTED_ANTERIOR = [
+    'Tricep Extensions',
     'Chest Press',
     'Incline Chest Press',
     'Chest Flies',
     'Shoulder Press',
     'Lateral Raises',
     'Overhead Tricep Extensions',
-    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026 —
-    // JESSI_ANTERIOR_ORDER, matching the personal app.
     'Ab Crunches',
-    'Leg Extensions', // added by JESSI_NEW_EXERCISES
-    'Tricep Extensions',
     'Leg Press',
+    'Leg Extensions', // added by JESSI_NEW_EXERCISES
 ];
 
 const EXPECTED_POSTERIOR = [
     'Recline Curls',
-    'Frontal Plane Pulldowns',
-    'Sagittal Plane Pulldowns',
+    'Shoulder Flexion Curls', // added by JESSI_NEW_EXERCISES (was Preacher Curls)
+    'Sagittal Plane Pullovers', // renamed from Sagittal Plane Pulldowns
     'Transverse Plane Rows',
     'Kelso Shrugs',
-    'Preacher Curls',
-    // The wrist pair moved off Anterior to sit with the pulling work,
-    // revision 12.
-    'Reverse Wrist Curls',
-    'Cable Wrist Curls',
+    'Frontal Plane Pulldowns',
+    // The wrist pair left the program in revision 13.
     'Back Extensions',
     'Hip Adduction',
     'Calf Raises',
@@ -285,9 +281,9 @@ async function readAllCards(page) {
             };
         });
         eq(state.flag5, 'true', 'jessiFullBodyMigrationApplied5 set so the reorder does not re-run');
-        // 15 seeded + Preacher Curls + Leg Extensions + Chest Press + the 4
-        // the split restores.
-        eq(state.count, 22, 'nothing seeded was dropped — 15 in, 22 out');
+        // 15 seeded + Shoulder Flexion Curls + Leg Extensions + Chest Press +
+        // the 2 the split restores (the wrist pair is no longer restored).
+        eq(state.count, 20, 'nothing seeded was dropped — 15 in, 20 out');
 
         // 5. Unranked exercise survives at the bottom of Posterior.
         eq(state.posteriorIds[state.posteriorIds.length - 1], 'jcustom',
@@ -303,7 +299,7 @@ async function readAllCards(page) {
             'Incline Chest Press': '250',
             'Transverse Plane Rows': '115',
             'Kelso Shrugs': '215',
-            'Sagittal Plane Pulldowns': '130',
+            'Sagittal Plane Pullovers': '130',
             'Tricep Extensions': '55',
             'Frontal Plane Pulldowns': '85',
             'Ab Crunches': '105',
@@ -319,7 +315,7 @@ async function readAllCards(page) {
         }
 
         // 4. Every exercise across BOTH days still offers a Weight Breakdown
-        // button — including the four the split restored and Preacher Curls,
+        // button — including the two the split restored and Shoulder Flexion Curls,
         // which have no history to classify from.
         const missing = [...EXPECTED_ANTERIOR, ...EXPECTED_POSTERIOR]
             .filter(n => n !== 'Face Pulls' && !cards[n]?.hasBreakdown);

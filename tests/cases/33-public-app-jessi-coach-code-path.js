@@ -139,35 +139,70 @@ const JESSI_CODE = 'D1O9O9M2';
         // asserted only the two flags above and walked straight past the fact
         // that the preset was still Torso/Limbs, so a coach-code install showed
         // the old two-day split until a refresh.
+        // Revision 13 (Sep 2026): the personal app's config version 20, name
+        // for name and in the same order. The wrist pair is gone.
         const ANTERIOR = [
+            'Tricep Extensions',
             'Chest Press',
             'Incline Chest Press',
             'Chest Flies',
             'Shoulder Press',
             'Lateral Raises',
             'Overhead Tricep Extensions',
-            // Abs and quads moved up ahead of Tricep Extensions and the wrist
-            // pair, Aug 2026.
             'Ab Crunches',
+            'Leg Press',
             'Leg Extensions',
-            'Tricep Extensions',
-            'Leg Press', // quad-dominant, so it closes the anterior day
         ];
         const POSTERIOR = [
             'Recline Curls', // biceps group with the pulling work
-            'Frontal Plane Pulldowns',
-            'Sagittal Plane Pulldowns',
+            'Shoulder Flexion Curls', // was Preacher Curls
+            'Sagittal Plane Pullovers', // was Sagittal Plane Pulldowns
             'Transverse Plane Rows',
             'Kelso Shrugs',
-            'Preacher Curls',
-            // The pair moved off Anterior to sit with the pulling work,
-            // revision 12.
-            'Reverse Wrist Curls',
-            'Cable Wrist Curls',
+            'Frontal Plane Pulldowns',
             'Back Extensions',
             'Hip Adduction', // adductor magnus is a hip extensor
             'Calf Raises',
         ];
+
+        // How each machine is loaded, seeded explicitly rather than left to
+        // the name guesses. Four of these disagree with what the names alone
+        // would give (Shoulder Flexion Curls, Sagittal Plane Pullovers, Back
+        // Extensions and Frontal Plane Pulldowns), which is the point of
+        // seeding them: the guesses serve clients who type their own names,
+        // and these are the machines in the personal app's gym.
+        const LOAD_TYPES = {
+            'Tricep Extensions': 'pin',
+            'Chest Press': 'pin',
+            'Incline Chest Press': 'pin',
+            'Chest Flies': 'pin',
+            'Shoulder Press': 'pin',
+            'Lateral Raises': 'pin',
+            'Overhead Tricep Extensions': 'pin',
+            'Ab Crunches': 'pin',
+            'Leg Press': 'plate-two-sided',
+            'Leg Extensions': 'pin',
+            'Recline Curls': 'pin',
+            'Shoulder Flexion Curls': 'pin',
+            'Sagittal Plane Pullovers': 'pin',
+            'Transverse Plane Rows': 'plate-one-sided',
+            'Kelso Shrugs': 'plate-one-sided',
+            'Frontal Plane Pulldowns': 'plate-one-sided',
+            'Back Extensions': 'pin',
+            'Hip Adduction': 'pin',
+            'Calf Raises': 'pin',
+        };
+        const allRows = Object.values(cfg.days).flat();
+        eq(Object.fromEntries(allRows.map(e => [e.name, e.loadType])), LOAD_TYPES,
+            'every movement is seeded with the load type of the machine it is done on');
+
+        // PR step: 5 on the two machines that move in 5s, and nothing saved
+        // anywhere else so the 2.5 default applies. Calf Raises is deliberately
+        // 2.5 here, unlike the personal app's 5.
+        eq(Object.fromEntries(allRows.filter(e => e.increment !== undefined)
+                .map(e => [e.name, e.increment])),
+            { 'Leg Press': 5, 'Back Extensions': 5 },
+            'only Leg Press and Back Extensions carry a 5 lb PR step');
         eq(cfg.categories, ['Anterior', 'Posterior'], 'coach code yields the Anterior/Posterior split');
         eq(Object.keys(cfg.days).length, 2, 'two days, not the old single Full Body day');
         eq((cfg.days[1] || []).map(e => e.name), ANTERIOR,
@@ -196,10 +231,11 @@ const JESSI_CODE = 'D1O9O9M2';
         const findAnywhere = (name) =>
             Object.values(cfg.days).flat().find(e => e.name === name);
 
-        const preacher = findAnywhere('Preacher Curls');
-        eq(preacher.id, 'actual-preacher-curls',
-            'preset pins the stable Preacher Curls id, matching the migration');
-        eq(preacher.startingWeight, '50', 'preset seeds the Preacher Curls starting weight');
+        // Keeps the id it had as Preacher Curls, so history follows the rename.
+        const flexion = findAnywhere('Shoulder Flexion Curls');
+        eq(flexion.id, 'actual-preacher-curls',
+            'preset pins the stable Shoulder Flexion Curls id, matching the migration');
+        eq(flexion.startingWeight, '50', 'preset seeds the Shoulder Flexion Curls starting weight');
 
         const legExt = findAnywhere('Leg Extensions');
         eq(legExt.id, 'actual-leg-extensions',

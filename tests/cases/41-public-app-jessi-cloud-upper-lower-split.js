@@ -15,16 +15,18 @@
 // change his program.
 //
 // Asserted here:
-//   1. The single Full Body day becomes Anterior (12) + Posterior (9), in order,
+//   1. The single Full Body day becomes Anterior (10) + Posterior (9), in order,
 //      despite the sentinel being spent.
 //   2. Every surviving movement keeps its ORIGINAL id. A split must never hand
 //      a card its neighbour's weight — this is the "don't break Jessi"
 //      assertion, and it is checked against his real Firestore ids.
-//   3. The four movements dropped in June RECLAIM their original ids out of
-//      workoutHistory. Every lookup in this app is by id, so a fresh id would
-//      silently orphan years of weights and render a blank card.
-//   4. Preacher Curls is genuinely new: stable id, no history, and its weight
-//      input pre-fills to the seeded startingWeight of 50.
+//   3. The two movements dropped in June that the program still wants back
+//      (Overhead Tricep Extensions, Lateral Raises) RECLAIM their original ids
+//      out of workoutHistory. Every lookup in this app is by id, so a fresh id
+//      would silently orphan years of weights and render a blank card. The
+//      wrist pair, retired in revision 13, is NOT brought back.
+//   4. Shoulder Flexion Curls is genuinely new: stable id, no history, and its
+//      weight input pre-fills to the seeded startingWeight of 50.
 //   5. The schedule becomes the explicit 7-day weekday map, totalWorkoutDays 2.
 //   6. splitRevision is stamped and a second load is a no-op.
 //   7. A program that is NOT Jessi's is left completely alone.
@@ -103,7 +105,10 @@ const CURRENT_ROWS = [
     [ID.legPress, 'Leg Press'],
 ];
 
+// Revision 13 (Sep 2026) mirrors the personal app's config version 20.
 const EXPECTED_ANTERIOR = [
+    // Opens the day, as in the personal app.
+    ['Tricep Extensions', ID.tricepExt],
     // Added Aug 2026. Shares the plain `chest-press` literal with the personal
     // app — no id collision in either, so no `actual-` prefix.
     ['Chest Press', 'chest-press'],
@@ -112,29 +117,25 @@ const EXPECTED_ANTERIOR = [
     ['Shoulder Press', ID.shoulderPress],
     ['Lateral Raises', DROPPED_ID.lateralRaises],
     ['Overhead Tricep Extensions', DROPPED_ID.dips],
-    // Abs and quads moved up ahead of Tricep Extensions, Aug 2026.
     ['Ab Crunches', ID.abCrunches],
-    ['Leg Extensions', 'actual-leg-extensions'],
-    ['Tricep Extensions', ID.tricepExt],
-    // Quad-dominant, so it closes the anterior day. It keeps its recovered id
-    // across the move from Lower — the second place that rule is checked.
+    // Leg Press keeps its recovered id across the move from Lower — the second
+    // place that rule is checked. Leg Extensions closes the day.
     ['Leg Press', ID.legPress],
+    ['Leg Extensions', 'actual-leg-extensions'],
 ];
 
 const EXPECTED_POSTERIOR = [
     // Biceps group with the pulling work rather than with the other arms.
     ['Recline Curls', ID.reclineCurls],
-    ['Frontal Plane Pulldowns', ID.frontalPulldowns],
-    ['Sagittal Plane Pulldowns', ID.sagittalPulldowns],
+    // Was "Preacher Curls". Renamed in revision 13; the stable id is unchanged,
+    // so its history follows the new name.
+    ['Shoulder Flexion Curls', 'actual-preacher-curls'],
+    // Was "Sagittal Plane Pulldowns". Same id, new name.
+    ['Sagittal Plane Pullovers', ID.sagittalPulldowns],
     ['Transverse Plane Rows', ID.transverseRows],
     ['Kelso Shrugs', ID.kelsoShrugs],
-    ['Preacher Curls', 'actual-preacher-curls'],
-    // The wrist pair moved off Anterior to sit with the pulling work
-    // (revision 12). Both keep the ids they reclaimed from history when the
-    // Aug 2026 split restored them — changing day must not mint a fresh id
-    // any more than reordering may.
-    ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
-    ['Cable Wrist Curls', DROPPED_ID.cableWrist],
+    ['Frontal Plane Pulldowns', ID.frontalPulldowns],
+    // The wrist pair left the program in revision 13.
     // Keeps its recovered id across the move from Lower.
     ['Back Extensions', ID.backExtensions],
     // Adductor magnus is a hip extensor, hence the posterior chain.
@@ -242,19 +243,22 @@ async function readSaved(page) {
         eq(saved.anterior, EXPECTED_ANTERIOR,
             'Anterior holds 10 movements in order, each with the correct id');
         eq(saved.posterior, EXPECTED_POSTERIOR,
-            'Posterior holds 11 movements in order, each with the correct id');
+            'Posterior holds 9 movements in order, each with the correct id');
 
         // Called out separately so a failure names the actual problem.
         for (const [name, id] of [
             ['Overhead Tricep Extensions', DROPPED_ID.dips],
             ['Lateral Raises', DROPPED_ID.lateralRaises],
-            ['Reverse Wrist Curls', DROPPED_ID.reverseWrist],
-            ['Cable Wrist Curls', DROPPED_ID.cableWrist],
         ]) {
             const found = [...saved.anterior, ...saved.posterior].find(([n]) => n === name);
             eq(found && found[1], id,
                 `"${name}" reclaimed its original id from workout history`);
         }
+        // History still holds the wrist pair, and that must not be enough to
+        // bring it back: restoring is for movements the program wants.
+        const all = [...saved.anterior, ...saved.posterior].map(([n]) => n);
+        eq(all.filter(n => /wrist/i.test(n)), [],
+            'the retired wrist pair is not restored out of history');
 
         // Only JESSI_NEW_EXERCISES gets one. A restored movement must NOT —
         // it inherits real logged weight via its reclaimed id, and a
@@ -268,7 +272,7 @@ async function readSaved(page) {
         // positive about nothing. Which day each is on is already asserted by
         // EXPECTED_ANTERIOR / EXPECTED_POSTERIOR above.
         eq(Object.entries(saved.startingWeights).sort(),
-            [['Chest Press', '100'], ['Leg Extensions', '50'], ['Preacher Curls', '50']],
+            [['Chest Press', '100'], ['Leg Extensions', '50'], ['Shoulder Flexion Curls', '50']],
             'only the genuinely-new movements carry a startingWeight');
 
         // 5. Schedule.
@@ -302,14 +306,14 @@ async function readSaved(page) {
         eq(onScreen[1], EXPECTED_ANTERIOR.map(([n]) => n), 'day 1 renders Anterior on screen');
         eq(onScreen[2], EXPECTED_POSTERIOR.map(([n]) => n), 'day 2 renders Posterior on screen');
 
-        // 4 (cont). The new movement's weight input is seeded with 50. Preacher
+        // 4 (cont). The new movement's weight input is seeded with 50. Shoulder Flexion
         // Curls is on Posterior, which the loop above left selected — and the
         // field does not exist until the card is opened.
         await selectDeckDay(page, 2);
-        const preacher = await readDeckCard(page, 'Preacher Curls');
+        const preacher = await readDeckCard(page, 'Shoulder Flexion Curls');
         const preacherWeight2 = preacher ? preacher.weightValue : null;
         eq(preacherWeight2, '50',
-            'Preacher Curls pre-fills to its startingWeight with no history');
+            'Shoulder Flexion Curls pre-fills to its startingWeight with no history');
 
         // Every movement still reveals a Weight Breakdown (the 90028e6 / 5cad8f8
         // regression, twice burned). There is no button now — the swipe up IS
@@ -368,7 +372,7 @@ async function readSaved(page) {
         // program, and it is the branch the single-day guard used to swallow —
         // a bumped JESSI_SPLIT_REVISION hit `dayKeys.length !== 1` and did
         // nothing at all. Seeded at splitRevision 0 with both days scrambled,
-        // Preacher Curls removed, and a movement the client added themselves.
+        // Shoulder Flexion Curls removed, and a movement the client added themselves.
         const staleSplitConfig = {
             version: 2,
             categories: ['Upper', 'Lower'],
@@ -437,7 +441,7 @@ async function readSaved(page) {
         // is the assertion that a revision bump actually delivers a newly added
         // movement to a device that already took an earlier revision.
         eq(Object.entries(rerun.startingWeights).sort(),
-            [['Chest Press', '100'], ['Leg Extensions', '50'], ['Preacher Curls', '50']],
+            [['Chest Press', '100'], ['Leg Extensions', '50'], ['Shoulder Flexion Curls', '50']],
             'movements missing from a stale config are re-added with their startingWeight');
         eq(rerun.splitRevision, currentSplitRevision(),
             're-run stamps the current splitRevision');
