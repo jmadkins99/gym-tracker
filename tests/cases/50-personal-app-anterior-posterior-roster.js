@@ -38,10 +38,13 @@ const ANTERIOR = [
     ['chest-press', 'Chest Press'],
     ['incline-chest-press', 'Incline Chest Press'],
     ['chest-flies', 'Chest Flies'],
-    ['shoulder-press', 'Shoulder Press'],
-    ['lateral-raises', 'Lateral Raises'],
+    // Up two places each in Sep 2026, ahead of the shoulder work.
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
     ['ab-crunch', 'Ab Crunches'],
+    // Behind them and reversed in the same move: Lateral Raises used to
+    // follow Shoulder Press and now leads it.
+    ['lateral-raises', 'Lateral Raises'],
+    ['shoulder-press', 'Shoulder Press'],
     // Quad-dominant, so the two leg movements close the day. Its id is
     // `hip-adduction`; the movement actually named Hip Adduction is
     // `leg-extensions`, on Posterior. Both mismatches are frozen.
@@ -56,8 +59,9 @@ const POSTERIOR = [
     // Renamed from Sagittal Plane Pulldowns, Sep 2026. The id is frozen and has
     // not described the movement for far longer than the name did.
     ['hammer-row', 'Sagittal Plane Pullovers'],
-    ['upper-back-row', 'Transverse Plane Rows'],
+    // Traded places in Sep 2026; nothing else on the day moved.
     ['kelso-shrugs', 'Kelso Shrugs'],
+    ['upper-back-row', 'Transverse Plane Rows'],
     // Down from second to sixth, Sep 2026.
     ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
     // The wrist pair sat here — moved over from Anterior in Aug 2026, directly

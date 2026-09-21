@@ -27,8 +27,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 const EXPECTED_ANTERIOR = [
     'Tricep Extensions', 'Chest Press', 'Incline Chest Press', 'Chest Flies',
-    'Shoulder Press', 'Lateral Raises', 'Overhead Tricep Extensions',
-    'Ab Crunches', 'Leg Press', 'Leg Extensions',
+    'Overhead Tricep Extensions', 'Ab Crunches', 'Lateral Raises',
+    'Shoulder Press', 'Leg Press', 'Leg Extensions',
 ];
 
 const EXPECTED_POSTERIOR = [
@@ -36,7 +36,7 @@ const EXPECTED_POSTERIOR = [
     // and Sagittal Plane Pulldowns until Sep 2026. These are the fresh-install
     // names; a device with a saved config keeps whatever it already had.
     'Recline Curls', 'Shoulder Flexion Curls', 'Sagittal Plane Pullovers',
-    'Transverse Plane Rows', 'Kelso Shrugs', 'Frontal Plane Pulldowns',
+    'Kelso Shrugs', 'Transverse Plane Rows', 'Frontal Plane Pulldowns',
     // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both.
     'Back Extensions', 'Hip Adduction', 'Calf Raises',
 ];

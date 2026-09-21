@@ -84,10 +84,13 @@ const EXPECTED_ANTERIOR = [
     // migration takes order/day/category from defaults but never the name, so
     // changing a default label can't silently rewrite what a device displays.
     'Unilateral Chest Flies',
-    'Shoulder Press',
-    'Lateral Raises',
+    // Up two places each in Sep 2026, ahead of the shoulder work.
     'Overhead Tricep Extensions',
     'Ab Crunches',
+    // Behind them and reversed in the same move: Lateral Raises used to
+    // follow Shoulder Press and now leads it.
+    'Lateral Raises',
+    'Shoulder Press',
     // hip-adduction, renamed by the user below. Its position comes from
     // DEFAULT_EXERCISES, not from the saved config — the migration takes order
     // and day from defaults while preserving the user's name, and this row is
@@ -111,8 +114,9 @@ const EXPECTED_POSTERIOR = [
     // is the pin on that half.
     'Preacher Curls',
     'Sagittal Plane Pulldowns',
-    'Transverse Plane Rows',
+    // Traded places in Sep 2026; nothing else on the day moved.
     'Kelso Shrugs',
+    'Transverse Plane Rows',
     'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
     // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both from
     // the program.

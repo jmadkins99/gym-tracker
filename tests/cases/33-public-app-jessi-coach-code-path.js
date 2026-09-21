@@ -139,17 +139,19 @@ const JESSI_CODE = 'D1O9O9M2';
         // asserted only the two flags above and walked straight past the fact
         // that the preset was still Torso/Limbs, so a coach-code install showed
         // the old two-day split until a refresh.
-        // Revision 13 (Sep 2026): the personal app's config version 20, name
+        // Revision 15 (Sep 2026): the personal app's config version 21, name
         // for name and in the same order. The wrist pair is gone.
         const ANTERIOR = [
             'Tricep Extensions',
             'Chest Press',
             'Incline Chest Press',
             'Chest Flies',
-            'Shoulder Press',
-            'Lateral Raises',
+            // Up two places each in revision 15; the shoulder pair goes
+            // behind them and reverses as it goes.
             'Overhead Tricep Extensions',
             'Ab Crunches',
+            'Lateral Raises',
+            'Shoulder Press',
             'Leg Press',
             'Leg Extensions',
         ];
@@ -157,8 +159,9 @@ const JESSI_CODE = 'D1O9O9M2';
             'Recline Curls', // biceps group with the pulling work
             'Shoulder Flexion Curls', // was Preacher Curls
             'Sagittal Plane Pullovers', // was Sagittal Plane Pulldowns
-            'Transverse Plane Rows',
+            // Traded places in revision 15.
             'Kelso Shrugs',
+            'Transverse Plane Rows',
             'Frontal Plane Pulldowns',
             'Back Extensions',
             'Hip Adduction', // adductor magnus is a hip extensor
@@ -176,17 +179,17 @@ const JESSI_CODE = 'D1O9O9M2';
             'Chest Press': 'pin',
             'Incline Chest Press': 'pin',
             'Chest Flies': 'pin',
-            'Shoulder Press': 'pin',
-            'Lateral Raises': 'pin',
             'Overhead Tricep Extensions': 'pin',
             'Ab Crunches': 'pin',
+            'Lateral Raises': 'pin',
+            'Shoulder Press': 'pin',
             'Leg Press': 'plate-two-sided',
             'Leg Extensions': 'pin',
             'Recline Curls': 'pin',
             'Shoulder Flexion Curls': 'pin',
             'Sagittal Plane Pullovers': 'pin',
-            'Transverse Plane Rows': 'plate-one-sided',
             'Kelso Shrugs': 'plate-one-sided',
+            'Transverse Plane Rows': 'plate-one-sided',
             'Frontal Plane Pulldowns': 'plate-one-sided',
             'Back Extensions': 'pin',
             'Hip Adduction': 'pin',

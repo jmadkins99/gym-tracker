@@ -11,7 +11,9 @@
 // did its machine settings: once, on the way past 14, and never again. Pinned:
 //
 //   1. A device on revision 13 holding the old map gets the new one, and its
-//      program is otherwise untouched.
+//      roster is otherwise untouched. Its order is not: revision 15 reorders
+//      both days, and a device seeded at 13 crosses 14 and 15 on the one load,
+//      so it takes the schedule and the reorder together.
 //   2. A change the client makes to the schedule afterwards survives the next
 //      load, so a later bump will not undo it either.
 //
@@ -36,11 +38,26 @@ const OLD_MAP = [
     ['Friday', 2], ['Saturday', 1], ['Sunday', 1],
 ];
 
-const ANTERIOR = ['Tricep Extensions', 'Chest Press', 'Incline Chest Press', 'Chest Flies',
+// The seeded device's program, at revision 13's order. This used to be one
+// pair of constants serving as both the seed and the expectation, which held
+// only while 14 was schedule-only. Revision 15 reorders both days, so the
+// device crossing from 13 lands on a different order than it was seeded with
+// and the two have to be spelled out separately.
+const REV13_ANTERIOR = ['Tricep Extensions', 'Chest Press', 'Incline Chest Press', 'Chest Flies',
     'Shoulder Press', 'Lateral Raises', 'Overhead Tricep Extensions', 'Ab Crunches',
     'Leg Press', 'Leg Extensions'];
-const POSTERIOR = ['Recline Curls', 'Shoulder Flexion Curls', 'Sagittal Plane Pullovers',
+const REV13_POSTERIOR = ['Recline Curls', 'Shoulder Flexion Curls', 'Sagittal Plane Pullovers',
     'Transverse Plane Rows', 'Kelso Shrugs', 'Frontal Plane Pulldowns', 'Back Extensions',
+    'Hip Adduction', 'Calf Raises'];
+
+// Revision 15's order: Overhead Tricep Extensions and Ab Crunches up two on
+// Anterior with the shoulder pair behind them, reversed; Kelso Shrugs and
+// Transverse Plane Rows swapped on Posterior. Same movements throughout.
+const ANTERIOR = ['Tricep Extensions', 'Chest Press', 'Incline Chest Press', 'Chest Flies',
+    'Overhead Tricep Extensions', 'Ab Crunches', 'Lateral Raises', 'Shoulder Press',
+    'Leg Press', 'Leg Extensions'];
+const POSTERIOR = ['Recline Curls', 'Shoulder Flexion Curls', 'Sagittal Plane Pullovers',
+    'Kelso Shrugs', 'Transverse Plane Rows', 'Frontal Plane Pulldowns', 'Back Extensions',
     'Hip Adduction', 'Calf Raises'];
 
 function rev13Config() {
@@ -55,7 +72,7 @@ function rev13Config() {
         repsDropdown: { min: 5, max: 8 },
         coachPreset: 'jessi',
         splitRevision: 13,
-        days: { 1: ANTERIOR.map(mk('Anterior')), 2: POSTERIOR.map(mk('Posterior')) },
+        days: { 1: REV13_ANTERIOR.map(mk('Anterior')), 2: REV13_POSTERIOR.map(mk('Posterior')) },
     };
 }
 
@@ -108,7 +125,15 @@ async function reload(page) {
         eq(saved.splitRevision, Number(m[1]), 'stamped with the current revision');
         eq(saved.schedule, NEW_MAP, 'the device now holds the Sep 18 weekday map');
         eq([saved.total, saved.explicit], [2, true], 'two days, explicit, so the app opens on today\'s day');
-        eq(saved.days, [ANTERIOR, POSTERIOR], 'the program itself is untouched');
+        // The roster is untouched — same movements, same days, nobody gains or
+        // loses one. The ORDER is not: revision 15 reorders both days, and a
+        // device seeded at 13 crosses 14 and 15 on the one load, so it takes
+        // the schedule and the reorder together.
+        eq(saved.days, [ANTERIOR, POSTERIOR],
+            "the roster is untouched and both days take revision 15's order");
+        eq([[...saved.days[0]].sort(), [...saved.days[1]].sort()],
+            [[...REV13_ANTERIOR].sort(), [...REV13_POSTERIOR].sort()],
+            'and no movement was added, dropped, or moved between days');
 
         const pill = await page.evaluate(() => {
             const p = document.querySelector('.day-pill.active');

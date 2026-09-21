@@ -90,10 +90,12 @@ const EXPECTED_ANTERIOR = [
     ['Chest Press', 'chest-press'],
     ['Incline Chest Press', 'j-incline'],
     ['Chest Flies', 'j-flies'],
-    ['Shoulder Press', 'j-shoulder'],
-    ['Lateral Raises', 'j-lateral'],
+    // Up two places each in revision 15, ahead of the shoulder work,
+    // which drops behind them and reverses as it goes.
     ['Overhead Tricep Extensions', 'j-oh-tricep'],
     ['Ab Crunches', 'j-abs'],
+    ['Lateral Raises', 'j-lateral'],
+    ['Shoulder Press', 'j-shoulder'],
     ['Leg Press', 'j-legpress'],
     ['Leg Extensions', 'actual-leg-extensions'],
 ];
@@ -101,8 +103,9 @@ const EXPECTED_POSTERIOR = [
     ['Recline Curls', 'j-recline'],
     ['Shoulder Flexion Curls', 'actual-preacher-curls'],
     ['Sagittal Plane Pullovers', 'j-sagittal'],
-    ['Transverse Plane Rows', 'j-transverse'],
+    // Traded places in revision 15.
     ['Kelso Shrugs', 'j-kelso'],
+    ['Transverse Plane Rows', 'j-transverse'],
     ['Frontal Plane Pulldowns', 'j-frontal'],
     ['Back Extensions', 'j-backext'],
     ['Hip Adduction', 'j-hipadd'],

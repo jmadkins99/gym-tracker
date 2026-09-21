@@ -66,10 +66,13 @@ const EXPECTED_NEW_ORDER = [
     'Chest Press',            // added Aug 2026; arrives via the migration
     'Incline Chest Press',
     'My Renamed Flies',       // chest-flies, renamed by the user below
-    'Shoulder Press',
-    'Lateral Raises',
+    // Up two places each in Sep 2026, ahead of the shoulder work.
     'Overhead Tricep Extensions',
     'Ab Crunches',
+    // Behind them and reversed in the same move: Lateral Raises used to
+    // follow Shoulder Press and now leads it.
+    'Lateral Raises',
+    'Shoulder Press',
     'Leg Press',
     'Leg Extensions',         // added Aug 2026; arrives via the migration
 ];

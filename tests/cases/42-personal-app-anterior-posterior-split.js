@@ -52,10 +52,13 @@ const EXPECTED_ANTERIOR = [
     'Chest Press',
     'Incline Chest Press',
     'Chest Flies',
-    'Shoulder Press',
-    'Lateral Raises',
+    // Up two places each in Sep 2026, ahead of the shoulder work.
     'Overhead Tricep Extensions',
     'Ab Crunches',
+    // Behind them and reversed in the same move: Lateral Raises used to
+    // follow Shoulder Press and now leads it.
+    'Lateral Raises',
+    'Shoulder Press',
     // Quad-dominant, so the two leg movements close the day. Its id is
     // `hip-adduction`; the row named Hip Adduction is `leg-extensions`. Both
     // mismatches frozen.
@@ -73,8 +76,9 @@ const EXPECTED_POSTERIOR = [
     'Shoulder Flexion Curls',
     // Renamed from Sagittal Plane Pulldowns, same caveat.
     'Sagittal Plane Pullovers',
-    'Transverse Plane Rows',
+    // Traded places in Sep 2026; nothing else on the day moved.
     'Kelso Shrugs',
+    'Transverse Plane Rows',
     // Down from second to sixth, Sep 2026.
     'Frontal Plane Pulldowns',
     // The wrist pair sat here from Aug 2026 until Sep 2026 dropped both from

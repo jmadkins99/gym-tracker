@@ -337,7 +337,16 @@
         // this bump and keeps its own names and dropdown answers; changing those
         // there is a Settings job, not a deploy. That is the design (v15's note
         // below says why) and not a gap to close here.
-        const EXERCISE_CONFIG_VERSION = 20;
+        //
+        // 21 is the second Sep 2026 reorder, and this one is nothing but a
+        // reorder — no renames, no load-type changes, no id-set change riding
+        // along, so unlike 20 there is no fresh-install-only asterisk to put on
+        // any of it. Every device that reloads takes the whole change. On
+        // Anterior, Overhead Tricep Extensions and Ab Crunches come up two
+        // places each and the shoulder pair goes behind them, reversed, so
+        // Lateral Raises now leads Shoulder Press. On Posterior, Kelso Shrugs
+        // and Transverse Plane Rows trade places and nothing else moves.
+        const EXERCISE_CONFIG_VERSION = 21;
 
         // Display names here are the defaults a fresh install sees. They mirror
         // the names in use as of August 2026; ids are frozen because workout
@@ -373,10 +382,15 @@
             { id: 'chest-press',         name: 'Chest Press',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 1 },
             { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 2 },
             { id: 'chest-flies',         name: 'Chest Flies',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 3 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 4 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 5 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
+            // Sep 2026: Overhead Tricep Extensions and Ab Crunches come up two
+            // places each, ahead of the shoulder work rather than behind it.
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 5 },
+            // The shoulder pair drops behind them and REVERSES in the same
+            // move: Lateral Raises used to follow Shoulder Press and now leads
+            // it. The reversal is deliberate, not a side effect of the shift.
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 6 },
+            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Anterior', day: 'anterior', type: 'standard', loadType: 'pin', order: 7 },
             // Quad-dominant, hence the back of the day. `hip-adduction` is its
             // frozen id; the `leg-extensions` id below is the one that renders
             // as Hip Adduction. Neither name matches its id and neither is safe
@@ -407,8 +421,10 @@
             // half of the old name. `hammer-row` is its frozen id — it has not
             // been a hammer row since long before either name.
             { id: 'hammer-row',          name: 'Sagittal Plane Pullovers', category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'pin', order: 12 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 13 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
+            // These two traded places in Sep 2026, and that swap is the whole
+            // of Posterior's reorder — every other position on the day holds.
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 13 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Posterior', day: 'posterior', type: 'standard', loadType: 'plate-one-sided', order: 14 },
             // Down from second to sixth, and plate-loaded from Sep 2026 rather
             // than a stack. The same correction Back Extensions got in v19, in
             // the other direction: the seed was simply wrong about the machine.

@@ -126,16 +126,18 @@ const HISTORY_WEIGHTS = {
 // migrateJessiSplit now runs on the same load and re-shapes it, so
 // Full Body is never what ends up stored. Asserting the intermediate would be
 // asserting a value no device can ever hold.
-// Revision 13 (Sep 2026) mirrors the personal app's config version 20.
+// Revision 15 (Sep 2026) mirrors the personal app's config version 21.
 const EXPECTED_ANTERIOR = [
     'Tricep Extensions',
     'Chest Press',
     'Incline Chest Press',
     'Chest Flies',
-    'Shoulder Press',
-    'Lateral Raises',
+    // Up two places each in revision 15, ahead of the shoulder work,
+    // which drops behind them and reverses as it goes.
     'Overhead Tricep Extensions',
     'Ab Crunches',
+    'Lateral Raises',
+    'Shoulder Press',
     'Leg Press',
     'Leg Extensions', // added by JESSI_NEW_EXERCISES
 ];
@@ -144,8 +146,9 @@ const EXPECTED_POSTERIOR = [
     'Recline Curls',
     'Shoulder Flexion Curls', // added by JESSI_NEW_EXERCISES (was Preacher Curls)
     'Sagittal Plane Pullovers', // renamed from Sagittal Plane Pulldowns
-    'Transverse Plane Rows',
+    // Traded places in revision 15.
     'Kelso Shrugs',
+    'Transverse Plane Rows',
     'Frontal Plane Pulldowns',
     // The wrist pair left the program in revision 13.
     'Back Extensions',

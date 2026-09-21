@@ -106,7 +106,7 @@ const CURRENT_ROWS = [
     [ID.legPress, 'Leg Press'],
 ];
 
-// Revision 13 (Sep 2026) mirrors the personal app's config version 20.
+// Revision 15 (Sep 2026) mirrors the personal app's config version 21.
 const EXPECTED_ANTERIOR = [
     // Opens the day, as in the personal app.
     ['Tricep Extensions', ID.tricepExt],
@@ -115,10 +115,12 @@ const EXPECTED_ANTERIOR = [
     ['Chest Press', 'chest-press'],
     ['Incline Chest Press', ID.inclinePress],
     ['Chest Flies', ID.chestFlies],
-    ['Shoulder Press', ID.shoulderPress],
-    ['Lateral Raises', DROPPED_ID.lateralRaises],
+    // Up two places each in revision 15, ahead of the shoulder work,
+    // which drops behind them and reverses as it goes.
     ['Overhead Tricep Extensions', DROPPED_ID.dips],
     ['Ab Crunches', ID.abCrunches],
+    ['Lateral Raises', DROPPED_ID.lateralRaises],
+    ['Shoulder Press', ID.shoulderPress],
     // Leg Press keeps its recovered id across the move from Lower — the second
     // place that rule is checked. Leg Extensions closes the day.
     ['Leg Press', ID.legPress],
@@ -133,8 +135,9 @@ const EXPECTED_POSTERIOR = [
     ['Shoulder Flexion Curls', 'actual-preacher-curls'],
     // Was "Sagittal Plane Pulldowns". Same id, new name.
     ['Sagittal Plane Pullovers', ID.sagittalPulldowns],
-    ['Transverse Plane Rows', ID.transverseRows],
+    // Traded places in revision 15.
     ['Kelso Shrugs', ID.kelsoShrugs],
+    ['Transverse Plane Rows', ID.transverseRows],
     ['Frontal Plane Pulldowns', ID.frontalPulldowns],
     // The wrist pair left the program in revision 13.
     // Keeps its recovered id across the move from Lower.
