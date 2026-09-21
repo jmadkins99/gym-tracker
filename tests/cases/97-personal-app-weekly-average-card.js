@@ -18,6 +18,11 @@
 // Monday or a Sunday, and a fixture that changed value with the day of the week
 // would fail every seventh day for reasons having nothing to do with the code.
 //
+// That reasoning covers the AVERAGE, which is bucketed by week. It does not
+// cover the CHART, which reads a rolling window and opened on 7d from Sep
+// 2026 — so the axis assertion in section 5 selects 30d first. Left on the
+// default it passed only on Mondays, which is how it went unnoticed.
+//
 // It also pins the rate as a per-week difference of averages: 175.0 - 180.0 is
 // -5.0, and the EMA rate it replaced would report neither that number nor
 // anything stable, since it read a 14-day window off the smoothed series.
@@ -132,6 +137,25 @@ const topWeekAverage = (page) => page.evaluate(() =>
 
         // === 5. The chart plots the readings, not a smoothed line =========
         //
+        // The chart opens on the 7d range (Sep 2026), and the fixture's prior
+        // week sits OUTSIDE that window on every weekday but Monday — the 7
+        // days back from a Wednesday reach Thursday of last week, not all of
+        // it. Read the axis on 7d and it spans today's lone 175.0 alone, so
+        // the 180.0 assertion below fails six days in seven. Switch to 30d,
+        // which contains the whole fixture whatever day the suite runs on.
+        //
+        // The case header calls the fixture weekday-independent, and that was
+        // written about the AVERAGE — seeding only today makes this week's
+        // mean exact on any weekday. It was never true of the chart, which
+        // reads a rolling window rather than a week bucket.
+        await page.evaluate(() => {
+            Array.from(document.querySelectorAll('.weigh-range .day-pill'))
+                .find((b) => b.textContent.trim() === '30d').click();
+        });
+        await waitFor(page, 'the 30d range to be selected',
+            () => document.querySelector('.weigh-range .day-pill.active')
+                ?.textContent.trim() === '30d');
+
         // The y-axis is snapped out to round gridlines, so the assertion is
         // that it CONTAINS the raw low rather than that it equals it. Against
         // the EMA this fixture's series bottoms out near 178.8 and a domain
