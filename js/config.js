@@ -346,6 +346,36 @@
         // places each and the shoulder pair goes behind them, reversed, so
         // Lateral Raises now leads Shoulder Press. On Posterior, Kelso Shrugs
         // and Transverse Plane Rows trade places and nothing else moves.
+        //
+        // ----------------------------------------------------------------
+        // LANDING A REORDER
+        // ----------------------------------------------------------------
+        // The paragraphs above are the history. This is the procedure, kept
+        // here because this constant is what someone changing the roster opens
+        // first, and the surprises are not in this file.
+        //
+        // A reorder lands in THREE places, not one:
+        //   1. DEFAULT_EXERCISES below, plus a bump of this constant.
+        //   2. public-gym-app/js/migrations.jessi.js — JESSI_ANTERIOR_ORDER /
+        //      JESSI_POSTERIOR_ORDER, plus a bump of JESSI_SPLIT_REVISION.
+        //      That delivers it to Jessi's EXISTING devices.
+        //   3. public-gym-app/js/clients.js — the `jessi` coach preset, which
+        //      seeds a FRESH install. Nothing in 1 or 2 points at it, and it is
+        //      the one that gets missed: skip it and every current device takes
+        //      the new order while a new install is seeded with the old one.
+        // The two programs have been identical name for name since the Aug 2026
+        // split. Ask before letting them diverge, and say so in both commits.
+        //
+        // `order` is a dense 0..N run across the WHOLE flat list, not per day —
+        // Anterior 0-9, Posterior 10-18. moveExercise reindexes off it and
+        // load time is a plain numeric sort, so keep each day contiguous.
+        //
+        // What a bump does and does not carry: `order`, `day` and `category`
+        // are code-owned and ride in on it. `name`, `loadType` and `increment`
+        // are USER-owned and preserved by migrateExerciseConfig, so a change to
+        // those in the seed data reaches a fresh install only. Getting a rename
+        // onto an existing device is a Settings job here; on Jessi's side it
+        // needs a one-time JESSI_REV<N>_* pass. A pure reorder needs neither.
         const EXERCISE_CONFIG_VERSION = 21;
 
         // Display names here are the defaults a fresh install sees. They mirror
