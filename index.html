@@ -2,7 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Laid out at 0.75 zoom rather than 1:1.
+
+         Everything in this app is sized in fixed px, so the layout viewport is
+         the only thing that decides how dense the result reads. At
+         initial-scale=1 a phone hands the page ~393 CSS px and the card fills
+         it edge to edge; at 0.75 the layout viewport opens to ~524 px and the
+         same fixed sizes land as the denser view the app was actually tuned
+         on. Nothing inside the stylesheet needs to know.
+
+         This started life as a per-site page zoom saved in Safari, which is
+         invisible, does not travel between devices, and had localhost and the
+         live site disagreeing on the same phone -- the live page was the one
+         at 0.75 and localhost the one at 1:1, not the other way round. Baking
+         it in makes it the norm on every device instead of a setting one
+         browser happens to remember.
+
+         A page zoom saved in Safari MULTIPLIES with this rather than replacing
+         it, so any site still holding 75% has to be reset to 100% or it lands
+         at 0.56.
+
+         Side effect worth knowing: @media (max-height: 780px) below keys on the
+         layout viewport, which is now ~1136 px tall on a phone, so the compact
+         chrome it defines no longer fires there. That block is now effectively
+         desktop-and-tablet-only. -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=0.75, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gym Tracker</title>
