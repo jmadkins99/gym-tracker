@@ -19,14 +19,42 @@
          browser happens to remember.
 
          A page zoom saved in Safari MULTIPLIES with this rather than replacing
-         it, so any site still holding 75% has to be reset to 100% or it lands
-         at 0.56.
+         it, so a site still holding 75% lands at 0.56 -- and resetting it to
+         100% by hand did not stick; the phone was back at 0.56 every morning.
+         The script under the tag therefore measures the scale the page really
+         got and corrects initial-scale so the product comes out at 0.75
+         whatever Safari has saved. See the script for the arithmetic.
 
          Side effect worth knowing: @media (max-height: 780px) below keys on the
          layout viewport, which is now ~1136 px tall on a phone, so the compact
          chrome it defines no longer fires there. That block is now effectively
          desktop-and-tablet-only. -->
     <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=0.75, user-scalable=no">
+    <script>
+        // Hold the page at 0.75 even when Safari has a page zoom saved for the
+        // site. The scale actually applied is the device's width over the
+        // layout viewport's width: 393 / 524 = 0.75 when Safari is at 100%,
+        // 393 / 699 = 0.5625 when it is holding 75%. Screen width is untouched
+        // by page zoom, so dividing the target back out of the measured
+        // product leaves Safari's factor, and initial-scale is set to cancel
+        // it. Touch devices only, since a desktop's screen width says nothing
+        // about its window; a reading within 2% of the target is left alone.
+        (function () {
+            var TARGET = 0.75;
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta || !(navigator.maxTouchPoints > 0)) return;
+            var landscape = window.matchMedia && window.matchMedia('(orientation: landscape)').matches;
+            var deviceWidth = landscape ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+            var layoutWidth = document.documentElement.clientWidth;
+            if (!deviceWidth || !layoutWidth) return;
+            var applied = deviceWidth / layoutWidth;
+            if (Math.abs(applied / TARGET - 1) < 0.02) return;
+            var scale = Math.max(0.5, Math.min(1.5, TARGET * TARGET / applied));
+            scale = Math.round(scale * 1000) / 1000;
+            meta.setAttribute('content', 'width=device-width, initial-scale=' + scale +
+                ', maximum-scale=' + scale + ', user-scalable=no');
+        }());
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Gym Tracker</title>
