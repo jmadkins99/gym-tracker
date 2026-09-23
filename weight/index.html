@@ -2,7 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Laid out below 1:1 for the same reason as the workout page (see the
+         long note on its viewport tag): every size here is a fixed px, so the
+         layout viewport alone decides how dense the page reads, and at 1:1 a
+         phone's ~393 CSS px makes it read zoomed in.
+
+         Safari's saved per-site page zoom multiplies with initial-scale, so the
+         script below measures the scale the page really got and corrects it
+         back to TARGET, exactly as the workout page does. -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=0.75, user-scalable=no">
+    <script>
+        // Hold the page at TARGET even when Safari has a page zoom saved for
+        // the site. The scale actually applied is the device's width over the
+        // layout viewport's width; screen width is untouched by page zoom, so
+        // dividing the target back out of the measured product leaves Safari's
+        // factor, and initial-scale is set to cancel it. Touch devices only; a
+        // reading within 2% of the target is left alone.
+        (function () {
+            var TARGET = 0.75;
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta || !(navigator.maxTouchPoints > 0)) return;
+            var landscape = window.matchMedia && window.matchMedia('(orientation: landscape)').matches;
+            var deviceWidth = landscape ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+            var layoutWidth = document.documentElement.clientWidth;
+            if (!deviceWidth || !layoutWidth) return;
+            var applied = deviceWidth / layoutWidth;
+            if (Math.abs(applied / TARGET - 1) < 0.02) return;
+            var scale = Math.max(0.5, Math.min(1.5, TARGET * TARGET / applied));
+            scale = Math.round(scale * 1000) / 1000;
+            meta.setAttribute('content', 'width=device-width, initial-scale=' + scale +
+                ', maximum-scale=' + scale + ', user-scalable=no');
+        }());
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Weight</title>
