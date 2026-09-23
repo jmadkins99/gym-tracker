@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
-# Pre-push hook: runs the integration test suite before allowing a push.
-# Blocks the push on any test failure.
+# Pre-push hook: runs the integration tests a push could affect before
+# allowing it. Blocks the push on any test failure.
+#
+# Only the affected cases run. tests/lib/select.js picks them from the files
+# changed and the map in tests/.coverage/, which every test run rebuilds from
+# what each case actually reads -- nobody maintains it. Whenever the map
+# cannot vouch for a change (a file no case is known to read, test
+# infrastructure changed, no known base) the full suite runs instead.
+# FULL_TESTS=1 git push forces the full suite.
+#
+# "Changed" is measured from the last commit the map was verified against
+# (tests/.coverage/_base: set by a full run, advanced by every push that
+# passes here), NOT from what the remote has. The difference matters for
+# commits this hook never saw -- a pull, an edit made on GitHub, a push with
+# --no-verify. Diffing from the remote would skip them; diffing from the base
+# folds them into the next push's selection, so the cases they affect rerun
+# and the map catches up.
 #
 # Bypass in emergencies with: git push --no-verify
 #
@@ -17,9 +32,61 @@ if [ ! -d "$TESTS_DIR" ]; then
     exit 0
 fi
 
-echo "pre-push: running tests/run.sh ..."
-echo
-if bash "$TESTS_DIR/run.sh"; then
+# git feeds one line per ref being pushed:
+#   <local ref> <local sha> <remote ref> <remote sha>
+ZERO=0000000000000000000000000000000000000000
+BASE_FILE="$TESTS_DIR/.coverage/_base"
+BASE="$(cat "$BASE_FILE" 2>/dev/null || true)"
+FULL_REASON=""
+[ "${FULL_TESTS:-}" = "1" ] && FULL_REASON="FULL_TESTS=1"
+CHANGED=""
+PUSHED=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$ZERO" ] && continue   # deleting a remote ref
+    PUSHED="$PUSHED $local_sha"
+    if [ -z "$BASE" ]; then
+        FULL_REASON="${FULL_REASON:-no full run has built the test map yet}"
+    elif ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+        FULL_REASON="${FULL_REASON:-the test map was checked against a commit this clone no longer has}"
+    else
+        # A tree-to-tree diff, so BASE need not be an ancestor: after a
+        # `pull --rebase` or a filter-branch the old commit is off the branch
+        # but still in the object store, and the diff between the tree the map
+        # was verified on and the tree being pushed is still exactly the right
+        # question.
+        CHANGED="$CHANGED
+$(git diff --name-only --no-renames "$BASE" "$local_sha")"
+    fi
+done
+[ -z "$PUSHED" ] && exit 0   # only deletions: nothing to test
+
+if [ -z "$FULL_REASON" ]; then
+    SELECTION="$(printf '%s\n' "$CHANGED" | node "$TESTS_DIR/lib/select.js")"
+    case "$SELECTION" in
+        "ALL "*) FULL_REASON="${SELECTION#ALL }" ;;
+    esac
+fi
+
+if [ -n "$FULL_REASON" ]; then
+    echo "pre-push: running the full suite ($FULL_REASON) ..."
+    echo
+    RUN() { bash "$TESTS_DIR/run.sh"; }
+elif [ -z "$SELECTION" ]; then
+    echo "pre-push: no case reads anything this push changes — nothing to run."
+    RUN() { true; }
+else
+    COUNT=$(printf '%s\n' "$SELECTION" | wc -l | tr -d ' ')
+    echo "pre-push: running the $COUNT case(s) this push affects ..."
+    echo
+    RUN() { TEST_CASES="$SELECTION" bash "$TESTS_DIR/run.sh"; }
+fi
+
+if RUN; then
+    # Every case the diff could affect has now rerun and rewritten its entry,
+    # so the map is verified up to what was pushed. Only advanced for a single
+    # ref, since two refs would have no one commit that covers both.
+    set -- $PUSHED
+    [ "$#" = "1" ] && echo "$1" > "$BASE_FILE"
     echo
     echo "pre-push: all tests passed, allowing push."
     exit 0

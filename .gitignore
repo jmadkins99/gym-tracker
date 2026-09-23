@@ -1,3 +1,6 @@
 # LLM / AI assistant files (local only, not shared)
 CLAUDE.md
 .claude/
+
+# Test map: rebuilt by every test run (tests/lib/coverage.js), never committed
+tests/.coverage/
