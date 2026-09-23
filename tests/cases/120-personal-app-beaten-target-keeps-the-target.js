@@ -1,25 +1,37 @@
 // What this test covers
 // ----------------------
-// Once the week's average is under the plan's target, "Weight to beat" shows
-// that average instead of the target, before the reading and after it. Added
-// September 2026.
+// A week whose average is already UNDER the plan's target. "Weight to beat"
+// keeps naming the target, and the line beneath it flips from how far there
+// is to go to how far past it the week already is — "2.5 pounds under".
 //
-// A beaten target is not worth walking onto the scale for: you already cleared
-// it. What you still want to beat is where the week stands. So the card swaps
-// the number to the week's average, and since the plan's figure has left the
-// headline, the line under it names it: "2.5 pounds over 172.5 goal". After
-// the check-in, the big number is the reading just entered.
+// This case was written in September 2026 to pin the opposite rule. For a
+// fortnight the block swapped to the week's average when the target was
+// beaten, on the reasoning that a cleared target is not what you walk onto
+// the scale to beat — where the week stands is. That reasoning held only
+// while the average had nowhere else to be. The card's hero is the week's
+// average now, so the swap printed one number twice and took the figure the
+// sentence is about off the screen: "2.5 pounds over" what, exactly, once
+// 172.5 is gone from the card?
 //
-// Case 101 covers the other side: a week still ABOVE its target keeps the
-// target before check-in.
+// So the two slots divide the work. The hero is where the week IS. The block
+// is what it is being measured against, in every state — behind it, on it, or
+// past it. This case asserts they are two different numbers, before the
+// reading and after it, which is the assertion the old arrangement failed.
+//
+// Case 101 covers a week still ABOVE its target; case 99 covers all three
+// distances on one plan, and is where the hero is pulled apart from today's
+// reading.
 //
 // The fixture follows case 101: the plan starts four weeks before this
 // Monday, so week 5 (target 172.5) is the week in progress, and every reading
-// is in a COMPLETED week. The gap is then fixed whatever weekday the suite runs
-// on. Last week's mean is exactly 170.0, which is 2.5 under the target.
+// is in a COMPLETED week. The gap is then fixed whatever weekday the suite
+// runs on. Last week's mean is exactly 170.0, which is 2.5 under the target.
 //
-// Mutation check: keep the plan's target when it is beaten and both phases
-// read 172.5; drop the goal from the line and both feet fail.
+// Mutation checks: restore the beaten-week swap and both phases read 170.0 /
+// 171.0 in the block and phase 3's distinctness assertion fails; point the
+// hero back at today's reading and phase 2's hero still passes (the week in
+// progress holds one reading) but case 99 phase 4 fails, which is why that
+// one exists.
 
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitFor } = require('../lib/browser');
@@ -100,27 +112,39 @@ const checkIn = async (page, weight) => {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitFor(page, 'the check-in card', () => !!document.querySelector('.weigh-card'));
 
-        // === 1. Before the reading: the average is the number to beat =====
+        // === 1. Before the reading: the target stays, the line flips ======
         const before = await card(page);
         ok(before.hasInput, 'the card is the input state before check-in');
         eq(before.label, 'Weight to beat', 'the label is unchanged');
-        eq(before.value, LAST_WEEK_AVG,
-            'a beaten target gives way to the week average as the weight to beat');
-        eq(before.foot, (TARGET - LAST_WEEK_AVG).toFixed(1) + ' pounds over ' + TARGET + ' goal',
-            'the line measures the average against the named plan goal: ' + before.foot);
+        eq(before.value, TARGET,
+            'a beaten target is still the target the block names');
+        eq(before.foot, (TARGET - LAST_WEEK_AVG).toFixed(1) + ' pounds under',
+            'the line says how far past the target the week is: ' + before.foot);
         ok(before.tone.includes('good'), 'under target reads as a win: ' + before.tone);
+        ok(!before.tone.includes('behind'), 'and not as behind: ' + before.tone);
 
-        // === 2. After it: the reading is the hero, the average to beat ====
+        // === 2. After it: the hero is the week, the block is the target ===
         // The week in progress had no readings, so today's is its average.
         await checkIn(page, TODAY_WEIGHT);
         const after = await card(page);
-        eq(after.hero, TODAY_WEIGHT, 'the hero is the reading just entered');
-        eq(after.value, TODAY_WEIGHT, 'the weight to beat is the new week average');
-        eq(after.foot, (TARGET - TODAY_WEIGHT).toFixed(1) + ' pounds over ' + TARGET + ' goal',
+        eq(after.hero, TODAY_WEIGHT, "the hero is the new week's average");
+        eq(after.value, TARGET, 'the target does not move when the check-in lands');
+        eq(after.foot, (TARGET - TODAY_WEIGHT).toFixed(1) + ' pounds under',
             'the distance follows the new week average: ' + after.foot);
+        ok(after.tone.includes('good'), 'still under target: ' + after.tone);
+
+        // === 3. The card is not saying one number twice ==================
+        //
+        // The whole point of the arrangement: where the week stands and what
+        // it is measured against are two slots holding two figures. Under the
+        // swap this case used to pin, both of these read the same number.
+        ok(before.hero === null, 'the input state has no hero to duplicate');
+        ok(after.hero !== after.value,
+            'the hero and the weight to beat must be different numbers, both read '
+            + after.hero);
 
         eq(errors, [], 'no console errors');
-        console.log('PASS: a beaten target shows the week average as the weight to beat.');
+        console.log('PASS: a beaten target keeps the target as the weight to beat.');
     } finally {
         await browser.close();
         await server.stop();

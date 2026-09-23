@@ -15,8 +15,9 @@
 // what is asserted here is that sameness rather than two similar-looking
 // screens: the label, the number and the distance are read before the check-in
 // and again after it. Here the reading pulls the week's average under its
-// target, so after it the weight to beat becomes that average and the line
-// names the plan's goal instead.
+// target, so the line flips from a distance still to go to a distance already
+// past — while the target itself, the figure both sentences are about, stays
+// on screen.
 //
 // The pre-check-in card is still the input state and not a preview of the
 // read-back one: the field is present and the reading's hero is not.
@@ -124,15 +125,18 @@ const checkIn = async (page, weight) => {
         await checkIn(page, TODAY_WEIGHT);
         const after = await card(page);
         ok(after.hasHero, 'checking in switches the card to the read-back state');
-        eq(after.hero, TODAY_WEIGHT, 'the hero is the reading just entered');
+        // The hero is the week's AVERAGE. This fixture seeds nothing in the
+        // week in progress, so today's reading is that week's only one and the
+        // two coincide here — which is what lets this case stay weekday-
+        // independent. Case 99 phase 4 is where they are pulled apart.
+        eq(after.hero, TODAY_WEIGHT, "the hero is the week's average, which here is today's reading");
         ok(!after.hasInput, 'and the field is gone');
         eq(after.label, before.label, 'the block is the same one, not a second version of it');
         // The week in progress had no readings, so today's is its whole
-        // average: 170.0 against a 172.5 target is 2.5 under, which makes the
-        // average the weight to beat.
-        eq(after.target, TODAY_WEIGHT,
-            'a beaten target gives way to the week average as the weight to beat');
-        eq(after.foot, (TARGET - TODAY_WEIGHT).toFixed(1) + ' pounds over ' + TARGET + ' goal',
+        // average: 170.0 against a 172.5 target is 2.5 under. Beaten, and the
+        // target is still what the block names.
+        eq(after.target, TARGET, 'a beaten target is still the weight to beat');
+        eq(after.foot, (TARGET - TODAY_WEIGHT).toFixed(1) + ' pounds under',
             'the distance follows the new week average: ' + after.foot);
         ok(after.tone.includes('good'), 'a beaten target reads as a win: ' + after.tone);
 

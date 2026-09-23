@@ -1,9 +1,16 @@
 // What this test covers
 // ----------------------
-// The check-in card's headline number, September 2026. It used to be the EMA
-// trend — a smoothed value weighted toward the most recent readings — under the
-// label "Trend". It is now this week's plain average, under the label "Weekly
-// average weight", with a week-over-week rate beneath it.
+// The check-in card's headline number, September 2026, with no plan running.
+// It used to be the EMA trend — a smoothed value weighted toward the most
+// recent readings — under the label "Trend". It is now this week's plain
+// average, with a week-over-week rate beneath it.
+//
+// Today's reading was the big number for a fortnight in between, with the
+// average in a labelled block below it. The average took the hero later that
+// month, and on a planless card there is then nothing left for the block to
+// say that the hero is not already saying — so it collapses to the rate line
+// alone rather than printing 175.0 twice. That is what phase 1 pins: the
+// label and the second copy are GONE, and the hero is the average.
 //
 // The property worth pinning is not the arithmetic on its own but the AGREEMENT:
 // the card and the History ledger's top row must be the same number, because
@@ -76,11 +83,18 @@ const seedLog = (page) => page.evaluate((ns, prior, today) => {
     localStorage.setItem(ns + 'gymWeightPlan', 'null');
 }, NS, PRIOR_WEEK_WEIGHT, TODAY_WEIGHT);
 
-const cardNumber = (page) => page.evaluate(() =>
-    parseFloat(document.querySelector('.weigh-trend-value').textContent));
+const heroNumber = (page) => page.evaluate(() =>
+    parseFloat(document.querySelector('.weigh-hero .hero-weight').textContent));
 
-const cardLabel = (page) => page.evaluate(() =>
-    document.querySelector('.weigh-trend-label').textContent.trim());
+// Null rather than a throw: on a planless card the absence of these is the
+// assertion, not a broken selector.
+const trendBlock = (page) => page.evaluate(() => {
+    const el = (s) => document.querySelector(s);
+    return {
+        label: el('.weigh-trend-label') ? el('.weigh-trend-label').textContent.trim() : null,
+        value: el('.weigh-trend-value') ? el('.weigh-trend-value').textContent.trim() : null,
+    };
+});
 
 const rateText = (page) => page.evaluate(() =>
     document.querySelector('.weigh-rate').textContent.trim());
@@ -103,13 +117,17 @@ const topWeekAverage = (page) => page.evaluate(() =>
             () => !!document.querySelector('.weigh-card'));
 
         // === 1. The card shows this week's average, not the EMA ==========
-        await waitFor(page, 'the weekly average to render',
-            () => !!document.querySelector('.weigh-trend-value'));
+        await waitFor(page, 'the read-back card to render',
+            () => !!document.querySelector('.weigh-hero'));
 
-        eq(await cardLabel(page), 'Weekly average weight',
-            'the card labels its number as a weekly average');
-        eq(await cardNumber(page), TODAY_WEIGHT,
-            "this week's average is today's only reading");
+        eq(await heroNumber(page), TODAY_WEIGHT,
+            "the hero is this week's average, which is today's only reading");
+
+        const block = await trendBlock(page);
+        eq(block.label, null,
+            'a planless card has no labelled block under the hero: ' + block.label);
+        eq(block.value, null,
+            'and no second copy of the average: ' + block.value);
 
         // === 2. The rate is a difference of weekly averages ==============
         const rate = await rateText(page);
@@ -133,7 +151,7 @@ const topWeekAverage = (page) => page.evaluate(() =>
             () => !!document.querySelector('.weigh-week'));
 
         eq(await topWeekAverage(page), TODAY_WEIGHT,
-            'the ledger top row must show the same average the card does');
+            'the ledger top row must show the same average the card\'s hero does');
 
         // === 5. The chart plots the readings, not a smoothed line =========
         //

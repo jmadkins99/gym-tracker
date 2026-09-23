@@ -4,9 +4,9 @@
         // whole screen rather than a rail of them.
         //
         // Two states. Before you log, the card is an input. After you log, it
-        // shows the number you just typed above the week's standing, and at
-        // midnight tomorrow's card opens on the input again. The reading
-        // itself is not gone — the History chart plots it.
+        // shows where the week stands, and at midnight tomorrow's card opens
+        // on the input again. The reading itself is not gone — the History
+        // chart plots it, and the week's average is built out of it.
         //
         // Correcting a reading is not one of the two states. It was, through an
         // "edit today's entry" link that reopened the input, and that made this
@@ -14,12 +14,6 @@
         // already do it, for today like any other day. One card, one job: today
         // is either logged or it is not.
         const PR_CELEBRATION_MS = 2000;
-
-        // A plan's weekly goal in running text: "170", but "172.5".
-        function formatGoal(n) {
-            const s = formatWeight(n);
-            return s.endsWith('.0') ? s.slice(0, -2) : s;
-        }
 
         function CheckInView({ log, todayKey, onCheckIn, celebrating, progress }) {
             const today = entryFor(log, todayKey);
@@ -79,8 +73,10 @@
             // it is read off planProgress rather than recomputed so the card
             // and the plan dashboard cannot disagree about the same week.
             //
-            // Without a plan there is nothing to beat, so the card falls back
-            // to reporting where the week actually is.
+            // Without a plan there is nothing to beat, so the block falls back
+            // to reporting where the week actually is — on the input card. The
+            // read-back card drops to the rate line alone, because there the
+            // hero IS the week's average and the block would print it twice.
             //
             // Three states, and the middle one exists because of the rounding
             // rather than in spite of it: the distance prints to a tenth, so
@@ -88,22 +84,22 @@
             // "0.0 pounds away" — a sentence that says you have arrived while
             // insisting you have not. That band is the target met.
             //
-            // Once the week's average is under its target, the target is no
-            // longer the number worth beating — the average is. So "Weight to
-            // beat" becomes that average, and because the plan's figure has
-            // then left the headline, the line below names it: "1.6 pounds
-            // over 170 goal".
+            // The target stays in the block once it is beaten. It did not use
+            // to: the block swapped to the week's average, on the grounds that
+            // a cleared target is not the number worth walking onto the scale
+            // for. That was true while the average was nowhere else on the
+            // card. The hero is the average now, so the swap would print one
+            // number twice and leave the figure it is measured against —
+            // "0.7 pounds under" what? — off the screen entirely.
             const MET_BAND = 0.05;
-            const beaten = progress ? progress.gap < -MET_BAND : false;
             const target = progress ? {
-                weight: beaten ? progress.actual : progress.planWeight,
+                weight: progress.planWeight,
                 behind: progress.gap > MET_BAND,
                 line: progress.gap > MET_BAND
                     ? formatWeight(progress.gap) + ' pounds away'
-                    : (!beaten
+                    : (progress.gap >= -MET_BAND
                         ? 'Target met'
-                        : formatWeight(-progress.gap) + ' pounds over ' +
-                          formatGoal(progress.planWeight) + ' goal'),
+                        : formatWeight(-progress.gap) + ' pounds under'),
             } : null;
 
             const headline = target
@@ -150,13 +146,20 @@
                                     into History, or a memory, exactly when it
                                     was about to matter.
 
-                                    Identical markup to the read-back state
-                                    below, off the same `headline`, so the two
-                                    cannot drift into two opinions about one
-                                    week and the card does not reflow when the
-                                    reading commits: the input sits where the
-                                    hero will, and everything under the divider
-                                    stays put.
+                                    Under a plan this is the read-back state's
+                                    markup exactly, off the same `headline`, so
+                                    the two cannot drift into two opinions about
+                                    one week and the card does not reflow when
+                                    the reading commits: the input sits where
+                                    the hero will, and everything under the
+                                    divider stays put.
+
+                                    Without a plan it keeps a number the
+                                    read-back state drops — the week's average,
+                                    which over there is the hero. Here the hero
+                                    slot is the field, so this is the only place
+                                    the average can be stated, and the card does
+                                    shrink by a line at check-in.
 
                                     The gap is measured against the latest week
                                     that HAS readings — planProgress's `actual`
@@ -193,18 +196,42 @@
                             </div>
                         ) : (
                             <div className="weigh-body">
-                                {/* The hero is the reading just typed in. The
-                                    week's standing is the block below it. */}
+                                {/* The hero is the week's average, not the
+                                    reading just typed in. The reading was the
+                                    hero until September 2026, and it is the
+                                    one number on this page you already know —
+                                    you read it off the scale a minute ago and
+                                    typed it in yourself. The average is the
+                                    figure the plan is actually judged on, and
+                                    it lived one tab away in History, so the
+                                    card spent the day reporting back the input
+                                    while the number it was for sat off screen.
+
+                                    Today's reading is not lost with it: it is
+                                    a point on the History chart and a row in
+                                    the week it belongs to, and it is inside
+                                    this average — which moves when it commits,
+                                    so the card still visibly responds to the
+                                    check-in. */}
                                 <div className="hero weigh-hero">
                                     <div className="hero-weight">
-                                        {formatWeight(today.weight)}<span className="hero-unit">lbs</span>
+                                        {formatWeight(weekAvg)}<span className="hero-unit">lbs</span>
                                     </div>
                                 </div>
                                 <div className="weigh-divider" />
 
+                                {/* Label and number only when they are the
+                                    plan's target. Without a plan `headline` is
+                                    the week's average, which the hero above is
+                                    already showing, so all that is left to say
+                                    is the rate. */}
                                 <div className="weigh-trend">
-                                    <div className="weigh-trend-label">{headline.label}</div>
-                                    <div className="weigh-trend-value">{formatWeight(headline.value)}</div>
+                                    {target ? (
+                                        <>
+                                            <div className="weigh-trend-label">{headline.label}</div>
+                                            <div className="weigh-trend-value">{formatWeight(headline.value)}</div>
+                                        </>
+                                    ) : null}
                                     <div className={'weigh-rate' + headline.tone}>
                                         {headline.foot}
                                     </div>
