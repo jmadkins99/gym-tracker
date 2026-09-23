@@ -379,7 +379,7 @@
         // because there is nothing yet to delete, and Save routes to onAdd
         // rather than onSave so the entry is stamped as filled-in rather than
         // as a morning that was weighed. See addEntry in weightLogic.js.
-        function WeekEntries({ slots, onSave, onAdd, onDelete }) {
+        function WeekEntries({ slots, forecast, onSave, onAdd, onDelete }) {
             const [editing, setEditing] = React.useState(null);
             const [draft, setDraft] = React.useState('');
             const inputRef = React.useRef(null);
@@ -432,9 +432,41 @@
                 setEditing(null);
             };
 
+            // Days the forecast covers that the ledger has no slot for at all
+            // — every day after today. weekDaySlots stops at today, on the
+            // principle that a day which has not happened is not a day you
+            // failed to weigh; these rows are the one thing entitled to sit
+            // past that line, and they say so by not being editable.
+            const slotDates = new Set(slots.map((s) => s.date));
+            const ahead = (forecast || []).filter((d) => !slotDates.has(d.date));
+            const forecastByDate = new Map((forecast || []).map((d) => [d.date, d.weight]));
+
+            // Today, unweighed, is in BOTH lists: weekDaySlots gives it an NA
+            // row and the correction gives it a number. The forecast wins
+            // while it is open — one row per day, and the day the correction
+            // starts on is the day it has the most to say about. Closing it
+            // puts the NA back.
+            const forecastDay = (date, weight) => (
+                <div className="weigh-day forecast" key={'proj-' + date}>
+                    <div className="weigh-day-date">
+                        <span className="weigh-day-dash" aria-hidden="true">╌</span>
+                        {formatWeekdayDay(date)}
+                    </div>
+                    <div className="weigh-day-value">
+                        {formatWeight(weight)}<span className="weigh-day-unit">lbs</span>
+                        <span className="weigh-day-proj">proj</span>
+                    </div>
+                </div>
+            );
+
             return (
                 <div className="weigh-days">
+                    {/* Newest-first, like everything else in the ledger. */}
+                    {ahead.slice().reverse().map((d) => forecastDay(d.date, d.weight))}
                     {slots.map((slot) => (
+                        !slot.entry && forecastByDate.has(slot.date)
+                          ? forecastDay(slot.date, forecastByDate.get(slot.date))
+                          : (
                         <div className={'weigh-day'
                                         + (editing === slot.date ? ' editing' : '')
                                         + (slot.entry ? '' : ' empty')}
@@ -486,6 +518,7 @@
                                 </button>
                             )}
                         </div>
+                        )
                     ))}
                 </div>
             );
@@ -509,6 +542,16 @@
             // resting state is the record and nothing else.
             const [showProjection, setShowProjection] = React.useState(false);
             const projected = React.useMemo(() => projectedWeeks(progress), [progress]);
+
+            // The course correction lives INSIDE the projection rather than
+            // beside it. Both are claims about days that have not happened,
+            // and a ledger with two independent "show me the future" switches
+            // would be answering a question nobody asked twice. So the button
+            // only exists while the projection is open, and closing that takes
+            // this with it — see the toggle below.
+            const [showCorrection, setShowCorrection] = React.useState(false);
+            const correction = React.useMemo(
+                () => courseCorrection(progress, log, todayKey), [progress, log, todayKey]);
             // The button names the rate the rows were drawn at, which is not
             // always `progress.avgRate` — see projectionRate.
             const projectRate = projectionRate(progress);
@@ -589,7 +632,11 @@
                         <button
                             className={'weigh-project-btn' + (showProjection ? ' open' : '')}
                             aria-expanded={showProjection}
-                            onClick={() => setShowProjection(!showProjection)}
+                            onClick={() => {
+                                const next = !showProjection;
+                                setShowProjection(next);
+                                if (!next) setShowCorrection(false);
+                            }}
                         >
                             <span className="weigh-project-label">
                                 <span className="weigh-project-dash" aria-hidden="true">╌╌</span>
@@ -684,7 +731,15 @@
                               <button
                                   className="weigh-week-head"
                                   aria-expanded={open}
-                                  onClick={() => setOpenWeek(open ? null : wk.weekStart)}
+                                  onClick={() => {
+                                      setOpenWeek(open ? null : wk.weekStart);
+                                      // Folding the week away takes the
+                                      // correction with it. The forecast IS
+                                      // day rows, so a week collapsed out from
+                                      // under it would leave the button lit
+                                      // with nothing behind it.
+                                      if (open) setShowCorrection(false);
+                                  }}
                               >
                                 <div className="history-date">
                                     <span className="weigh-week-caret">{open ? '▾' : '▸'}</span>
@@ -711,9 +766,55 @@
                                     </div>
                                 )}
                               </button>
+
+                              {/* Outside the week's own head button, because
+                                  that head IS a button and one cannot nest
+                                  inside another.
+
+                                  Three conditions, and each rules out a real
+                                  case: the projection has to be open, the
+                                  correction has to exist at all (a week on or
+                                  under target has nothing to fix, and a week
+                                  with no days left has no way to), and it has
+                                  to be THIS week. A finished week that ran
+                                  over is a fact; there is nothing left in it
+                                  to steer, and offering a correction on one
+                                  would be offering to change the past.
+
+                                  The rate is on the face of the button rather
+                                  than behind it. "View" is about the day-by-day
+                                  rows; the one number you came for should not
+                                  cost a tap. */}
+                              {showProjection && correction && correction.weekStart === wk.weekStart && (
+                                  <button
+                                      className={'weigh-correction-btn' + (showCorrection ? ' open' : '')}
+                                      aria-expanded={showCorrection}
+                                      onClick={() => {
+                                          const next = !showCorrection;
+                                          setShowCorrection(next);
+                                          // The forecast is day rows, so it
+                                          // needs the week unfolded to land in.
+                                          if (next) setOpenWeek(wk.weekStart);
+                                      }}
+                                  >
+                                      <span className="weigh-correction-label">
+                                          <span className="weigh-correction-dash" aria-hidden="true">╌╌</span>
+                                          View Course Correction
+                                      </span>
+                                      <span className="weigh-correction-rate">
+                                          {correction.perDay < 0.05
+                                              ? 'hold ' + formatWeight(correction.anchor)
+                                              : '↓' + formatWeight(correction.perDay) + ' lb/day'}
+                                      </span>
+                                  </button>
+                              )}
+
                               {open && (
                                   <WeekEntries
                                       slots={weekDaySlots(log, wk.weekStart, todayKey)}
+                                      forecast={showProjection && showCorrection && correction
+                                                && correction.weekStart === wk.weekStart
+                                          ? correction.days : null}
                                       onSave={onEditEntry}
                                       onAdd={onAddEntry}
                                       onDelete={onDeleteEntry}

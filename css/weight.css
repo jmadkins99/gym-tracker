@@ -1004,3 +1004,96 @@
         transform: none;
     }
 }
+
+/* ---- The course correction: what the rest of this week has to do ---- */
+
+/* Inset from the week row it belongs to and dashed like everything else on
+   this screen that was computed rather than weighed. Narrower and quieter
+   than the projection button above it: that one is a section of the ledger,
+   this one is a footnote on a single week. */
+.weigh-correction-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 8px 0 2px;
+    padding: 8px 11px;
+    border: 1px dashed #26263a;
+    border-radius: 11px;
+    background: none;
+    font: inherit;
+    color: #6a6a85;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color .25s ease, color .25s ease, background .25s ease;
+}
+
+.weigh-correction-btn.open {
+    border-color: rgba(255, 149, 0, 0.34);
+    background: rgba(255, 149, 0, 0.07);
+    color: #e6e6f2;
+}
+
+.weigh-correction-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* Same quarter-turn as the projection's dash, for the same reason: the one
+   piece of state the button carries is whether it is open. */
+.weigh-correction-dash {
+    display: inline-block;
+    margin-right: 7px;
+    color: #a4712a;
+    letter-spacing: -0.12em;
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+
+.weigh-correction-btn.open .weigh-correction-dash {
+    transform: rotate(90deg);
+}
+
+/* The answer itself, on the face of the button. Amber rather than the
+   projection's grey: a correction is owed, which is not the same kind of
+   claim as a forecast you can take or leave. */
+.weigh-correction-rate {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #a4712a;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A forecast day sits in the same list as the weighed ones and must never be
+   mistaken for one. Dashed leading rule, muted number, no pencil — there is
+   nothing here to tap, because nothing here happened. */
+.weigh-day.forecast .weigh-day-date,
+.weigh-day.forecast .weigh-day-value {
+    color: #6e6e86;
+}
+
+.weigh-day.forecast .weigh-day-value {
+    font-weight: 600;
+    cursor: default;
+}
+
+.weigh-day-dash {
+    margin-right: 6px;
+    color: #a4712a;
+    letter-spacing: -0.1em;
+}
+
+/* Says out loud what the muted styling only implies, at the size the "edited"
+   and "added" badges use — the ledger's existing vocabulary for a row that is
+   not a plain witnessed reading. */
+.weigh-day-proj {
+    margin-left: 6px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #a4712a;
+}

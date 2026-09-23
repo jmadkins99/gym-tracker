@@ -424,6 +424,108 @@
             return out;
         }
 
+        // The course correction: what the rest of THIS week has to do for its
+        // average to land on the plan's target after all.
+        //
+        // The projection above answers "where is this going". This answers the
+        // narrower and more useful question you actually have on a Wednesday
+        // when the week is running over: what do I have to weigh tomorrow, and
+        // the day after, to still make the number. The ledger could only say
+        // how far over you were, which is a verdict rather than a way out.
+        //
+        // The shape of the answer is a CONSTANT daily loss, and that is a
+        // deliberate choice among several that all land the week on target.
+        // Taking the whole correction in one overnight drop and then holding
+        // flat is the smallest total loss, and it is also advice nobody can
+        // follow. Losing the same amount every morning is the smallest daily
+        // one, which is the thing a week is actually lived as.
+        //
+        // With r days left and the last reading at L, those days are
+        // L-x, L-2x, ... L-rx. They sum to r*L - x*(1+2+...+r), and that
+        // triangular number is r(r+1)/2 — so there is exactly one x that makes
+        // the week average out to its target, and it falls out in one line
+        // rather than needing a search.
+        //
+        // Three things it deliberately does not do:
+        //
+        // It does not divide by seven. A week's average is the mean of the
+        // readings it HAS, so the divisor is the count the week will end with:
+        // what is already logged, plus the days still ahead. A Monday that was
+        // skipped is gone — no forecast can fill a day in the past — and
+        // counting it would demand the remaining days make up for a reading
+        // that is never coming.
+        //
+        // It does not cap the answer. A Saturday five pounds over asks for a
+        // Sunday no week produces, and printing 140.0 is the honest response to
+        // the question asked. Softening it would be answering a different one.
+        //
+        // It does not forecast a gain. A week can be over target on the
+        // strength of one bad Monday while today's reading is already low
+        // enough to carry it — there the smallest constant daily loss is none
+        // at all, so x clamps at zero and the forecast holds today's weight
+        // flat. Without the clamp the arithmetic cheerfully returns a negative
+        // x, which is a weight-loss plan instructing you to gain.
+        //
+        // Null whenever there is no question to answer: no plan, a week with no
+        // readings yet, a week already at or under its target, or a week with
+        // no days left to change. The MET_BAND is the check-in card's, for the
+        // same reason it exists there — a week a hundredth over is on target,
+        // and "lose 0.0 lb a day" is not a correction.
+        const CORRECTION_MET_BAND = 0.05;
+
+        function courseCorrection(progress, log, todayKey) {
+            if (!progress) return null;
+
+            const weekStart = localDayKey(getMondayOfWeek(parseDayKey(todayKey)));
+            const row = progress.rows.find((r) => r.weekStart === weekStart);
+            // Outside the plan's own span there is no target for this week.
+            if (!row) return null;
+
+            const days = [];
+            for (let i = 0; i < 7; i++) {
+                const d = parseDayKey(weekStart);
+                d.setDate(d.getDate() + i);
+                days.push(localDayKey(d));
+            }
+
+            const byDate = new Map((log || []).map((e) => [e.date, e]));
+            const logged = days.filter((d) => byDate.has(d));
+            if (logged.length === 0) return null;
+
+            // Days still ahead: unweighed, and today or later. Day keys are
+            // ISO, so the comparison is a string compare.
+            const remaining = days.filter((d) => !byDate.has(d) && d >= todayKey);
+            if (remaining.length === 0) return null;
+
+            const target = row.planWeight;
+            const sumLogged = logged.reduce((s, d) => s + byDate.get(d).weight, 0);
+            const average = sumLogged / logged.length;
+            if (average - target <= CORRECTION_MET_BAND) return null;
+
+            // What the remaining days have to add up to for the week's own
+            // readings — the ones it will actually end with — to mean `target`.
+            const denominator = logged.length + remaining.length;
+            const needed = denominator * target - sumLogged;
+
+            const r = remaining.length;
+            const anchor = byDate.get(logged[logged.length - 1]).weight;
+            const perDay = Math.max(0, (r * anchor - needed) / (r * (r + 1) / 2));
+
+            return {
+                weekStart,
+                week: row.week,
+                target,
+                anchor,
+                average,
+                perDay,
+                totalDrop: perDay * r,
+                denominator,
+                // Chronological, so the caller can render them in whatever
+                // order its ledger runs in.
+                days: remaining.map((date, i) => ({ date, weight: anchor - perDay * (i + 1) })),
+            };
+        }
+
         function formatMonthDay(dayKey) {
             return parseDayKey(dayKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
