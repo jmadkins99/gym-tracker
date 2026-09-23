@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// The Projected Weight rows no longer stop at the plan's last week. A plan you
+// The Projected Weeks rows no longer stop at the plan's last week. A plan you
 // are behind on does not finish in week 6 — it finishes in week 6 with pounds
 // still on — so the projection keeps numbering past the plan's length (wk 7,
 // wk 8) until the line reaches the goal, and the count of those extra rows is

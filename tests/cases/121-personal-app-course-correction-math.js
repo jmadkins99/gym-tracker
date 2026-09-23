@@ -1,7 +1,7 @@
 // What this test covers
 // ----------------------
-// `courseCorrection` — the arithmetic behind the "View Course Correction"
-// button, September 2026. Case 122 owns the button and the rows on screen;
+// `courseCorrection` — the arithmetic behind the "Projected Days" button,
+// September 2026. Case 122 owns the button and the rows on screen;
 // this one owns the numbers, because the numbers are the whole feature and
 // they are far easier to pin here than through a rendered ledger.
 //

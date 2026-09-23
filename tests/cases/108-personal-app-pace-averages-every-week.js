@@ -2,7 +2,7 @@
 // ----------------------
 // Pace, September 2026: the plan card's lb/wk figure is the MEAN of every plan
 // week's own rate, not the change from last week to this one, and the same
-// number draws the Projected Weight rows.
+// number draws the Projected Weeks rows.
 //
 // It used to be the mean of the plan's week-to-week deltas with week 1 missing
 // from it, because week 1 had no earlier plan row to be measured against. On a
@@ -189,7 +189,7 @@ const projection = (page) => page.evaluate(() => {
 
         // === 5. The projection is drawn at the same rate ================
         const proj = await projection(page);
-        ok(proj, 'the Projected Weight button is offered');
+        ok(proj, 'the Projected Weeks button is offered');
         eq(proj.rate, 'at ↓2.5 lb/wk', 'the button names Pace: ' + proj.rate);
         eq(proj.weights.slice(0, 3), [167.5, 165.0, 162.5],
             'and the rows step by it from the last week with readings');

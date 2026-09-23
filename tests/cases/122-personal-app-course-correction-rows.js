@@ -1,7 +1,14 @@
 // What this test covers
 // ----------------------
-// The "View Course Correction" button and the forecast day rows it opens,
-// September 2026. Case 121 owns the arithmetic against hand-computed
+// The "Projected Days" button and the forecast day rows it opens, September
+// 2026. It is the course correction: what the rest of a week that is running
+// over its target would have to do to still land on it. The label pairs with
+// the "Projected Weeks" block it lives inside — the same forecast, one zoom
+// level in — while the code keeps the correction name, because a week's
+// remaining days are not where the week is heading but what it would take to
+// turn it around.
+//
+// Case 121 owns the arithmetic against hand-computed
 // constants; this case owns when the button is on screen and what the ledger
 // does when it is pressed, and it asserts the numbers as PROPERTIES rather
 // than as literals — constant step, lands on target — so it cannot quietly
@@ -162,7 +169,7 @@ const weekdayIndex = (page) => page.evaluate(() => {
         // button: a finished week is a fact, not a thing to steer.
         const buttons = await correctionButtons(page);
         eq(buttons.length, 1, 'exactly one correction button: ' + JSON.stringify(buttons));
-        eq(buttons[0].text.toUpperCase().includes('COURSE CORRECTION'), true,
+        eq(buttons[0].text.toUpperCase().includes('PROJECTED DAYS'), true,
             'the button says what it is: ' + buttons[0].text);
         const thisMonday = await page.evaluate(() => {
             const pad = (x) => String(x).padStart(2, '0');

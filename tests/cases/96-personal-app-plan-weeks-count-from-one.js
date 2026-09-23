@@ -131,7 +131,7 @@ const planLines = (page) => page.evaluate(() => {
            ['lb lost', 'to go', 'to beat'], 'the gap reads as something to beat');
 
         // === 3. And the weekly ledger ===================================
-        // :not(.projected) because the "Projected Weight" block draws week 4
+        // :not(.projected) because the "Projected Weeks" block draws week 4
         // above the logged rows and tags it the same way. The row this case is
         // about is the LOGGED one for this week.
         eq(await page.$eval('.weigh-week:not(.projected) .weigh-week-plan-tag',

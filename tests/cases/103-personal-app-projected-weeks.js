@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// "Projected Weight" on the History tab, added September 2026: a button
+// "Projected Weeks" on the History tab, added September 2026: a button
 // between the chart and the ledger that unfolds the REST of the plan, drawn at
 // the rate actually being achieved rather than the one the plan asks for.
 //
@@ -143,7 +143,7 @@ const toggle = (page) => page.evaluate(() => document.querySelector('.weigh-proj
             };
         });
         ok(btn, 'the projection button is on the History tab');
-        ok(btn.label.includes('Projected Weight'), 'button reads Projected Weight, got: ' + btn.label);
+        ok(btn.label.includes('Projected Weeks'), 'button reads Projected Weeks, got: ' + btn.label);
         eq(btn.rate, 'at ↓' + RATE.toFixed(1) + ' lb/wk',
            'the button names the rate it will project at: ' + btn.rate);
         eq(btn.expanded, 'false', 'and arrives collapsed');

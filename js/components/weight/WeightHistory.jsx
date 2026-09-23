@@ -640,7 +640,7 @@
                         >
                             <span className="weigh-project-label">
                                 <span className="weigh-project-dash" aria-hidden="true">╌╌</span>
-                                Projected Weight
+                                Projected Weeks
                             </span>
                             <span className="weigh-project-rate">
                                 at ↓{formatWeight(Math.abs(projectRate))} lb/wk
@@ -781,10 +781,19 @@
                                   to steer, and offering a correction on one
                                   would be offering to change the past.
 
-                                  The rate is on the face of the button rather
-                                  than behind it. "View" is about the day-by-day
-                                  rows; the one number you came for should not
-                                  cost a tap. */}
+                                  The rate is on the face of the button
+                                  rather than behind it: the day-by-day rows are
+                                  what opening it is for, and the one number you
+                                  came for should not cost a tap.
+
+                                  Labelled "Projected Days" against the block's
+                                  "Projected Weeks" — same forecast, one zoom
+                                  level in, which is what the pairing says at a
+                                  glance and "View Course Correction" did not.
+                                  The code keeps the correction name because
+                                  that is what the arithmetic is: these days are
+                                  not where the week is heading, they are what
+                                  it would take to turn it around. */}
                               {showProjection && correction && correction.weekStart === wk.weekStart && (
                                   <button
                                       className={'weigh-correction-btn' + (showCorrection ? ' open' : '')}
@@ -799,7 +808,7 @@
                                   >
                                       <span className="weigh-correction-label">
                                           <span className="weigh-correction-dash" aria-hidden="true">╌╌</span>
-                                          View Course Correction
+                                          Projected Days
                                       </span>
                                       <span className="weigh-correction-rate">
                                           {correction.perDay < 0.05
