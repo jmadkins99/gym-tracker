@@ -1,0 +1,6 @@
+# Bash scripts must keep LF endings. This checkout has core.autocrlf=true,
+# which would write them out as CRLF on any fresh checkout, and bash then
+# fails on the stray \r ("$'\r': command not found") -- the pre-push hook would
+# block every push, or worse, misread its own conditions.
+*.sh        text eol=lf
+.githooks/* text eol=lf

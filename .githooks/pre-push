@@ -60,6 +60,22 @@ $(git diff --name-only --no-renames "$BASE" "$local_sha")"
 done
 [ -z "$PUSHED" ] && exit 0   # only deletions: nothing to test
 
+# Already tested: a passing `run.sh` or `run.sh --affected` records the exact
+# tree it ran against in .coverage/_verified. If the one commit being pushed is
+# that tree, these files have just passed, so running the same cases again
+# would only repeat the wait. An --affected pass only counts if it diffed from
+# the base this push would diff from; a full pass counts from any base.
+set -- $PUSHED
+if [ -z "${FULL_TESTS:-}" ] && [ "$#" = "1" ] && [ -f "$TESTS_DIR/.coverage/_verified" ]; then
+    read -r V_TREE V_KIND < "$TESTS_DIR/.coverage/_verified" || true
+    if [ "$(git rev-parse "$1^{tree}")" = "$V_TREE" ] &&
+       { [ "$V_KIND" = "ALL" ] || [ "$V_KIND" = "$BASE" ]; }; then
+        echo "$1" > "$BASE_FILE"
+        echo "pre-push: this exact commit already passed its tests before it was committed — skipping."
+        exit 0
+    fi
+fi
+
 if [ -z "$FULL_REASON" ]; then
     SELECTION="$(printf '%s\n' "$CHANGED" | node "$TESTS_DIR/lib/select.js")"
     case "$SELECTION" in
