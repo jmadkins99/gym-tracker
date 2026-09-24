@@ -33,12 +33,11 @@ function extractObjectLiteral(source, name) {
         path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
     const WEEK_1_DEFAULTS = extractObjectLiteral(configSrc, 'WEEK_1_DEFAULTS');
 
-    // The two land on opposite days under the Anterior/Posterior split, so each
-    // carries the day its card renders on. They were both Upper beforehand,
-    // which is why this used to be a plain name/id pair.
+    // Each carries the day its card renders on. Both are on Full Body since
+    // the Sep 2026 switch; under Anterior/Posterior they sat on opposite days.
     const NEW_EXERCISES = [
-        { name: 'Recline Curls', id: 'curls-shoulder-extension', day: 'posterior' },
-        { name: 'Overhead Tricep Extensions', id: 'overhead-tricep-extensions', day: 'anterior' },
+        { name: 'Recline Curls', id: 'curls-shoulder-extension', day: 'full-body' },
+        { name: 'Overhead Tricep Extensions', id: 'overhead-tricep-extensions', day: 'full-body' },
     ];
 
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -62,7 +61,7 @@ function extractObjectLiteral(source, name) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         const weekText = await page.evaluate(() =>
             document.querySelector('.week-indicator')?.textContent || '');

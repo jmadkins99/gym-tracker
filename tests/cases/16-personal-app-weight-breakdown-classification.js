@@ -113,17 +113,14 @@ function extractLiteral(source, name, open, close) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // The rotation is split across two days, so sweep both. Names only:
-        // the deck shows one card at a time and opening all 21 to read them
-        // would cost seconds per sweep for nothing this case needs.
-        await selectDayType(page, 'posterior');
-        const posteriorNames = await readDeckNames(page);
-        await selectDayType(page, 'anterior');
-        const anteriorNames = await readDeckNames(page);
-        const names = [...posteriorNames, ...anteriorNames];
+        // Full Body (Sep 2026) is one day, so one sweep covers the rotation.
+        // Names only: the deck shows one card at a time and opening all 19 to
+        // read them would cost seconds per sweep for nothing this case needs.
+        await selectDayType(page, 'full-body');
+        const names = await readDeckNames(page);
 
         ok(names.length === DEFAULT_EXERCISES.length,
-            `rendered ${DEFAULT_EXERCISES.length} cards across both days (got ${names.length})`);
+            `rendered ${DEFAULT_EXERCISES.length} cards on the day (got ${names.length})`);
 
         for (const name of names) {
             ok(expectedByName.has(name), `card "${name}" is a known rotation exercise`);
@@ -133,9 +130,7 @@ function extractLiteral(source, name, open, close) {
         // breakdown once opened. That used to be a button on the card face; it
         // is now part of the revealed face, so this opens a sample rather than
         // all 21 — the source-level check below is what covers every id.
-        for (const [day, name] of [['posterior', 'Recline Curls'],
-                                   ['anterior', 'Overhead Tricep Extensions']]) {
-            await selectDayType(page, day);
+        for (const name of ['Recline Curls', 'Overhead Tricep Extensions']) {
             const card = await readDeckCard(page, name);
             ok(card && card.hasWeightBreakdown,
                 `"${name}" (pin-loaded) shows a warmup breakdown when opened`);

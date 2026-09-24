@@ -52,7 +52,7 @@ const anchorOf = async (page) => {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'anterior');
+        await selectDeckDay(page, 'full-body');
 
         // === 1. Swipe away, come back: closed ==========================
         await revealCard(page);
@@ -103,10 +103,11 @@ const anchorOf = async (page) => {
             'machine means the set starts now');
 
         // === 5. Switching day closes it too ============================
-        await revealCard(page);
-        await selectDeckDay(page, 'posterior');
-        eq(await page.$$eval(ACTIVE + ' .card-open', (e) => e.length), 0,
-            'switching day leaves no card open — the whole roster changed underneath');
+        // Not exercised while the program is one day (Full Body, Sep 2026):
+        // there is no toggle to switch with. The reset in SwipeDeck stays;
+        // bring this back (open a card, select the other day, expect no
+        // .card-open) when PROGRAM_DAYS next has two entries. Test 92 has the
+        // same note.
 
         eq(errors.length, 0, `no console errors (got: ${JSON.stringify(errors)})`);
         console.log('PASS: a card closes behind you, and reopening starts a fresh clock.');

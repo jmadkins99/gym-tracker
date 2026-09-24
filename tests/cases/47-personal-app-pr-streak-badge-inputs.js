@@ -79,7 +79,7 @@ async function backdateAndReload(page, daysAgo) {
     }, NS, daysAgo);
     await page.reload({ waitUntil: 'networkidle0' });
     await waitForApp(page);
-    await selectDayType(page, 'anterior');
+    await selectDayType(page, 'full-body');
 }
 
 async function readBadge(page, exerciseId) {
@@ -130,7 +130,7 @@ const ROUNDS = [
         await page.evaluate((ns) => localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         for (let i = 0; i < ROUNDS.length; i++) {
             const round = ROUNDS[i];

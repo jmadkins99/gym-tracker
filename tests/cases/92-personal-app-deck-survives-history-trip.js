@@ -52,7 +52,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'anterior');
+        await selectDeckDay(page, 'full-body');
 
         // === 1. An open card survives the round trip =====================
         // Card 3 rather than card 1: landing on the right card by accident is
@@ -81,14 +81,13 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             'and the clock was never restarted — the timing this screen exists to capture is intact');
 
         // === 2. A day switch still resets ================================
-        // The guard is on mounting, not on switching. If it were on both, an
-        // index into the Anterior roster would survive into the Posterior one.
-        await selectDeckDay(page, 'posterior');
-        eq(await deckIndex(page), 1, 'switching day goes back to the first card');
-        eq(await isRevealed(page), false, 'and closes the open panel');
+        // Not exercised while the program is one day (Full Body, Sep 2026):
+        // there is no toggle, so no switch to make. The reset effect in
+        // SwipeDeck stays, guarded on mount rather than on switching; bring
+        // this section back (select the other day, expect card one with the
+        // panel shut) when PROGRAM_DAYS next has two entries.
 
         // === 3. Swiping away still closes, even if History interrupts ====
-        await selectDeckDay(page, 'anterior');
         await stepTo(page, 2);
         const second = await activeName(page);
         ok(await revealCard(page), 'opened the card to swipe off');

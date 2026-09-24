@@ -115,7 +115,7 @@ async function readBadge(page, exerciseId) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         eq(await readBadge(page, 'chest-press'), null,
             'a past unsubmitted session breaks the streak like any other session');

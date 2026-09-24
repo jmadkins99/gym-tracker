@@ -4,14 +4,11 @@ A personal workout tracking web app. Data is kept in your browser's local storag
 
 ## Days
 
-The workout view has two day types you switch between with a toggle at the top. It picks a default based on the weekday: Tuesday, Thursday and Sunday start on Posterior, Monday, Wednesday and Saturday on Anterior. Friday is the rest day; the app has no rest-day type, so it simply opens on Posterior.
+The program is one **Full Body** day (since September 2026): nineteen weighted machine and cable exercises tracked by weight and reps, done six days a week. With only one day there is nothing to choose, so the workout view has no day toggle and no weekday schedule.
 
-- **Anterior**: ten weighted machine and cable exercises tracked by weight and reps. Chest, shoulders, triceps, abs and quads.
-- **Posterior**: nine weighted machine and cable exercises tracked by weight and reps. Back, biceps, erectors, adductors and calves.
+The program's days live in one list, `PROGRAM_DAYS` in `js/config.js`. A future split with several days brings the toggle back automatically, and the Settings list regroups by day. Switching split needs no migration code: history is keyed by exercise, so every "Last:" value and streak carries over. Past sessions keep the day they were logged under.
 
-The split is anatomical with a push/pull flavour rather than strict anatomy: the arms are grouped by function, so triceps sit on Anterior and biceps on Posterior.
-
-Earlier splits — Upper/Lower from August 2026, Full Body / Cardio before that, and the Torso/Limbs, Push/Pull/Legs, and numeric-day Anterior/Posterior rotations before that — are still readable and editable in the History tab. Note that those early-2026 Anterior/Posterior rotations were a different program from the current split, and the History tab labels both with the same two words. Body Weight Squats, Burpee Jump Tucks, Assault Bike, and Stairmaster are retired from logging, as are Reverse Wrist Curls and Cable Wrist Curls since September 2026, but their history renders and edits unchanged.
+Earlier splits — Anterior/Posterior from August 2026, Upper/Lower before it, Full Body / Cardio before that, and the Torso/Limbs, Push/Pull/Legs, and numeric-day Anterior/Posterior rotations before that — are still readable and editable in the History tab. Note that those early-2026 Anterior/Posterior rotations were a different program from the August 2026 split, and the History tab labels both with the same two words. Likewise the June–August 2026 Full Body day and the current one are both labelled Full Body. Body Weight Squats, Burpee Jump Tucks, Assault Bike, and Stairmaster are retired from logging, as are Reverse Wrist Curls and Cable Wrist Curls since September 2026, but their history renders and edits unchanged.
 
 ## Logging
 

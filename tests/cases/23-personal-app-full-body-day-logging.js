@@ -1,14 +1,14 @@
 // What this test covers
 // ----------------------
-// Logging a full Anterior day through the UI (not by seeding history): a typed
-// weight and a no-interaction one-tap card each get their own LOG, then
+// Logging a full Full Body day through the UI (not by seeding history): a
+// typed weight and a no-interaction one-tap card each get their own LOG, then
 // "Submit Day".
 //
-// Both probes here (Ab Crunches, Leg Press) were Lower-day movements before
-// the Anterior/Posterior switch and are Anterior now, which is why this case
-// moved wholesale rather than splitting. Test 53 is the Posterior mirror —
-// without it, logExercise could hardcode `day: 'anterior'` and this case would
-// stay green.
+// This was the Anterior half of a pair until the Sep 2026 Full Body switch;
+// test 53 was its Posterior mirror, there so logExercise could not hardcode
+// the day stamp and stay green. With one program day there is no other day to
+// mirror on, so 53 was retired. Bring a mirror back whenever PROGRAM_DAYS next
+// has two entries.
 //
 // The day was mixed-type until August 2026, when Stairmaster was retired and
 // left it all standard weight/reps cards. logExercise still branches on `type`
@@ -18,7 +18,7 @@
 // shows NA. The stairmaster arm itself is exercised by tests 21/22, which edit
 // and round-trip real cardio-era history.
 //
-// Also pins that the new workout is stamped `day: 'anterior'`, which is what
+// Also pins that the new workout is stamped `day: 'full-body'`, which is what
 // Weekly and the Edit modal key off to choose the right exercise list.
 
 const path = require('path');
@@ -49,7 +49,7 @@ async function logCard(page, exerciseId) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // Ab Crunches: Week 1 default weight 140, reps dropdown pre-fills 4.
         // The card must be opened before it has a weight input to type into.
@@ -75,21 +75,18 @@ async function logCard(page, exerciseId) {
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
         ok(saved.length === 1, `one workout saved (got ${saved.length})`);
         const w = saved[0];
-        eq(w.day, 'anterior', 'workout recorded as an anterior day');
+        eq(w.day, 'full-body', 'workout recorded as a full-body day');
         ok(w.submitted, 'workout is submitted');
-        // Derived: the Anterior roster lost two movements when the wrist pair
-        // moved to Posterior in Aug 2026, and a literal here goes stale.
-        const anteriorCount = await page.evaluate(() =>
-            DEFAULT_EXERCISES.filter((e) => e.day === 'anterior').length);
-        eq(w.exercises.length, anteriorCount,
-            `the workout carries all ${anteriorCount} Anterior movements`);
-        // The leak probe has to be a POSTERIOR id. Chest Flies was the probe
-        // under Upper/Lower, where it was an Upper movement — it is Anterior
-        // now, so keeping it would turn this into "no Anterior movement leaked
-        // into the Anterior workout", which is true even with the day filter
-        // ripped out entirely.
-        ok(!w.exercises.some(e => e.id === 'kelso-shrugs'),
-            'no Posterior movements leaked into the Anterior workout');
+        // Derived: the roster has changed size several times, and a literal
+        // here goes stale.
+        const dayCount = await page.evaluate(() =>
+            DEFAULT_EXERCISES.filter((e) => e.day === 'full-body').length);
+        eq(w.exercises.length, dayCount,
+            `the workout carries all ${dayCount} Full Body movements`);
+        // Retired movements must not be written. (The Posterior leak probe
+        // that sat here went with the split.)
+        ok(!w.exercises.some(e => e.id === 'reverse-wrist-curls' || e.id === 'cable-wrist-curls'),
+            'no retired wrist-curl rows are written');
         ok(!w.exercises.some(e => e.id === 'stairmaster'),
             'no stairmaster row is written now that it is retired');
 
@@ -104,10 +101,10 @@ async function logCard(page, exerciseId) {
         // Every row took the standard arm: no cardio field leaked onto any of
         // them, and the two logged rows are weight/reps shaped.
         ok(!w.exercises.some(e => e.time !== undefined || e.level !== undefined),
-            'no Anterior row carries a cardio time/level field');
+            'no row carries a cardio time/level field');
 
         eq(errors, [], 'no console errors during logging');
-        console.log('PASS: an all-weighted Anterior day logs and persists real values.');
+        console.log('PASS: an all-weighted Full Body day logs and persists real values.');
     } finally {
         await browser.close();
         await server.stop();

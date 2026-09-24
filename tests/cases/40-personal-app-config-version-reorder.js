@@ -16,11 +16,11 @@
 //
 // Break either and the other looks fine, so both are asserted here.
 //
-// This case stays scoped to the Anterior day and to the version mechanism
-// itself. Test 43 covers the Anterior/Posterior split as a whole — both days,
-// the `day` assignments, and retired ids being dropped — and test 54 covers the
-// case this one cannot: a saved config whose id set already matches defaults,
-// where the version bump is the only thing that can trigger a migration.
+// This case stays scoped to the version mechanism itself. Test 43 covers a
+// layout change as a whole — the `day` assignments and retired ids being
+// dropped — and tests 54 and 124 cover the case this one cannot: a saved
+// config whose id set already matches defaults, where the version bump is the
+// only thing that can trigger a migration.
 
 const path = require('path');
 const fs = require('fs');
@@ -54,26 +54,28 @@ const OLD_ORDER_IDS = [
     'hip-adduction',
 ];
 
-// The canonical Anterior day, which is where the renamed exercise below lands.
-//
-// The rename probe is chest-flies rather than frontal-pulldowns: this case is
-// about the version mechanism, not the split, and keeping it on one day avoids
-// a toggle hop that would add nothing. frontal-pulldowns moved to Posterior in
-// the Anterior/Posterior switch, and its rename survival is covered by tests
-// 43 and 54 anyway.
+// The canonical Full Body day (Sep 2026). Names are the fresh-install ones
+// because the seed below builds each entry from DEFAULT_EXERCISES — except
+// chest-flies, renamed by the user.
 const EXPECTED_NEW_ORDER = [
-    'Tricep Extensions',      // moved to the front of the day, Sep 2026
+    'Tricep Extensions',
+    'Lateral Raises',
+    'Recline Curls',
+    'Shoulder Flexion Curls',
+    'My Renamed Flies',       // chest-flies, renamed by the user below
     'Chest Press',            // added Aug 2026; arrives via the migration
     'Incline Chest Press',
-    'My Renamed Flies',       // chest-flies, renamed by the user below
-    // Up two places each in Sep 2026, ahead of the shoulder work.
     'Overhead Tricep Extensions',
     'Ab Crunches',
-    // Behind them and reversed in the same move: Lateral Raises used to
-    // follow Shoulder Press and now leads it.
-    'Lateral Raises',
+    'Sagittal Plane Pullovers',
+    'Kelso Shrugs',
+    'Transverse Plane Rows',
+    'Frontal Plane Pulldowns',
     'Shoulder Press',
+    'Back Extensions',
     'Leg Press',
+    'Hip Adduction',
+    'Calf Raises',
     'Leg Extensions',         // added Aug 2026; arrives via the migration
 ];
 
@@ -97,13 +99,12 @@ const EXPECTED_NEW_ORDER = [
             });
             // No `version` key: this is what every pre-July-2026 config looks like.
             localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify({ exercises }));
-            localStorage.setItem(ns + 'migratedToFullBody2', 'true');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));
         }, NS, OLD_ORDER_IDS);
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         const names = await readDeckNames(page);
         eq(names, EXPECTED_NEW_ORDER,
@@ -127,11 +128,11 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Leg Extensions" (Anterior index 9, the last row) up one, above
-        // "Leg Press". Tricep Extensions was the probe here until Sep 2026 sent
-        // it to index 0, where there is no up arrow to click — the probe has to
-        // be a row with something above it, and the tail of the day is the
-        // stable place to find one.
+        // Move "Leg Extensions" (the last row) up one, above "Calf Raises".
+        // Tricep Extensions was the probe here until Sep 2026 sent it to index
+        // 0, where there is no up arrow to click — the probe has to be a row
+        // with something above it, and the tail of the day is the stable place
+        // to find one.
         const moved = await page.evaluate(() => {
             // Match on the name element, not the row's textContent: the row
             // also holds a <select> whose textContent is every option label.
@@ -148,11 +149,11 @@ const EXPECTED_NEW_ORDER = [
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         const afterReorder = await readDeckNames(page);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(8, 0, expectedAfter.splice(9, 1)[0]); // Leg Extensions up one
+        expectedAfter.splice(17, 0, expectedAfter.splice(18, 1)[0]); // Leg Extensions up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 

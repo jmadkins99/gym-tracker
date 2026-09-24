@@ -127,7 +127,7 @@ const TODAY = workoutEntry({
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // Submit Day lives on the finish card at the end of the deck now, so
         // this walks there rather than searching the page for the button.

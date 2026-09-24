@@ -101,7 +101,7 @@ async function savedExercise(page, id) {
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // === 1. Walk away from a machine and come back =================
         await clickCardButton(page, 'chest-press', 'Weight Breakdown');

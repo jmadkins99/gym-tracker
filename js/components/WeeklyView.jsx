@@ -57,7 +57,7 @@
                                     minute: '2-digit'
                                 });
 
-                                // Lower/Upper workouts render against their own day in the
+                                // Current-program workouts render against their own day in the
                                 // current config; older eras keep their stored layout. See
                                 // getWorkoutExerciseList in utils.js.
                                 const allExercises = getWorkoutExerciseList(workout, exercises);

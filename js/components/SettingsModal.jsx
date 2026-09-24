@@ -43,13 +43,14 @@
                             {/* Grouped by day so the up/down arrows stop at each
                                 day's boundary — moveExercise refuses to swap
                                 across it, so an arrow that looked enabled there
-                                would silently do nothing. */}
-                            {[['anterior', 'Anterior'], ['posterior', 'Posterior']].map(([dayKey, dayLabel]) => {
+                                would silently do nothing. A one-day program
+                                (Full Body) is one list with no heading. */}
+                            {PROGRAM_DAYS.map(({ id: dayKey, label: dayLabel }) => {
                               const dayExercises = exercises.filter(e => e.day === dayKey);
                               if (dayExercises.length === 0) return null;
                               return (
                                 <div key={dayKey} style={{ marginBottom: '20px' }}>
-                                    <div className="section-title">{dayLabel}</div>
+                                    {PROGRAM_DAYS.length > 1 && <div className="section-title">{dayLabel}</div>}
                                     {dayExercises.map((exercise, idx) => (
                                     <div key={exercise.id} className="exercise-row" data-exercise-id={exercise.id} style={{
                                         background: '#1a1a2a',

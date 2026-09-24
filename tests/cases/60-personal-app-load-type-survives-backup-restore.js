@@ -146,7 +146,7 @@ async function readSavedLoadTypes(page) {
 
         // === Half 1: a backup carrying an override =========================
         await importBackup(page, withOverride);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // Before any reload: the imported override is live immediately.
         let text = await readBreakdownText(page, 'Chest Flies', '200');
@@ -170,7 +170,7 @@ async function readSavedLoadTypes(page) {
 
         // === Half 2: a backup from before the field existed ================
         await importBackup(page, preV15);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // This is the resolveLoadType window: state holds entries with no
         // loadType at all, and the breakdown must still render its seeded shape
@@ -186,7 +186,7 @@ async function readSavedLoadTypes(page) {
             'a seeded two-sided machine still renders two-sided after a pre-v15 import');
 
         // Calf Raises keeps its cap through all of this — caps are code-side.
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
         text = await readBreakdownText(page, 'Calf Raises', '500');
         contains(text, 'pin 405',
             'the 405 cap still applies after a pre-v15 restore');

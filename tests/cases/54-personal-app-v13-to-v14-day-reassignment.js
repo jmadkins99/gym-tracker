@@ -34,9 +34,14 @@
 // Whenever the roster changes, this seed follows it. Dropping a retired id is
 // covered by test 43 instead.
 //
+// Since the Sep 2026 Full Body switch (v22) the same v13 seed lands on the
+// one 'full-body' day rather than on Anterior/Posterior; test 124 is the
+// equivalent pin for a v21 Anterior/Posterior device. The seed is untouched —
+// it is the state a device migrates FROM.
+//
 // To verify this test is real: set EXERCISE_CONFIG_VERSION back to 13 in
-// js/config.js. This case fails on the first day assertion; tests 42 and 43
-// both stay green. That asymmetry is the whole point of the case.
+// js/config.js. This case fails on the first day assertion; test 43 stays
+// green. That asymmetry is the whole point of the case.
 
 const path = require('path');
 const fs = require('fs');
@@ -86,36 +91,17 @@ const V13_LAYOUT = [
     ['hip-adduction', 'Leg Press', 'lower'],
 ];
 
-// Where each id must end up after the migration.
-// Key order matters here: the assertion compares serialised maps, so this
-// literal tracks the roster order in DEFAULT_EXERCISES and has to be resorted
-// on every reorder. The day MAPPING has not changed since v14 — only the
-// sequence below has — so a diff here that moves lines without changing any
-// value is the expected shape of a reorder landing.
-const EXPECTED_DAY_BY_ID = {
-    'tricep-pushdown': 'anterior',
-    'chest-press': 'anterior',
-    'incline-chest-press': 'anterior',
-    'chest-flies': 'anterior',
-    'overhead-tricep-extensions': 'anterior',
-    'ab-crunch': 'anterior',
-    'lateral-raises': 'anterior',
-    'shoulder-press': 'anterior',
-    'hip-adduction': 'anterior',
-    'actual-leg-extensions': 'anterior',
-    'curls-shoulder-extension': 'posterior',
-    'preacher-curls': 'posterior',
-    'hammer-row': 'posterior',
-    'kelso-shrugs': 'posterior',
-    'upper-back-row': 'posterior',
-    'frontal-pulldowns': 'posterior',
-    // This map is exactly what the version bump has to deliver to a saved
-    // config, so it is the assertion that catches a forgotten
-    // EXERCISE_CONFIG_VERSION.
-    'leg-curls': 'posterior',
-    'leg-extensions': 'posterior',
-    'calf-raise': 'posterior',
-};
+// Where each id must end up after the migration: every one on the single
+// Full Body day. Key order matters here: the assertion compares serialised
+// maps, so this literal tracks the roster order in DEFAULT_EXERCISES and has to
+// be resorted on every reorder.
+const EXPECTED_DAY_BY_ID = Object.fromEntries([
+    'tricep-pushdown', 'lateral-raises', 'curls-shoulder-extension', 'preacher-curls',
+    'chest-flies', 'chest-press', 'incline-chest-press', 'overhead-tricep-extensions',
+    'ab-crunch', 'hammer-row', 'kelso-shrugs', 'upper-back-row', 'frontal-pulldowns',
+    'shoulder-press', 'leg-curls', 'hip-adduction', 'leg-extensions', 'calf-raise',
+    'actual-leg-extensions',
+].map(id => [id, 'full-body']));
 
 async function readSavedConfig(page) {
     return page.evaluate((ns) => {
@@ -150,18 +136,15 @@ async function readSavedConfig(page) {
             }));
             localStorage.setItem(ns + 'gymExerciseConfig',
                 JSON.stringify({ exercises, version: 13 }));
-            // Without this sentinel App.jsx's one-shot Full Body cleanup fires
-            // on load and deletes gymExerciseConfig before the migration ever
-            // sees it — seedPersonalApp clears the sentinel, so it has to be
-            // put back. A real v13 device always has it.
-            localStorage.setItem(ns + 'migratedToFullBody2', 'true');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));
         }, NS, V13_LAYOUT);
 
         // Sanity-check the premise: the seed must have the same id SET as
         // defaults, or this case is not testing the version bump at all.
         const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-        const defaultIds = [...configSrc.matchAll(/\{\s*id:\s*'([^']+)'/g)].map(m => m[1]);
+        // Scoped to DEFAULT_EXERCISES: PROGRAM_DAYS also has `{ id: ... }` entries.
+        const rosterSrc = configSrc.slice(configSrc.indexOf('const DEFAULT_EXERCISES ='));
+        const defaultIds = [...rosterSrc.slice(0, rosterSrc.indexOf('];')).matchAll(/\{\s*id:\s*'([^']+)'/g)].map(m => m[1]);
         eq([...new Set(V13_LAYOUT.map(([id]) => id))].sort(), [...new Set(defaultIds)].sort(),
             'the seeded v13 config has exactly the default id set, so only the version can trigger the migration');
 
@@ -181,7 +164,7 @@ async function readSavedConfig(page) {
 
         // 2. Every one of the 19 ids moved to its v14 day.
         eq(saved.dayById, EXPECTED_DAY_BY_ID,
-            'all 19 ids are reassigned to their Anterior/Posterior day');
+            'all 19 ids are reassigned to the Full Body day');
 
         // 3. Nothing was added or dropped on the way through.
         eq(saved.ids.length, 19, 'the saved config still holds exactly 19 ids');
@@ -195,10 +178,10 @@ async function readSavedConfig(page) {
             'order is a dense 0..18 run in the new layout');
 
         // 6. It reaches the screen, not just storage.
-        ok(await selectDayType(page, 'posterior'), 'Posterior toggle present after the migration');
-        const posterior = await readDeckNames(page);
-        eq(posterior.length, 9, 'Posterior renders 9 cards');
-        ok(posterior.includes('My Renamed Pulldowns'),
+        ok(await selectDayType(page, 'full-body'), 'Full Body is on screen after the migration');
+        const fullBody = await readDeckNames(page);
+        eq(fullBody.length, 19, 'Full Body renders 19 cards');
+        ok(fullBody.includes('My Renamed Pulldowns'),
             'the renamed pulldowns card renders on its new day');
 
         // 7. A second load must not fight the migration.

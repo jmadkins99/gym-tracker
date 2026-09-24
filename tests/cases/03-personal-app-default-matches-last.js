@@ -42,7 +42,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
                 const frontal = await readDeckCard(page, 'Frontal Plane Pulldowns');
 

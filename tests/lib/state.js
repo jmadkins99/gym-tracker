@@ -6,15 +6,12 @@
 // `gym-local:` when served from an unrecognized path.
 const DEFAULT_NS = 'gym-local:';
 
-// Seeds the personal app's localStorage with the given workout history
-// and ensures the migration flag is unset so defaults reseed cleanly.
+// Seeds the personal app's localStorage with the given workout history and
+// clears any saved exerciseConfig, so the load reseeds from defaults.
 async function seedPersonalApp(page, { workoutHistory, ns = DEFAULT_NS } = {}) {
     await page.evaluate((ns, hist) => {
         if (hist) localStorage.setItem(ns + 'gymWorkoutHistory', JSON.stringify(hist));
         localStorage.removeItem(ns + 'gymExerciseConfig');
-        localStorage.removeItem(ns + 'migratedToTorsoLimbs2');
-        localStorage.removeItem(ns + 'migratedToFullBody');
-        localStorage.removeItem(ns + 'migratedToFullBody2');
     }, ns, workoutHistory || null);
 }
 
@@ -26,11 +23,9 @@ async function seedPersonalApp(page, { workoutHistory, ns = DEFAULT_NS } = {}) {
 // rebuilding all 21. Pass `version: undefined` deliberately to model an
 // imported backup, which App.jsx saves with no version at all.
 //
-// The migratedToFullBody2 sentinel is not optional: App.jsx's one-shot Full
-// Body cleanup fires on load and deletes gymExerciseConfig before the migration
-// ever sees it, and seedPersonalApp clears the sentinel. A real device that has
-// a saved config always has it. lastBackupReminder keeps the monthly reminder
-// modal from covering the UI.
+// lastBackupReminder keeps the monthly reminder modal from covering the UI.
+// (This used to plant a `migratedToFullBody2` sentinel too, to dodge a one-shot
+// config wipe in App.jsx. The wipe was removed in v22.)
 async function seedExerciseConfig(page, { overrides = {}, version, dropFields = [], ns = DEFAULT_NS } = {}) {
     return page.evaluate((ns, overrides, version, dropFields) => {
         const exercises = DEFAULT_EXERCISES.map(ex => {
@@ -41,7 +36,6 @@ async function seedExerciseConfig(page, { overrides = {}, version, dropFields = 
         const config = { exercises };
         if (version !== null && version !== undefined) config.version = version;
         localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify(config));
-        localStorage.setItem(ns + 'migratedToFullBody2', 'true');
         localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));
         return config.exercises.length;
     }, ns, overrides, version === undefined ? null : version, dropFields);

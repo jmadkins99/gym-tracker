@@ -108,7 +108,7 @@ async function readBreakdown(page, name, weight) {
         await waitForApp(page);
 
         // Chest Flies is on Anterior.
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // --- 1. The seeded value: a plain pin stack -------------------------
         let text = await readBreakdown(page, EXERCISE_NAME, '200');
@@ -121,7 +121,7 @@ async function readBreakdown(page, name, weight) {
 
         // --- 2. Plate-loaded on both sides ----------------------------------
         await setLoadType(page, EXERCISE_ID, 'plate-two-sided');
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         text = await readBreakdown(page, EXERCISE_NAME, '200');
         contains(text, '140 lbs', 'two-sided: warmup #1 total is 140');
         contains(text, '70/side', 'two-sided: 140 splits to 70 a side');
@@ -135,7 +135,7 @@ async function readBreakdown(page, name, weight) {
 
         // --- 3. Plate-loaded on one side ------------------------------------
         await setLoadType(page, EXERCISE_ID, 'plate-one-sided');
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         text = await readBreakdown(page, EXERCISE_NAME, '200');
         contains(text, '140 lbs',
             'one-sided keeps the plate-loaded label shape');
@@ -146,7 +146,7 @@ async function readBreakdown(page, name, weight) {
 
         // --- 4. Back to a pin stack -----------------------------------------
         await setLoadType(page, EXERCISE_ID, 'pin');
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         text = await readBreakdown(page, EXERCISE_NAME, '200');
         contains(text, '140 lbs',
             'switching back restores the pin shape — the branch is not latched');

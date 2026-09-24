@@ -153,7 +153,7 @@ function daysAgo(n) {
         }, NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         // One card at a time now: navigate to it and open it rather than
         // reading every card off the screen at once.
         let flies = await readDeckCard(page, 'Chest Flies');
@@ -173,7 +173,7 @@ function daysAgo(n) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         flies = await readDeckCard(page, 'Chest Flies');
         ok(flies, 'found the Chest Flies card after switching it two-sided');
         eq(flies.weightValue, '202.5',
@@ -191,7 +191,7 @@ function daysAgo(n) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '201.25',
             'a saved 1.25 override on a pin stack suggests 200 + 1.25');
@@ -203,7 +203,7 @@ function daysAgo(n) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5',
             'the same saved 1.25 on a two-sided machine is doubled to 200 + 2.5');

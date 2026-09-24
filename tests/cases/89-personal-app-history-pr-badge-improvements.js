@@ -146,7 +146,7 @@ async function readCardBadge(page, exerciseId) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         eq(await readCardBadge(page, 'preacher-curls'), '🔥 1',
             'card streak counts mid-range rep progress (4 -> 5) as an improvement');

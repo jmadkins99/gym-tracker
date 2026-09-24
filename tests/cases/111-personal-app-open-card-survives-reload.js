@@ -13,7 +13,7 @@
 // The restore is derived from the anchor alone, so the case also pins the rules
 // that make the anchor trustworthy as "the card that is open":
 //
-//   1. Log card one, then open card three on the NON-default day, and reload:
+//   1. Log card two, then open card three on the NON-default day, and reload:
 //      the day, the position and the reveal all come back, the anchor is
 //      untouched, and logging writes the original stamp as startedAt.
 //   2. After that log there is no anchor, so a reload opens nothing.
@@ -27,7 +27,7 @@
 // toggle, and choosing card three is what makes it non-vacuous for position:
 // a restore that forgot either would still pass on card one of today's default.
 //
-// Logging card one FIRST is the gym, and the first version of this case did
+// Logging a card FIRST is the gym, and the first version of this case did
 // not do it. The first log of a day writes a row for every exercise on that
 // day, blank ones included, and the restore's "already logged today" check
 // tested presence in that record rather than data — so the moment one set was
@@ -35,6 +35,10 @@
 // passed here and failed on the first real reload. It also hid behind the
 // logged card: card one renders open because it is logged, so "a card is open"
 // held while the deck sat on the wrong one. Hence the position and id checks.
+//
+// It is card TWO rather than card one since the Sep 2026 Full Body switch.
+// With one program day the reloads below land on card one of the same day,
+// and a logged card one would read as open for that reason alone.
 //
 // To verify this test is real: delete the restoreOpenCard(...) call in App.jsx's
 // hydration. (1) fails on the day pill. Or make closeWeightBreakdown only clear
@@ -56,9 +60,12 @@ const activeCardId = (page) => page.evaluate(() => {
     return card ? card.getAttribute('data-exercise-id') : null;
 });
 
+// A one-day program (Full Body, Sep 2026) renders no toggle; its one day is
+// then the active day by definition.
 const activeDay = (page) => page.evaluate(() => {
     const pill = document.querySelector('.day-pill.active');
-    return pill ? pill.getAttribute('data-day-type') : null;
+    if (pill) return pill.getAttribute('data-day-type');
+    return PROGRAM_DAYS.length === 1 ? PROGRAM_DAYS[0].id : null;
 });
 
 async function reload(page) {
@@ -90,7 +97,11 @@ async function seedAnchor(page, id, dateString) {
         // The day a fresh load lands on, and the card three into the OTHER day.
         const { defaultDay, otherDay, target, total } = await page.evaluate(() => {
             const defaultDay = getDefaultDayType(new Date());
-            const otherDay = defaultDay === 'anterior' ? 'posterior' : 'anterior';
+            // The other program day when there is one. On a one-day program
+            // this is the default day itself, and the day half of (1) is
+            // vacuous until PROGRAM_DAYS grows again; position and reveal
+            // still carry the case.
+            const otherDay = PROGRAM_DAYS.map(d => d.id).find(d => d !== defaultDay) ?? defaultDay;
             const roster = DEFAULT_EXERCISES.filter(e => e.day === otherDay)
                 .sort((a, b) => a.order - b.order);
             return { defaultDay, otherDay, target: roster[2].id, total: roster.length };
@@ -100,7 +111,7 @@ async function seedAnchor(page, id, dateString) {
         // === 1. Open card three on the other day, reload ==================
         await selectDayType(page, otherDay);
         const first = await page.evaluate((day) => DEFAULT_EXERCISES
-            .filter(e => e.day === day).sort((a, b) => a.order - b.order)[0].id, otherDay);
+            .filter(e => e.day === day).sort((a, b) => a.order - b.order)[1].id, otherDay);
         ok(await logCardById(page, first), `logged ${first} first, as mid-session`);
         await goToCardById(page, target);
         await revealCard(page);

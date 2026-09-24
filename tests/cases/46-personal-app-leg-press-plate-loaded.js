@@ -106,7 +106,7 @@ function extractLiteral(source, name, open, close) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         const text = await setWeightAndOpen(page, 'Leg Press', 200);
 

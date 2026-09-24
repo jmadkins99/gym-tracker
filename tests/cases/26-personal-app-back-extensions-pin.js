@@ -72,7 +72,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         eq(restored.byId['chest-flies'], { weight: '192.5', reps: '5' }, 'chest flies filled');
         eq(restored.byId['leg-curls'], { weight: '520', reps: '5' }, 'leg curls filled');
 
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         // Open the Back Extensions breakdown at 270 lbs — 10 over the cap.
         const text = await setWeightAndOpen(page, 'Back Extensions', 270);

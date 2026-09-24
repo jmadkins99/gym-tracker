@@ -61,7 +61,7 @@ async function readCard(page, name) {
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         const clicked = await clickBreakdown(page, 'Kelso Shrugs');
         ok(clicked, 'Kelso Shrugs opens to show its breakdown');

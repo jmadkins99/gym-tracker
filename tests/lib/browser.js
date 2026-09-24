@@ -128,16 +128,23 @@ async function waitForApp(page, timeoutMs = 8000) {
 //
 // Pass { optional: true } when the absence of a toggle is the thing under test
 // (e.g. asserting a retired day type is gone).
+//
+// A one-day program (Full Body, Sep 2026) renders no toggle at all. Asking for
+// that one day is then a success without a click — it is already showing —
+// but asking for any other day still throws, for the reason above.
 async function selectDayType(page, type, { optional = false } = {}) {
     const result = await page.evaluate((t) => {
         const btn = document.querySelector(`[data-day-type="${t}"]`);
         if (btn) { btn.click(); return { clicked: true, available: [] }; }
+        const days = PROGRAM_DAYS.map(d => d.id);
+        if (days.length === 1 && days[0] === t) return { clicked: false, onlyDay: true, available: [] };
         return {
             clicked: false,
             available: Array.from(document.querySelectorAll('[data-day-type]'))
                 .map(b => b.getAttribute('data-day-type')),
         };
     }, type);
+    if (result.onlyDay) return true;
 
     if (!result.clicked && !optional) {
         throw new Error(

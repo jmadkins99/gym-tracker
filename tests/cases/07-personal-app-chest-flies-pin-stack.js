@@ -37,7 +37,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // The breakdown is no longer behind its own button: it is part of the
         // card's revealed face, so this navigates to Chest Flies and swipes up.

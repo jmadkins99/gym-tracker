@@ -450,18 +450,22 @@
 
             return (
                 <div className="deck">
-                    <div className="day-toggle" data-day-type-toggle>
-                        {['anterior', 'posterior'].map((type) => (
-                            <button
-                                key={type}
-                                data-day-type={type}
-                                className={'day-pill' + (activeDayType === type ? ' active' : '')}
-                                onClick={() => setActiveDayType(type)}
-                            >
-                                {type === 'anterior' ? 'Anterior' : 'Posterior'}
-                            </button>
-                        ))}
-                    </div>
+                    {/* Only when there is a choice to make: a one-day program
+                        (Full Body) renders no toggle at all. */}
+                    {PROGRAM_DAYS.length > 1 && (
+                        <div className="day-toggle" data-day-type-toggle>
+                            {PROGRAM_DAYS.map(({ id, label }) => (
+                                <button
+                                    key={id}
+                                    data-day-type={id}
+                                    className={'day-pill' + (activeDayType === id ? ' active' : '')}
+                                    onClick={() => setActiveDayType(id)}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <div
                         className="deck-stage"

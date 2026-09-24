@@ -49,12 +49,12 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'anterior');
+        await selectDeckDay(page, 'full-body');
 
         const total = parseInt((await deckPosition(page)).split(' ')[2], 10);
         eq(total, await page.evaluate(() =>
-            DEFAULT_EXERCISES.filter((e) => e.day === 'anterior').length),
-            'the deck offers exactly the Anterior roster');
+            DEFAULT_EXERCISES.filter((e) => e.day === 'full-body').length),
+            'the deck offers exactly the Full Body roster');
 
         // === 1. In order: log 1, land on 2 =============================
         eq(await deckIndex(page), 1, 'starting on the first card');

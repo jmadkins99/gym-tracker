@@ -65,7 +65,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'anterior');
+        await selectDeckDay(page, 'full-body');
 
         // === 1. No anchor until the gesture ============================
         eq(Object.keys(await startAnchors(page)).length, 0,

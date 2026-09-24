@@ -126,7 +126,7 @@ async function readHistoryBadges(page) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         // === 1. The arbiter, directly ===================================
         // isImprovement is the one rule behind every surface below, so name it

@@ -46,7 +46,7 @@ const OLDER = workoutEntry({
     submitted: true,
     exercises: [
         { id: 'tricep-pushdown', name: 'Tricep Extensions', weight: '100', reps: '4' },
-        { id: 'chest-press', name: 'Chest Press', weight: '100', reps: '4' },
+        { id: 'lateral-raises', name: 'Lateral Raises', weight: '100', reps: '4' },
     ],
 });
 
@@ -56,7 +56,7 @@ const PREVIOUS = workoutEntry({
     submitted: true,
     exercises: [
         { id: 'tricep-pushdown', name: 'Tricep Extensions', weight: '100', reps: '5' },
-        { id: 'chest-press', name: 'Chest Press', weight: '100', reps: '5' },
+        { id: 'lateral-raises', name: 'Lateral Raises', weight: '100', reps: '5' },
         { id: 'shoulder-press', name: 'Shoulder Press', weight: '120', reps: '5' },
         // Only in PREVIOUS, deliberately: one prior session means an
         // improvement today is a run of ONE, which is the "🔥 PR" branch.
@@ -146,7 +146,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         const before = await readHeader(page, 'tricep-pushdown');
         eq(before.streak, '🔥 1',
@@ -185,8 +185,8 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         // The two deck-index assertions here need the logged card to be the
         // EARLIEST unlogged one, because the deck jumps back to that (test 77)
         // rather than simply stepping forward. Hence Tricep Extensions and
-        // Chest Press, the first two cards on Anterior since the Sep 2026
-        // reorder — probing a card further down would assert a jump backwards
+        // Lateral Raises, the first two cards of Full Body since the Sep 2026
+        // switch — probing a card further down would assert a jump backwards
         // and prove nothing about advancing.
         eq(await deckIndex(page), 2,
             'after the celebration, the deck advances to the next unlogged card');
@@ -206,10 +206,10 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(improved.streak, null,
             'a logged PR review replaces the numeric pre-session streak');
 
-        await logSet(page, 'chest-press', '100', '5');
+        await logSet(page, 'lateral-raises', '100', '5');
         eq(await deckIndex(page), 3,
             'a non-PR log still advances without the PR celebration delay');
-        const identical = await readHeader(page, 'chest-press');
+        const identical = await readHeader(page, 'lateral-raises');
         eq(identical.logged, 'logged', 'the identical row is also in review state');
         eq(identical.loggedPR, null,
             'an identical logged row does not show the current-session PR badge');
@@ -232,8 +232,11 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(weightDrop.loggedPR, null,
             'top reps after a weight drop is not a logged PR');
 
-        await logSet(page, 'lateral-raises', '50', '6');
-        const firstSession = await readHeader(page, 'lateral-raises');
+        // Recline Curls, not Lateral Raises: since the Sep 2026 Full Body
+        // switch Lateral Raises is card two and carries the history the
+        // advance assertions above need, so it is no longer history-free.
+        await logSet(page, 'curls-shoulder-extension', '50', '6');
+        const firstSession = await readHeader(page, 'curls-shoulder-extension');
         eq(firstSession.loggedPR, null,
             'top reps on a first-ever submitted-baseline-free row is not a logged PR');
 

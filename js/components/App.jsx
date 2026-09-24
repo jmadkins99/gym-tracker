@@ -83,9 +83,9 @@
                     return {};
                 }
             });
-            // Which day type the workout view shows. Defaults by weekday
-            // (Mon/Wed/Fri = lower) on every load; a manual toggle only lasts
-            // for the session.
+            // Which PROGRAM_DAYS entry the workout view shows, chosen by
+            // getDefaultDayType on every load. With one day (Full Body) there
+            // is no toggle; with several, a manual pick only lasts the session.
             const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
             const [hydrated, setHydrated] = useState(false);
             const [showSyncPrompt, setShowSyncPrompt] = useState(false);
@@ -181,27 +181,18 @@
 
             useEffect(() => {
                 window.repoReady.then((repo) => {
-                    // Legacy localStorage-era migrations. Only meaningful in
-                    // local mode: cloud data is imported post-migration, and a
-                    // fresh device must not wipe synced config just because its
-                    // own localStorage lacks the sentinel flags. They reshape
-                    // the stored keys, so they run before loadAll reads them.
+                    // Legacy localStorage-era key move. Only meaningful in local
+                    // mode: cloud data is imported post-migration. It reshapes
+                    // the stored keys, so it runs before loadAll reads them.
+                    //
+                    // There used to be one-shot config wipes here too, keyed on
+                    // sentinel flags (`migratedToFullBody2` was the last). They
+                    // are gone as of v22: a split change is delivered by
+                    // EXERCISE_CONFIG_VERSION through migrateExerciseConfig
+                    // below, which keeps the user's names and load types where
+                    // a wipe threw them away. Do not bring the pattern back.
                     if (repo.mode === 'local') {
                         migrateToNamespacedStorage();
-
-                        // Full Body migration: wipe old day1/day2 exercise config
-                        // so users pick up the new single-list defaults.
-                        const hasMigratedToFB = storage.getItem('migratedToFullBody2');
-                        if (!hasMigratedToFB) {
-                            storage.removeItem('gymExerciseConfig');
-                            storage.removeItem('migratedToFullBody');
-                            storage.removeItem('migratedToTorsoLimbs2');
-                            storage.removeItem('activeDay');
-                            storage.setItem('migratedToFullBody2', 'true');
-                        }
-
-                        // Clean up stale migration flag
-                        storage.removeItem('removedStairmaster');
                     }
 
                     return repo.loadAll().then(({ workoutHistory: savedHistory, exerciseConfig: savedConfig }) => {
@@ -385,9 +376,9 @@
             };
 
             // Reordering is scoped to the exercise's own day. Swapping across
-            // the Lower/Upper boundary would move a card in the settings list
-            // without changing which day it belongs to, so the arrow would look
-            // like it did nothing.
+            // a day boundary would move a card in the settings list without
+            // changing which day it belongs to, so the arrow would look like it
+            // did nothing. On a one-day program this is the whole list.
             const moveExercise = (exerciseId, direction) => {
                 const current = exercises.find(ex => ex.id === exerciseId);
                 if (!current) return;

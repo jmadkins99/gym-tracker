@@ -64,7 +64,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'anterior');
+        await selectDeckDay(page, 'full-body');
 
         // === 1. One card, not a list ===================================
         eq(await page.$$eval('.deck-slot', (els) => els.length) >= 1, true,
@@ -77,9 +77,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const front = await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-front').innerText, ACTIVE);
 
-        // Tricep Extensions leads Anterior from Sep 2026; it was Chest Press
-        // before that.
-        eq(await activeName(page), 'Tricep Extensions', 'it names the first Anterior movement');
+        // Tricep Extensions leads the day — Anterior from Sep 2026, and Full
+        // Body since the switch later that month.
+        eq(await activeName(page), 'Tricep Extensions', 'it names the first movement of the day');
         eq(/\d/.test(front), false,
             'THE POINT: no digit appears on the front face — no weight, no reps, no ' +
             'last session. Leaking any of them removes the reason to swipe up, and ' +
@@ -113,13 +113,16 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         eq(await page.$$eval('.bottom-nav-btn', (els) =>
             els.map((e) => e.textContent.replace(/[^A-Za-z]/g, ''))),
             ['Workout', 'History'], 'the nav sits at the bottom with two tabs');
+        // The toggle's data-day-type hooks come from PROGRAM_DAYS, and a
+        // one-day program renders none at all (test 123 pins that).
         eq(await page.$$eval('[data-day-type]', (els) =>
             els.map((e) => e.getAttribute('data-day-type'))),
-            ['anterior', 'posterior'], 'the day toggle keeps its data-day-type hooks');
-        // Derived: the Anterior roster has changed size twice already.
-        const anteriorCount = await page.evaluate(() =>
-            DEFAULT_EXERCISES.filter((e) => e.day === 'anterior').length);
-        eq(await deckPosition(page), '1 of ' + anteriorCount,
+            await page.evaluate(() => PROGRAM_DAYS.length > 1 ? PROGRAM_DAYS.map((d) => d.id) : []),
+            'the day toggle renders a hook per program day, or none for one day');
+        // Derived: the roster has changed size several times already.
+        const dayCount = await page.evaluate(() =>
+            DEFAULT_EXERCISES.filter((e) => e.day === getDefaultDayType(new Date())).length);
+        eq(await deckPosition(page), '1 of ' + dayCount,
             'the counter reports position in the day');
 
         // === 5. History still reachable ================================

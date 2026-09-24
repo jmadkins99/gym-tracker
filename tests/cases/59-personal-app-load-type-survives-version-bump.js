@@ -116,7 +116,7 @@ async function readSavedConfig(page) {
         eq(drifted, [], 'every other exercise kept its seeded load type');
 
         // And it is not just storage — the breakdown really renders two-sided.
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
         // The card has to be navigated to and opened before it has a weight
         // input or a breakdown at all.
         // The rename is a user-owned field that survives the version bump, so

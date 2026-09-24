@@ -60,7 +60,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await selectDayType(page, 'anterior');
+        await selectDayType(page, 'full-body');
 
         // === 1. Today's working weight: 255, five over the cap ==========
         const today = await setWeightAndOpen(page, 'Shoulder Press', 255);

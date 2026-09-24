@@ -9,9 +9,9 @@ the user actually sees.
 ```bash
 cd tests
 bash run.sh                # everything
-bash run.sh 42             # just case 42
+bash run.sh 50             # just case 50
 bash run.sh personal-app   # just the personal-app cases
-TEST_JOBS=1 bash run.sh 42 # one at a time (see below)
+TEST_JOBS=1 bash run.sh 50 # one at a time (see below)
 ```
 
 Cases run **6 at a time**. The full suite takes about **110 seconds**;
@@ -131,19 +131,19 @@ first — it is what tells you whether a failure is a regression or an
 intentional behaviour change. Rather than duplicate all of them here,
 what follows is a map of the ones you are most likely to touch.
 
-**The Anterior/Posterior split** (August 2026, replacing Upper/Lower):
+**The Full Body program** (September 2026, replacing Anterior/Posterior):
 
 | File | Covers |
 |---|---|
-| `50-…-anterior-posterior-roster.js` | The canonical roster, parsed straight out of `config.js`. Every id's day, both days' order, `category`/`day` agreement, dense `order`. No browser — run this one first, it takes under a second. |
-| `42-…-anterior-posterior-split.js` | What a **fresh install** renders: 12 Anterior, 9 Posterior, toggle order, weekday default, retired day types gone. |
-| `43-…-anterior-posterior-config-migration.js` | What a **saved config** becomes: a 19-id Full Body config reconciled onto the new layout, renames preserved, retired ids dropped, idempotent. |
-| `54-…-v13-to-v14-day-reassignment.js` | That the **version bump** is what delivers it. The only case that catches a forgotten `EXERCISE_CONFIG_VERSION` bump — 42 and 43 both pass without it. |
-| `51-…-weekday-default-map.js` | All seven weekdays map to the right day type, not just today's. |
-| `52-…-legacy-day-labels.js` | Aug-2026 `day: 'upper'`/`'lower'` history keeps its own labels and rosters. History is never migrated. |
-| `55-…-day-toggle-and-settings-order.js` | The toggle and the Settings grouping agree with the roster, and the reorder arrows stop at the day boundary. |
-| `23` / `53` | Logging a full Anterior / Posterior day through the real UI. The pair is what stops the day stamp being hardcoded. |
-| `44-…-weekly-view-eras.js` | History and Edit render every era at once: current Anterior, a workout predating a day reassignment, legacy Upper, legacy Cardio, pre-split Full Body. |
+| `50-…-full-body-roster.js` | The canonical roster and `PROGRAM_DAYS`, parsed straight out of `config.js`. Order, every `day` declared, `category`/label agreement, dense `order`, no reused day id. No browser. Run this one first; it takes under a second. |
+| `123-…-full-body-program.js` | What a **fresh install** renders: no day toggle, 19 movements in order, `full-body` on every weekday. |
+| `124-…-anterior-posterior-to-full-body.js` | What an **Anterior/Posterior device** becomes: the v22 bump rebuilds its config with names and load types kept and no wipe, "Last:" carries over from both old days, and old sessions keep their labels and rows. The pin on the version bump for this switch. |
+| `43-…-saved-config-migration.js` | An old **saved config with a different id set** (July 2026 Full Body): ids added and dropped, renames preserved, idempotent. |
+| `54-…-v13-to-v14-day-reassignment.js` | The same version-bump pin from further back: a v13 Upper/Lower config lands on the current layout. |
+| `52-…-legacy-day-labels.js` | Aug 2026 `day: 'upper'`/`'lower'` history keeps its own labels and rosters. History is never migrated. |
+| `55-…-settings-order.js` | Settings lists the one day in roster order, with no heading, and the arrows work across the whole list. |
+| `23-…-full-body-day-logging.js` | Logging a full day through the real UI, stamped `day: 'full-body'`. Its Posterior mirror (53) was retired with the split; bring one back if the program gets a second day. |
+| `44-…-weekly-view-eras.js` | History and Edit render every era at once: Anterior, a workout predating a day reassignment, legacy Upper, legacy Cardio, pre-split Full Body. |
 | `40-…-config-version-reorder.js` | A code-side reorder reaches a saved config, and an in-app Settings reorder survives reload. |
 
 **Jessi's app** — the `*-public-app-*` cases. Her program is a separate

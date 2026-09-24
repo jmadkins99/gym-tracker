@@ -2,8 +2,7 @@
 // ----------------------
 // Storage hydration at mount: everything the app derives from persisted state
 // must be on screen after a load. Seeds (a) workout history for
-// frontal-pulldowns and (b) an exerciseConfig with a user-renamed exercise
-// plus the migratedToFullBody2 flag so the config survives the FB wipe.
+// frontal-pulldowns and (b) an exerciseConfig with a user-renamed exercise.
 // Asserts the renamed card renders with "Last:" and default weight from
 // history, and the header week is derived from the earliest seeded workout
 // (the week-migration effect recomputes it from history, ignoring any cache).
@@ -50,12 +49,11 @@ const NS = 'gym-local:';
                 e.id === 'frontal-pulldowns' ? { ...e, name: 'My Custom Pulldowns' } : e
             );
             localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify({ exercises }));
-            localStorage.setItem(ns + 'migratedToFullBody2', 'true');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));
         }, NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
                 const renamed = await readDeckCard(page, 'My Custom Pulldowns');
 

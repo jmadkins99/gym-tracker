@@ -108,7 +108,7 @@ const INSTALL_STUB = () => {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'anterior');
+        await selectDeckDay(page, 'full-body');
 
         // === 1. Log three movements through the real gestures =========
         for (let i = 0; i < 3; i++) {

@@ -38,7 +38,7 @@ const NS = 'gym-local:';
         await page.evaluate((ns) => localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         // Log Frontal Plane Pulldowns with its pre-filled weight/reps. The deck
         // mounts three cards, so this navigates to it and opens it first —
@@ -55,7 +55,7 @@ const NS = 'gym-local:';
         // Reload: the mid-workout state must come back.
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         // A logged card opens itself as a review, so after the reload it should
         // be found already showing its numbers with a spent LOG button.

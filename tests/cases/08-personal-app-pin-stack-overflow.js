@@ -81,7 +81,7 @@ async function readCard(page, exerciseName) {
         await seedPersonalApp(page, { workoutHistory });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'posterior');
+        await selectDayType(page, 'full-body');
 
         // --- Capped stack: Calf Raises at 500 over a 405 cap ---
         const clickedCalf = await clickBreakdown(page, 'Calf Raises');
