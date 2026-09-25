@@ -28,9 +28,15 @@
 // restored backup clears those flags too, so "the flag happens to be set" is not
 // protection — that is the same argument case 56 makes for Jessi.
 //
-// To verify this test is real: remove the `config.coachPreset` guard from
-// migrateJessiToFullBody in index.html. This case reddens on the first reload
-// and every other case in the suite stays green.
+// Since Sep 2026 (Jessi's revision 16) those one-shots are retired — empty
+// stubs remain for cached old builds — and migrateJessiSplit refuses any
+// config without Jessi's splitRevision. This case stays as Ian's original
+// guard; test 127 now runs every other client the same way, and test 126
+// checks the whole matrix in memory.
+//
+// To verify this test is real: give the `ian` preset in clients.js a
+// `splitRevision`. migrateJessiSplit then rebuilds his program as Jessi's on
+// the first reload and this case reddens.
 
 const path = require('path');
 const { start } = require('../lib/server');

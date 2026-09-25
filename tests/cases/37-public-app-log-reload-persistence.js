@@ -38,8 +38,12 @@ const NS = 'gym-local:';
                 exercises: [{ id: 'jfront', name: 'Frontal Plane Pulldowns', weight: '160', reps: '6' }],
             }),
         ];
+        // The 5-8 reps dropdown every Jessi-era device carries. A retired
+        // one-shot used to add it on load; without it the reps field is
+        // free-typed, and a one-tap LOG is (correctly) rejected until reps
+        // are entered, which is not what this case is about.
         await seedPublicApp(page, {
-            exerciseConfig: jessiPreMigrationConfig(),
+            exerciseConfig: { ...jessiPreMigrationConfig(), repsDropdown: { min: 5, max: 8 } },
             workoutHistory,
             schedule: jessiDefaultSchedule(),
         });

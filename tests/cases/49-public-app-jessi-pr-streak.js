@@ -59,14 +59,17 @@ const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const NS = 'gym-local:';
 const CARD = 'Chest Flies';
 
-// Jessi-shaped: minimalistPrTracking on (which gates the badge) and gympinMode
-// on (which gates the Weight Breakdown button the badge sits beside).
+// Jessi-shaped: minimalistPrTracking on (which gates the badge), gympinMode
+// on (which gates the Weight Breakdown button the badge sits beside), and his
+// 5-8 reps dropdown, which his saved config carries. (A retired local one-shot
+// used to add the dropdown on load; nothing does now.)
 function jessiConfig() {
     return {
         version: 2,
         categories: ['Full Body'],
         minimalistPrTracking: true,
         gympinMode: true,
+        repsDropdown: { min: 5, max: 8 },
         days: {
             1: [
                 { id: 'jchest', name: 'Chest Flies',         category: 'Full Body', order: 0, type: 'standard', sets: 1, minReps: 6, maxReps: 8 },

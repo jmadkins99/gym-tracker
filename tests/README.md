@@ -277,14 +277,17 @@ version bump. `43` gained the assertion that a saved config carrying a retired
 id has it removed.
 
 **Coach presets.** `63-…-ian-coach-code.js` and `64-…-ian-not-clawed-back.js`
-cover Ian's program. `64` is the one that matters: three of the Jessi one-shots
-identify her install by the *shape* of its config — categories of exactly
-Anterior/Posterior — which is also what any other client on that split produces.
-`migrateJessiToFullBody` would drop three of Ian's movements, rename two more,
-and collapse his two days into one, on his **second** load rather than his
-first. A `coachPreset` stamp written by the coach-code path is what holds it
-off; `64` clears the one-shot flags and reloads three times to prove it. Removing
-that guard reddens `64` alone.
+cover Ian's program. `64` was written when three Jessi one-shots identified
+an install by the *shape* of its config — categories of exactly
+Anterior/Posterior — which Ian's program shares; it clears the old flags and
+reloads three times. Those one-shots were retired with Jessi's Sep 2026 Full
+Body switch (revision 16), and the guard now covers **every** other client:
+`126` runs Lexi, Grace, Noah, Shawn, Ian and self-serve programs through the
+migrations in memory, stamped and unstamped, and pins their presets to
+`fixtures/public-app-other-client-presets.json`; `127` installs each through
+the real coach-code wizard and requires their saved program never changes.
+Before revision 16, `127` failed on an unstamped Grace and on self-serve
+programs, which the one-shots rewrote.
 
 **On Jessi's app** the same setting arrived a few days later, with two
 differences worth knowing. The Weight Breakdown is no longer gated: it used

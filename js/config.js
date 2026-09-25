@@ -365,25 +365,20 @@
         // here because this constant is what someone changing the roster opens
         // first, and the surprises are not in this file.
         //
-        // A reorder lands in THREE places, not one:
+        // A reorder lands in TWO places:
         //   1. DEFAULT_EXERCISES below, plus a bump of this constant.
-        //   2. public-gym-app/js/migrations.jessi.js — JESSI_ANTERIOR_ORDER /
-        //      JESSI_POSTERIOR_ORDER, plus a bump of JESSI_SPLIT_REVISION.
-        //      That delivers it to Jessi's EXISTING devices.
-        //   3. public-gym-app/js/clients.js — the `jessi` coach preset, which
-        //      seeds a FRESH install. Nothing in 1 or 2 points at it, and it is
-        //      the one that gets missed: skip it and every current device takes
-        //      the new order while a new install is seeded with the old one.
+        //   2. public-gym-app/js/migrations.jessi.js — JESSI_PROGRAM, plus a
+        //      bump of JESSI_SPLIT_REVISION. That delivers it to Jessi's
+        //      existing devices, and his coach preset is built from the same
+        //      table, so fresh installs follow automatically (since revision
+        //      16; before that the preset in clients.js was a third, separately
+        //      maintained copy, and the one that got missed).
         // The two programs have been identical name for name since the Aug 2026
         // split. Ask before letting them diverge, and say so in both commits.
         //
         // `order` is a dense 0..N run across the WHOLE flat list, not per day.
         // moveExercise reindexes off it and load time is a plain numeric sort,
         // so when PROGRAM_DAYS has more than one day keep each day contiguous.
-        //
-        // Since v22 the personal app is on Full Body while Jessi is still on
-        // Anterior/Posterior, so steps 2 and 3 do not apply until her program
-        // follows — a deliberate, temporary divergence.
         //
         // What a bump does and does not carry: `order`, `day` and `category`
         // are code-owned and ride in on it. `name`, `loadType` and `increment`

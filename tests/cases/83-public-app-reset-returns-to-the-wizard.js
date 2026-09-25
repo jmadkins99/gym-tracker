@@ -3,13 +3,11 @@
 // Clicking the real "Reset All Data" button, through both confirms, and
 // landing back on the setup wizard without a reload.
 //
-// This is the case that catches a bug case 33 could not. Case 33 asserts that
-// resetData clears every one-shot gate, but it does so by SIMULATING the reset
-// — it removes the keys itself inside page.evaluate and then greps the app's
-// source to check the real implementation lists the same ones. That design
-// keeps the storage list honest, and its own comment says so, but it means the
-// reset handler is never actually invoked. Nothing in the suite clicked the
-// button.
+// This is the case that catches a bug case 33 could not. Case 33 used to
+// assert that resetData cleared Jessi's one-shot gates (retired Sep 2026), and
+// did so by SIMULATING the reset — removing the keys itself inside
+// page.evaluate and grepping the app's source for the same list. The reset
+// handler was never actually invoked. Nothing in the suite clicked the button.
 //
 // So this shipped and nothing noticed: resetData's tail called
 // `setGympinMode(false)`, a setter for state that was deleted in Aug 2026 when
@@ -121,12 +119,10 @@ function simpleConfig() {
             config: localStorage.getItem(ns + 'gymExerciseConfig'),
             history: localStorage.getItem(ns + 'gymWorkoutHistory'),
             setup: localStorage.getItem(ns + 'gymSetupCompleted'),
-            repsFlag: localStorage.getItem(ns + 'jessiRepsDropdownEnabled'),
         }), DEFAULT_NS);
         eq(cleared.config, null, 'the exercise config is gone');
         eq(cleared.history, null, 'the workout history is gone');
         eq(cleared.setup, null, 'the setup-completed marker is gone');
-        eq(cleared.repsFlag, null, 'the one-shot gates are gone');
 
         // A ReferenceError in an onClick reaches puppeteer as a pageerror, so
         // this assertion is the direct pin on the bug rather than a courtesy.

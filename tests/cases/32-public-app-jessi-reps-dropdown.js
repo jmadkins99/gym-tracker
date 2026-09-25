@@ -8,7 +8,8 @@
 // top option exactly the weight-bump trigger while 5 does nothing special.
 //
 // Asserts:
-//   1. enableRepsDropdownForJessi sets repsDropdown {min:5,max:8} + its flag.
+//   1. The dropdown comes from the saved config ({min:5,max:8}, which his
+//      coach preset writes) and loading leaves it as it is.
 //   2. The Reps field is a <select> with exactly 5/6/7/8.
 //   3. Defaulting, parity with the personal app:
 //        prev 7            -> carries over 7
@@ -20,12 +21,15 @@
 //      change, so without the capture in logExercise this fails validation
 //      against a visibly filled field.
 //   5. Goal range is untouched: logged entries still carry maxReps 8.
-//   6. Non-Jessi-shaped installs keep the free-type number input.
+//   6. A one-day "Full Body" program WITHOUT the setting — Grace's shape —
+//      keeps the free-type number input, and loading never adds a dropdown.
+//      Until Sep 2026 a local one-shot (enableRepsDropdownForJessi) forced
+//      one onto any config shaped like Jessi's, Grace's included; it is gone.
 //
 // To verify this is real: delete the `if (!data.reps)` capture block from
 // logExercise — assertion 4 fails (reps never persist on a one-tap LOG).
-// Or change repsDropdown to {min:6,max:8} in enableRepsDropdownForJessi —
-// assertion 2 fails with the wrong option list.
+// Or change the dropdown's option range in ExerciseCard — assertion 2 fails
+// with the wrong option list.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -36,10 +40,11 @@ const { eq, ok } = require('../lib/assert');
 const { PUBLIC_APP_ROOT } = require('../lib/paths');
 const { ACTIVE, goToCard, revealCard } = require('../lib/deck');
 
-function config(categories) {
+function config(categories, repsDropdown) {
     return {
         version: 2,
         categories,
+        ...(repsDropdown ? { repsDropdown } : {}),
         minimalistPrTracking: true,
         gympinMode: true,
         days: {
@@ -94,26 +99,17 @@ async function readReps(page, name) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
         await seedPublicApp(page, {
-            exerciseConfig: config(['Full Body']),
+            exerciseConfig: config(['Full Body'], { min: 5, max: 8 }),
             workoutHistory: HISTORY,
             schedule: jessiDefaultSchedule(),
-        });
-        await page.evaluate(() => {
-            localStorage.removeItem('gym-local:jessiRepsDropdownEnabled');
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // 1. Auto-enable.
-        const enabled = await page.evaluate(() => {
-            const cfg = JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig'));
-            return {
-                repsDropdown: cfg.repsDropdown,
-                flag: localStorage.getItem('gym-local:jessiRepsDropdownEnabled'),
-            };
-        });
-        eq(enabled.repsDropdown, { min: 5, max: 8 }, 'repsDropdown auto-enabled as 5-8 for Jessi');
-        eq(enabled.flag, 'true', 'jessiRepsDropdownEnabled set so auto-enable does not re-fire');
+        // 1. The setting comes from the saved config.
+        const enabled = await page.evaluate(() =>
+            JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig')).repsDropdown);
+        eq(enabled, { min: 5, max: 8 }, 'his saved 5-8 repsDropdown is left as it is');
 
         // 2 + 3. Widget type, options, and defaulting.
         const carry = await readReps(page, 'Chest Flies');
@@ -158,9 +154,9 @@ async function readReps(page, name) {
         // 5. Goal range untouched.
         eq(saved.maxReps, 8, 'goal range unchanged — logged entry still carries maxReps 8');
 
-        // 6. Non-Jessi-shaped install keeps the free-type input.
+        // 6. Grace's shape — one "Full Body" day, no setting — stays free-type.
         await seedPublicApp(page, {
-            exerciseConfig: config(['Custom Split']),
+            exerciseConfig: config(['Full Body']),
             workoutHistory: HISTORY,
             schedule: jessiDefaultSchedule(),
         });
@@ -171,8 +167,11 @@ async function readReps(page, name) {
         await waitForApp(page);
 
         const other = await readReps(page, 'Chest Flies');
-        ok(other && other.isFreeType, 'non-Jessi install keeps the free-type number input');
-        ok(!other.isSelect, 'non-Jessi install has no reps <select>');
+        ok(other && other.isFreeType, 'a Full Body program without the setting keeps the free-type number input');
+        ok(!other.isSelect, 'and has no reps <select>');
+        const added = await page.evaluate(() =>
+            JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig')).repsDropdown);
+        eq(added, undefined, 'and loading never added a repsDropdown to it');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Jessi gets a 5-8 reps dropdown; goal range and PR trigger unchanged.');
