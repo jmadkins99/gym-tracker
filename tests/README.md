@@ -171,6 +171,8 @@ can catch:
 | `59-…-load-type-survives-version-bump.js` | The `loadType` line in `migrateExerciseConfig`. `40`, `43` and `54` all stay green without it, then every user choice silently reverts on the next unrelated bump. |
 | `60-…-load-type-survives-backup-restore.js` | The import path, which saves with no version and so always rebuilds — plus the `resolveLoadType` fallback that keeps a pre-v15 backup rendering before its first reload. The only case that drives the file input. |
 | `61-…-two-sided-increment-bump.js` | That a two-sided machine's PR increment lands on a real plate (1.25 → 2.5), and that only 1.25 moves. |
+| `128-…-gympin-settings.js` | The Gympin switch and "Stack tops out at" field (Sep 2026): offered on pin-loaded rows only, seeded from `PIN_STACK_CAPS`, saved by Save and not by Cancel, folded away and kept (not deleted) by a switch to plate-loaded, and read by the card — a stack turned on overflows, a seeded one turned off stops. **Start here** when touching the overflow. |
+| `129-…-gympin-survives-version-bump.js` | The `gympin` / `stackMax` lines in `migrateExerciseConfig`, 59's twin: a saved pair — a saved `false` included — comes through a version bump and an unversioned import, and a config with neither field gets nothing written in and still renders the seed. |
 | `65-…-exercise-timing-capture.js` | That opening a card's Weight Breakdown stamps `startedAt` and LOG stamps `loggedAt`, that a card logged without its panel opened carries no `startedAt`, and that the panel button is one-way. |
 | `66-…-session-timing-derivation.js` | `getSessionTiming`'s arithmetic against fixed timestamps: logged-order sorting, the two-minute fallback and its floor at zero, and the 30-minute ceiling above which a movement reports NA and is kept out of the session total. |
 | `67-…-pr-count-weight-drop.js` | That "PRs Smashed" refuses a weight drop, and reads the same `isImprovement` the flame badge does. |
@@ -251,6 +253,16 @@ Note that `16` is weaker than it looks now: with every exercise carrying a
 `loadType`, "shows a breakdown button" is unconditionally true, so its
 browser half only catches a card rendering no button at all. Its teeth are
 the source-level check that every entry declares a legal type.
+
+**The Gympin** (Sep 2026) turned the pin-stack ceiling from a code-side table
+into a per-exercise Settings answer: `gympin` (on/off) and `stackMax` on each
+pin-loaded exercise, seeded from `PIN_STACK_CAPS`, resolved by `resolveGympin`
+in `config.js`. `calculatePinStackBreakdown` no longer reads config at all —
+its second argument is the resolved ceiling or null — which is why `80` passes
+`NO_CEILING` where it used to pass an id. The three overflow renderers (`08`,
+`26`, `105`) run on a fresh install and so still render the seed; `128` is the
+one that types a ceiling in and watches the card change, and `129` is the one
+that carries the answer across a version bump.
 
 **The PR pill, three surfaces, one rule.** A PR badge says "🔥 PR" for a lone
 improvement and "🔥 N" once the run is two or more, and it says it identically

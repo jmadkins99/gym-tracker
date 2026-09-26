@@ -20,7 +20,10 @@
 //     what renders. That is the case to reach for when touching the breakdown.
 //
 // Also pinned here: the shape of PIN_STACK_CAPS, and that a cap only ever
-// names a real, pin-seeded exercise.
+// names a real, pin-seeded exercise. Since Sep 2026 the table is the seed for
+// the per-exercise Gympin setting (cases 128 and 129) rather than the
+// authority, but a seed on a plate machine is the same dead config it always
+// was, so the check stands.
 
 const path = require('path');
 const fs = require('fs');

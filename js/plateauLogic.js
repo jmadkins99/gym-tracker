@@ -853,26 +853,28 @@
 
         // Calculate the warmup + top-set breakdown for a pin-stack exercise.
         //
+        // `maxPin` is the stack's top weight, or null for a stack with no
+        // ceiling. Callers get it from resolveGympin(exercise).max, which is
+        // the user's Settings answer (on/off plus the number) seeded from
+        // PIN_STACK_CAPS — this function never reads config itself, so a
+        // Gympin switched off in Settings is simply a null here.
+        //
         // Returns: { warmup1, warmup2, topSet } where each set is one of:
         //   { overflow: false, pinWeight, totalWeight }
         //     - The set fits on the pin stack. Display just the pin weight.
         //   { overflow: true, pinWeight, plates, totalWeight }
-        //     - The set exceeds maxPin (Calf Raises at 405 is the only capped
-        //       exercise today, since Leg Press went back to plate-loaded).
-        //       Display "pin at max + plates" using the same plate breakdown
-        //       shape as plate-loaded exercises — but always as a single pile,
-        //       since a stack has no per-side split.
+        //     - The set exceeds maxPin. Display "pin at max + plates" — the
+        //       plates being what goes on the Gympin — using the same plate
+        //       breakdown shape as plate-loaded exercises, but always as a
+        //       single pile, since a stack has no per-side split.
         //       Plate weight is rounded DOWN to a clean plate combination,
         //       so totalWeight may be slightly under the target.
         //
-        // When the exercise has no cap in PIN_STACK_CAPS, no set is ever in
-        // overflow mode and the top-set entry can be ignored by the UI
-        // (the user already sees their working weight in the input field).
-        function calculatePinStackBreakdown(totalWeight, exerciseId) {
-            // Caps stay keyed by id in config.js rather than riding on the
-            // user's loadType: a ceiling belongs to one machine, not to a way
-            // of loading one. Callers only reach here when loadType is 'pin'.
-            const maxPin = PIN_STACK_CAPS[exerciseId] ?? null;
+        // With a null maxPin no set is ever in overflow mode and the top-set
+        // entry can be ignored by the UI (the user already sees their working
+        // weight in the input field).
+        function calculatePinStackBreakdown(totalWeight, maxPin = null) {
+            if (!(typeof maxPin === 'number' && maxPin > 0)) maxPin = null;
             const availablePlates = [45, 25, 10, 5, 2.5, 1.25];
 
             // Round to nearest achievable pin weight (5 lb increments + optional

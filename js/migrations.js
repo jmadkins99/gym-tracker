@@ -39,7 +39,8 @@
         // - Adds new defaults the user doesn't have.
         // - Drops saved exercises that are no longer in defaults.
         // - Applies the canonical order from DEFAULT_EXERCISES.
-        // - Preserves user-renamed display names by id.
+        // - Preserves the user-owned fields by id: display name, loadType,
+        //   increment, gympin and stackMax.
         // Pure function: takes the parsed config and returns the reconciled
         // config, or null if no changes are needed. The caller persists.
         //
@@ -75,9 +76,10 @@
             for (const defaultEx of DEFAULT_EXERCISES) {
                 if (savedById.has(defaultEx.id)) {
                     const saved = savedById.get(defaultEx.id);
-                    // Preserve the three USER-owned fields — the renamed display
-                    // name, the chosen loadType and the PR increment; everything
-                    // else (category, day, type, order) comes from defaults.
+                    // Preserve the USER-owned fields — the renamed display name,
+                    // the chosen loadType, the PR increment, and the Gympin pair
+                    // (on/off and the stack's top weight); everything else
+                    // (category, day, type, order) comes from defaults.
                     //
                     // loadType has to be listed here or the Settings dropdown
                     // works right up until the next version bump, which rebuilds
@@ -94,7 +96,11 @@
                         // and resolveIncrement reads the seed from
                         // PR_WEIGHT_INCREMENTS. Copying the seed in here would
                         // freeze it, so a code-side change would never land.
-                        increment: saved.increment
+                        increment: saved.increment,
+                        // Same rule for the Gympin pair: resolveGympin reads the
+                        // seed from PIN_STACK_CAPS when either is absent.
+                        gympin: saved.gympin,
+                        stackMax: saved.stackMax
                     });
                 } else {
                     result.push({ ...defaultEx });

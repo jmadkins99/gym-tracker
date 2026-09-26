@@ -28,8 +28,10 @@
 //
 // To verify this test is real: in js/config.js, delete the 'calf-raise' entry
 // from PIN_STACK_CAPS. Top Set and the "pin 405" rows disappear and the
-// test fails. Caps stayed code-side when classification became a user setting,
-// so this is still a one-line change in config.js.
+// test fails. Since Sep 2026 that table is the SEED for a per-exercise Gympin
+// setting (on/off plus the stack's top weight, in Settings > Manage
+// Exercises) rather than the authority, so this case renders the seed on a
+// fresh install; 128 renders a ceiling typed into the form instead.
 
 const path = require('path');
 const { start } = require('../lib/server');

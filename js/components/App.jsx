@@ -375,6 +375,21 @@
                 });
             };
 
+            // The Gympin pair, the fourth and fifth user-owned fields, written
+            // together because the form saves them together. `gympin` is a
+            // boolean and `stackMax` a number or undefined; absent means "use
+            // the seed" (resolveGympin), and an explicit false is how a seeded
+            // machine is switched off.
+            const updateExerciseGympin = (exerciseId, { gympin, stackMax }) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, gympin, stackMax } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
             // Reordering is scoped to the exercise's own day. Swapping across
             // a day boundary would move a card in the settings list without
             // changing which day it belongs to, so the arrow would look like it
@@ -1020,6 +1035,7 @@
                             updateExerciseName={updateExerciseName}
                             updateExerciseLoadType={updateExerciseLoadType}
                             updateExerciseIncrement={updateExerciseIncrement}
+                            updateExerciseGympin={updateExerciseGympin}
                             moveExercise={moveExercise}
                         />
                     )}

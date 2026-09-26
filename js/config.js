@@ -139,15 +139,34 @@
         // `overflowPlateMode` was dropped from the pin map.
         const LOAD_TYPES = ['pin', 'plate-one-sided', 'plate-two-sided'];
 
-        // Hard ceilings on pin stacks, keyed by id. Above the cap the breakdown
-        // renders "pin at max + loose plates" for the excess — the *overflow*
-        // shape, which is the only thing a cap does. Deliberately NOT part of
-        // loadType and NOT user-editable: a cap is a property of one specific
-        // machine, not a way of loading one. Applies only when loadType is
-        // 'pin'; ignored otherwise, so a cap left behind on a reclassified
-        // exercise is inert rather than wrong. Test 16 fails on a cap naming a
-        // non-pin id — a cap on a plate machine reads as intent while doing
-        // nothing, which is worse than no cap at all.
+        // Where a pin stack runs out, and whether a Gympin takes over from
+        // there. Both are USER settings as of Sep 2026: every pin-loaded
+        // exercise carries `gympin` (on/off) and `stackMax` (the stack's top
+        // weight in lb) in the saved config, set from the pencil form in
+        // Settings > Manage Exercises. Above stackMax the breakdown renders
+        // "pin at max + loose plates" for the excess — the *overflow* shape,
+        // which is the plate list to hang on the Gympin. With the Gympin off
+        // the stack simply has no ceiling as far as the breakdown is
+        // concerned, which is what every uncapped machine has always rendered.
+        //
+        // The controls only appear for an exercise whose load type is
+        // Pin-loaded, and resolveGympin below returns off for anything else,
+        // so a Gympin left behind on a reclassified exercise is inert rather
+        // than wrong. The two fields survive the switch, so flipping a machine
+        // back to Pin-loaded restores them.
+        //
+        // PIN_STACK_CAPS is the SEED for those fields, by id: an exercise
+        // that carries neither field reads its ceiling from here and is on if
+        // it has an entry. It used to be the whole mechanism — a code-side
+        // ceiling deliberately kept out of Settings, on the argument that a
+        // cap belongs to one specific machine rather than to a way of loading
+        // one. That argument was right about where the number comes from and
+        // wrong about who should hold it: every machine swap below needed a
+        // deploy to move a number the user knew at the machine. Seeding from
+        // the same table is what makes the upgrade invisible — the four
+        // machines here render exactly as they did before the fields existed,
+        // and nothing is written until the form is saved. Test 16 still fails
+        // on a seed naming a non-pin id.
         //
         // Lateral Raises (Sep 2026) reads 100 for two different machines, and
         // the entry is worth reading slowly for that reason.
@@ -193,7 +212,8 @@
         // entirely in Sep 2026. Leg Press was briefly capped at 390 in the same
         // Aug period, when the gym looked to have swapped its plate sled for a
         // stack; that turned out not to hold. Calf Raises has always been a
-        // different machine, close number notwithstanding.
+        // different machine, close number notwithstanding. Every one of those
+        // moves is the kind the Settings form now absorbs without a deploy.
         const PIN_STACK_CAPS = {
             'lateral-raises': 100,
             'shoulder-press': 250,
@@ -211,6 +231,29 @@
             if (exercise && LOAD_TYPES.includes(exercise.loadType)) return exercise.loadType;
             const seed = DEFAULT_EXERCISES.find(e => e.id === (exercise && exercise.id));
             return (seed && seed.loadType) || 'pin';
+        }
+
+        // The effective Gympin setting for an exercise: { on, max }, where
+        // `max` is the stack's top weight in lb, or null. Off unless the
+        // exercise is Pin-loaded — the overflow shape is a pin pegged at its
+        // ceiling with plates hung past it, which means nothing on a plate
+        // machine — and off when on but with no usable ceiling, so the
+        // breakdown never has to think about a half-filled form.
+        //
+        // Same shape as resolveIncrement below: the saved field wins when it
+        // is present, else the code seed in PIN_STACK_CAPS. A saved `false`
+        // is a real answer and beats the seed, which is how a seeded machine
+        // is switched off from Settings. No fallback is written into the
+        // config, so a seed change still reaches an install that never
+        // touched the form.
+        function resolveGympin(exercise) {
+            const off = { on: false, max: null };
+            if (!exercise || resolveLoadType(exercise) !== 'pin') return off;
+            const seedMax = PIN_STACK_CAPS[exercise.id];
+            const on = typeof exercise.gympin === 'boolean' ? exercise.gympin : seedMax !== undefined;
+            const saved = Number(exercise.stackMax);
+            const max = Number.isFinite(saved) && saved > 0 ? saved : (seedMax ?? null);
+            return on && max !== null ? { on: true, max } : off;
         }
 
         // The raw PR step for an exercise: the user's saved `increment` if it is
@@ -381,9 +424,10 @@
         // so when PROGRAM_DAYS has more than one day keep each day contiguous.
         //
         // What a bump does and does not carry: `order`, `day` and `category`
-        // are code-owned and ride in on it. `name`, `loadType` and `increment`
-        // are USER-owned and preserved by migrateExerciseConfig, so a change to
-        // those in the seed data reaches a fresh install only. Getting a rename
+        // are code-owned and ride in on it. `name`, `loadType`, `increment`,
+        // `gympin` and `stackMax` are USER-owned and preserved by
+        // migrateExerciseConfig, so a change to those in the seed data reaches
+        // a fresh install only. Getting a rename
         // onto an existing device is a Settings job here; on Jessi's side it
         // needs a one-time JESSI_REV<N>_* pass. A pure reorder needs neither.
         const EXERCISE_CONFIG_VERSION = 22;

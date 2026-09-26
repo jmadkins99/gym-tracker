@@ -1,17 +1,36 @@
         const { useState, useRef } = React;
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, moveExercise }) {
+        // What the Gympin form shows for an exercise: the saved pair when it
+        // has one, else the code seed. This is deliberately NOT resolveGympin,
+        // which answers "does the breakdown overflow" and so folds the load
+        // type and a blank number into a plain off — the form has to show the
+        // number the user typed even while the switch is off, so that turning
+        // it back on does not mean typing it again.
+        function gympinFormValues(exercise) {
+            const seedMax = PIN_STACK_CAPS[exercise.id];
+            const on = typeof exercise.gympin === 'boolean' ? exercise.gympin : seedMax !== undefined;
+            const saved = Number(exercise.stackMax);
+            const max = Number.isFinite(saved) && saved > 0 ? saved : (seedMax ?? '');
+            return { on, max: String(max) };
+        }
+
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
             const [tempName, setTempName] = useState('');
             const [tempIncrement, setTempIncrement] = useState('');
+            const [tempGympin, setTempGympin] = useState(false);
+            const [tempStackMax, setTempStackMax] = useState('');
 
             const handleStartEdit = (exercise) => {
                 setEditingExercise(exercise.id);
                 setTempName(exercise.name);
                 const increment = resolveIncrement(exercise);
                 setTempIncrement(increment === undefined ? '' : String(increment));
+                const gympin = gympinFormValues(exercise);
+                setTempGympin(gympin.on);
+                setTempStackMax(gympin.max);
             };
 
             // Each field is only written when it changed, so a plain rename is
@@ -25,6 +44,19 @@
                 if (tempIncrement !== '' && increment !== resolveIncrement(exercise)) {
                     updateExerciseIncrement(exercise.id, increment);
                 }
+                // The Gympin pair is only offered on a pin-loaded exercise, so
+                // it is only written for one: a plate machine's edit never
+                // touches fields it was never shown. Written as a pair when
+                // either half changed, since the two are one answer. A blank
+                // number saves as undefined, which resolveGympin reads as
+                // "use the seed, else off".
+                if (resolveLoadType(exercise) === 'pin') {
+                    const was = gympinFormValues(exercise);
+                    const stackMax = tempStackMax.trim() === '' ? undefined : Number(tempStackMax);
+                    if (tempGympin !== was.on || String(stackMax ?? '') !== was.max) {
+                        updateExerciseGympin(exercise.id, { gympin: tempGympin, stackMax });
+                    }
+                }
                 handleCancelEdit();
             };
 
@@ -32,6 +64,8 @@
                 setEditingExercise(null);
                 setTempName('');
                 setTempIncrement('');
+                setTempGympin(false);
+                setTempStackMax('');
             };
 
             if (settingsView === 'exercises') {
@@ -223,6 +257,75 @@
                                                 </div>
                                             );
                                         })() : null}
+
+                                        {/* The Gympin: a switch, and the stack's top
+                                            weight once it is on. Pin-loaded rows only —
+                                            the dropdown above decides live, so switching
+                                            a machine to plate-loaded folds this away
+                                            mid-edit and switching back brings it back
+                                            with the same numbers. Edit-mode only and
+                                            committed by Save, like the increment, so
+                                            Cancel undoes it. */}
+                                        {editingExercise === exercise.id && resolveLoadType(exercise) === 'pin' ? (
+                                            <div data-field="gympin-form" style={{ marginTop: '12px' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer' }}>
+                                                    <span style={{ fontSize: '12px', color: '#8a8aa0' }}>
+                                                        Gympin past the stack
+                                                    </span>
+                                                    <span className="switch">
+                                                        <input
+                                                            type="checkbox"
+                                                            data-field="gympin"
+                                                            checked={tempGympin}
+                                                            onChange={(e) => setTempGympin(e.target.checked)}
+                                                        />
+                                                        <span className="switch-track"></span>
+                                                    </span>
+                                                </label>
+                                                {tempGympin ? (
+                                                    <div style={{ marginTop: '8px' }}>
+                                                        <div style={{ fontSize: '12px', color: '#8a8aa0', marginBottom: '4px' }}>
+                                                            Stack tops out at (lbs)
+                                                        </div>
+                                                        <input
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            className="input-field"
+                                                            data-field="stackMax"
+                                                            value={tempStackMax}
+                                                            placeholder="e.g. 260"
+                                                            min="0"
+                                                            step="any"
+                                                            onChange={(e) => setTempStackMax(e.target.value)}
+                                                            style={{
+                                                                padding: '8px',
+                                                                fontSize: '14px',
+                                                                background: '#0d0d1a'
+                                                            }}
+                                                        />
+                                                        {tempStackMax.trim() === '' || !(Number(tempStackMax) > 0) ? (
+                                                            <div data-field="gympin-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
+                                                                Needs the stack's top weight to show up on the card
+                                                            </div>
+                                                        ) : (
+                                                            <div data-field="gympin-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
+                                                                Above {Number(tempStackMax)} lbs the card shows what to hang on the Gympin
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+
+                                        {/* At a glance, outside edit mode: which stacks
+                                            the Gympin takes over, and where. Reads the
+                                            same resolver the card does, so this line and
+                                            the overflow row can never disagree. */}
+                                        {editingExercise !== exercise.id && resolveGympin(exercise).on ? (
+                                            <div data-field="gympin-status" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '6px' }}>
+                                                📌 Gympin past {resolveGympin(exercise).max} lbs
+                                            </div>
+                                        ) : null}
                                     </div>
                                     ))}
                                 </div>

@@ -490,6 +490,55 @@
             display: none;
         }
 
+        /* ---- Switch (Settings > Manage Exercises > Gympin) ----
+           A checkbox drawn as a track and a knob. The input stays in the
+           DOM, invisible, so the label click and the keyboard still drive
+           it; only the track is painted. Accent when on, like every other
+           active control. */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+            flex: none;
+        }
+
+        .switch input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-track {
+            position: absolute;
+            inset: 0;
+            background: #2a2a3a;
+            border-radius: 11px;
+            transition: background 0.2s;
+        }
+
+        .switch-track::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #8a8aa0;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .switch input:checked + .switch-track {
+            background: var(--accent);
+        }
+
+        .switch input:checked + .switch-track::after {
+            transform: translateX(18px);
+            background: #e8e8f4;
+        }
+
 
         /* ==========================================================
            SWIPE DECK — the workout screen

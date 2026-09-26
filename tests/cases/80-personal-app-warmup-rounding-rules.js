@@ -41,7 +41,6 @@ const fs = require('fs');
 const { eq, ok } = require('../lib/assert');
 
 const PLATEAU_SRC = path.resolve(__dirname, '..', '..', 'js', 'plateauLogic.js');
-const CONFIG_SRC = path.resolve(__dirname, '..', '..', 'js', 'config.js');
 
 // Pull a top-level function out of the babel-script source and make it callable
 // here. The file is a pile of globals with no exports, which is exactly what
@@ -57,15 +56,16 @@ function extract(source, name, deps = '') {
 }
 
 const src = fs.readFileSync(PLATEAU_SRC, 'utf8');
-const configSrc = fs.readFileSync(CONFIG_SRC, 'utf8');
 
-// PIN_STACK_CAPS is the one config value the pin breakdown reads.
-const capsMatch = /const PIN_STACK_CAPS\s*=\s*(\{[\s\S]*?\});/.exec(configSrc);
-ok(capsMatch, 'PIN_STACK_CAPS is still declared in config.js');
-const capsDecl = 'const PIN_STACK_CAPS = ' + capsMatch[1] + ';';
+// The pin breakdown reads no config of its own since the Gympin became a
+// Settings answer (Sep 2026): the ceiling arrives as its second argument,
+// resolved by the caller, and null means an uncapped stack. Every probe here
+// is uncapped — the rounding rules are what is under test, not the overflow,
+// which 08, 26 and 105 render through the real resolver.
+const NO_CEILING = null;
 
 const calculatePlateBreakdown = extract(src, 'calculatePlateBreakdown');
-const calculatePinStackBreakdown = extract(src, 'calculatePinStackBreakdown', capsDecl);
+const calculatePinStackBreakdown = extract(src, 'calculatePinStackBreakdown');
 
 const SMALLS = [25, 10, 5];
 
@@ -112,7 +112,7 @@ const SMALLS = [25, 10, 5];
 
     // === 3. PIN-STACK: every warmup is a round pin position ============
     for (let total = 10; total <= 500; total += 1.25) {
-        const b = calculatePinStackBreakdown(total, 'chest-press');
+        const b = calculatePinStackBreakdown(total, NO_CEILING);
         for (const key of ['warmup1', 'warmup2']) {
             const set = b[key];
             if (set.totalWeight <= 0) continue;
@@ -123,15 +123,15 @@ const SMALLS = [25, 10, 5];
     }
 
     // The case that motivated it.
-    eq(calculatePinStackBreakdown(201.25, 'chest-press').warmup1.totalWeight, 140,
+    eq(calculatePinStackBreakdown(201.25, NO_CEILING).warmup1.totalWeight, 140,
         '201.25 warms up at 140, not the old 141.25 with a micro-plate on the pin');
-    eq(calculatePinStackBreakdown(201.25, 'chest-press').warmup2.totalWeight, 180,
+    eq(calculatePinStackBreakdown(201.25, NO_CEILING).warmup2.totalWeight, 180,
         'and at 180, not 181.25');
 
     // === 4. The top set is NEVER rounded away ==========================
     eq(calculatePlateBreakdown(287.5, 'plate-two-sided').topSet.totalWeight, 287.5,
         'a plate-loaded top set is the exact working weight, micro-plates and all');
-    eq(calculatePinStackBreakdown(201.25, 'chest-press').topSet.totalWeight, 201.25,
+    eq(calculatePinStackBreakdown(201.25, NO_CEILING).topSet.totalWeight, 201.25,
         'and a pin top set keeps its precise position — that one IS the working weight');
 
     // === 5. THE INVARIANT: a ramp ascends ==============================
@@ -139,7 +139,7 @@ const SMALLS = [25, 10, 5];
         const cases = [
             ['plate-two-sided', calculatePlateBreakdown(total, 'plate-two-sided')],
             ['plate-one-sided', calculatePlateBreakdown(total, 'plate-one-sided')],
-            ['pin', calculatePinStackBreakdown(total, 'chest-press')],
+            ['pin', calculatePinStackBreakdown(total, NO_CEILING)],
         ];
         for (const [label, b] of cases) {
             const w1 = b.warmup1.totalWeight;
@@ -169,7 +169,7 @@ const SMALLS = [25, 10, 5];
         [287.5, 'pin'],
     ]) {
         const b = loadType === 'pin'
-            ? calculatePinStackBreakdown(total, 'chest-press')
+            ? calculatePinStackBreakdown(total, NO_CEILING)
             : calculatePlateBreakdown(total, loadType);
         const p1 = (b.warmup1.totalWeight / total) * 100;
         const p2 = (b.warmup2.totalWeight / total) * 100;

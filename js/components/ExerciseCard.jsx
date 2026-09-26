@@ -89,7 +89,7 @@
             );
 
             if (loadType === 'pin') {
-                const breakdown = calculatePinStackBreakdown(currentWeight, exercise.id);
+                const breakdown = calculatePinStackBreakdown(currentWeight, resolveGympin(exercise).max);
                 const pinRow = (label, pct, set) => (!set || set.totalWeight <= 0) ? null : row(
                     label, pct,
                     (set.overflow ? set.totalWeight : set.pinWeight) + ' lbs',
