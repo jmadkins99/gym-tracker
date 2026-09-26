@@ -91,7 +91,15 @@
             // card. The hero is the average now, so the swap would print one
             // number twice and leave the figure it is measured against —
             // "0.7 pounds under" what? — off the screen entirely.
+            //
+            // The input card is the exception, because there the hero slot is
+            // the field and the average is on screen nowhere else. Before the
+            // reading, a beaten target is not what you are walking onto the
+            // scale to beat — the week's average is — so that card names the
+            // average instead (`inputHeadline` below), and the line keeps
+            // saying how far under the target it sits.
             const MET_BAND = 0.05;
+            const beaten = progress ? progress.gap < -MET_BAND : false;
             const target = progress ? {
                 weight: progress.planWeight,
                 behind: progress.gap > MET_BAND,
@@ -107,6 +115,14 @@
                     tone: target.behind ? ' behind' : ' good', foot: target.line }
                 : { label: 'Weekly average weight', value: weekAvg,
                     tone: rate !== null && rate < -0.05 ? ' good' : '', foot: rateLine };
+
+            // `progress.actual`, not `weekAvg`: it is the figure the gap was
+            // measured from, so the number and "2.4 pounds under" beneath it
+            // are one reading of one week — including on a Monday before the
+            // first check-in, when it is last week's average.
+            const inputHeadline = beaten
+                ? { ...headline, value: progress.actual }
+                : headline;
 
             return (
                 <div className="weigh-stage">
@@ -147,12 +163,13 @@
                                     was about to matter.
 
                                     Under a plan this is the read-back state's
-                                    markup exactly, off the same `headline`, so
-                                    the two cannot drift into two opinions about
-                                    one week and the card does not reflow when
-                                    the reading commits: the input sits where
-                                    the hero will, and everything under the
-                                    divider stays put.
+                                    markup exactly, so the card does not reflow
+                                    when the reading commits: the input sits
+                                    where the hero will, and everything under
+                                    the divider stays put. The number differs
+                                    only once the target is beaten — here it is
+                                    the week's average, which the read-back
+                                    card moves up into its hero.
 
                                     Without a plan it keeps a number the
                                     read-back state drops — the week's average,
@@ -177,14 +194,14 @@
                                     back to the plan's own start weight, so the
                                     target stands before the first reading
                                     does. */}
-                                {headline.value !== null ? (
+                                {inputHeadline.value !== null ? (
                                     <>
                                         <div className="weigh-divider" />
                                         <div className="weigh-trend">
-                                            <div className="weigh-trend-label">{headline.label}</div>
-                                            <div className="weigh-trend-value">{formatWeight(headline.value)}</div>
-                                            <div className={'weigh-rate' + headline.tone}>
-                                                {headline.foot}
+                                            <div className="weigh-trend-label">{inputHeadline.label}</div>
+                                            <div className="weigh-trend-value">{formatWeight(inputHeadline.value)}</div>
+                                            <div className={'weigh-rate' + inputHeadline.tone}>
+                                                {inputHeadline.foot}
                                             </div>
                                         </div>
                                     </>
