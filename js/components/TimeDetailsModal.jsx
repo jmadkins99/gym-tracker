@@ -72,8 +72,31 @@
         // for a workout from a previous day getSessionTiming's own
         // `foregroundMs <= loggedMs` guard rejects it, so a stamp from today
         // cannot leak into an older session's arithmetic.
+        //
+        // While the tapped workout is today's and not yet submitted, the total
+        // runs to now rather than the last log and ticks every second, so it
+        // answers "how long have I been here so far" mid-workout. Once 30
+        // minutes pass with no new log it stops and reads the last log again
+        // (see getSessionTiming). Nothing is stored: once the day is submitted
+        // the same button reads the last log, as every other day does.
         function TimeDetailsModal({ workout, foregroundAt, onClose }) {
-            const timing = getSessionTiming(workout, foregroundAt);
+            const [now, setNow] = React.useState(() => new Date());
+
+            const workoutDay = new Date(workout.date);
+            workoutDay.setHours(0, 0, 0, 0);
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            const inProgress = !workout.submitted && workoutDay.getTime() === today.getTime();
+
+            // Recomputed from the clock on every tick rather than counted up,
+            // so a phone that slept with the modal open is right on waking.
+            React.useEffect(() => {
+                if (!inProgress) return;
+                const id = setInterval(() => setNow(new Date()), 1000);
+                return () => clearInterval(id);
+            }, [inProgress]);
+
+            const timing = getSessionTiming(workout, foregroundAt, inProgress ? now : null);
             if (!timing) return null;
 
             const date = new Date(workout.date);
@@ -95,10 +118,11 @@
 
                         <div style={{ marginBottom: '20px' }}>
                             <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '10px' }}>
-                                Time at the Gym
+                                {timing.live ? 'Time at the Gym So Far' : 'Time at the Gym'}
                             </div>
                             <div data-timing-total style={{ fontSize: '32px', fontWeight: '700', color: 'var(--accent)' }}>
-                                {formatDuration(timing.totalSeconds)}
+                                {formatDuration(timing.totalSeconds)
+                                    + (timing.live ? ` ${timing.totalSeconds % 60}s` : '')}
                             </div>
                         </div>
 

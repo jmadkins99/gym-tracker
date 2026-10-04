@@ -224,7 +224,17 @@
         // Returns null for any workout with no timestamps at all, which is every
         // workout logged before August 2026 — history is never migrated here, so
         // the caller renders nothing rather than a zero.
-        function getSessionTiming(workout, foregroundAt) {
+        //
+        // `liveAt` moves the end of the session total from the last log to that
+        // moment — the History ⏱️ passes the current time while today's day is
+        // still unsubmitted, so a glance mid-workout reads "how long have I been
+        // here" rather than "how long until my last set". It never touches the
+        // per-movement rows, and a moment before the last log is ignored. So is
+        // one more than MAX_EXERCISE_SECONDS past the last log: no movement
+        // takes that long, so the workout is over and was never submitted, and
+        // the total falls back to the last log rather than running on into the
+        // evening. `live` in the result says whether it took effect.
+        function getSessionTiming(workout, foregroundAt, liveAt) {
             if (!workout || !workout.exercises) return null;
 
             const logged = workout.exercises
@@ -292,10 +302,16 @@
                 });
             }
 
+            const lastLoggedMs = logged[logged.length - 1].loggedMs;
+            const liveMs = liveAt ? new Date(liveAt).getTime() : NaN;
+            const live = !isNaN(liveMs) && liveMs > lastLoggedMs
+                && liveMs - lastLoggedMs <= MAX_EXERCISE_SECONDS * 1000;
+
             return {
                 totalSeconds: Math.round(
-                    (logged[logged.length - 1].loggedMs - sessionStartMs) / 1000),
-                rows
+                    ((live ? liveMs : lastLoggedMs) - sessionStartMs) / 1000),
+                rows,
+                live
             };
         }
 
