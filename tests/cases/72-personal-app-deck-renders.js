@@ -48,11 +48,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                 date: new Date(Date.now() - 86400000).toISOString(),
                 day: 'anterior', week: 1, submitted: true, plateauBusters: [],
                 exercises: [
-                    // Whatever leads Anterior has to be in here: section 3
+                    // Whatever leads the day has to be in here: section 3
                     // below asserts the OPEN card shows last session's weight,
-                    // so the active card needs history to show. Tricep
-                    // Extensions took the lead in Sep 2026; before that this
-                    // seed started at Chest Press for the same reason.
+                    // so the active card needs history to show. Chest Press
+                    // leads again since Oct 2026 (Tricep Extensions led from
+                    // Sep), so its 110 is the number section 3 looks for.
                     { id: 'tricep-pushdown', name: 'Tricep Extensions', category: 'Anterior',
                       type: 'standard', weight: '200', reps: '6' },
                     { id: 'chest-press', name: 'Chest Press', category: 'Anterior',
@@ -77,9 +77,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const front = await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-front').innerText, ACTIVE);
 
-        // Tricep Extensions leads the day — Anterior from Sep 2026, and Full
-        // Body since the switch later that month.
-        eq(await activeName(page), 'Tricep Extensions', 'it names the first movement of the day');
+        // Chest Press leads Full Body since the Oct 2026 reorder.
+        eq(await activeName(page), 'Chest Press', 'it names the first movement of the day');
         eq(/\d/.test(front), false,
             'THE POINT: no digit appears on the front face — no weight, no reps, no ' +
             'last session. Leaking any of them removes the reason to swipe up, and ' +
@@ -107,7 +106,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             'finds untouched default values');
         contains(await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-last').textContent, ACTIVE),
-            '200', 'last session shows once the card is open, not before');
+            '110', 'last session shows once the card is open, not before');
 
         // === 4. The chrome the rest of the suite navigates by ==========
         eq(await page.$$eval('.bottom-nav-btn', (els) =>

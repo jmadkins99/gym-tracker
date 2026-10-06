@@ -34,10 +34,10 @@ const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
 const NS = 'gym-local:';
 
 const EXPECTED_FULL_BODY = [
-    'Tricep Extensions', 'Lateral Raises', 'Recline Curls', 'Shoulder Flexion Curls',
-    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Overhead Tricep Extensions',
-    'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs', 'Transverse Plane Rows',
-    'Frontal Plane Pulldowns', 'Shoulder Press', 'Back Extensions', 'Leg Press',
+    'Chest Press', 'Incline Chest Press', 'Lateral Raises', 'Frontal Plane Pulldowns',
+    'Tricep Extensions', 'Chest Flies', 'Recline Curls', 'Shoulder Flexion Curls',
+    'Overhead Tricep Extensions', 'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs',
+    'Transverse Plane Rows', 'Shoulder Press', 'Back Extensions', 'Leg Press',
     'Hip Adduction', 'Calf Raises', 'Leg Extensions',
 ];
 

@@ -96,9 +96,9 @@ const V13_LAYOUT = [
 // maps, so this literal tracks the roster order in DEFAULT_EXERCISES and has to
 // be resorted on every reorder.
 const EXPECTED_DAY_BY_ID = Object.fromEntries([
-    'tricep-pushdown', 'lateral-raises', 'curls-shoulder-extension', 'preacher-curls',
-    'chest-flies', 'chest-press', 'incline-chest-press', 'overhead-tricep-extensions',
-    'ab-crunch', 'hammer-row', 'kelso-shrugs', 'upper-back-row', 'frontal-pulldowns',
+    'chest-press', 'incline-chest-press', 'lateral-raises', 'frontal-pulldowns',
+    'tricep-pushdown', 'chest-flies', 'curls-shoulder-extension', 'preacher-curls',
+    'overhead-tricep-extensions', 'ab-crunch', 'hammer-row', 'kelso-shrugs', 'upper-back-row',
     'shoulder-press', 'leg-curls', 'hip-adduction', 'leg-extensions', 'calf-raise',
     'actual-leg-extensions',
 ].map(id => [id, 'full-body']));

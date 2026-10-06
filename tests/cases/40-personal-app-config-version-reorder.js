@@ -54,23 +54,23 @@ const OLD_ORDER_IDS = [
     'hip-adduction',
 ];
 
-// The canonical Full Body day (Sep 2026). Names are the fresh-install ones
+// The canonical Full Body day (Oct 2026 order). Names are the fresh-install ones
 // because the seed below builds each entry from DEFAULT_EXERCISES — except
 // chest-flies, renamed by the user.
 const EXPECTED_NEW_ORDER = [
-    'Tricep Extensions',
-    'Lateral Raises',
-    'Recline Curls',
-    'Shoulder Flexion Curls',
-    'My Renamed Flies',       // chest-flies, renamed by the user below
     'Chest Press',            // added Aug 2026; arrives via the migration
     'Incline Chest Press',
+    'Lateral Raises',
+    'Frontal Plane Pulldowns',
+    'Tricep Extensions',
+    'My Renamed Flies',       // chest-flies, renamed by the user below
+    'Recline Curls',
+    'Shoulder Flexion Curls',
     'Overhead Tricep Extensions',
     'Ab Crunches',
     'Sagittal Plane Pullovers',
     'Kelso Shrugs',
     'Transverse Plane Rows',
-    'Frontal Plane Pulldowns',
     'Shoulder Press',
     'Back Extensions',
     'Leg Press',

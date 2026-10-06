@@ -401,6 +401,19 @@
         // App.jsx), which would have deleted a saved config on any device
         // without the flag. Tests 123 and 124 are the pins.
         //
+        // 23 is the Oct 2026 reorder of the Full Body day: the press pair opens
+        // it, Lateral Raises, Frontal Plane Pulldowns and Tricep Extensions
+        // follow, then Chest Flies and the curls. Same 19 ids, so the bump is the
+        // entire delivery mechanism again. The user had already made this
+        // order by hand in Settings; this puts it in code so the next bump
+        // does not quietly put the old one back.
+        //
+        // Three seed changes ride along with the same asterisk as 20: Chest
+        // Press and Incline Chest Press to 'plate-two-sided', and Frontal Plane
+        // Pulldowns to 'pin', reach a FRESH INSTALL ONLY. An existing device
+        // keeps its own dropdown answer and changes it in Settings, which is
+        // deliberately the whole plan rather than a one-time rewrite.
+        //
         // ----------------------------------------------------------------
         // LANDING A REORDER
         // ----------------------------------------------------------------
@@ -430,7 +443,7 @@
         // a fresh install only. Getting a rename
         // onto an existing device is a Settings job here; on Jessi's side it
         // needs a one-time JESSI_REV<N>_* pass. A pure reorder needs neither.
-        const EXERCISE_CONFIG_VERSION = 22;
+        const EXERCISE_CONFIG_VERSION = 23;
 
         // The days of the current program, in toggle order. Everything that
         // used to hard-code the split reads this instead: the deck's day toggle
@@ -460,39 +473,38 @@
         //
         // Sep 2026: one Full Body day, six sessions a week, replacing the
         // Anterior/Posterior split (Aug 2026), which had replaced Upper/Lower.
-        // The same 19 movements in a new order; v22 is what carries it.
+        // The same 19 movements in a new order; v22 carried it, and v23 the
+        // Oct 2026 reorder that opens with the press pair.
         const DEFAULT_EXERCISES = [
-            // Opens the day so the cable station is done and free before the
-            // rest of the work.
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
+            // Takes the plain `chest-press` id — no existing id was squatting on
+            // it, unlike the leg-extensions case below, so there is no need for
+            // an `actual-` prefix there.
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-two-sided', order: 0 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-two-sided', order: 1 },
+            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
+            // A stack again from Oct 2026, after a month seeded
+            // 'plate-one-sided'. No PIN_STACK_CAPS entry: nobody has reported a
+            // ceiling, and a Gympin is a Settings answer if one turns up.
+            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
+            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
+            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
             // Renamed from Preacher Curls and reclassified to a stack (Sep
             // 2026) — the name now says the joint action rather than the bench,
             // and the machine was never a plate sled. `preacher-curls` is its
             // frozen id and stays put; Jessi's app has its own
             // `actual-preacher-curls`, a different movement that is NOT renamed
             // with this.
-            { id: 'preacher-curls',      name: 'Shoulder Flexion Curls',   category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
-            // Takes the plain `chest-press` id — no existing id was squatting on
-            // it, unlike the leg-extensions case below, so there is no need for
-            // an `actual-` prefix there.
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
+            { id: 'preacher-curls',      name: 'Shoulder Flexion Curls',   category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
+            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
+            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
             // Renamed from Sagittal Plane Pulldowns and reclassified to a stack
             // (Sep 2026): it is a pullover, and the plane was the only accurate
             // half of the old name. `hammer-row` is its frozen id — it has not
             // been a hammer row since long before either name.
-            { id: 'hammer-row',          name: 'Sagittal Plane Pullovers', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 10 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 11 },
-            // Plate-loaded from Sep 2026 rather than a stack. The same
-            // correction Back Extensions got in v19, in the other direction:
-            // the seed was simply wrong about the machine.
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 12 },
+            { id: 'hammer-row',          name: 'Sagittal Plane Pullovers', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 10 },
+            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 11 },
+            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 12 },
             { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
             // The wrist pair (Reverse Wrist Curls, Cable Wrist Curls) left the
             // program in Sep 2026 and took the 5-8 rep range with them; see
