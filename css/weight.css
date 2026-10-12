@@ -34,22 +34,6 @@
     width: 100%;
 }
 
-/* Both badges sit in a centred row. .streak-badge carries margin-right:auto
-   for its use inside gym-tracker's exercise header, which here would shove
-   the pair apart — so the margins are cancelled rather than the rule being
-   loosened over there. */
-.weigh-badges {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 4px;
-}
-
-.weigh-badge {
-    margin-left: 0;
-    margin-right: 0;
-}
-
 /* The date is a caption, not the headline — the number is. This started out
    borrowing .card-name from the deck, which is sized to be an exercise
    nameplate and turned "Monday, September 7" into two lines of 40px type

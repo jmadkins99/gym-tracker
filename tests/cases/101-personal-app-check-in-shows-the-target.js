@@ -49,9 +49,7 @@ const seed = (page) => page.evaluate((ns) => {
     const monday = getMondayOfWeek(new Date());
     const planStart = shift(monday, -28);
 
-    // Four completed weeks, none of them flat (a flat week is treated as
-    // typed-in history and would take the badges with it), and nothing at all
-    // in the week in progress.
+    // Four completed weeks, and nothing at all in the week in progress.
     const WEEKS = [
         [176.4, 176.0, 176.3, 175.8, 175.5, 175.9, 175.6],
         [175.3, 175.0, 174.7, 175.1, 174.5, 174.2, 174.6],

@@ -48,9 +48,7 @@ const { eq, ok } = require('../lib/assert');
 
 const NS = 'gym-local:';
 
-// Seven readings summing to 1225.0, so the week averages exactly 175.0. Not
-// seven identical ones: a flat week is treated as typed-in history elsewhere,
-// and a fixture should not lean on the one shape the app second-guesses.
+// Seven readings summing to 1225.0, so the week averages exactly 175.0.
 const WEEK = [175.3, 175.1, 174.9, 174.7, 175.2, 174.8, 175.0];
 
 // Week buckets are LOCAL Mondays, so the fixture is built against the page's

@@ -59,8 +59,7 @@ const seed = (page) => page.evaluate((ns) => {
     const planStart = shift(monday, -28);
 
     // Seven readings summing to 1232.0, so week 1 averages exactly 176.0, and
-    // each later week is the same seven a pound lighter. Not flat — a week of
-    // identical readings is treated as typed-in history and would be filtered.
+    // each later week is the same seven a pound lighter.
     const WEEK_ONE = [176.3, 176.1, 175.9, 175.7, 176.2, 175.8, 176.0];
     const log = [];
     for (let w = 0; w < 4; w++) {

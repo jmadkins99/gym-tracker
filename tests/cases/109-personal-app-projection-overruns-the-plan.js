@@ -53,8 +53,7 @@ const LAST_ACTUAL = 173.0;
 
 // Four weeks of readings a pound apart, plus a plan with whatever goal the
 // variant needs. Seven readings summing to 1232.0 so week 1 averages exactly
-// 176.0, and not flat — a week of identical readings reads as typed-in history
-// and would be filtered out of the averages.
+// 176.0.
 const seed = (page, goalWeight) => page.evaluate((ns, goal) => {
     const pad = (n) => String(n).padStart(2, '0');
     const key = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());

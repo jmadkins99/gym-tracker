@@ -142,13 +142,11 @@
                 const next = upsertEntry(log, todayKey, weight);
                 persist(next);
                 // The gold aura is gym-tracker's PR celebration, reused. It
-                // fires on the streak rule holding — a reading at or below the
-                // last one — never on the value itself.
-                if (checkInStreak(next) > 0) {
-                    clearTimeout(celebrationTimer.current);
-                    setCelebrating(true);
-                    celebrationTimer.current = setTimeout(() => setCelebrating(false), PR_CELEBRATION_MS);
-                }
+                // fires on every check-in — standing on the scale is the thing
+                // being rewarded, never the number it showed.
+                clearTimeout(celebrationTimer.current);
+                setCelebrating(true);
+                celebrationTimer.current = setTimeout(() => setCelebrating(false), PR_CELEBRATION_MS);
             };
 
             // Corrections from the History ledger. Separate handlers rather

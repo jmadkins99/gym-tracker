@@ -20,10 +20,9 @@
         // target line it has to agree with.
         //
         // The goal row is a readout rather than a control on purpose: this
-        // iteration is Cut-only, and the streak rules (hold-or-lower daily,
-        // lower-average weekly) plus the plan line's direction are all written
-        // against that. A Bulk switch would need every one of them inverted, so
-        // it lands with them rather than as a toggle that quietly does nothing.
+        // iteration is Cut-only, and the plan line's direction is written
+        // against that. A Bulk switch would need it inverted, so it lands with
+        // that rather than as a toggle that quietly does nothing.
         //
         // Calorie targets are deliberately absent. The workbook computes a TDEE
         // and a daily intake figure from the same numbers, but a target is only
@@ -213,8 +212,7 @@
                             <span className="weigh-setting-value">Cut</span>
                         </div>
                         <div className="weigh-setting-note">
-                            Streaks reward a reading that holds or falls, and a weekly average
-                            that falls. Bulk is not built yet.
+                            Bulk is not built yet.
                         </div>
 
                         <div className="weigh-setting-row">

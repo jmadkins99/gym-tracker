@@ -32,13 +32,10 @@
                 if (showInput && inputRef.current) inputRef.current.focus();
             }, [showInput]);
 
-            const weeks = weeklyAverages(log);
             // The mean of this week's readings, not the EMA — the card and the
             // History ledger's top row are the same number by construction.
             const weekAvg = currentWeekAverage(log);
             const rate = weeklyAverageRate(log);
-            const dayStreak = checkInStreak(log, todayKey);
-            const wkStreak = weekStreak(weeks);
 
             // Accepts a bare number with at most one decimal place. Rejecting
             // the rest at the keystroke is friendlier than validating on submit,
@@ -127,8 +124,6 @@
             return (
                 <div className="weigh-stage">
                     <div className={'card weigh-card' + (celebrating ? ' pr-celebrating' : '') + (today ? ' is-done' : '')}>
-                        <StreakBadges dayStreak={dayStreak} weekStreak={wkStreak} />
-
                         {showInput ? (
                             <div className="weigh-body">
                                 <div className="weigh-date">{formatDayLabel(todayKey)}</div>

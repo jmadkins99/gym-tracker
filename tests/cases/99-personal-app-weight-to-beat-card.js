@@ -69,8 +69,7 @@ const START_WEIGHT = 180.0;
 const RATE = 2.0;
 const WEEK_1_TARGET = 178.0;
 
-// Above target, then under it. Both are flat runs, but only a full seven
-// identical days counts as a bootstrapped week, and this week is partial.
+// Above target, then under it.
 const ABOVE = 178.6;
 const UNDER = 170.0;
 const EXACT = WEEK_1_TARGET;
