@@ -37,17 +37,17 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // [id, display name], in render order.
 const FULL_BODY = [
+    ['chest-flies', 'Chest Flies'],
     ['chest-press', 'Chest Press'],
     ['incline-chest-press', 'Incline Chest Press'],
-    ['lateral-raises', 'Lateral Raises'],
-    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
-    ['tricep-pushdown', 'Tricep Extensions'],
-    ['chest-flies', 'Chest Flies'],
     ['curls-shoulder-extension', 'Recline Curls'],
     ['preacher-curls', 'Shoulder Flexion Curls'],
     ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
     ['ab-crunch', 'Ab Crunches'],
     ['hammer-row', 'Sagittal Plane Pullovers'],
+    ['lateral-raises', 'Lateral Raises'],
+    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
+    ['tricep-pushdown', 'Tricep Extensions'],
     ['kelso-shrugs', 'Kelso Shrugs'],
     ['upper-back-row', 'Transverse Plane Rows'],
     ['shoulder-press', 'Shoulder Press'],

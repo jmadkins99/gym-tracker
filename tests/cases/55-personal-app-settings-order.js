@@ -28,11 +28,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // Fresh-install names, in canonical order.
 const EXPECTED = [
-    'Chest Press', 'Incline Chest Press', 'Lateral Raises', 'Frontal Plane Pulldowns',
-    'Tricep Extensions', 'Chest Flies', 'Recline Curls', 'Shoulder Flexion Curls',
-    'Overhead Tricep Extensions', 'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs',
-    'Transverse Plane Rows', 'Shoulder Press', 'Back Extensions', 'Leg Press',
-    'Hip Adduction', 'Calf Raises', 'Leg Extensions',
+    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Recline Curls',
+    'Shoulder Flexion Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Sagittal Plane Pullovers', 'Lateral Raises', 'Frontal Plane Pulldowns',
+    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Plane Rows', 'Shoulder Press',
+    'Back Extensions', 'Leg Press', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
 ];
 
 async function openManageExercises(page) {

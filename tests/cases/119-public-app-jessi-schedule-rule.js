@@ -50,13 +50,13 @@ const REV13_POSTERIOR = ['Recline Curls', 'Shoulder Flexion Curls', 'Sagittal Pl
     'Transverse Plane Rows', 'Kelso Shrugs', 'Frontal Plane Pulldowns', 'Back Extensions',
     'Hip Adduction', 'Calf Raises'];
 
-// Revision 17's one day. Same movements as the seed, nothing added or dropped.
+// Revision 18's one day. Same movements as the seed, nothing added or dropped.
 const FULL_BODY = [
-    'Chest Press', 'Incline Chest Press', 'Lateral Raises', 'Frontal Plane Pulldowns',
-    'Tricep Extensions', 'Chest Flies', 'Recline Curls', 'Shoulder Flexion Curls',
-    'Overhead Tricep Extensions', 'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs',
-    'Transverse Plane Rows', 'Shoulder Press', 'Back Extensions', 'Leg Press',
-    'Hip Adduction', 'Calf Raises', 'Leg Extensions'];
+    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Recline Curls',
+    'Shoulder Flexion Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Sagittal Plane Pullovers', 'Lateral Raises', 'Frontal Plane Pulldowns',
+    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Plane Rows', 'Shoulder Press',
+    'Back Extensions', 'Leg Press', 'Hip Adduction', 'Calf Raises', 'Leg Extensions'];
 
 function rev13Config() {
     const mk = (category) => (name, order) => ({

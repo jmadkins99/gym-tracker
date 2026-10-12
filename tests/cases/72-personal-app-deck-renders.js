@@ -50,13 +50,16 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                 exercises: [
                     // Whatever leads the day has to be in here: section 3
                     // below asserts the OPEN card shows last session's weight,
-                    // so the active card needs history to show. Chest Press
-                    // leads again since Oct 2026 (Tricep Extensions led from
-                    // Sep), so its 110 is the number section 3 looks for.
+                    // so the active card needs history to show. Chest Flies
+                    // leads since the second Oct 2026 reorder (Chest Press
+                    // before it, Tricep Extensions from Sep), so its 130 is
+                    // the number section 3 looks for.
                     { id: 'tricep-pushdown', name: 'Tricep Extensions', category: 'Anterior',
                       type: 'standard', weight: '200', reps: '6' },
                     { id: 'chest-press', name: 'Chest Press', category: 'Anterior',
                       type: 'standard', weight: '110', reps: '5' },
+                    { id: 'chest-flies', name: 'Chest Flies', category: 'Anterior',
+                      type: 'standard', weight: '130', reps: '5' },
                 ],
             }],
         });
@@ -77,8 +80,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const front = await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-front').innerText, ACTIVE);
 
-        // Chest Press leads Full Body since the Oct 2026 reorder.
-        eq(await activeName(page), 'Chest Press', 'it names the first movement of the day');
+        // Chest Flies leads Full Body since the second Oct 2026 reorder.
+        eq(await activeName(page), 'Chest Flies', 'it names the first movement of the day');
         eq(/\d/.test(front), false,
             'THE POINT: no digit appears on the front face — no weight, no reps, no ' +
             'last session. Leaking any of them removes the reason to swipe up, and ' +
@@ -106,7 +109,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             'finds untouched default values');
         contains(await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-last').textContent, ACTIVE),
-            '110', 'last session shows once the card is open, not before');
+            '130', 'last session shows once the card is open, not before');
 
         // === 4. The chrome the rest of the suite navigates by ==========
         eq(await page.$$eval('.bottom-nav-btn', (els) =>

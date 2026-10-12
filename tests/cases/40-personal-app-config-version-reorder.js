@@ -58,17 +58,17 @@ const OLD_ORDER_IDS = [
 // because the seed below builds each entry from DEFAULT_EXERCISES — except
 // chest-flies, renamed by the user.
 const EXPECTED_NEW_ORDER = [
+    'My Renamed Flies',       // chest-flies, renamed by the user below
     'Chest Press',            // added Aug 2026; arrives via the migration
     'Incline Chest Press',
-    'Lateral Raises',
-    'Frontal Plane Pulldowns',
-    'Tricep Extensions',
-    'My Renamed Flies',       // chest-flies, renamed by the user below
     'Recline Curls',
     'Shoulder Flexion Curls',
     'Overhead Tricep Extensions',
     'Ab Crunches',
     'Sagittal Plane Pullovers',
+    'Lateral Raises',
+    'Frontal Plane Pulldowns',
+    'Tricep Extensions',
     'Kelso Shrugs',
     'Transverse Plane Rows',
     'Shoulder Press',

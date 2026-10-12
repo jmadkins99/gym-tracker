@@ -34,11 +34,11 @@ const { PUBLIC_APP_ROOT, publicAppSource } = require('../lib/paths');
 const NS = 'gym-local:';
 
 const EXPECTED_FULL_BODY = [
-    'Chest Press', 'Incline Chest Press', 'Lateral Raises', 'Frontal Plane Pulldowns',
-    'Tricep Extensions', 'Chest Flies', 'Recline Curls', 'Shoulder Flexion Curls',
-    'Overhead Tricep Extensions', 'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs',
-    'Transverse Plane Rows', 'Shoulder Press', 'Back Extensions', 'Leg Press',
-    'Hip Adduction', 'Calf Raises', 'Leg Extensions',
+    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Recline Curls',
+    'Shoulder Flexion Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Sagittal Plane Pullovers', 'Lateral Raises', 'Frontal Plane Pulldowns',
+    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Plane Rows', 'Shoulder Press',
+    'Back Extensions', 'Leg Press', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
 ];
 
 // Real ids from his Firestore config and his 9/21 session.

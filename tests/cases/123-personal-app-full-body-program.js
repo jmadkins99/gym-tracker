@@ -40,17 +40,17 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 // `hip-adduction` renders Leg Press, `leg-extensions` renders Hip Adduction);
 // the roster in config.js is the place that explains each one.
 const EXPECTED_FULL_BODY = [
+    'Chest Flies',
     'Chest Press',
     'Incline Chest Press',
-    'Lateral Raises',
-    'Frontal Plane Pulldowns',
-    'Tricep Extensions',
-    'Chest Flies',
     'Recline Curls',
     'Shoulder Flexion Curls',
     'Overhead Tricep Extensions',
     'Ab Crunches',
     'Sagittal Plane Pullovers',
+    'Lateral Raises',
+    'Frontal Plane Pulldowns',
+    'Tricep Extensions',
     'Kelso Shrugs',
     'Transverse Plane Rows',
     'Shoulder Press',

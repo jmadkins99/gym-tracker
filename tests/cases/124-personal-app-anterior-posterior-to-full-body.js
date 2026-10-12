@@ -70,11 +70,11 @@ const V21_LAYOUT = [
 const LOAD_TYPE_OVERRIDE = { id: 'kelso-shrugs', loadType: 'pin' };
 
 const EXPECTED_ORDER = [
-    'chest-press', 'incline-chest-press', 'lateral-raises', 'frontal-pulldowns',
-    'tricep-pushdown', 'chest-flies', 'curls-shoulder-extension', 'preacher-curls',
-    'overhead-tricep-extensions', 'ab-crunch', 'hammer-row', 'kelso-shrugs', 'upper-back-row',
-    'shoulder-press', 'leg-curls', 'hip-adduction', 'leg-extensions', 'calf-raise',
-    'actual-leg-extensions',
+    'chest-flies', 'chest-press', 'incline-chest-press', 'curls-shoulder-extension',
+    'preacher-curls', 'overhead-tricep-extensions', 'ab-crunch', 'hammer-row',
+    'lateral-raises', 'frontal-pulldowns', 'tricep-pushdown', 'kelso-shrugs',
+    'upper-back-row', 'shoulder-press', 'leg-curls', 'hip-adduction', 'leg-extensions',
+    'calf-raise', 'actual-leg-extensions',
 ];
 
 const HISTORY = [
@@ -154,7 +154,7 @@ async function readSavedConfig(page) {
         eq(toggles, 0, 'no day toggle after the upgrade');
         const names = await readDeckNames(page);
         eq(names.length, 19, 'the deck holds all 19 movements');
-        eq(names[3], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
+        eq(names[EXPECTED_ORDER.indexOf('frontal-pulldowns')], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
 
         // 4. Last session's weight, from both former days.
         contains((await readDeckCard(page, 'Chest Press')).last, '150', 'Chest Press keeps its Anterior last weight');

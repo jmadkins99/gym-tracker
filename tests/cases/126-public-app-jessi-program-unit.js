@@ -53,11 +53,11 @@ const { eq, ok } = require('../lib/assert');
 const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'public-app-other-client-presets.json');
 
 const EXPECTED_FULL_BODY = [
-    'Chest Press', 'Incline Chest Press', 'Lateral Raises', 'Frontal Plane Pulldowns',
-    'Tricep Extensions', 'Chest Flies', 'Recline Curls', 'Shoulder Flexion Curls',
-    'Overhead Tricep Extensions', 'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs',
-    'Transverse Plane Rows', 'Shoulder Press', 'Back Extensions', 'Leg Press',
-    'Hip Adduction', 'Calf Raises', 'Leg Extensions',
+    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Recline Curls',
+    'Shoulder Flexion Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Sagittal Plane Pullovers', 'Lateral Raises', 'Frontal Plane Pulldowns',
+    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Plane Rows', 'Shoulder Press',
+    'Back Extensions', 'Leg Press', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
 ];
 
 // ---- loading the app's plain-JS modules --------------------------------
@@ -330,8 +330,9 @@ const strip = (e) => ({ id: e.id, name: e.name, category: e.category, order: e.o
     // A fixed-id movement he renamed keeps its slot and his name.
     const renamed = app.migrateJessiSplit(rev15Config({ rename: { 'chest-press': 'My Chest Press' } }),
         [], REV14_SCHEDULE);
-    eq(renamed.config.days[1][0].id, 'chest-press', 'the renamed Chest Press keeps slot 1');
-    eq(renamed.config.days[1][0].name, 'My Chest Press', 'and keeps his name for it');
+    const slot = EXPECTED_FULL_BODY.indexOf('Chest Press');
+    eq(renamed.config.days[1][slot].id, 'chest-press', 'the renamed Chest Press keeps its slot');
+    eq(renamed.config.days[1][slot].name, 'My Chest Press', 'and keeps his name for it');
     eq(renamed.config.days[1].length, 19, 'and is not duplicated');
 
     // A missing fixed-id movement is added once, seeded from the program table.

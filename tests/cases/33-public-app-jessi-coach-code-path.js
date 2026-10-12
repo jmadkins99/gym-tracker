@@ -33,11 +33,11 @@ const NS = 'gym-local:';
 const JESSI_CODE = 'D1O9O9M2';
 
 const FULL_BODY = [
-    'Chest Press', 'Incline Chest Press', 'Lateral Raises', 'Frontal Plane Pulldowns',
-    'Tricep Extensions', 'Chest Flies', 'Recline Curls', 'Shoulder Flexion Curls',
-    'Overhead Tricep Extensions', 'Ab Crunches', 'Sagittal Plane Pullovers', 'Kelso Shrugs',
-    'Transverse Plane Rows', 'Shoulder Press', 'Back Extensions', 'Leg Press',
-    'Hip Adduction', 'Calf Raises', 'Leg Extensions',
+    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Recline Curls',
+    'Shoulder Flexion Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Sagittal Plane Pullovers', 'Lateral Raises', 'Frontal Plane Pulldowns',
+    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Plane Rows', 'Shoulder Press',
+    'Back Extensions', 'Leg Press', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
 ];
 
 // How each machine is loaded, seeded explicitly rather than left to the name
@@ -47,13 +47,14 @@ const FULL_BODY = [
 // who type their own names, and these are the machines in the personal app's
 // gym. Key order is program order, since `eq` compares serialised maps.
 const LOAD_TYPES = {
-    'Chest Press': 'plate-two-sided', 'Incline Chest Press': 'plate-two-sided',
-    'Lateral Raises': 'pin', 'Frontal Plane Pulldowns': 'pin', 'Tricep Extensions': 'pin',
-    'Chest Flies': 'pin', 'Recline Curls': 'pin', 'Shoulder Flexion Curls': 'pin',
-    'Overhead Tricep Extensions': 'pin', 'Ab Crunches': 'pin', 'Sagittal Plane Pullovers': 'pin',
-    'Kelso Shrugs': 'plate-one-sided', 'Transverse Plane Rows': 'plate-one-sided',
-    'Shoulder Press': 'pin', 'Back Extensions': 'pin', 'Leg Press': 'plate-two-sided',
-    'Hip Adduction': 'pin', 'Calf Raises': 'pin', 'Leg Extensions': 'pin',
+    'Chest Flies': 'pin', 'Chest Press': 'plate-two-sided',
+    'Incline Chest Press': 'plate-two-sided', 'Recline Curls': 'pin',
+    'Shoulder Flexion Curls': 'pin', 'Overhead Tricep Extensions': 'pin', 'Ab Crunches': 'pin',
+    'Sagittal Plane Pullovers': 'pin', 'Lateral Raises': 'pin', 'Frontal Plane Pulldowns': 'pin',
+    'Tricep Extensions': 'pin', 'Kelso Shrugs': 'plate-one-sided',
+    'Transverse Plane Rows': 'plate-one-sided', 'Shoulder Press': 'pin',
+    'Back Extensions': 'pin', 'Leg Press': 'plate-two-sided', 'Hip Adduction': 'pin',
+    'Calf Raises': 'pin', 'Leg Extensions': 'pin',
 };
 
 const readSaved = (page) => page.evaluate((ns) => ({
