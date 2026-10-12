@@ -12,7 +12,9 @@
 // Pinned, on the first load of the new build:
 //   1. One day, "Full Body", holding the 19 movements in the personal app's
 //      order, then an invented self-added Face Pulls. Every id is his, unchanged, so every
-//      "Last:" and PR streak follows; his load type and PR steps ride through.
+//      "Last:" and PR streak follows; his names and PR steps ride through,
+//      and his load types are reset to the program table once (revision 19),
+//      so his own Chest Flies answer gives way to the table's 'pin'.
 //   2. The weekday map sends all seven days to day 1, so exactly ONE day pill
 //      renders. Without the schedule rewrite the app would draw a phantom
 //      "Day 2" pill from the old totalWorkoutDays.
@@ -60,6 +62,12 @@ const ID = {
     hipAdduction: 'c65da494-c391-47b3-a742-e6ca5184d60d',
     calfRaises: '107ecf47-ae8c-4b68-90da-f2b930118983',
 };
+
+// JESSI_PROGRAM's load types, which a crossing from below revision 19 writes
+// over his own. Test 126 checks the table itself; this is the browser half.
+const PLATE = { 'Kelso Shrugs': 'plate-one-sided', 'Transverse Plane Rows': 'plate-one-sided',
+    'Leg Press': 'plate-two-sided' };
+const TABLE_LOAD_TYPES = Object.fromEntries(EXPECTED_FULL_BODY.map(n => [n, PLATE[n] || 'pin']));
 
 // His revision-15 device — the state it migrates FROM. [id, name, loadType, increment?]
 const REV15_ANTERIOR = [
@@ -189,9 +197,10 @@ async function reload(page) {
         const seeded = [...REV15_ANTERIOR, ...REV15_POSTERIOR];
         eq([...day.map(e => e.id)].sort(), seeded.map(([id]) => id).sort(), 'every id is his, unchanged');
         const byId = Object.fromEntries(day.map(e => [e.id, e]));
-        for (const [id, name, loadType, increment] of seeded) {
-            eq([byId[id].name, byId[id].loadType, byId[id].increment], [name, loadType, increment],
-                `${name} keeps its name, load type and PR step`);
+        for (const [id, name, , increment] of seeded) {
+            eq([byId[id].name, byId[id].increment], [name, increment],
+                `${name} keeps its name and PR step`);
+            eq(byId[id].loadType, TABLE_LOAD_TYPES[name], `${name} takes the program's load type`);
         }
         eq(cfg.repsDropdown, { min: 5, max: 8 }, 'his 5-8 reps dropdown rides through');
 

@@ -487,9 +487,11 @@
             { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
             // Takes the plain `chest-press` id — no existing id was squatting on
             // it, unlike the leg-extensions case below, so there is no need for
-            // an `actual-` prefix there.
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-two-sided', order: 1 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-two-sided', order: 2 },
+            // an `actual-` prefix there. Both presses are stacks: v23 seeded
+            // them 'plate-two-sided', which was wrong, and they went back to
+            // 'pin' in Oct 2026. Fresh installs only, like every loadType seed.
+            { id: 'chest-press',         name: 'Chest Press',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
+            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
             { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
             // Renamed from Preacher Curls and reclassified to a stack (Sep
             // 2026) — the name now says the joint action rather than the bench,

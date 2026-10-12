@@ -25,9 +25,11 @@
 //   3. Jessi's program is one Full Body day of 19, in the personal app's
 //      order, and his weekday map sends all seven days to it.
 //   4. A revision-15 Anterior/Posterior config (his real ids) becomes that
-//      program: ids, names, load types and PR steps are his and survive; only
-//      category and order are rewritten; a movement he added himself is kept,
+//      program: ids, names and PR steps are his and survive; category and
+//      order are rewritten; a movement he added himself is kept,
 //      even when two share a name; a renamed fixed-id movement keeps its slot;
+//      load types are reset to the table once (revision 19), and a later
+//      ordinary revision leaves his own answers alone;
 //      the schedule is rewritten once; a second pass does nothing.
 //   5. The schedule rule: rewritten only when missing or when it names a day
 //      the program no longer has. A valid one-day map he has edited survives.
@@ -62,7 +64,10 @@ const EXPECTED_FULL_BODY = [
 
 // ---- loading the app's plain-JS modules --------------------------------
 
-function loadApp() {
+// `bump` loads the app as the NEXT build would be: JESSI_SPLIT_REVISION raised
+// by that much and nothing else, so a test can ask what a later, ordinary
+// revision does to a config this one wrote.
+function loadApp({ bump = 0 } = {}) {
     const store = new Map();
     let uuid = 0;
     const sandbox = {
@@ -76,10 +81,12 @@ function loadApp() {
     };
     vm.createContext(sandbox);
     const src = ['clients.js', 'migrations.jessi.js']
-        .map(f => fs.readFileSync(path.join(PUBLIC_APP_ROOT, 'js', f), 'utf8')).join('\n;\n');
+        .map(f => fs.readFileSync(path.join(PUBLIC_APP_ROOT, 'js', f), 'utf8')).join('\n;\n')
+        .replace(/const JESSI_SPLIT_REVISION = (\d+);/, (_, n) => `const JESSI_SPLIT_REVISION = ${Number(n) + bump};`);
     const names = ['getPresetTemplate', 'verifyDoomId', 'migrateJessiSplit',
         'migrateJessiToAnteriorPosterior', 'migrateJessiToFullBody', 'enableRepsDropdownForJessi',
-        'JESSI_SPLIT_REVISION', 'JESSI_SPLIT_SCHEDULE', 'JESSI_PROGRAM', 'buildJessiPreset'];
+        'JESSI_SPLIT_REVISION', 'JESSI_SPLIT_SCHEDULE', 'JESSI_PROGRAM', 'buildJessiPreset',
+        'JESSI_LOAD_TYPE_RESET_REVISION'];
     const exp = names.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(',');
     vm.runInContext(src + `\n;this.__app = { ${exp} };`, sandbox);
     return { app: sandbox.__app, store };
@@ -312,13 +319,20 @@ const strip = (e) => ({ id: e.id, name: e.name, category: e.category, order: e.o
     const allSeed = [...seed.days[1], ...seed.days[2]];
     const byId = new Map(day.map(e => [e.id, e]));
     eq(day.length, allSeed.length, 'nothing added, nothing dropped');
+    const tableLoadType = new Map(app.JESSI_PROGRAM[0].movements.map(m => [m.name, m.loadType]));
     for (const s of allSeed) {
         const e = byId.get(s.id);
         ok(e, `${s.name} keeps its id ${s.id}`);
-        eq([e.name, e.loadType, e.increment, e.sets, e.minReps, e.maxReps],
-            [s.name, s.loadType, s.increment, s.sets, s.minReps, s.maxReps],
+        eq([e.name, e.increment, e.sets, e.minReps, e.maxReps],
+            [s.name, s.increment, s.sets, s.minReps, s.maxReps],
             `${s.name}: everything he owns rides through`);
+        // Revision 15 is below the reset, so the table's load type wins once.
+        // His own movements are not in the table and keep theirs.
+        eq(e.loadType, tableLoadType.has(s.name) ? tableLoadType.get(s.name) : s.loadType,
+            `${s.name}: load type follows the one-time reset`);
     }
+    eq(byId.get(ID.chestFlies).loadType, 'pin',
+        'his own Chest Flies answer (plate-two-sided) gives way to the table');
     for (const k of ['repsDropdown', 'minimalistPrTracking', 'prTracking', 'orderRevision', 'gympinMode']) {
         eq(cfg[k], seed[k], `top-level ${k} passes through`);
     }
@@ -342,6 +356,22 @@ const strip = (e) => ({ id: e.id, name: e.name, category: e.category, order: e.o
     const legExt = added.find(e => e.id === 'actual-leg-extensions');
     ok(legExt && legExt.name === 'Leg Extensions', 'a missing Leg Extensions is restored under its fixed id');
     eq(legExt.startingWeight, '50', 'with its starting weight');
+
+    // The reset happens once. Write his own answer onto a config this build
+    // produced, then migrate it with the next build: an ordinary later bump
+    // must leave it alone, or every reorder would undo his Settings.
+    const RESET = app.JESSI_LOAD_TYPE_RESET_REVISION;
+    ok(RESET > 15 && RESET <= REV, `the load-type reset revision is in range (got ${RESET})`);
+    const next = loadApp({ bump: 1 }).app;
+    eq(next.JESSI_SPLIT_REVISION, REV + 1, 'the next build loads with the revision raised');
+    const hisChoice = JSON.parse(JSON.stringify(cfg));
+    hisChoice.days[1].find(e => e.id === ID.chestFlies).loadType = 'plate-two-sided';
+    const later = next.migrateJessiSplit(hisChoice, [], out.schedule);
+    ok(later, 'the next build does migrate the config');
+    eq(later.config.days[1].find(e => e.id === ID.chestFlies).loadType, 'plate-two-sided',
+        'a load type he set after the reset survives the next revision');
+    eq(later.config.days[1].map(e => e.loadType), hisChoice.days[1].map(e => e.loadType),
+        'and no other load type moves');
 
     // === 5. The schedule rule ===============================================
     const oneDayEdited = { version: 2, totalWorkoutDays: 1, scheduleIsExplicit: true,

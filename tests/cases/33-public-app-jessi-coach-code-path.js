@@ -42,13 +42,12 @@ const FULL_BODY = [
 
 // How each machine is loaded, seeded explicitly rather than left to the name
 // guesses. Several disagree with what the names alone would give (Sagittal
-// Plane Pullovers, Back Extensions, and since Oct 2026 both chest presses,
-// which the /chest press/ rule reads as a stack): the guesses serve clients
+// Plane Pullovers, Back Extensions): the guesses serve clients
 // who type their own names, and these are the machines in the personal app's
 // gym. Key order is program order, since `eq` compares serialised maps.
 const LOAD_TYPES = {
-    'Chest Flies': 'pin', 'Chest Press': 'plate-two-sided',
-    'Incline Chest Press': 'plate-two-sided', 'Recline Curls': 'pin',
+    'Chest Flies': 'pin', 'Chest Press': 'pin',
+    'Incline Chest Press': 'pin', 'Recline Curls': 'pin',
     'Shoulder Flexion Curls': 'pin', 'Overhead Tricep Extensions': 'pin', 'Ab Crunches': 'pin',
     'Sagittal Plane Pullovers': 'pin', 'Lateral Raises': 'pin', 'Frontal Plane Pulldowns': 'pin',
     'Tricep Extensions': 'pin', 'Kelso Shrugs': 'plate-one-sided',
