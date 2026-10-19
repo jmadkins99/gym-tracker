@@ -112,6 +112,13 @@ async function readHeader(page, exerciseId) {
     }, ACTIVE);
 }
 
+// The "Exercise logged!" toast: gold, glowing and shimmering on a PR log only.
+const readToast = (page) => page.evaluate(() => {
+    const t = document.querySelector('.success-message');
+    return t ? { pr: t.classList.contains('pr-toast'),
+                 animation: getComputedStyle(t).animationName } : null;
+});
+
 async function readActiveReview(page) {
     return page.evaluate((sel) => {
         const card = document.querySelector(sel + ' .card[data-exercise-id]');
@@ -166,6 +173,10 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
             'a PR log runs the card celebration class');
         ok((celebrating.cardAnimation || '').includes('prLegendaryAura'),
             'the PR logged card uses the gold legendary aura animation');
+        const prToast = await readToast(page);
+        eq(prToast && prToast.pr, true, 'a PR log turns the logged toast gold');
+        ok((prToast.animation || '').includes('prBadgeGlow'),
+            'the gold toast glows like the PR badge');
         // 100x4 -> 100x5 -> 100x6 is a run of two, so the pill carries the
         // count rather than the word, exactly as History's row does.
         eq(celebrating.loggedPR, '🔥 2',
@@ -209,6 +220,8 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await logSet(page, 'chest-press', '100', '5');
         eq(await deckIndex(page), 3,
             'a non-PR log still advances without the PR celebration delay');
+        eq(await readToast(page), { pr: false, animation: 'slideDown' },
+            'a non-PR log keeps the plain toast');
         const identical = await readHeader(page, 'chest-press');
         eq(identical.logged, 'logged', 'the identical row is also in review state');
         eq(identical.loggedPR, null,

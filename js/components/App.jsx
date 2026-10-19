@@ -25,6 +25,8 @@
             const [workoutHistory, setWorkoutHistory] = useState([]);
             const [showSuccess, setShowSuccess] = useState(false);
             const [successMessage, setSuccessMessage] = useState('');
+            // Gold toast for a PR log, matching the card's celebration.
+            const [successIsPR, setSuccessIsPR] = useState(false);
             const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
             const [showSettings, setShowSettings] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
@@ -768,6 +770,7 @@
                 });
 
                 setSuccessMessage('Exercise logged!');
+                setSuccessIsPR(isPR);
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 2000);
 
@@ -892,6 +895,7 @@
                 setWorkoutHistory(updatedHistory);
                 window.repo.saveHistory(updatedHistory);
                 setSuccessMessage('Workout updated!');
+                setSuccessIsPR(false);
                 setShowSuccess(true);
                 setTimeout(() => setShowSuccess(false), 2000);
             };
@@ -950,6 +954,7 @@
                         }
 
                         setSuccessMessage('Data imported successfully!');
+                        setSuccessIsPR(false);
                         setShowSuccess(true);
                         setTimeout(() => setShowSuccess(false), 3000);
                         setShowSettings(false);
@@ -970,6 +975,7 @@
                         setExercises(DEFAULT_EXERCISES);
                         setShowSettings(false);
                         setSuccessMessage('All data has been reset');
+                        setSuccessIsPR(false);
                         setShowSuccess(true);
                         setTimeout(() => setShowSuccess(false), 3000);
                     }
@@ -1022,7 +1028,7 @@
                             </button>
                         </div>
                     )}
-                    {showSuccess && <div className="success-message">{successMessage}</div>}
+                    {showSuccess && <div className={"success-message" + (successIsPR ? " pr-toast" : "")}>{successMessage}</div>}
 
 
                     {showSettings && (

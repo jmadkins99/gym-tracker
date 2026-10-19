@@ -114,6 +114,13 @@ async function readHistoryRows(page) {
     });
 }
 
+// The "Exercise logged!" toast: gold, glowing and shimmering on a PR log only.
+const readToast = (page) => page.evaluate(() => {
+    const t = document.querySelector('.success-message');
+    return t ? { pr: t.classList.contains('pr-toast'),
+                 animation: getComputedStyle(t).animationName } : null;
+});
+
 async function readActiveReview(page) {
     return page.evaluate((sel) => {
         const card = document.querySelector(sel + ' .card[data-exercise-id]');
@@ -210,6 +217,10 @@ async function readActiveReview(page) {
             'public PR log runs the card celebration class');
         ok((celebrating.cardAnimation || '').includes('prLegendaryAura'),
             'public PR logged card uses the gold legendary aura animation');
+        const prToast = await readToast(page);
+        eq(prToast && prToast.pr, true, 'public a PR log turns the logged toast gold');
+        ok((prToast.animation || '').includes('prBadgeGlow'),
+            'public the gold toast glows like the PR badge');
         eq(celebrating.loggedPR, '🔥 PR',
             'public held logged card shows the PR badge during the celebration');
         eq(celebrating.loggedPRBg, BADGE_BG,
@@ -235,6 +246,8 @@ async function readActiveReview(page) {
         ok(await logCard(page), 'non-PR row logged through the public deck');
         eq(await deckIndex(page), null,
             'non-PR public log advances normally to the finish card');
+        eq(await readToast(page), { pr: false, animation: 'slideDown' },
+            'public a non-PR log keeps the plain toast');
 
         // Both sets are logged and the day is NOT submitted yet. Today's entry
         // is already the newest .history-item, so the badges must be there.

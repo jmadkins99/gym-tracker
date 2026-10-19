@@ -829,11 +829,45 @@
             }
         }
 
+        /* A PR log's toast wears the card's celebration: the same gold, the
+           same shimmer sweep and glow, over the same 2s the card holds. */
+        .success-message.pr-toast {
+            overflow: hidden;
+            color: #fff4b0;
+            border: 1px solid rgba(255, 231, 134, 0.95);
+            background:
+                radial-gradient(120% 140% at 50% -40%, rgba(255, 243, 176, 0.28) 0%, rgba(212, 175, 55, 0.10) 50%, rgba(212, 175, 55, 0) 80%),
+                linear-gradient(180deg, #151322 0%, #0b0b16 100%);
+            animation:
+                slideDown 0.3s ease,
+                prBadgeGlow 2s ease-in-out both;
+        }
+
+        .success-message.pr-toast::after {
+            content: '';
+            position: absolute;
+            inset: -42% -108%;
+            pointer-events: none;
+            background: linear-gradient(
+                105deg,
+                transparent 30%,
+                rgba(255, 244, 176, 0.58) 47%,
+                rgba(255, 255, 255, 0.24) 50%,
+                rgba(242, 207, 102, 0.18) 55%,
+                transparent 66%
+            );
+            mix-blend-mode: screen;
+            transform: translateX(-48%) rotate(8deg);
+            animation: prShimmer 1.55s 0.22s cubic-bezier(0.2, 1, 0.3, 1) both;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .card.pr-celebrating,
             .card.pr-celebrating::before,
             .card.pr-celebrating::after,
-            .card.pr-celebrating .logged-pr-badge {
+            .card.pr-celebrating .logged-pr-badge,
+            .success-message.pr-toast,
+            .success-message.pr-toast::after {
                 animation: none;
             }
         }
