@@ -128,7 +128,7 @@ async function reload(page) {
         eq([saved.total, saved.explicit], [1, true], 'one day, explicit');
         const pills = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.day-pill')).map(p => p.textContent.trim()));
-        eq(pills, ['Full Body'], 'exactly one day pill — no phantom Day 2 from the old map');
+        eq(pills, [], 'a one-day program shows no day pill — a phantom Day 2 from the old map would show two');
 
         // --- 2. His own change afterwards sticks ------------------------------
         await page.evaluate((ns) => {

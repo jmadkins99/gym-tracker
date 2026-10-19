@@ -136,7 +136,7 @@ const program = (cfg) => Object.keys(cfg.days).map(k => cfg.days[k].map(e => ({
         // --- On screen ------------------------------------------------------------
         const pills = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.day-pill')).map(p => p.textContent.trim()));
-        eq(pills, ['Full Body'], 'one day pill');
+        eq(pills, [], 'a one-day program shows no day pill');
         eq(await readDeckNames(page), FULL_BODY, 'the deck walks the program in order');
 
         // --- Drift guard: rewind the stamp, let the migration rebuild it -----------

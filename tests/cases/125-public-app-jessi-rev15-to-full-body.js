@@ -211,7 +211,7 @@ async function reload(page) {
         eq(sched.workoutDays.length, 7, 'all seven weekdays');
         const pills = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.day-pill')).map(p => p.textContent.trim()));
-        eq(pills, ['Full Body'], 'exactly one day pill, Full Body — no phantom Day 2');
+        eq(pills, [], 'a one-day program shows no day pill — a phantom Day 2 would show two');
 
         eq(await readDeckNames(page), [...EXPECTED_FULL_BODY, 'Face Pulls'], 'the deck walks the day in order');
 

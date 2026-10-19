@@ -98,7 +98,8 @@ async function reloadsKeep(page, label, expected) {
     }
     const days = Object.keys(JSON.parse(expected.config).days).length;
     const pills = await page.evaluate(() => document.querySelectorAll('.day-pill').length);
-    eq(pills, days, `${label}: one day pill per program day (${days})`);
+    // A one-day program has nothing to switch between, so it shows no toggle.
+    eq(pills, days > 1 ? days : 0, `${label}: one day pill per program day (${days}), none for one day`);
 }
 
 function selfServe(dayNames) {
