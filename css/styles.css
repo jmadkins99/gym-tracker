@@ -1095,6 +1095,25 @@
             color: #3d3d50;
         }
 
+        /* ---- Live session clock, above the card ---- */
+        .session-clock {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .session-clock-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: #6a6a85;
+        }
+
         /* ---- Deck footer: position and progress ---- */
         .deck-foot {
             display: flex;
@@ -1268,7 +1287,8 @@
         }
 
         .kb-open .deck-foot,
-        .kb-open .day-toggle {
+        .kb-open .day-toggle,
+        .kb-open .session-clock {
             display: none;
         }
 
