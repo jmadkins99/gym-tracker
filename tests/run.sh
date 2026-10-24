@@ -34,11 +34,8 @@ cd "$(dirname "$0")"
 # touch -- committed or not, since the last verified commit -- chosen by
 # lib/select.js, and falls back to the full suite whenever that selection
 # cannot vouch for a change. It is the everyday check before a commit; CI
-# runs the full suite on every branch push. Plain `bash run.sh` stays the full
-# suite on purpose:
-# public-gym-app's pre-push hook calls it with no arguments and relies on
-# getting every case, including its own 37, which read nothing in this repo
-# and so are never "affected" by anything here.
+# runs the full suite on every branch push. Plain `bash run.sh` is the full
+# suite.
 AFFECTED=0
 if [ "${1:-}" = "--affected" ]; then AFFECTED=1; shift; fi
 PATTERN="${1:-}"

@@ -37,15 +37,9 @@ jobs:
     runs-on: ubuntu-latest # ships Google Chrome at /usr/bin/google-chrome, which tests/lib/browser.js finds
     timeout-minutes: 20 # a hung Chrome would otherwise burn the 6-hour default
     steps:
-      # tests/lib/paths.js looks for public-gym-app beside this repo, so check
-      # both out as siblings under the workspace.
+      # This repo alone: the public-app cases moved to public-gym-app's own
+      # tests/ in Oct 2026, so nothing needs checking out beside it.
       - uses: actions/checkout@v5
-        with:
-          path: gym-tracker
-      - uses: actions/checkout@v5
-        with:
-          repository: jmadkins99/public-gym-app
-          path: public-gym-app
 
       - uses: actions/setup-node@v5
         with:
@@ -55,7 +49,7 @@ jobs:
       # tests/.coverage map, and CI is the one place that should never trust
       # a selection.
       - name: Run tests
-        working-directory: gym-tracker/tests
+        working-directory: tests
         env:
           TEST_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
         run: bash run.sh

@@ -15,9 +15,9 @@
 
 const ACTIVE = '.deck-slot:not([aria-hidden="true"])';
 
-// The suite serves each app from the server root, so the path matches neither
-// /gym-tracker/ nor /public-gym-app/ and APP_NAMESPACE falls through to
-// `gym-local:`. Cases 36 and 38 pin that on purpose — it is what keeps the
+// The suite serves the app from the server root, so the path does not match
+// /gym-tracker/ and APP_NAMESPACE falls through to
+// `gym-local:`. Case 36 pins that on purpose — it is what keeps the
 // tests off the real data and off Firebase.
 const { DEFAULT_NS } = require('./state');
 

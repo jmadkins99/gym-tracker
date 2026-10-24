@@ -96,12 +96,11 @@ function attachConsole(page) {
 // Waits for the workout screen to render, which is our signal that React has
 // finished hydrating.
 //
-// Two selectors because the two apps no longer draw the same screen. Jessi's
-// app is still a scrolling list of `.exercise-card`s; gym-tracker is a swipe
-// deck whose cards live inside `.deck-stage`. This helper is shared by roughly
-// forty cases across both, so it asks for either rather than being forked —
-// "the workout screen exists" is the same question in both apps even though the
-// answer is a different element.
+// Two selectors because the workout screen has been both: a scrolling list of
+// `.exercise-card`s and the swipe deck whose cards live inside `.deck-stage`.
+// The list half dates from when this suite also covered the public app (until
+// Oct 2026); asking for either costs nothing, and "the workout screen exists"
+// is the same question whichever element answers it.
 async function waitForApp(page, timeoutMs = 8000) {
     try {
         await page.waitForFunction(

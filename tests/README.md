@@ -1,8 +1,14 @@
 # Tests
 
-Integration tests for `gym-tracker` and `../public-gym-app`. They drive both
-apps in a headless Chrome browser, seed realistic state, and verify what
-the user actually sees.
+Integration tests for `gym-tracker`. They drive the app in a headless
+Chrome browser, seed realistic state, and verify what the user actually
+sees.
+
+Until Oct 2026 this suite also covered `public-gym-app` from here, reading it
+as a sibling checkout. Those `*-public-app-*` cases now live in
+public-gym-app's own `tests/`, so a change and its test land in one PR in
+either repo, and each repo's CI runs with nothing else checked out. That is
+why this repo's case numbers have gaps.
 
 ## Run the tests
 
@@ -55,18 +61,12 @@ you can read the assertion error and stack trace inline.
   its own. `lib/browser.js` checks the usual system paths plus
   Playwright's cache at `/opt/pw-browsers/chromium`; set `CHROME_PATH`
   if yours is somewhere else.
-- **The public app**, cloned as a sibling of this repo, for the
-  `*-public-app-*` cases:
-  `git clone git@github.com:jmadkins99/public-gym-app.git` next to
-  `gym-tracker`. Without it those cases fail with "Could not find the
-  public app"; the personal-app cases are unaffected, so
-  `bash run.sh personal-app` is the useful run in that state.
 - **No network at run time.** React, ReactDOM and `@babel/standalone`
   come from `tests/node_modules` — see below.
 
 ### Why tests/node_modules holds React
 
-Both apps load React and Babel from `unpkg.com` in a plain `<script>`
+The app loads React and Babel from `unpkg.com` in a plain `<script>`
 tag. That is fine on a phone, but it makes the suite depend on a
 third-party CDN, and sandboxed CI containers often block that egress —
 in which case every browser case dies at `waitForApp` with nothing but
@@ -94,12 +94,8 @@ a phone session skipped it, and CI cannot be skipped.
 `run.sh --affected` stays the fast local check before a commit, and it is
 now what keeps `.coverage/_base` current (see the note in `run.sh`).
 
-`../public-gym-app` still has its own pre-push hook, which runs this whole
-suite on every push there (10+ minutes). `git push` opens its SSH connection
-before the hook runs, so a long hook can let GitHub drop the idle session:
-if `Connection to github.com closed by remote host` appears in the middle of
-the test output, that is ssh talking, not a test. `~/.ssh/config` carries a
-keepalive for github.com that prevents it.
+public-gym-app has the same setup since Oct 2026: its own `tests/`, its own
+workflow, no pre-push hook.
 
 ## Recommended workflow
 
@@ -142,17 +138,14 @@ what follows is a map of the ones you are most likely to touch.
 | `44-…-weekly-view-eras.js` | History and Edit render every era at once: Anterior, a workout predating a day reassignment, legacy Upper, legacy Cardio, pre-split Full Body. |
 | `40-…-config-version-reorder.js` | A code-side reorder reaches a saved config, and an in-app Settings reorder survives reload. |
 
-**Jessi's app** — the `*-public-app-*` cases. Her program is a separate
-codebase in the sibling repo with its own exercise ids and its own
-migration chain; `41` and `33` are the ones that pin her split.
-
 Everything else is per-feature: weight breakdowns and load-type
 classification (`07`, `08`, `13`, `16`, `17`, `18`, `26`, `28`, `45`,
 `46` — note `26` covers Back Extensions' pin-stack OVERFLOW since Sep 2026,
 not the two-sided shape it was named for; `46` holds the two-sided coverage), the user-chosen load type itself (`57`–`61`, see below), PR
-streaks (`47`, `48`, `49`), cardio-era history (`21`, `22`, `24`),
-storage and hydration (`34`, `35`, `36`, `38`), and the day-filter
-regression that started all this (`02`, `03`).
+streaks (`47`, `48`), cardio-era history (`21`, `22`, `24`),
+storage and hydration (`34`, `35`, `36`), and the day-filter
+regression that started all this (`03`; its public-app twin `02` moved to
+public-gym-app).
 
 **Load type** — pin stack vs plate-loaded on one or both sides — became a
 per-exercise user setting in Aug 2026, chosen from a dropdown in Settings >
@@ -284,33 +277,6 @@ today's id set exactly or `setsEqual` fires and the case stops pinning the
 version bump. `43` gained the assertion that a saved config carrying a retired
 id has it removed.
 
-**Coach presets.** `63-…-ian-coach-code.js` and `64-…-ian-not-clawed-back.js`
-cover Ian's program. `64` was written when three Jessi one-shots identified
-an install by the *shape* of its config — categories of exactly
-Anterior/Posterior — which Ian's program shares; it clears the old flags and
-reloads three times. Those one-shots were retired with Jessi's Sep 2026 Full
-Body switch (revision 16), and the guard now covers **every** other client:
-`126` runs Lexi, Grace, Noah, Shawn, Ian and self-serve programs through the
-migrations in memory, stamped and unstamped, and pins their presets to
-`fixtures/public-app-other-client-presets.json`; `127` installs each through
-the real coach-code wizard and requires their saved program never changes.
-Before revision 16, `127` failed on an unstamped Grace and on self-serve
-programs, which the one-shots rewrote.
-
-**On Jessi's app** the same setting arrived a few days later, with two
-differences worth knowing. The Weight Breakdown is no longer gated: it used
-to be hidden behind an `exerciseConfig.gympinMode` flag that only she had, and
-that flag, its `?gympin=on` URL toggle and its one-shot enabler are gone —
-`09-…-breakdown-for-everyone.js` now guards the opposite property, including
-that a stale `gympinMode: false` in a restored backup cannot suppress it.
-(`09-…-gympin-gated.js` and `11-…-gympin-auto-enable.js` were deleted; the
-`gympin` still in some filenames and `data-` attributes is vestigial.) And
-because anyone can type their own exercise name, the name-based
-`getWeightBreakdownConfig` survives as the **default** rather than the
-authority — `62-…-load-type-changes-breakdown.js` is the public-app twin of
-`58`, and covers both a movement the rules recognise and one they have never
-seen.
-
 ## How to add a new test
 
 1. Create `cases/06-something-meaningful.js`. Use an existing case as a
@@ -321,8 +287,8 @@ seen.
    six months, the comment is what tells you whether the failure is a
    regression or an intentional behavior change.
 3. Construct the minimum state that exercises the behavior. Use the
-   helpers in `lib/state.js` (`seedPersonalApp`, `seedPublicApp`,
-   `workoutEntry`, etc.). If you need a new helper, add it there.
+   helpers in `lib/state.js` (`seedPersonalApp`, `seedExerciseConfig`,
+   `workoutEntry`). If you need a new helper, add it there.
 4. Use `lib/assert.js` (`eq`, `ok`, `contains`) for assertions. Each
    assertion takes a message string — write something specific so the
    failure output reads like a sentence ("default Weight (lbs) field
@@ -338,9 +304,9 @@ it gives false confidence. After writing a new test, deliberately break
 the code it's supposed to protect and confirm the test fails. Then
 revert the break.
 
-Example from when test 02 was written: I added `if (w.day !== currentDay)
-return false;` back into `getMinimalistPR` in the public app, ran the
-test, watched it fail with `expected: "160"  actual: "222.5"` (exactly
+Example from when test 02 (now in public-gym-app) was written: I added
+`if (w.day !== currentDay) return false;` back into `getMinimalistPR` in the
+public app, ran the test, watched it fail with `expected: "160"  actual: "222.5"` (exactly
 the buggy behavior), then removed the bad line. That confirms the test
 genuinely catches the bug.
 
@@ -358,7 +324,7 @@ tests/
 │   ├── assert.js      (eq / ok / contains)
 │   ├── browser.js     (puppeteer launch + page helpers)
 │   ├── server.js      (tiny static HTTP server)
-│   └── state.js       (localStorage seed helpers + fake Jessi config)
+│   └── state.js       (localStorage seed helpers)
 ├── cases/             (each file is one test; runs independently)
 └── fixtures/          (reserved for JSON blobs — empty for now)
 ```
@@ -367,7 +333,7 @@ Each case file is a standalone Node script. `run.sh` calls them in
 order and aggregates results, but you can also run one at a time:
 
 ```bash
-node cases/02-public-app-default-matches-last.js
+node cases/03-personal-app-default-matches-last.js
 ```
 
 That's useful when iterating on a single test.
