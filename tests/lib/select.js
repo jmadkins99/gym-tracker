@@ -1,14 +1,14 @@
-// Decides which cases a push has to run, from the list of files it changes.
+// Decides which cases a change has to run, from the list of files it touches.
 //
 //   git diff --name-only --no-renames A..B | node lib/select.js
 //
 // Prints either `ALL <reason>` on the first line, or the names of the cases to
-// run, one per line (possibly none). The pre-push hook acts on that.
+// run, one per line (possibly none). `run.sh --affected` acts on that.
 //
 // The map it reads, tests/.coverage/, is written by lib/coverage.js during
 // test runs and never by hand. Every rule below errs the same way: when the map
 // cannot vouch for a change, run everything. A wrong answer here can only make
-// a push slow, never let an untested change through.
+// a run slow, never let an untested change through.
 
 const fs = require('fs');
 const path = require('path');
@@ -21,9 +21,10 @@ const COVERAGE_DIR = path.join(TESTS_DIR, '.coverage');
 // reads can, and such a change has to either edit a file that case already
 // reads (a new <script> tag is an edit to index.html) or add a file no case
 // reads. The first selects the case, which reruns and rewrites its own entry;
-// the second runs everything. So the map repairs itself on the very push that
-// could have staled it -- provided the hook sees every commit, which is what
-// the base commit in .coverage/_base is for (see .githooks/pre-push).
+// the second runs everything. So the map repairs itself on the very run that
+// could have staled it -- provided every commit lands in some diff, which is
+// what the base commit in .coverage/_base is for (see run.sh). A commit made
+// elsewhere -- a pull, a phone session -- is in the next diff from the base.
 
 // Files no case can load, so changing them alone needs no tests. Kept to
 // things that are provably inert; anything else unknown runs the full suite.

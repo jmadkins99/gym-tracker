@@ -1,6 +1,6 @@
 // File-level coverage recorder. run.sh preloads it into every case with
-// `node -r`, and it writes down which repo files that case read, so the
-// pre-push hook can run only the cases a push could actually affect
+// `node -r`, and it writes down which repo files that case read, so
+// `run.sh --affected` can run only the cases a change could actually affect
 // (lib/select.js).
 //
 // It hooks `fs` rather than the test server because cases read the app two

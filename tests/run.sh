@@ -28,14 +28,14 @@ cd "$(dirname "$0")"
 # runs every personal-app case. Matched as a substring of the case name.
 #
 # TEST_CASES, if set, is an exact list of case names (whitespace-separated)
-# and replaces the filter. The pre-push hook uses it to run only the cases a
-# push touches (see lib/select.js).
+# and replaces the filter.
 #
 # `bash run.sh --affected` runs only the cases the working tree's changes can
-# touch -- committed or not, since the last verified commit -- chosen the same
-# way the pre-push hook chooses (lib/select.js), and falls back to the full
-# suite whenever that selection cannot vouch for a change. It is the everyday
-# check before a commit. Plain `bash run.sh` stays the full suite on purpose:
+# touch -- committed or not, since the last verified commit -- chosen by
+# lib/select.js, and falls back to the full suite whenever that selection
+# cannot vouch for a change. It is the everyday check before a commit; CI
+# runs the full suite on every branch push. Plain `bash run.sh` stays the full
+# suite on purpose:
 # public-gym-app's pre-push hook calls it with no arguments and relies on
 # getting every case, including its own 37, which read nothing in this repo
 # and so are never "affected" by anything here.
@@ -60,30 +60,23 @@ if [ -n "$SHARD" ]; then
 fi
 
 # Every case is run with lib/coverage.js preloaded, which records the repo
-# files it reads into .coverage/<case>.json. That is the map the pre-push hook
+# files it reads into .coverage/<case>.json. That is the map --affected
 # selects from; it is rebuilt here on every run and never edited by hand.
 COVERAGE_DIR="$PWD/.coverage"
 PRELOAD="$PWD/lib/coverage.js"
 
-# The git tree the working directory would commit as, untracked files
-# included, computed through a scratch index so the real one is not touched.
-# A passing full or --affected run records it in .coverage/_verified, and the
-# pre-push hook skips its own run when the commit being pushed is exactly this
-# tree -- otherwise every change would be tested twice, once before the commit
-# and again at the push, against identical files.
-worktree_tree() {
-    local tmp
-    tmp="$(mktemp)" || return 1
-    cp "$(git rev-parse --git-path index)" "$tmp" 2>/dev/null || true
-    ( GIT_INDEX_FILE="$tmp" git add -A -- "$(git rev-parse --show-toplevel)" >/dev/null 2>&1 &&
-      GIT_INDEX_FILE="$tmp" git write-tree ) || { rm -f "$tmp"; return 1; }
-    rm -f "$tmp"
+# .coverage/_base is the commit the map is verified against: --affected diffs
+# from it. A full run or an --affected run moves it to the commit checked out
+# when the run STARTED, so a commit made mid-run still shows up in the next
+# diff. Moving it is safe even when cases fail, because a failed case drops
+# its own entry and lib/select.js runs an unknown case every time.
+HEAD_AT_START="$(git rev-parse HEAD 2>/dev/null || true)"
+ADVANCE_BASE=0
+advance_base() {
+    mkdir -p "$COVERAGE_DIR"
+    if [ -n "$HEAD_AT_START" ]; then echo "$HEAD_AT_START" > "$COVERAGE_DIR/_base"
+    else rm -f "$COVERAGE_DIR/_base"; fi
 }
-TREE_BEFORE=""
-if [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
-    TREE_BEFORE="$(worktree_tree 2>/dev/null || true)"
-fi
-VERIFIED_KIND=""   # what a pass would vouch for: ALL, or the base it diffed from
 
 if [ "$AFFECTED" = "1" ] && [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
     BASE="$(cat "$COVERAGE_DIR/_base" 2>/dev/null || true)"
@@ -102,19 +95,18 @@ if [ "$AFFECTED" = "1" ] && [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
                 echo "Affected: ${SELECTION#ALL }, so running the full suite." ;;
             "")
                 echo "Affected: no case reads anything changed since $(git rev-parse --short "$BASE") -- nothing to run."
-                [ -n "$TREE_BEFORE" ] && mkdir -p "$COVERAGE_DIR" &&
-                    echo "$TREE_BEFORE $BASE" > "$COVERAGE_DIR/_verified"
+                advance_base
                 exit 0 ;;
             *)
                 ONLY="$SELECTION"
-                VERIFIED_KIND="$BASE" ;;
+                ADVANCE_BASE=1 ;;
         esac
     fi
 fi
 FULL=0
-if [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then FULL=1; VERIFIED_KIND="ALL"; fi
-# A shard is a slice, so it must not prune the map or vouch for the tree.
-if [ -n "$SHARD" ]; then FULL=0; VERIFIED_KIND=""; fi
+if [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then FULL=1; ADVANCE_BASE=1; fi
+# A shard is a slice, so it must not prune the map or move the base.
+if [ -n "$SHARD" ]; then FULL=0; ADVANCE_BASE=0; fi
 
 # Install puppeteer-core etc. on first run.
 if [ ! -d node_modules ]; then
@@ -216,26 +208,19 @@ for i in "${!NAMES[@]}"; do
 done
 
 # A full run has just rewritten the entry of every case that exists, so any
-# other entry belongs to a deleted or renamed case. It also makes the map
-# accurate for the commit checked out, so that becomes the base the pre-push
-# hook diffs from. (Uncommitted edits were run too; they will show up in the
-# next push's diff anyway, which can only select more, never fewer.)
+# other entry belongs to a deleted or renamed case.
 if [ "$FULL" = "1" ] && [ -d "$COVERAGE_DIR" ]; then
     for entry in "$COVERAGE_DIR"/*.json; do
         [ -e "$entry" ] || continue
         [ -f "cases/$(basename "$entry" .json).js" ] || rm -f "$entry"
     done
-    git rev-parse HEAD > "$COVERAGE_DIR/_base" 2>/dev/null || rm -f "$COVERAGE_DIR/_base"
 fi
 
-# Record the tree this pass vouches for -- only if nothing changed under the
-# run, since a file edited mid-run may have been tested in either state.
-if [ "$FAIL" = "0" ] && [ -n "$VERIFIED_KIND" ] && [ -n "$TREE_BEFORE" ]; then
-    if [ "$(worktree_tree 2>/dev/null || true)" = "$TREE_BEFORE" ]; then
-        mkdir -p "$COVERAGE_DIR"
-        echo "$TREE_BEFORE $VERIFIED_KIND" > "$COVERAGE_DIR/_verified"
-    fi
-fi
+# Every case the changes since the old base could affect has now rerun and
+# rewritten (or, on failure, dropped) its entry, so the map is verified up to
+# the commit this run started on. Uncommitted edits were run too; they show up
+# in the next diff anyway, which can only select more, never fewer.
+if [ "$ADVANCE_BASE" = "1" ]; then advance_base; fi
 
 echo
 echo "================================================"

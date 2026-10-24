@@ -82,41 +82,36 @@ entirely; `@babel/standalone` to `^7` because it has since moved to 8.x
 while `index.html` still requests 7. Serving a version the live app
 does not use would make the suite lie about what ships.
 
-## Auto-run on push
+## CI
 
-A pre-push hook lives in `.githooks/`. Wire it up once:
+`.github/workflows/tests.yml` runs the full suite on every branch push,
+split four ways with `TEST_SHARD`, and the "protect main" ruleset will not
+merge a PR until that run is green on a branch that is up to date with
+`main`. That is the gate. It replaced a `.githooks/pre-push` hook in Oct
+2026: a hook runs on the pusher's machine, so `--no-verify`, a fresh clone or
+a phone session skipped it, and CI cannot be skipped.
 
-```
-git config core.hooksPath .githooks
-```
+`run.sh --affected` stays the fast local check before a commit, and it is
+now what keeps `.coverage/_base` current (see the note in `run.sh`).
 
-Same in `../public-gym-app`. After that, every `git push` runs the suite
-and aborts on failure. Bypass with `--no-verify`.
-
-The hook takes about 110 seconds. That used to be 8m34s, which was long
-enough to cause a failure worth recognising: `git push` opens its SSH
-connection BEFORE running the hook and uploads over that same connection
-afterwards, so GitHub would drop the idle session mid-run and the push
-died with `Connection to github.com closed by remote host` *after* the
-hook had already reported every test passing. If you ever see that line
-appear in the middle of the test output, that is ssh talking, not a test.
-`~/.ssh/config` carries a keepalive for github.com that prevents it; at
-the current runtime it should not be needed, and it is safe to remove if
-the hook ever gets faster still.
+`../public-gym-app` still has its own pre-push hook, which runs this whole
+suite on every push there (10+ minutes). `git push` opens its SSH connection
+before the hook runs, so a long hook can let GitHub drop the idle session:
+if `Connection to github.com closed by remote host` appears in the middle of
+the test output, that is ssh talking, not a test. `~/.ssh/config` carries a
+keepalive for github.com that prevents it.
 
 ## Recommended workflow
 
 ```
-1. Make a code change (config swap, bug fix, refactor, etc.)
-2. cd tests && bash run.sh
+1. On a fresh branch, make a code change (config swap, bug fix, etc.)
+2. cd tests && bash run.sh --affected
 3. All pass?
-     → commit + push
+     → commit, push the branch, open a PR once its CI run is green
    Anything fails?
      → read the failure output. Either fix the code (real regression)
        or update the test (intentional change in behavior).
-4. After pushing, the same code is now on the live web app on your
-   phone. Tests passing locally is your assurance it'll behave
-   correctly there too.
+4. Merging the PR deploys it to the live web app on your phone.
 ```
 
 This is the safety net we didn't have when the day-filter bug shipped
