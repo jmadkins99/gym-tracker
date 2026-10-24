@@ -14,7 +14,7 @@
             return { on, max: String(max) };
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -22,6 +22,15 @@
             const [tempIncrement, setTempIncrement] = useState('');
             const [tempGympin, setTempGympin] = useState(false);
             const [tempStackMax, setTempStackMax] = useState('');
+            const [tempRepMin, setTempRepMin] = useState(REP_RANGE_FLOOR);
+            const [tempRepMax, setTempRepMax] = useState(REP_RANGE_FLOOR);
+
+            // What the rep range form opens on: the range in force, in the
+            // user's terms (one above the dropdown's failed-set bottom).
+            const repRangeFormValues = (exercise) => {
+                const range = getStandardRepRange(exercise.id);
+                return { repMin: range.min + 1, repMax: range.max };
+            };
 
             const handleStartEdit = (exercise) => {
                 setEditingExercise(exercise.id);
@@ -31,6 +40,9 @@
                 const gympin = gympinFormValues(exercise);
                 setTempGympin(gympin.on);
                 setTempStackMax(gympin.max);
+                const repRange = repRangeFormValues(exercise);
+                setTempRepMin(repRange.repMin);
+                setTempRepMax(repRange.repMax);
             };
 
             // Each field is only written when it changed, so a plain rename is
@@ -57,6 +69,12 @@
                         updateExerciseGympin(exercise.id, { gympin: tempGympin, stackMax });
                     }
                 }
+                // Only an explicit change is saved, so an untouched exercise
+                // keeps following the default range.
+                const wasRange = repRangeFormValues(exercise);
+                if (tempRepMin !== wasRange.repMin || tempRepMax !== wasRange.repMax) {
+                    updateExerciseRepRange(exercise.id, { repMin: tempRepMin, repMax: tempRepMax });
+                }
                 handleCancelEdit();
             };
 
@@ -66,6 +84,8 @@
                 setTempIncrement('');
                 setTempGympin(false);
                 setTempStackMax('');
+                setTempRepMin(REP_RANGE_FLOOR);
+                setTempRepMax(REP_RANGE_FLOOR);
             };
 
             if (settingsView === 'exercises') {
@@ -254,6 +274,56 @@
                                                             Two-sided: suggests +{effective} lbs
                                                         </div>
                                                     ) : null}
+                                                </div>
+                                            );
+                                        })() : null}
+
+                                        {/* The rep range. Edit-mode only and committed
+                                            by Save, like the increment. Max never offers
+                                            less than min, and raising min past max drags
+                                            max up with it, so the pair is always valid. */}
+                                        {editingExercise === exercise.id ? (() => {
+                                            const range = (from) => Array.from(
+                                                { length: REP_RANGE_CEILING - from + 1 }, (_, i) => from + i);
+                                            const selectStyle = { padding: '8px', fontSize: '14px', background: '#0d0d1a' };
+                                            return (
+                                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: '12px', color: '#8a8aa0', marginBottom: '4px' }}>
+                                                            Min reps
+                                                        </div>
+                                                        <select
+                                                            className="input-field"
+                                                            data-field="repMin"
+                                                            value={String(tempRepMin)}
+                                                            onChange={(e) => {
+                                                                const repMin = Number(e.target.value);
+                                                                setTempRepMin(repMin);
+                                                                if (tempRepMax < repMin) setTempRepMax(repMin);
+                                                            }}
+                                                            style={selectStyle}
+                                                        >
+                                                            {range(REP_RANGE_FLOOR).map(n => (
+                                                                <option key={n} value={String(n)}>{n}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: '12px', color: '#8a8aa0', marginBottom: '4px' }}>
+                                                            Max reps
+                                                        </div>
+                                                        <select
+                                                            className="input-field"
+                                                            data-field="repMax"
+                                                            value={String(tempRepMax)}
+                                                            onChange={(e) => setTempRepMax(Number(e.target.value))}
+                                                            style={selectStyle}
+                                                        >
+                                                            {range(tempRepMin).map(n => (
+                                                                <option key={n} value={String(n)}>{n}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 </div>
                                             );
                                         })() : null}

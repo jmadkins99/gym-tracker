@@ -6,8 +6,8 @@
 //                                 to 4 for the new heavier weight.
 // The id-keyed override that let the wrist pair run a 5/6/7/8 dropdown was
 // covered here too, until both movements left the program in Sep 2026 and took
-// the 5-8 range with them. STANDARD_REP_RANGE_OVERRIDES is empty now, so every
-// rostered movement uses the 3-6 range this case asserts.
+// the 5-8 range with them. A range is now a per-exercise setting (case 134), and
+// an exercise nobody has edited uses the 3-6 range this case asserts.
 //   - No history               -> defaults to the exercise's start reps.
 // And one-tap LOG (no interaction) persists the pre-selected reps + pre-filled
 // weight.

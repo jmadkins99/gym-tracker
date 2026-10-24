@@ -21,11 +21,15 @@
                         // Find the exercise definition from allExercises
                         const exerciseDef = allExercises.find(e => e.id === exerciseId);
                         if (exerciseDef) {
+                            // Stamped like logExercise does, so isFailedSet
+                            // judges an added set by the range in force.
+                            const range = getStandardRepRange(exerciseDef.id);
                             updated.push({
                                 id: exerciseDef.id,
                                 name: exerciseDef.name,
                                 category: exerciseDef.category,
                                 type: exerciseDef.type,
+                                ...(exerciseDef.type === 'standard' ? { repMin: range.min + 1, repMax: range.max } : {}),
                                 [field]: value
                             });
                         }

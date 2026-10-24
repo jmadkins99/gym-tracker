@@ -40,7 +40,7 @@
         // - Drops saved exercises that are no longer in defaults.
         // - Applies the canonical order from DEFAULT_EXERCISES.
         // - Preserves the user-owned fields by id: display name, loadType,
-        //   increment, gympin and stackMax.
+        //   increment, gympin, stackMax, repMin and repMax.
         // Pure function: takes the parsed config and returns the reconciled
         // config, or null if no changes are needed. The caller persists.
         //
@@ -100,7 +100,11 @@
                         // Same rule for the Gympin pair: resolveGympin reads the
                         // seed from PIN_STACK_CAPS when either is absent.
                         gympin: saved.gympin,
-                        stackMax: saved.stackMax
+                        stackMax: saved.stackMax,
+                        // And for the rep range: getStandardRepRange falls back
+                        // to the default when the pair is absent.
+                        repMin: saved.repMin,
+                        repMax: saved.repMax
                     });
                 } else {
                     result.push({ ...defaultEx });
