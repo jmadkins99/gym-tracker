@@ -2,11 +2,12 @@
 # GitLab equivalent: a .gitlab-ci.yml with one `test` job.
 name: tests
 
+# Every branch push, so a branch is green before its PR is opened. No
+# pull_request trigger: the PR's check is the run already on its head commit,
+# and adding one would test every change twice. The merge to main is a push too.
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    branches: ['**'] # branches only; tags don't run tests
   workflow_dispatch: # "Run workflow" button in the Actions tab
 
 # A newer push to the same branch cancels the run it makes stale.
