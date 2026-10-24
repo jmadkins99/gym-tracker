@@ -1,7 +1,13 @@
 # CI/CD: the headless suite, split across four machines, then a deploy to
-# GitHub Pages that only runs once every slice has passed on main.
+# GitHub Pages on main.
 # GitLab equivalent: a .gitlab-ci.yml with `stages: [test, deploy]`, a test
 # job using `parallel: 4`, and a `pages` job limited to the default branch.
+#
+# The suite runs on branches, not on the merge to main. The "protect main"
+# ruleset only lets a PR merge when its branch is up to date with main and
+# green, and a squash merge of an up-to-date branch puts exactly the tested
+# files on main, so a second run there would test the same code again.
+# GitLab gets the same guarantee from merge trains / merged results pipelines.
 name: tests
 
 # Every branch push, so a branch is green before its PR is opened. No
@@ -21,6 +27,9 @@ concurrency:
 jobs:
   shard:
     name: shard ${{ matrix.shard }}
+    # Skipped only for the merge push to main (see the top of the file). The
+    # "Run workflow" button still tests main on demand.
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     strategy:
       fail-fast: false # let every slice finish, so one run shows every failure
       matrix:
@@ -54,16 +63,24 @@ jobs:
   # The one check the "protect main" ruleset requires, so the shard count can
   # change without touching the ruleset. `always()` because a job skipped
   # after a failed shard would count as passing; this one has to fail instead.
+  # The one skip it accepts is the merge push to main, where the shards are
+  # skipped on purpose.
   test:
     needs: shard
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: test "${{ needs.shard.result }}" = success
+      - run: |
+          result="${{ needs.shard.result }}"
+          merge_push="${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}"
+          [ "$result" = success ] || { [ "$merge_push" = true ] && [ "$result" = skipped ]; }
 
   deploy:
-    needs: test # implicitly success(): a red test means no deploy
-    if: github.ref == 'refs/heads/main'
+    needs: test
+    # Spelled out rather than the implicit success(), which is murky about
+    # skipped jobs further up the chain. !cancelled(), not always(): a
+    # cancelled run must never deploy.
+    if: ${{ !cancelled() && needs.test.result == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
