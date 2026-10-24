@@ -45,6 +45,20 @@ PATTERN="${1:-}"
 ONLY="${TEST_CASES:-}"
 JOBS="${TEST_JOBS:-6}"
 
+# TEST_SHARD=i/n runs every n-th case starting at the i-th (1-based), so n
+# machines can split the suite between them -- CI's matrix does this. Taken
+# round-robin rather than in contiguous blocks because the cases are
+# numbered by age, and a block of neighbours is a block of similar cost.
+SHARD="${TEST_SHARD:-}"
+if [ -n "$SHARD" ]; then
+    SHARD_I="${SHARD%/*}"; SHARD_N="${SHARD#*/}"
+    if ! [[ "$SHARD_I" =~ ^[0-9]+$ && "$SHARD_N" =~ ^[0-9]+$ ]] ||
+       [ "$SHARD_I" -lt 1 ] || [ "$SHARD_I" -gt "$SHARD_N" ]; then
+        echo "TEST_SHARD must look like 2/4 (shard 2 of 4), got: $SHARD"
+        exit 1
+    fi
+fi
+
 # Every case is run with lib/coverage.js preloaded, which records the repo
 # files it reads into .coverage/<case>.json. That is the map the pre-push hook
 # selects from; it is rebuilt here on every run and never edited by hand.
@@ -99,6 +113,8 @@ if [ "$AFFECTED" = "1" ] && [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
 fi
 FULL=0
 if [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then FULL=1; VERIFIED_KIND="ALL"; fi
+# A shard is a slice, so it must not prune the map or vouch for the tree.
+if [ -n "$SHARD" ]; then FULL=0; VERIFIED_KIND=""; fi
 
 # Install puppeteer-core etc. on first run.
 if [ ! -d node_modules ]; then
@@ -122,8 +138,21 @@ for test in cases/*.js; do
     fi
 done
 
+if [ -n "$SHARD" ]; then
+    S_NAMES=(); S_FILES=()
+    for i in "${!NAMES[@]}"; do
+        if [ $(( i % SHARD_N + 1 )) -eq "$SHARD_I" ]; then
+            S_NAMES+=("${NAMES[$i]}"); S_FILES+=("${FILES[$i]}")
+        fi
+    done
+    NAMES=("${S_NAMES[@]}"); FILES=("${S_FILES[@]}")
+fi
+
 TOTAL=${#NAMES[@]}
 
+if [ -n "$SHARD" ]; then
+    echo "Shard $SHARD: every ${SHARD_N}th case, starting at #$SHARD_I"
+fi
 if [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
     echo "Affected: only the cases that read something changed since $(git rev-parse --short "$BASE")"
 elif [ -n "$ONLY" ]; then
@@ -210,7 +239,9 @@ fi
 
 echo
 echo "================================================"
-if [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
+if [ -n "$SHARD" ]; then
+    echo "  $PASSED / $TOTAL passed  (shard $SHARD)"
+elif [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
     echo "  $PASSED / $TOTAL passed  (affected cases only; the other $(( $(ls cases/*.js | wc -l) - TOTAL )) cannot see these changes)"
 elif [ -n "$ONLY" ]; then
     echo "  $PASSED / $TOTAL passed  (selected cases only)"
