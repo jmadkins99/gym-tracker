@@ -85,22 +85,45 @@
         // so a hand-edited backup cannot smuggle in a 3 no gym can load.
         const PR_INCREMENT_OPTIONS = [1.25, 2.5, 5, 10];
 
-        // Standard weighted rep dropdowns. Every movement in the program uses
-        // the historical 3-6 range. The override map is empty as of Sep 2026:
-        // its only two entries were the wrist pair's 5-8 range, and that range
-        // was built for those two movements alone, so it left with them.
+        // Standard weighted rep dropdowns. Internally a range is the dropdown's
+        // ends: `min` is the bottom value, the one you log when the set failed,
+        // and `max` is the top that earns a weight bump. The user thinks in the
+        // rep range itself, one above that bottom, so "4-6" is { min: 3, max: 6 }.
         //
-        // The mechanism stays because it is the read path — every caller goes
-        // through getStandardRepRange rather than the constant — and because
-        // the next movement that wants its own range needs one line here, not a
-        // re-plumb. Editing a past wrist-curl session still offers its stored
-        // 7 or 8: EditWorkoutModal unions the saved value into the dropdown,
-        // which is what makes deleting the override safe for history.
+        // The rep range is a USER setting since Oct 2026: Settings > Manage
+        // Exercises saves `repMin`/`repMax` on the exercise. An exercise with no
+        // saved pair uses the default. Every caller goes through
+        // getStandardRepRange, so the dropdown, the default reps and every PR
+        // verdict follow the setting with no other plumbing.
+        //
+        // Lookup is by id, not by exercise object, because the history callers
+        // (isFailedSet, streaks, the PR toast) only hold a logged entry. App
+        // keeps the list current with setActiveExercises on every render.
         const DEFAULT_STANDARD_REP_RANGE = { min: 3, max: 6 };
-        const STANDARD_REP_RANGE_OVERRIDES = {};
+
+        // The only "min reps" and "max reps" the Settings dropdowns offer. A floor
+        // of 4 keeps the failed-set bottom at 3 or above.
+        const REP_RANGE_FLOOR = 4;
+        const REP_RANGE_CEILING = 12;
+
+        // Rejects anything Settings could not have saved, so a hand-edited
+        // backup falls back to the default rather than breaking the dropdown.
+        function isValidRepRange(repMin, repMax) {
+            return Number.isInteger(repMin) && Number.isInteger(repMax) &&
+                REP_RANGE_FLOOR <= repMin && repMin <= repMax && repMax <= REP_RANGE_CEILING;
+        }
+
+        let activeExercises = [];
+        function setActiveExercises(exercises) {
+            activeExercises = exercises || [];
+        }
 
         function getStandardRepRange(exerciseId) {
-            return STANDARD_REP_RANGE_OVERRIDES[exerciseId] || DEFAULT_STANDARD_REP_RANGE;
+            const exercise = activeExercises.find(e => e.id === exerciseId);
+            if (exercise && isValidRepRange(exercise.repMin, exercise.repMax)) {
+                return { min: exercise.repMin - 1, max: exercise.repMax };
+            }
+            return DEFAULT_STANDARD_REP_RANGE;
         }
 
         function getStandardRepOptions(exerciseId) {
@@ -517,8 +540,9 @@
             { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 12 },
             { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
             // The wrist pair (Reverse Wrist Curls, Cable Wrist Curls) left the
-            // program in Sep 2026 and took the 5-8 rep range with them; see
-            // STANDARD_REP_RANGE_OVERRIDES.
+            // program in Sep 2026 and took their 5-8 rep range with them; a
+            // range like that is now a per-exercise setting (see
+            // getStandardRepRange).
             //
             // `leg-curls` is its frozen id — it has not been a leg curl in a
             // long time. Pin-loaded and capped at 260 since Sep 2026: it had

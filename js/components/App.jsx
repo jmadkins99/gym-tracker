@@ -28,6 +28,9 @@
             // Gold toast for a PR log, matching the card's celebration.
             const [successIsPR, setSuccessIsPR] = useState(false);
             const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
+            // Set during render, before any child renders, so the id-keyed rep
+            // range lookups in config.js always see the saved ranges.
+            setActiveExercises(exercises);
             const [showSettings, setShowSettings] = useState(false);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
@@ -392,6 +395,19 @@
                 });
             };
 
+            // The rep range pair, the sixth and seventh user-owned fields,
+            // written together like the Gympin pair. Absent means the default
+            // range (getStandardRepRange).
+            const updateExerciseRepRange = (exerciseId, { repMin, repMax }) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, repMin, repMax } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
             // Reordering is scoped to the exercise's own day. Swapping across
             // a day boundary would move a card in the settings list without
             // changing which day it belongs to, so the arrow would look like it
@@ -687,6 +703,9 @@
                         ...stamps
                     };
                 } else {
+                    // The rep range the set was done under, so isFailedSet judges
+                    // it by that range even after the setting changes.
+                    const range = getStandardRepRange(exercise.id);
                     exerciseToSave = {
                         id: exercise.id,
                         name: exercise.name,
@@ -694,6 +713,8 @@
                         type: exercise.type,
                         weight: finalData.weight || '',
                         reps: finalData.reps || '',
+                        repMin: range.min + 1,
+                        repMax: range.max,
                         ...stamps
                     };
                 }
@@ -1042,6 +1063,7 @@
                             updateExerciseLoadType={updateExerciseLoadType}
                             updateExerciseIncrement={updateExerciseIncrement}
                             updateExerciseGympin={updateExerciseGympin}
+                            updateExerciseRepRange={updateExerciseRepRange}
                             moveExercise={moveExercise}
                         />
                     )}

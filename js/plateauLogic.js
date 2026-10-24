@@ -154,9 +154,15 @@
             return newReps > oldReps;
         }
 
-        // A set that bottomed out the rep range. The dropdown runs 3 to 6 (per
-        // exercise — see getStandardRepRange), and the bottom value is not a
-        // target anyone trains for: it is the number you log when the set failed.
+        // A set that bottomed out the rep range. The dropdown runs from one below
+        // the exercise's min reps to its max (3 to 6 by default — see
+        // getStandardRepRange), and the bottom value is not a target anyone
+        // trains for: it is the number you log when the set failed.
+        //
+        // Each set is judged by the range it was LOGGED under, which logExercise
+        // stamps on it as repMin, so changing an exercise's range never rewrites
+        // old PR badges or streaks. A set from before the stamp existed was done
+        // under the default range, so that is its bottom, not today's setting.
         // Loading more weight and then failing on it is a failed attempt at a PR,
         // not a PR, so isImprovement refuses it before the weight comparison — the
         // one place that decision has to live, or the flame pill and the "PRs
@@ -177,7 +183,9 @@
             }
             const reps = parseInt(entry.reps);
             if (isNaN(reps)) return false;
-            return reps <= getStandardRepRange(entry.id).min;
+            const bottom = isValidRepRange(entry.repMin, entry.repMax)
+                ? entry.repMin - 1 : DEFAULT_STANDARD_REP_RANGE.min;
+            return reps <= bottom;
         }
 
         // The most recent session before `beforeDate` that actually logged this
