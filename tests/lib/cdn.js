@@ -1,7 +1,7 @@
-// Serves the apps' CDN libraries from tests/node_modules instead of the network.
+// Serves the app's CDN libraries from tests/node_modules instead of the network.
 //
-// Both apps load React, ReactDOM and @babel/standalone from unpkg in a plain
-// <script> tag, and the public app additionally pulls Chart.js from jsDelivr.
+// The app loads React, ReactDOM and @babel/standalone from unpkg in a plain
+// <script> tag.
 // That is fine in a browser on a phone, but it makes the test suite depend on
 // outbound HTTPS to third-party CDNs — and in a sandboxed CI container that
 // egress is often blocked outright, in which case every browser case dies at
@@ -23,24 +23,23 @@ const path = require('path');
 
 const NODE_MODULES = path.join(__dirname, '..', 'node_modules');
 
-// Keyed by "hostname + pathname", so a version drift in either app's
+// Keyed by "hostname + pathname", so a version drift in
 // index.html surfaces as a loud 502 rather than silently falling through to a
 // network request that may or may not be reachable.
 const CDN_MAP = {
     'unpkg.com/react@18/umd/react.production.min.js': 'react/umd/react.production.min.js',
     'unpkg.com/react-dom@18/umd/react-dom.production.min.js': 'react-dom/umd/react-dom.production.min.js',
     'unpkg.com/@babel/standalone@7/babel.min.js': '@babel/standalone/babel.min.js',
-    // Public app only. The npm package ships no minified UMD build, so this
-    // serves the unminified one — same library, same version, and the tests
-    // care about behaviour rather than byte count.
-    'cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js': 'chart.js/dist/chart.umd.js',
 };
 
+// jsDelivr has nothing mapped since Chart.js left with the public-app cases,
+// but stays a CDN host so a stray request to it fails as a loud 502 instead of
+// quietly reaching the network.
 const CDN_HOSTS = new Set(['unpkg.com', 'cdn.jsdelivr.net']);
 
-// Firebase's SDK host is deliberately NOT mapped. Both apps gate their SDK
-// load on the namespace and make zero gstatic requests under 'gym-local:',
-// which is what the tests run in — and cases 36/38 assert exactly that. A
+// Firebase's SDK host is deliberately NOT mapped. The app gates its SDK
+// load on the namespace and makes zero gstatic requests under 'gym-local:',
+// which is what the tests run in — and case 36 asserts exactly that. A
 // mapping here would hide a regression in that gating.
 
 // Fail at setup time, not request time. An interception that never resolves

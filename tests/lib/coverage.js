@@ -14,8 +14,7 @@
 // which makes it "unknown" and therefore always selected until it passes again.
 //
 // Only files inside this repo and outside tests/ are recorded. Test code and
-// fixtures are handled by fixed rules in lib/select.js; files in the sibling
-// public-gym-app can never be changed by a push to this repo.
+// fixtures are handled by fixed rules in lib/select.js.
 
 const fs = require('fs');
 const path = require('path');
