@@ -1,5 +1,7 @@
-# CI: the same headless suite the pre-push hook runs, on GitHub's machines.
-# GitLab equivalent: a .gitlab-ci.yml with one `test` job.
+# CI/CD: the headless suite, split across four machines, then a deploy to
+# GitHub Pages that only runs once every slice has passed on main.
+# GitLab equivalent: a .gitlab-ci.yml with `stages: [test, deploy]`, a test
+# job using `parallel: 4`, and a `pages` job limited to the default branch.
 name: tests
 
 # Every branch push, so a branch is green before its PR is opened. No
@@ -10,13 +12,19 @@ on:
     branches: ['**'] # branches only; tags don't run tests
   workflow_dispatch: # "Run workflow" button in the Actions tab
 
-# A newer push to the same branch cancels the run it makes stale.
+# A newer push to a branch cancels the run it makes stale. Never on main,
+# where cancelling could stop a deploy halfway.
 concurrency:
   group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
+  shard:
+    name: shard ${{ matrix.shard }}
+    strategy:
+      fail-fast: false # let every slice finish, so one run shows every failure
+      matrix:
+        shard: [1, 2, 3, 4] # add a number here to split further
     runs-on: ubuntu-latest # ships Google Chrome at /usr/bin/google-chrome, which tests/lib/browser.js finds
     timeout-minutes: 20 # a hung Chrome would otherwise burn the 6-hour default
     steps:
@@ -34,8 +42,42 @@ jobs:
         with:
           node-version: 24
 
-      # Full suite, not --affected: a fresh runner has no tests/.coverage map,
-      # and CI is the one place that should never trust a selection.
+      # The full suite, sliced -- never --affected: a fresh runner has no
+      # tests/.coverage map, and CI is the one place that should never trust
+      # a selection.
       - name: Run tests
         working-directory: gym-tracker/tests
+        env:
+          TEST_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
         run: bash run.sh
+
+  # The one check the "protect main" ruleset requires, so the shard count can
+  # change without touching the ruleset. `always()` because a job skipped
+  # after a failed shard would count as passing; this one has to fail instead.
+  test:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.shard.result }}" = success
+
+  deploy:
+    needs: test # implicitly success(): a red test means no deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      # The whole repo, as the old branch deploy served it. Hidden files
+      # (.github, .gitattributes) are left out by the action.
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+      - uses: actions/deploy-pages@v4
+        id: deploy

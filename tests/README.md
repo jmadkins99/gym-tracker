@@ -12,6 +12,7 @@ bash run.sh                # everything
 bash run.sh 50             # just case 50
 bash run.sh personal-app   # just the personal-app cases
 TEST_JOBS=1 bash run.sh 50 # one at a time (see below)
+TEST_SHARD=2/4 bash run.sh # every 4th case from the 2nd: one of CI's four slices
 ```
 
 Cases run **6 at a time**. The full suite takes about **110 seconds**;
