@@ -36,15 +36,18 @@ Client counterpart: [public-gym-app](https://github.com/jmadkins99/public-gym-ap
 
 - React 18 and Babel standalone from a CDN, no build step.
 - Firebase 10 (Auth + Firestore) for sign-in and sync.
-- GitHub Pages, deployed by `.github/workflows/tests.yml` once tests pass.
+- GitHub Pages, deployed by `.github/workflows/tests.yml` on each merge to
+  `main`. A pull request can only merge once that workflow's tests pass.
 - Puppeteer end-to-end tests in `tests/`.
 
 ## Development
 
+Needs Python, Node and Chrome.
+
 ```bash
 python -m http.server 8000   # then open http://localhost:8000/
-cd tests && bash run.sh      # full test suite
+cd tests && bash run.sh      # full test suite; installs its npm packages
 ```
 
 Served from `localhost`, the app uses its own `gym-local:` storage, so it never
-touches live data. The branch and pull request workflow is in `CLAUDE.md`.
+touches live data.
