@@ -75,13 +75,13 @@ const BASELINE = workoutEntry({
     submitted: true,
     // Chest Press was flagged a plateau buster here — 3 reps is a true failure,
     // which is exactly what makes the next session a deliberate weight drop.
-    plateauBusters: ['chest-press'],
+    plateauBusters: ['pecs-transverse-shoulder-adduction-with-elbow-extension'],
     exercises: [
-        { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '3' },
-        { id: 'shoulder-press', name: 'Shoulder Press', weight: '120', reps: '4' },
-        { id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '4' },
-        { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '5' },
-        { id: 'lateral-raises', name: 'Lateral Raises', weight: '55', reps: '6' },
+        { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '3' },
+        { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '120', reps: '4' },
+        { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '165', reps: '4' },
+        { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '110', reps: '5' },
+        { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: '55', reps: '6' },
     ],
 });
 
@@ -93,7 +93,7 @@ const ABANDONED = workoutEntry({
     day: 'anterior',
     submitted: false,
     exercises: [
-        { id: 'lateral-raises', name: 'Lateral Raises', weight: '999', reps: '3' },
+        { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: '999', reps: '3' },
     ],
 });
 
@@ -103,15 +103,15 @@ const TODAY = workoutEntry({
     submitted: false,
     exercises: [
         // The plateau-buster recovery: lighter, at more reps. NOT a PR.
-        { id: 'chest-press', name: 'Chest Press', weight: '195', reps: '6' },
+        { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '195', reps: '6' },
         // Weight up. A PR under both rules.
-        { id: 'shoulder-press', name: 'Shoulder Press', weight: '125', reps: '4' },
+        { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '125', reps: '4' },
         // Same weight, more reps. A PR under both rules.
-        { id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '5' },
+        { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '165', reps: '5' },
         // Identical session. Not a PR under either rule.
-        { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '5' },
+        { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '110', reps: '5' },
         // A PR against the real baseline (55), not against the abandoned 999.
-        { id: 'lateral-raises', name: 'Lateral Raises', weight: '60', reps: '6' },
+        { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: '60', reps: '6' },
     ],
 });
 
@@ -144,32 +144,32 @@ const TODAY = workoutEntry({
         // than only that the total is wrong.
         const verdicts = await page.evaluate(() => {
             const prev = {
-                'chest-press': { weight: '200', reps: '3' },
-                'shoulder-press': { weight: '120', reps: '4' },
-                'chest-flies': { weight: '165', reps: '4' },
-                'incline-chest-press': { weight: '110', reps: '5' },
+                'pecs-transverse-shoulder-adduction-with-elbow-extension': { weight: '200', reps: '3' },
+                'delts-shoulder-abduction-above-90-degrees': { weight: '120', reps: '4' },
+                'pecs-transverse-shoulder-adduction': { weight: '165', reps: '4' },
+                'pecs-shoulder-flexion': { weight: '110', reps: '5' },
                 // Yesterday's never-submitted row — the baseline the lookup
                 // now hands the modal for this exercise.
-                'lateral-raises': { weight: '999', reps: '3' },
+                'delts-shoulder-abduction-stop-at-90-degrees': { weight: '999', reps: '3' },
             };
             const now = {
-                'chest-press': { weight: '195', reps: '6' },
-                'shoulder-press': { weight: '125', reps: '4' },
-                'chest-flies': { weight: '165', reps: '5' },
-                'incline-chest-press': { weight: '110', reps: '5' },
-                'lateral-raises': { weight: '60', reps: '6' },
+                'pecs-transverse-shoulder-adduction-with-elbow-extension': { weight: '195', reps: '6' },
+                'delts-shoulder-abduction-above-90-degrees': { weight: '125', reps: '4' },
+                'pecs-transverse-shoulder-adduction': { weight: '165', reps: '5' },
+                'pecs-shoulder-flexion': { weight: '110', reps: '5' },
+                'delts-shoulder-abduction-stop-at-90-degrees': { weight: '60', reps: '6' },
             };
             const out = {};
             for (const id of Object.keys(prev)) out[id] = isImprovement(now[id], prev[id]);
             return out;
         });
 
-        eq(verdicts['chest-press'], false,
+        eq(verdicts['pecs-transverse-shoulder-adduction-with-elbow-extension'], false,
             'a weight DROP is not a PR, however many more reps came with it');
-        eq(verdicts['shoulder-press'], true, 'a weight increase is a PR');
-        eq(verdicts['chest-flies'], true, 'same weight with more reps is a PR');
-        eq(verdicts['incline-chest-press'], false, 'an identical session is not a PR');
-        eq(verdicts['lateral-raises'], false,
+        eq(verdicts['delts-shoulder-abduction-above-90-degrees'], true, 'a weight increase is a PR');
+        eq(verdicts['pecs-transverse-shoulder-adduction'], true, 'same weight with more reps is a PR');
+        eq(verdicts['pecs-shoulder-flexion'], false, 'an identical session is not a PR');
+        eq(verdicts['delts-shoulder-abduction-stop-at-90-degrees'], false,
             'a drop from an abandoned day is still a drop — the lookup no longer skips it');
 
         // The badge and the count are now the same function. Chest Press has a
@@ -179,8 +179,8 @@ const TODAY = workoutEntry({
         const streaks = await page.evaluate(() => {
             const history = JSON.parse(localStorage.getItem('gym-local:gymWorkoutHistory') || '[]');
             return {
-                chestPress: getPRStreak('chest-press', history),
-                shoulderPress: getPRStreak('shoulder-press', history),
+                chestPress: getPRStreak('pecs-transverse-shoulder-adduction-with-elbow-extension', history),
+                shoulderPress: getPRStreak('delts-shoulder-abduction-above-90-degrees', history),
             };
         });
         eq(streaks.chestPress, null,

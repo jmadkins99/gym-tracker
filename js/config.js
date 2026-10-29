@@ -1,26 +1,3 @@
-        // Week 1 default weights
-        const WEEK_1_DEFAULTS = {
-            'curls-shoulder-extension': '25',
-            'overhead-tricep-extensions': '47.5',
-            'lateral-raises': '27.5',
-            'preacher-curls': '56.25',
-            'tricep-pushdown': '36.25',
-            'chest-flies': '165',
-            'chest-press': '200',
-            'incline-chest-press': '110',
-            'hammer-row': '117.5',
-            'frontal-pulldowns': '180',
-            'upper-back-row': '190',
-            'kelso-shrugs': '190',
-            'shoulder-press': '126.25',
-            'ab-crunch': '140',
-            'calf-raise': '180',
-            'leg-extensions': '120',
-            'leg-curls': '150',
-            'hip-adduction': '240',
-            'actual-leg-extensions': '100'
-        };
-
         // Tracking mode: only one should be true at a time
         // SIMPLE_PR_TRACKING: if you hit the top of the rep range last session,
         // bump weight and highlight green. No plateau buster.
@@ -42,43 +19,12 @@
         // per side per move) and pin stacks moved a full stack notch at a time.
         // 2.5 or 1.25 elsewhere; both are legal micro-plate steps.
         //
-        // These are SEEDS as of Sep 2026. The increment is a user setting,
-        // editable from the pencil in Settings > Manage Exercises and saved as
-        // `increment` on the exercise; this map is only read for an exercise
-        // that has no saved value (see resolveIncrement below).
-        const PR_WEIGHT_INCREMENTS = {
-            'curls-shoulder-extension': 2.5,
-            'overhead-tricep-extensions': 2.5,
-            'chest-flies': 2.5,
-            'chest-press': 2.5,
-            'incline-chest-press': 2.5,
-            // Back Extensions: 5 was one plate step a side when this was a
-            // two-sided sled, and it is exactly one notch now that the machine
-            // is a pin stack. The number survives the Sep 2026
-            // reclassification unchanged for that reason — not because the two
-            // loadings share a step by rule.
-            'leg-curls': 5,
-            'shoulder-press': 2.5,
-            'preacher-curls': 2.5,
-            'tricep-pushdown': 2.5,
-            'lateral-raises': 2.5,
-            'frontal-pulldowns': 2.5,
-            'upper-back-row': 2.5,
-            'kelso-shrugs': 2.5,
-            'hammer-row': 2.5,
-            'leg-extensions': 2.5,
-            // Leg Press: 5 = 2.5/side on a two-side plate machine. It reads as
-            // one pin-stack notch too, which is why it needed no change when
-            // this was briefly classified as a stack — do not take the shared
-            // number as evidence the two classifications are interchangeable.
-            'hip-adduction': 5,
-            // 5 = exactly one pin-stack step. Was 1.25 — a legal micro-plate,
-            // but a finer step than this machine warrants now that it is
-            // capped at 405.
-            'calf-raise': 5,
-            'ab-crunch': 2.5,
-            'actual-leg-extensions': 2.5
-        };
+        // The default for every exercise as of Oct 2026 (v25). The increment is
+        // a user setting, editable from the pencil in Settings > Manage
+        // Exercises and saved as `increment` on the exercise; this is only read
+        // for an exercise that has no saved value (see resolveIncrement below).
+        // It replaced a per-id seed table when every movement took a new id.
+        const DEFAULT_PR_INCREMENT = 2.5;
 
         // The only increments the Settings dropdown offers: the real plate
         // steps. resolveIncrement also rejects a saved value outside this list,
@@ -180,69 +126,12 @@
         //
         // PIN_STACK_CAPS is the SEED for those fields, by id: an exercise
         // that carries neither field reads its ceiling from here and is on if
-        // it has an entry. It used to be the whole mechanism — a code-side
-        // ceiling deliberately kept out of Settings, on the argument that a
-        // cap belongs to one specific machine rather than to a way of loading
-        // one. That argument was right about where the number comes from and
-        // wrong about who should hold it: every machine swap below needed a
-        // deploy to move a number the user knew at the machine. Seeding from
-        // the same table is what makes the upgrade invisible — the four
-        // machines here render exactly as they did before the fields existed,
-        // and nothing is written until the form is saved. Test 16 still fails
-        // on a seed naming a non-pin id.
-        //
-        // Lateral Raises (Sep 2026) reads 100 for two different machines, and
-        // the entry is worth reading slowly for that reason.
-        //
-        // It was recorded on 11 Sep as a ceiling nobody was near: the Jun 2026
-        // backup has the old machine worked at 32.5-35.25, three times under the
-        // cap, and this comment said in as many words that nothing would
-        // overflow for a long time. That was true when written and false the
-        // next day — the user moved to a machine that feels much lighter and
-        // went straight to 132.5.
-        //
-        // The number survived the move by coincidence. The new stack also tops
-        // out at 100 and its notch is also 2.5, so neither this entry nor the
-        // increment below needed touching; only the reasoning did. Treat that as
-        // a warning rather than a convenience. A machine swap normally moves the
-        // ceiling, the notch, and the comparability of everything logged before
-        // it — Cable Wrist Curls and Back Extensions each moved at least one —
-        // and this one happened to move none of them.
-        //
-        // So it is now the deepest overflow in the program rather than the only
-        // dormant cap in it: 32.5 over, rendering pin 100 + 25 + 5 + 2.5.
-        //
-        // Shoulder Press (Sep 2026) is the opposite entry to Lateral Raises and
-        // the only one here that is already live on the day it lands: the stack
-        // tops out at 250 and the user is working at 255 for 5, having come up
-        // from 232.5-233.75 in the June backup. So this cap does not describe a
-        // ceiling being approached — it describes one that has been passed, and
-        // every top set from here renders the overflow shape. Today that is pin
-        // 250 plus a 5; at the 2.5 lb step the next session is 257.5, which is
-        // pin 250 plus a 5 and a 2.5. Case 105 pins both, and the boundary below
-        // them. It is the first micro-plate overflow the SUITE renders, not the
-        // first in the program — Lateral Raises above has been landing on a 2.5
-        // in the gym since before either was written.
-        //
-        // Back Extensions (Sep 2026) is the machine that moved: it is a pin
-        // stack, capped at 260, and its seed below changed from
-        // 'plate-two-sided' to 'pin' in the same trip. The cap and the seed go
-        // together — the cap is unreachable config without the reclassification.
-        //
-        // Cable Wrist Curls was capped at 97.5 until Aug 2026, when the user
-        // moved to a different cable machine whose working weights are nowhere
-        // near its ceiling — uncapped from then until it left the program
-        // entirely in Sep 2026. Leg Press was briefly capped at 390 in the same
-        // Aug period, when the gym looked to have swapped its plate sled for a
-        // stack; that turned out not to hold. Calf Raises has always been a
-        // different machine, close number notwithstanding. Every one of those
-        // moves is the kind the Settings form now absorbs without a deploy.
-        const PIN_STACK_CAPS = {
-            'lateral-raises': 100,
-            'shoulder-press': 250,
-            'leg-curls': 260,
-            'calf-raise': 405
-        };
+        // it has an entry. It is empty since v25 (Oct 2026): every movement
+        // took a new id and starts with the Gympin off, set from Settings at
+        // the machine. The machine-by-machine history of the old entries
+        // (Lateral Raises, Shoulder Press, Back Extensions, Calf Raises) is in
+        // git, and test 16 still fails on a seed naming a non-pin id.
+        const PIN_STACK_CAPS = {};
 
         // The effective loading type for an exercise. Falls back to the code
         // seed by id, then to 'pin'. The fallback is load-bearing on the import
@@ -280,15 +169,13 @@
         }
 
         // The raw PR step for an exercise: the user's saved `increment` if it is
-        // a legal step, else the code seed by id, else undefined (which turns PR
-        // suggestions off for that exercise). Same shape as resolveLoadType, and
-        // the seed fallback is load-bearing for the same reason — an exercise
-        // nobody has edited carries no `increment` at all, so a code-side change
-        // to a seed still reaches it.
+        // a legal step, else DEFAULT_PR_INCREMENT. Same shape as
+        // resolveLoadType, and the fallback is load-bearing for the same reason —
+        // an exercise nobody has edited carries no `increment` at all.
         function resolveIncrement(exercise) {
             const saved = exercise && exercise.increment;
             if (PR_INCREMENT_OPTIONS.includes(saved)) return saved;
-            return PR_WEIGHT_INCREMENTS[exercise && exercise.id];
+            return DEFAULT_PR_INCREMENT;
         }
 
         // A two-sided machine splits the increment across both sides, so the
@@ -301,8 +188,8 @@
         // stack restores the fine step instead of leaving a coarsened one
         // behind. That is also why Settings shows the raw number.
         //
-        // No seed is finer than 2.5, so against untouched config this branch
-        // never fires. Since the increment became editable (Sep 2026) it does
+        // The default is 2.5, so against untouched config this branch never
+        // fires. Since the increment became editable (Sep 2026) it does
         // the moment someone types 1.25 on a two-sided machine. Case 61 pins it.
         function getWeightIncrement(exercise, loadType) {
             const base = resolveIncrement(exercise);
@@ -444,6 +331,19 @@
         // Frontal Plane Pulldowns and Tricep Extensions drop in behind them,
         // just ahead of Kelso Shrugs. Back Extensions onward does not move.
         //
+        // 25 is the Oct 2026 switch to new ids, and the first bump whose whole
+        // point is the id set. Every movement took an id naming the muscle and
+        // joint action (`chest-flies` -> `pecs-transverse-shoulder-adduction`)
+        // that no earlier program used, the names were updated with them, and
+        // NOTHING was migrated: the 19 old ids retired with their history, so
+        // History still shows those sessions as logged and every card starts
+        // with no "Last:". migrateExerciseConfig delivers it unaided — the old
+        // entries are not in DEFAULT_EXERCISES, so they drop, and the new ones
+        // come in on their seeds. That also resets every per-exercise setting
+        // to pin-loaded, 2.5, Gympin off and 4-6 reps, which was asked for.
+        // The names here now differ from Jessi's program, which keeps its own.
+        // Test 135 is the pin.
+        //
         // ----------------------------------------------------------------
         // LANDING A REORDER
         // ----------------------------------------------------------------
@@ -473,7 +373,7 @@
         // a fresh install only. Getting a rename
         // onto an existing device is a Settings job here; on Jessi's side it
         // needs a one-time JESSI_REV<N>_* pass. A pure reorder needs neither.
-        const EXERCISE_CONFIG_VERSION = 24;
+        const EXERCISE_CONFIG_VERSION = 25;
 
         // The days of the current program, in toggle order. Everything that
         // used to hard-code the split reads this instead: the deck's day toggle
@@ -492,8 +392,12 @@
             { id: 'full-body', label: 'Full Body' },
         ];
 
-        // Display names here are the defaults a fresh install sees; ids are
-        // frozen because workout history references them.
+        // Display names here are the defaults a fresh install sees. An id names
+        // the muscle and the joint action, never a machine or a display name,
+        // because those drift and history is keyed by id: once a session is
+        // logged under an id, it means that movement for good. A different
+        // movement takes a new id, never an old one — not even a retired one,
+        // which old backups and History still use.
         //
         // `day` is which PROGRAM_DAYS entry the exercise belongs to.
         // getCurrentExercises filters on it, so it is what decides which cards a
@@ -503,75 +407,43 @@
         //
         // Sep 2026: one Full Body day, six sessions a week, replacing the
         // Anterior/Posterior split (Aug 2026), which had replaced Upper/Lower.
-        // The same 19 movements in a new order; v22 carried it, v23 the
-        // Oct 2026 reorder that opened with the press pair, and v24 the one
-        // that puts Chest Flies ahead of it.
+        // Oct 2026 (v25): every movement on a new id, see the note above
+        // EXERCISE_CONFIG_VERSION.
         const DEFAULT_EXERCISES = [
-            { id: 'chest-flies',         name: 'Chest Flies',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
-            // Takes the plain `chest-press` id — no existing id was squatting on
-            // it, unlike the leg-extensions case below, so there is no need for
-            // an `actual-` prefix there. Both presses are stacks: v23 seeded
-            // them 'plate-two-sided', which was wrong, and they went back to
-            // 'pin' in Oct 2026. Fresh installs only, like every loadType seed.
-            { id: 'chest-press',         name: 'Chest Press',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
-            { id: 'incline-chest-press', name: 'Incline Chest Press',      category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
-            { id: 'curls-shoulder-extension', name: 'Recline Curls',       category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
-            // Renamed from Preacher Curls and reclassified to a stack (Sep
-            // 2026) — the name now says the joint action rather than the bench,
-            // and the machine was never a plate sled. `preacher-curls` is its
-            // frozen id and stays put; Jessi's app has its own
-            // `actual-preacher-curls`, a different movement that is NOT renamed
-            // with this.
-            { id: 'preacher-curls',      name: 'Shoulder Flexion Curls',   category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
-            { id: 'overhead-tricep-extensions', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
-            { id: 'ab-crunch',           name: 'Ab Crunches',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
-            // Renamed from Sagittal Plane Pulldowns and reclassified to a stack
-            // (Sep 2026): it is a pullover, and the plane was the only accurate
-            // half of the old name. `hammer-row` is its frozen id — it has not
-            // been a hammer row since long before either name.
-            { id: 'hammer-row',          name: 'Sagittal Plane Pullovers', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
-            { id: 'lateral-raises',      name: 'Lateral Raises',           category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
-            // A stack again from Oct 2026, after a month seeded
-            // 'plate-one-sided'. No PIN_STACK_CAPS entry: nobody has reported a
-            // ceiling, and a Gympin is a Settings answer if one turns up.
-            { id: 'frontal-pulldowns',   name: 'Frontal Plane Pulldowns',  category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
-            { id: 'tricep-pushdown',     name: 'Tricep Extensions',        category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 10 },
-            { id: 'kelso-shrugs',        name: 'Kelso Shrugs',             category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 11 },
-            { id: 'upper-back-row',      name: 'Transverse Plane Rows',    category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-one-sided', order: 12 },
-            { id: 'shoulder-press',      name: 'Shoulder Press',           category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
-            // The wrist pair (Reverse Wrist Curls, Cable Wrist Curls) left the
-            // program in Sep 2026 and took their 5-8 rep range with them; a
-            // range like that is now a per-exercise setting (see
-            // getStandardRepRange).
-            //
-            // `leg-curls` is its frozen id — it has not been a leg curl in a
-            // long time. Pin-loaded and capped at 260 since Sep 2026: it had
-            // been read as a two-sided plate sled since Aug 2026, and that was
-            // simply wrong about the machine. loadType is user-owned, so this
-            // seed only reaches a fresh install — a device that already set the
-            // dropdown keeps its own answer through the version bump.
-            { id: 'leg-curls',           name: 'Back Extensions',          category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 14 },
-            // `hip-adduction` is this row's frozen id; the `leg-extensions` id
-            // below is the one that renders as Hip Adduction. Neither name
-            // matches its id and neither is safe to rename.
-            { id: 'hip-adduction',       name: 'Leg Press',                category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'plate-two-sided', order: 15 },
-            // `leg-extensions` is its frozen id — it has not been a leg
-            // extension since the Upper/Lower split, and `actual-leg-extensions`
-            // at the end of the day is the row that renders Leg Extensions.
-            { id: 'leg-extensions',      name: 'Hip Adduction',            category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 16 },
-            { id: 'calf-raise',          name: 'Calf Raises',              category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 17 },
-            // NOT the `leg-extensions` id above, which renders as Hip Adduction.
-            // There was no history to inherit, so this took a fresh id rather
-            // than reclaiming one. `actual-` mirrors Jessi's
-            // `actual-preacher-curls`; the two apps deliberately share the idiom.
-            { id: 'actual-leg-extensions', name: 'Leg Extensions',         category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 18 }
+            { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
+            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
+            { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
+            { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
+            { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
+            { id: 'abs-spinal-flexion', name: 'Ab Crunches', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
+            { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
+            { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
+            { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
+            { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 10 },
+            { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 11 },
+            { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 12 },
+            { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
+            { id: 'erectors-spinal-extension', name: 'Back Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 14 },
+            { id: 'quads-knee-extension-during-hip-flexion', name: 'Squats', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 15 },
+            { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 16 },
+            { id: 'calves-ankle-extension', name: 'Calf Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 17 },
+            { id: 'quads-knee-extension', name: 'Leg Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 18 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and
         // `assault-bike` (August 2026 Lower/Upper switch), `stairmaster`
         // (dropped off Lower a few days later — it had been the lone 'Cardio'
         // category entry, so Lower no longer renders a Cardio heading at all),
-        // and `reverse-wrist-curls` + `cable-wrist-curls` (Sep 2026).
+        // and `reverse-wrist-curls` + `cable-wrist-curls` (Sep 2026). Oct 2026
+        // (v25) retired the rest of the old ids at once, every movement moving
+        // to a new one: `chest-flies`, `chest-press`, `incline-chest-press`,
+        // `curls-shoulder-extension`, `preacher-curls`,
+        // `overhead-tricep-extensions`, `ab-crunch`, `hammer-row`,
+        // `lateral-raises`, `frontal-pulldowns`, `tricep-pushdown`,
+        // `kelso-shrugs`, `upper-back-row`, `shoulder-press`, `leg-curls`,
+        // `hip-adduction`, `leg-extensions`, `calf-raise` and
+        // `actual-leg-extensions`. None may be reused.
         // Every rendering branch stays put — the stairmaster arms in
         // WorkoutView / EditWorkoutModal / WeeklyView / DayBreakdownModal,
         // getStairmasterSuggestion in plateauLogic, and the rep configs in
@@ -580,8 +452,8 @@
         //
         // The wrist pair is the one retirement that left nothing behind in
         // config: they were plain `standard` movements, so they need no
-        // rendering arm of their own, and their WEEK_1_DEFAULTS, increment and
-        // rep-range entries are all read per *rostered* exercise. Past sessions
+        // rendering arm of their own, and their increment and rep-range
+        // entries were read per *rostered* exercise. Past sessions
         // render from the stored entry either way. Everything about them is
         // recoverable from git — that is the reason this was a deletion rather
         // than a commented-out block.

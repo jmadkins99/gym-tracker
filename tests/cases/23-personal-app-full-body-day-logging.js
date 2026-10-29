@@ -51,9 +51,9 @@ async function logCard(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-        // Ab Crunches: Week 1 default weight 140, reps dropdown pre-fills 4.
+        // Ab Crunches: a typed weight, reps dropdown pre-fills 4.
         // The card must be opened before it has a weight input to type into.
-        await goToCardById(page, 'ab-crunch');
+        await goToCardById(page, 'abs-spinal-flexion');
         await revealCard(page);
         await page.evaluate((sel) => {
             const input = document.querySelector(sel + ' input[type="number"]');
@@ -62,10 +62,10 @@ async function logCard(page, exerciseId) {
             setter.call(input, '145');
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }, ACTIVE);
-        await logCard(page, 'ab-crunch');
+        await logCard(page, 'abs-spinal-flexion');
 
         // Leg Press: logged with no interaction at all, to cover the one-tap path.
-        await logCard(page, 'hip-adduction');
+        await logCard(page, 'quads-knee-extension-during-hip-flexion');
 
         // Submit the day. The button lives on the finish card at the end of
         // the deck, so this walks there first.
@@ -90,12 +90,14 @@ async function logCard(page, exerciseId) {
         ok(!w.exercises.some(e => e.id === 'stairmaster'),
             'no stairmaster row is written now that it is retired');
 
-        const crunch = w.exercises.find(e => e.id === 'ab-crunch');
-        const legPress = w.exercises.find(e => e.id === 'hip-adduction');
+        const crunch = w.exercises.find(e => e.id === 'abs-spinal-flexion');
+        const legPress = w.exercises.find(e => e.id === 'quads-knee-extension-during-hip-flexion');
 
         eq(crunch.weight, '145', 'ab crunches logged the typed weight');
         eq(crunch.reps, '4', 'ab crunches logged the pre-filled reps (not NA/empty)');
-        eq(legPress.weight, '240', 'one-tap LOG captures the pre-filled Week 1 weight');
+        // No starting weights since v25, so a never-logged card has none to
+        // capture.
+        eq(legPress.weight, '', 'one-tap LOG on a never-logged card saves a blank weight');
         eq(legPress.reps, '4', 'one-tap LOG captures the pre-filled reps');
 
         // Every row took the standard arm: no cardio field leaked onto any of

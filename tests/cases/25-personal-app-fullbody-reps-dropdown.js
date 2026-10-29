@@ -57,8 +57,8 @@ async function readStandardCard(page, name) {
             workoutEntry({
                 date: '2026-05-25T20:00:00Z', day: 'fullbody',
                 exercises: [
-                    { id: 'shoulder-press', name: 'Shoulder Press', weight: '100', reps: '5' },
-                    { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '6' },
+                    { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '100', reps: '5' },
+                    { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '190', reps: '6' },
                 ],
             }),
         ];
@@ -69,8 +69,8 @@ async function readStandardCard(page, name) {
         await selectDayType(page, 'full-body');
 
         // Every standard exercise uses exactly 3/4/5/6.
-        const sp = await readStandardCard(page, 'Shoulder Press');
-        ok(sp && sp.repsIsSelect, 'Shoulder Press reps is a <select>');
+        const sp = await readStandardCard(page, 'Lu Raises');
+        ok(sp && sp.repsIsSelect, 'Lu Raises reps is a <select>');
         eq(sp.repsOptions, ['3', '4', '5', '6'], 'reps dropdown offers exactly 3/4/5/6');
         eq(sp.repsValue, '5', 'reps carries over last session (5), not +1');
         eq(sp.weightValue, '100', 'weight carries over (no bump after 5 reps)');
@@ -97,11 +97,11 @@ async function readStandardCard(page, name) {
         // On the deck that means navigating to it and opening it — LOG exists
         // only on the revealed face, which is the point of the screen.
         await selectDayType(page, 'full-body');
-        await goToCardAndLog(page, 'Shoulder Press');
+        await goToCardAndLog(page, 'Lu Raises');
         const saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
         const todays = saved.find(w => !w.submitted);
-        const loggedSP = todays.exercises.find(e => e.id === 'shoulder-press');
+        const loggedSP = todays.exercises.find(e => e.id === 'delts-shoulder-abduction-above-90-degrees');
         eq(loggedSP.reps, '5', 'one-tap LOG persists the carried-over 5 reps');
         eq(loggedSP.weight, '100', 'one-tap LOG persists the pre-filled weight');
 

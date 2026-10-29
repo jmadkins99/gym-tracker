@@ -1,5 +1,9 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) PIN_STACK_CAPS is empty, so "the seed" below is no
+// ceiling at all: half 2 now asserts that a config without the fields picks
+// up nothing and that Back Extensions renders uncapped.
+//
 // That the Gympin pair — `gympin` and `stackMax` — survives migrateExerciseConfig
 // the way `loadType` (case 59) and `increment` do: the rebuild in
 // js/migrations.js keeps only the fields named there, and an unnamed field works
@@ -75,8 +79,8 @@ async function readSaved(page) {
         await seedExerciseConfig(page, {
             version: VERSION - 1,
             overrides: {
-                'chest-flies': { gympin: true, stackMax: 150 },
-                'leg-curls': { gympin: false },
+                'pecs-transverse-shoulder-adduction': { gympin: true, stackMax: 150 },
+                'erectors-spinal-extension': { gympin: false },
             },
             ns: NS,
         });
@@ -85,14 +89,14 @@ async function readSaved(page) {
 
         let saved = await readSaved(page);
         eq(saved.version, VERSION, 'the migration ran and stamped the current version');
-        eq(saved.byId['chest-flies'], { hasGympin: true, gympin: true, hasStackMax: true, stackMax: 150 },
+        eq(saved.byId['pecs-transverse-shoulder-adduction'], { hasGympin: true, gympin: true, hasStackMax: true, stackMax: 150 },
             'Chest Flies came through the bump on at 150');
-        eq(saved.byId['leg-curls'].gympin, false,
+        eq(saved.byId['erectors-spinal-extension'].gympin, false,
             'a saved false came through too — off is an answer, not an absence');
-        eq(saved.byId['leg-curls'].hasStackMax, false,
+        eq(saved.byId['erectors-spinal-extension'].hasStackMax, false,
             'and a field that was never saved is still absent, not filled from the seed');
         const seededIn = Object.entries(saved.byId)
-            .filter(([id, e]) => !['chest-flies', 'leg-curls'].includes(id) && (e.hasGympin || e.hasStackMax))
+            .filter(([id, e]) => !['pecs-transverse-shoulder-adduction', 'erectors-spinal-extension'].includes(id) && (e.hasGympin || e.hasStackMax))
             .map(([id]) => id);
         eq(seededIn, [], 'no untouched exercise had the seed written into its config');
 
@@ -117,8 +121,8 @@ async function readSaved(page) {
 
         await selectDayType(page, 'full-body');
         const backSeed = await setWeightAndOpen(page, 'Back Extensions', 270);
-        contains(backSeed, 'pin 260', 'Back Extensions still overflows from the seed');
-        contains(backSeed, '10', 'with the 10 lb excess hung on the Gympin');
+        ok(backSeed.indexOf('TOP SET') === -1,
+            'Back Extensions has no ceiling: nothing is seeded since v25');
         ok((await setWeightAndOpen(page, 'Chest Flies', 165)).indexOf('TOP SET') === -1,
             'and Chest Flies, unseeded, still has no ceiling');
 
@@ -129,7 +133,7 @@ async function readSaved(page) {
         await seedPersonalApp(page, { workoutHistory: [] });
         await seedExerciseConfig(page, {
             version: VERSION,
-            overrides: { 'chest-flies': { gympin: true, stackMax: 150 }, 'leg-curls': { gympin: false } },
+            overrides: { 'pecs-transverse-shoulder-adduction': { gympin: true, stackMax: 150 }, 'erectors-spinal-extension': { gympin: false } },
             ns: NS,
         });
         await page.reload({ waitUntil: 'networkidle0' });
@@ -155,7 +159,7 @@ async function readSaved(page) {
             (ns) => {
                 const raw = localStorage.getItem(ns + 'gymExerciseConfig');
                 if (!raw) return false;
-                const e = JSON.parse(raw).exercises.find(x => x.id === 'chest-flies');
+                const e = JSON.parse(raw).exercises.find(x => x.id === 'pecs-transverse-shoulder-adduction');
                 return !!e && e.stackMax === 150;
             }, NS);
         fs.unlinkSync(backupPath);
@@ -164,8 +168,8 @@ async function readSaved(page) {
         await waitForApp(page);
         saved = await readSaved(page);
         eq(saved.version, VERSION, 'the post-import reload rebuilt and stamped the config');
-        eq(saved.byId['chest-flies'].stackMax, 150, 'Chest Flies’ 150 survived the restore');
-        eq(saved.byId['leg-curls'].gympin, false, 'and Back Extensions’ off did too');
+        eq(saved.byId['pecs-transverse-shoulder-adduction'].stackMax, 150, 'Chest Flies’ 150 survived the restore');
+        eq(saved.byId['erectors-spinal-extension'].gympin, false, 'and Back Extensions’ off did too');
         await selectDayType(page, 'full-body');
         contains(await setWeightAndOpen(page, 'Chest Flies', 165), 'pin 150', 'the card agrees');
 

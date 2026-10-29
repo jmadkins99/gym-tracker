@@ -38,45 +38,45 @@ function daysAgo(n) {
 // Per-date values for each exercise. Anything absent on a date is written NA,
 // which is exactly what the app does to unlogged rows on Submit Day.
 const TIMELINE = [
-    { offset: 14, submitted: true,  sets: { 'lateral-raises': { weight: '100', reps: '4' } } },
-    { offset: 12, submitted: true,  sets: { 'lateral-raises': { weight: '100', reps: '4' } } },
+    { offset: 14, submitted: true,  sets: { 'delts-shoulder-abduction-stop-at-90-degrees': { weight: '100', reps: '4' } } },
+    { offset: 12, submitted: true,  sets: { 'delts-shoulder-abduction-stop-at-90-degrees': { weight: '100', reps: '4' } } },
     { offset: 10, submitted: true,  sets: {
-        'lateral-raises':      { weight: '100', reps: '4' },
-        'incline-chest-press': { weight: '100', reps: '4' },
-        'chest-flies':         { weight: 'Body Weight', reps: '3' },
+        'delts-shoulder-abduction-stop-at-90-degrees':      { weight: '100', reps: '4' },
+        'pecs-shoulder-flexion': { weight: '100', reps: '4' },
+        'pecs-transverse-shoulder-adduction':         { weight: 'Body Weight', reps: '3' },
     } },
     { offset: 8,  submitted: true,  sets: {
-        'lateral-raises':      { weight: '100', reps: '4' },
-        'incline-chest-press': { weight: '100', reps: '5' },
-        'chest-flies':         { weight: '100', reps: '4' },
+        'delts-shoulder-abduction-stop-at-90-degrees':      { weight: '100', reps: '4' },
+        'pecs-shoulder-flexion': { weight: '100', reps: '5' },
+        'pecs-transverse-shoulder-adduction':         { weight: '100', reps: '4' },
     } },
     { offset: 6,  submitted: true,  sets: {
-        'lateral-raises':      { weight: '100', reps: '4' },
-        'incline-chest-press': NA,
-        'chest-flies':         { weight: '100', reps: '5' },
-        'chest-press':         { weight: '100', reps: '4' },
+        'delts-shoulder-abduction-stop-at-90-degrees':      { weight: '100', reps: '4' },
+        'pecs-shoulder-flexion': NA,
+        'pecs-transverse-shoulder-adduction':         { weight: '100', reps: '5' },
+        'pecs-transverse-shoulder-adduction-with-elbow-extension':         { weight: '100', reps: '4' },
     } },
     { offset: 4,  submitted: true,  sets: {
-        'lateral-raises':      { weight: '100', reps: '4' },
-        'incline-chest-press': { weight: '100', reps: '6' },
-        'chest-flies':         { weight: '100', reps: '6' },
-        'chest-press':         { weight: '100', reps: '5' },
+        'delts-shoulder-abduction-stop-at-90-degrees':      { weight: '100', reps: '4' },
+        'pecs-shoulder-flexion': { weight: '100', reps: '6' },
+        'pecs-transverse-shoulder-adduction':         { weight: '100', reps: '6' },
+        'pecs-transverse-shoulder-adduction-with-elbow-extension':         { weight: '100', reps: '5' },
     } },
     // Never submitted, and counted anyway since September 2026: Submit Day is a
     // ceremony, not a property of the training. Chest Press regresses here, so
     // the run ends and the badge below is gone. Before that change this read
     // '🔥 1' — see getPreviousExerciseForPR for the session that forced it.
     { offset: 2,  submitted: false, sets: {
-        'chest-press':         { weight: '100', reps: '4' },
+        'pecs-transverse-shoulder-adduction-with-elbow-extension':         { weight: '100', reps: '4' },
     } },
 ];
 
-const TRACKED = ['chest-press', 'incline-chest-press', 'chest-flies', 'lateral-raises'];
+const TRACKED = ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'pecs-shoulder-flexion', 'pecs-transverse-shoulder-adduction', 'delts-shoulder-abduction-stop-at-90-degrees'];
 const NAMES = {
-    'chest-press': 'Chest Press',
-    'incline-chest-press': 'Incline Chest Press',
-    'chest-flies': 'Chest Flies',
-    'lateral-raises': 'Lateral Raises',
+    'pecs-transverse-shoulder-adduction-with-elbow-extension': 'Chest Press',
+    'pecs-shoulder-flexion': 'Low to High Flies',
+    'pecs-transverse-shoulder-adduction': 'Chest Flies',
+    'delts-shoulder-abduction-stop-at-90-degrees': 'Lateral Raises',
 };
 
 function buildHistory() {
@@ -117,17 +117,17 @@ async function readBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-        eq(await readBadge(page, 'chest-press'), null,
+        eq(await readBadge(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension'), null,
             'a past unsubmitted session breaks the streak like any other session');
 
-        eq(await readBadge(page, 'incline-chest-press'), '🔥 2',
+        eq(await readBadge(page, 'pecs-shoulder-flexion'), '🔥 2',
             'an NA session is skipped, not read as a change, so the run spans it');
 
-        eq(await readBadge(page, 'chest-flies'), '🔥 2',
+        eq(await readBadge(page, 'pecs-transverse-shoulder-adduction'), '🔥 2',
             'a non-numeric weight ends the run rather than falling through to a reps comparison');
 
         // Six identical sessions: the plateau banner, and necessarily no streak.
-        eq(await readBadge(page, 'lateral-raises'), null,
+        eq(await readBadge(page, 'delts-shoulder-abduction-stop-at-90-degrees'), null,
             'six identical sessions is a streak of 0, so no badge');
 
         // readBadge above already navigated to Lateral Raises and opened it,
@@ -145,7 +145,7 @@ async function readBadge(page, exerciseId) {
         // time now, so each is visited in turn; the invariant is worth pinning
         // because several cases read that node expecting nothing but the name.
         const names = [];
-        for (const id of ['chest-press', 'incline-chest-press', 'chest-flies']) {
+        for (const id of ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'pecs-shoulder-flexion', 'pecs-transverse-shoulder-adduction']) {
             await goToCardById(page, id);
             await revealCard(page);
             names.push(await page.evaluate((sel) => {
@@ -153,7 +153,7 @@ async function readBadge(page, exerciseId) {
                 return el ? el.textContent.trim() : null;
             }, ACTIVE));
         }
-        eq(names, ['Chest Press', 'Incline Chest Press', 'Chest Flies'],
+        eq(names, ['Chest Press', 'Low to High Flies', 'Chest Flies'],
             'the name node carries the bare name, badge or no badge');
 
         eq(errors, [], 'no console errors');

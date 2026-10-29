@@ -31,7 +31,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
-                exercises: [{ id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '5' }],
+                exercises: [{ id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '165', reps: '5' }],
             }),
         ];
         await seedPersonalApp(page, { workoutHistory });

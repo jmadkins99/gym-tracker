@@ -104,34 +104,34 @@ async function savedExercise(page, id) {
         await selectDayType(page, 'full-body');
 
         // === 1. Walk away from a machine and come back =================
-        await clickCardButton(page, 'chest-press', 'Weight Breakdown');
-        const firstOpen = (await anchors(page))['chest-press'];
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'Weight Breakdown');
+        const firstOpen = (await anchors(page))['pecs-transverse-shoulder-adduction-with-elbow-extension'];
         ok(firstOpen, 'the first open of Chest Press is anchored');
 
         await new Promise(r => setTimeout(r, GAP_MS));
 
         // The machine was taken, so something else got done first. This is what
         // closes the Chest Press panel.
-        await clickCardButton(page, 'chest-flies', 'Weight Breakdown');
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
         await new Promise(r => setTimeout(r, GAP_MS));
 
         // Back to Chest Press. THIS is when the set actually starts.
-        await clickCardButton(page, 'chest-press', 'Weight Breakdown');
-        const secondOpen = (await anchors(page))['chest-press'];
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'Weight Breakdown');
+        const secondOpen = (await anchors(page))['pecs-transverse-shoulder-adduction-with-elbow-extension'];
 
         ok(secondOpen !== firstOpen,
             'returning to a machine re-anchors it — the newest open wins');
         ok(new Date(secondOpen) - new Date(firstOpen) >= GAP_MS,
             'and the new anchor is later than the old one by the time spent away');
 
-        await clickCardButton(page, 'chest-press', 'LOG');
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'LOG');
         await waitFor(page, 'chest press to reach history',
             (ns) => {
                 const h = JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]');
-                return h.length > 0 && h[0].exercises.some(e => e.id === 'chest-press' && e.loggedAt);
+                return h.length > 0 && h[0].exercises.some(e => e.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension' && e.loggedAt);
             }, NS);
 
-        const chestPress = await savedExercise(page, 'chest-press');
+        const chestPress = await savedExercise(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension');
         eq(chestPress.startedAt, secondOpen,
             'the logged movement is measured from the return, not the first glance');
         ok(chestPress.startedAt !== firstOpen,
@@ -146,20 +146,20 @@ async function savedExercise(page, id) {
             `(measured ${measured}ms vs ${sinceFirstOpen}ms since the first open)`);
 
         // === 2. Logging drops the anchor ===============================
-        eq((await anchors(page))['chest-press'], undefined,
+        eq((await anchors(page))['pecs-transverse-shoulder-adduction-with-elbow-extension'], undefined,
             'a logged movement gives up its anchor — it lives in the workout record now');
 
         // === 2b. An abandoned panel does not time a later log ==========
         // The other route to the same bug: open a panel, go elsewhere, and log
         // WITHOUT coming back to it. There is no set under way at that machine,
         // so there must be no anchor waiting to absorb the time.
-        await clickCardButton(page, 'lateral-raises', 'Weight Breakdown');
-        ok((await anchors(page))['lateral-raises'], 'Lateral Raises is anchored while its panel is open');
+        await clickCardButton(page, 'delts-shoulder-abduction-stop-at-90-degrees', 'Weight Breakdown');
+        ok((await anchors(page))['delts-shoulder-abduction-stop-at-90-degrees'], 'Lateral Raises is anchored while its panel is open');
 
-        await clickCardButton(page, 'overhead-tricep-extensions', 'Weight Breakdown');
-        eq((await anchors(page))['lateral-raises'], undefined,
+        await clickCardButton(page, 'triceps-elbow-extension-with-shoulder-flexion', 'Weight Breakdown');
+        eq((await anchors(page))['delts-shoulder-abduction-stop-at-90-degrees'], undefined,
             'opening another card discards the abandoned anchor');
-        eq(Object.keys(await anchors(page)), ['overhead-tricep-extensions'],
+        eq(Object.keys(await anchors(page)), ['triceps-elbow-extension-with-shoulder-flexion'],
             'exactly one anchor exists at a time — the open panel owns it');
 
         // The abandoned-anchor half of this case stops here, because the deck
@@ -181,20 +181,20 @@ async function savedExercise(page, id) {
         // === 3. The already-open card still does not re-anchor =========
         // Chest Flies' panel was closed long ago, so this is a fresh open,
         // then a redundant tap on top of it.
-        await clickCardButton(page, 'chest-flies', 'Weight Breakdown');
-        const fliesOpen = (await anchors(page))['chest-flies'];
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
+        const fliesOpen = (await anchors(page))['pecs-transverse-shoulder-adduction'];
         ok(fliesOpen, 'Chest Flies is anchored');
 
         await new Promise(r => setTimeout(r, GAP_MS));
-        await clickCardButton(page, 'chest-flies', 'Weight Breakdown');
-        eq((await anchors(page))['chest-flies'], fliesOpen,
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
+        eq((await anchors(page))['pecs-transverse-shoulder-adduction'], fliesOpen,
             'tapping the button on the ALREADY-OPEN card changes nothing, clock included');
 
-        await clickCardButton(page, 'chest-flies', 'LOG');
+        await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'LOG');
 
         // === 4. Submitting the day clears every anchor =================
-        await clickCardButton(page, 'shoulder-press', 'Weight Breakdown');
-        ok((await anchors(page))['shoulder-press'], 'Shoulder Press is anchored but never logged');
+        await clickCardButton(page, 'delts-shoulder-abduction-above-90-degrees', 'Weight Breakdown');
+        ok((await anchors(page))['delts-shoulder-abduction-above-90-degrees'], 'Lu Raises is anchored but never logged');
 
         // Submit Day lives on the finish card at the end of the deck now.
         await submitDay(page);

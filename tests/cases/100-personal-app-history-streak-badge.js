@@ -57,7 +57,7 @@ const SHRUGS = 'Kelso Shrugs';
 // The display name History renders it under, which is the live config's, not
 // the one stored on the seeded rows. Renamed from Preacher Curls in Sep 2026;
 // `preacher-curls` is still the id the seeds below use.
-const PREACHER = 'Shoulder Flexion Curls';
+const PREACHER = 'Preacher Curls';
 
 // One row per session, oldest first. The History screen renders them newest
 // first, which is the order EXPECTED below is written in.
@@ -84,13 +84,13 @@ function buildHistory() {
         day: 'posterior',
         submitted: true,
         exercises: [
-            { id: 'curls-shoulder-extension', name: CURLS, weight: s.curls, reps: '4' },
+            { id: 'biceps-elbow-flexion-with-shoulder-extension', name: CURLS, weight: s.curls, reps: '4' },
             // Four reps, not three: three is the bottom of the dropdown, which the
             // app reads as a failed set and never badges however the weight moved.
             // Nothing here is about rep counts — every run below is driven by weight —
             // so the seed just has to sit above that floor.
-            { id: 'kelso-shrugs', name: SHRUGS, weight: s.shrugs, reps: '4' },
-            { id: 'preacher-curls', name: PREACHER, weight: '60', reps: '4' },
+            { id: 'traps-scapular-retraction', name: SHRUGS, weight: s.shrugs, reps: '4' },
+            { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: PREACHER, weight: '60', reps: '4' },
         ],
     }));
 }
@@ -136,11 +136,11 @@ async function readCardBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-        eq(await readCardBadge(page, 'curls-shoulder-extension'), '🔥 3',
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-extension'), '🔥 3',
             'the card counts the Recline Curls run at three');
-        eq(await readCardBadge(page, 'kelso-shrugs'), '🔥 2',
+        eq(await readCardBadge(page, 'traps-scapular-retraction'), '🔥 2',
             'the card counts the Kelso Shrugs run at two, the repeat having ended the first');
-        eq(await readCardBadge(page, 'preacher-curls'), null,
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), null,
             'five flat sessions earn no card badge');
 
         // The seeded week is last week's, so History opens on the current

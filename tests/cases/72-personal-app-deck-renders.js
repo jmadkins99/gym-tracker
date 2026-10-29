@@ -54,11 +54,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                     // leads since the second Oct 2026 reorder (Chest Press
                     // before it, Tricep Extensions from Sep), so its 130 is
                     // the number section 3 looks for.
-                    { id: 'tricep-pushdown', name: 'Tricep Extensions', category: 'Anterior',
+                    { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Anterior',
                       type: 'standard', weight: '200', reps: '6' },
-                    { id: 'chest-press', name: 'Chest Press', category: 'Anterior',
+                    { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Anterior',
                       type: 'standard', weight: '110', reps: '5' },
-                    { id: 'chest-flies', name: 'Chest Flies', category: 'Anterior',
+                    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Anterior',
                       type: 'standard', weight: '130', reps: '5' },
                 ],
             }],

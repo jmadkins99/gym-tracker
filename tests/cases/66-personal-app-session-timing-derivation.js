@@ -65,45 +65,45 @@ const olderAt = () => new Date(base.getTime() - 4 * 86400000).toISOString();
 const EXERCISES = [
     // Un-anchored, and only 1:00 after the previous log — under the two-minute
     // transition allowance, so it must floor to 0:00 rather than go negative.
-    { id: 'shoulder-press', name: 'Shoulder Press', weight: '120', reps: '6',
+    { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '120', reps: '6',
       loggedAt: at(26, 30) },
     // Anchored: 09:00 -> 09:06 = 6:00.
-    { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '6',
       startedAt: at(0), loggedAt: at(6) },
     // Anchored: 09:20 -> 09:25:30 = 5:30.
     // 170x6 -> 175x6 against the baseline: an improvement, and its only prior
     // session is that baseline, so it is a lone PR.
-    { id: 'chest-flies', name: 'Chest Flies', weight: '175', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '175', reps: '6',
       startedAt: at(20), loggedAt: at(25, 30) },
     // Un-anchored: previous log 09:06, so 09:08 -> 09:14 = 6:00.
-    { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '6',
+    { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '110', reps: '6',
       loggedAt: at(14) },
     // Anchored 08:20 and logged 09:35 — 75 minutes, which no single working set
     // takes. The panel was opened and abandoned; the row reports NA rather than
     // a number. It is NOT the first movement, so the session total is untouched
     // by it; the probe below covers the first-movement case.
-    { id: 'lateral-raises', name: 'Lateral Raises', weight: '55', reps: '6',
+    { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: '55', reps: '6',
       startedAt: at(-40), loggedAt: at(35) },
 ];
 
 const EXPECTED_ROWS = [
-    ['chest-press', '6:00'],
-    ['incline-chest-press', '6:00 *'],
-    ['chest-flies', '5:30'],
-    ['shoulder-press', '0:00 *'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '6:00'],
+    ['pecs-shoulder-flexion', '6:00 *'],
+    ['pecs-transverse-shoulder-adduction', '5:30'],
+    ['delts-shoulder-abduction-above-90-degrees', '0:00 *'],
     // Over the 30-minute ceiling. No asterisk: it is not an estimate, it is a
     // refusal to guess.
-    ['lateral-raises', 'NA'],
+    ['delts-shoulder-abduction-stop-at-90-degrees', 'NA'],
 ];
 const EXPECTED_BADGES = [
     // 200x4 -> 200x5 -> 200x6: a run of two, so the row carries the count.
-    ['chest-press', '🔥 2'],
-    ['incline-chest-press', null],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '🔥 2'],
+    ['pecs-shoulder-flexion', null],
     // 170x6 -> 175x6 off a single prior session: a lone PR, so the row keeps
     // the word.
-    ['chest-flies', '🔥 PR'],
-    ['shoulder-press', null],
-    ['lateral-raises', null],
+    ['pecs-transverse-shoulder-adduction', '🔥 PR'],
+    ['delts-shoulder-abduction-above-90-degrees', null],
+    ['delts-shoulder-abduction-stop-at-90-degrees', null],
 ];
 const BADGE_BG = 'rgba(0, 0, 0, 0)';
 const BADGE_BORDER = 'rgb(212, 175, 55)';
@@ -132,7 +132,7 @@ const EXPECTED_TOTAL = '35m';
                     day: 'anterior',
                     submitted: true,
                     exercises: [
-                        { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '4' },
+                        { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '4' },
                     ],
                 }),
                 workoutEntry({
@@ -140,10 +140,10 @@ const EXPECTED_TOTAL = '35m';
                     day: 'anterior',
                     submitted: true,
                     exercises: [
-                        { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '5' },
-                        { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '6' },
-                        { id: 'chest-flies', name: 'Chest Flies', weight: '170', reps: '6' },
-                        { id: 'shoulder-press', name: 'Shoulder Press', weight: '120', reps: '6' },
+                        { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '5' },
+                        { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '110', reps: '6' },
+                        { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '170', reps: '6' },
+                        { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '120', reps: '6' },
                     ],
                 }),
             ],
@@ -189,11 +189,11 @@ const EXPECTED_TOTAL = '35m';
             'each movement is timed correctly, in logged order, estimates marked');
         eq(rowDetails.map(r => [r.id, r.badge]), EXPECTED_BADGES,
             'only movements that counted toward PRs Smashed get a row-level PR badge');
-        ok(rowDetails.find(r => r.id === 'chest-press').badgeClass.includes('streak-badge'),
+        ok(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeClass.includes('streak-badge'),
             'Day Breakdown PR badge reuses the same flame badge container');
-        eq(rowDetails.find(r => r.id === 'chest-press').badgeBg, BADGE_BG,
+        eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBg, BADGE_BG,
             'Day Breakdown PR badge uses the shared transparent background');
-        eq(rowDetails.find(r => r.id === 'chest-press').badgeBorder, BADGE_BORDER,
+        eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBorder, BADGE_BORDER,
             'Day Breakdown PR badge uses the shared gold border');
 
         // === 2. The branches the UI cannot stage ========================

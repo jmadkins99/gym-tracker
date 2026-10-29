@@ -33,11 +33,11 @@ const NS = 'gym-local:';
             // newest first
             workoutEntry({
                 date: '2026-05-30T20:00:00Z', day: 'fullbody',
-                exercises: [{ id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '160', reps: '4' }],
+                exercises: [{ id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '160', reps: '4' }],
             }),
             workoutEntry({
                 date: '2026-02-01T20:00:00Z', day: 'fullbody',
-                exercises: [{ id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '150', reps: '8' }],
+                exercises: [{ id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '150', reps: '8' }],
             }),
         ];
 
@@ -46,7 +46,7 @@ const NS = 'gym-local:';
             // Renamed exercise in an otherwise-default config; set the FB flag
             // so the mount migration doesn't wipe it.
             const exercises = DEFAULT_EXERCISES.map(e =>
-                e.id === 'frontal-pulldowns' ? { ...e, name: 'My Custom Pulldowns' } : e
+                e.id === 'lats-frontal-shoulder-adduction' ? { ...e, name: 'My Custom Pulldowns' } : e
             );
             localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify({ exercises }));
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));

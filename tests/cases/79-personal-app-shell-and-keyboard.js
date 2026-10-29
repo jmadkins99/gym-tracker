@@ -67,12 +67,15 @@ const PAN = 120;        // how far Safari shoves the visible area down
 
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
+        const roster = await page.evaluate(() => DEFAULT_EXERCISES.map(e => [e.id, e.name]));
         await seedPersonalApp(page, {
             workoutHistory: [1, 2, 3].map((d) => ({
                 date: new Date(Date.now() - d * 86400000).toISOString(),
                 day: 'anterior', week: 1, submitted: true, plateauBusters: [],
-                exercises: [{ id: 'chest-press', name: 'Chest Press', category: 'Anterior',
-                              type: 'standard', weight: '200', reps: '6' }],
+                // Every card needs a last session to open with a weight
+                // (no starting weights since v25), whichever comes first.
+                exercises: roster.map(([id, name]) => ({ id, name, category: 'Full Body',
+                    type: 'standard', weight: '200', reps: '6' })),
             })),
         });
         await page.evaluate((ns) =>

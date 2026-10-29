@@ -93,9 +93,9 @@
                         name: saved.name,
                         loadType: saved.loadType ?? defaultEx.loadType,
                         // No `??` fallback on purpose: absent means "no override",
-                        // and resolveIncrement reads the seed from
-                        // PR_WEIGHT_INCREMENTS. Copying the seed in here would
-                        // freeze it, so a code-side change would never land.
+                        // and resolveIncrement reads DEFAULT_PR_INCREMENT.
+                        // Copying the default in here would freeze it, so a
+                        // code-side change would never land.
                         increment: saved.increment,
                         // Same rule for the Gympin pair: resolveGympin reads the
                         // seed from PIN_STACK_CAPS when either is absent.

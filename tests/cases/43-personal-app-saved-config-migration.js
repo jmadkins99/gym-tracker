@@ -1,5 +1,12 @@
 // What this test covers
 // ----------------------
+// The seed's ids were translated to v25's when every movement took a new id
+// (Oct 2026); its July order and July names are untouched. On the old ids
+// this case would only re-test the retirement case 135 covers, and it is
+// here for what still happens on every bump: a saved name survives by id, a
+// movement new to the device lands at its DEFAULT_EXERCISES position, and a
+// retired id (the wrist pair, Stairmaster) drops.
+//
 // How a split reaches a device that already has a saved exerciseConfig — which
 // is every real device, including the signed-in phone. A fresh install gets the
 // layout straight from DEFAULT_EXERCISES (test 123); this is the other half.
@@ -55,26 +62,26 @@ function currentConfigVersion() {
 // migration preserves whatever the saved config holds — seeding from defaults
 // would make the rename assertions vacuous.
 const FULL_BODY = [
-    ['preacher-curls', 'Preacher Curls'],
+    ['biceps-elbow-flexion-with-shoulder-flexion', 'Preacher Curls'],
     // Moved from Anterior to Posterior, Aug 2026, directly after the curls.
     ['reverse-wrist-curls', 'Reverse Wrist Curls'],
     ['cable-wrist-curls', 'Cable Wrist Curls'],
-    ['overhead-tricep-extensions', 'Overhead Tricep Extensions'],
-    ['lateral-raises', 'Lateral Raises'],
-    ['chest-flies', 'Unilateral Chest Flies'],
-    ['curls-shoulder-extension', 'Recline Curls'],
-    ['frontal-pulldowns', 'My Renamed Pulldowns'],
-    ['incline-chest-press', 'Incline Chest Press'],
-    ['upper-back-row', 'Transverse Plane Rows'],
-    ['kelso-shrugs', 'Kelso Shrugs'],
-    ['hammer-row', 'Sagittal Plane Pulldowns'],
-    ['tricep-pushdown', 'Tricep Extensions'],
-    ['ab-crunch', 'Ab Crunches'],
-    ['shoulder-press', 'Shoulder Press'],
-    ['calf-raise', 'Calf Raises'],
-    ['leg-extensions', 'Hip Adduction'],
-    ['leg-curls', 'Back Extensions'],
-    ['hip-adduction', 'My Renamed Leg Press'],
+    ['triceps-elbow-extension-with-shoulder-flexion', 'Overhead Tricep Extensions'],
+    ['delts-shoulder-abduction-stop-at-90-degrees', 'Lateral Raises'],
+    ['pecs-transverse-shoulder-adduction', 'Unilateral Chest Flies'],
+    ['biceps-elbow-flexion-with-shoulder-extension', 'Recline Curls'],
+    ['lats-frontal-shoulder-adduction', 'My Renamed Pulldowns'],
+    ['pecs-shoulder-flexion', 'Incline Chest Press'],
+    ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Plane Rows'],
+    ['traps-scapular-retraction', 'Kelso Shrugs'],
+    ['lats-sagittal-shoulder-extension', 'Sagittal Plane Pulldowns'],
+    ['triceps-elbow-extension', 'Tricep Extensions'],
+    ['abs-spinal-flexion', 'Ab Crunches'],
+    ['delts-shoulder-abduction-above-90-degrees', 'Shoulder Press'],
+    ['calves-ankle-extension', 'Calf Raises'],
+    ['adductors-transverse-hip-adduction', 'Hip Adduction'],
+    ['erectors-spinal-extension', 'Back Extensions'],
+    ['quads-knee-extension-during-hip-flexion', 'My Renamed Leg Press'],
 ];
 
 const EXPECTED_FULL_BODY = [
@@ -100,7 +107,7 @@ const EXPECTED_FULL_BODY = [
     'Ab Crunches',
     'Sagittal Plane Pulldowns',
     'Lateral Raises',
-    'My Renamed Pulldowns',   // frontal-pulldowns, renamed by the user below
+    'My Renamed Pulldowns',   // lats-frontal-shoulder-adduction, renamed by the user below
     'Tricep Extensions',
     'Kelso Shrugs',
     'Transverse Plane Rows',
@@ -180,15 +187,15 @@ async function readSavedConfig(page) {
             'stairmaster is not added — it is retired from the active program');
         // The fresh id is what keeps this distinct from `leg-extensions`, which
         // the same config already holds under the name Hip Adduction.
-        ok(saved.byId['actual-leg-extensions'],
+        ok(saved.byId['quads-knee-extension'],
             'leg extensions was added to the saved config under its own id');
-        eq(saved.byId['actual-leg-extensions'].day, 'full-body',
+        eq(saved.byId['quads-knee-extension'].day, 'full-body',
             'leg extensions lives on Full Body');
-        eq(saved.byId['leg-extensions'].name, 'Hip Adduction',
-            'the old leg-extensions id still renders as Hip Adduction, untouched');
-        eq(saved.byId['frontal-pulldowns'].name, 'My Renamed Pulldowns',
+        eq(saved.byId['adductors-transverse-hip-adduction'].name, 'Hip Adduction',
+            'the old adductors-transverse-hip-adduction id still renders as Hip Adduction, untouched');
+        eq(saved.byId['lats-frontal-shoulder-adduction'].name, 'My Renamed Pulldowns',
             'rename survives the migration in storage, not just on screen');
-        eq(saved.byId['chest-flies'].name, 'Unilateral Chest Flies',
+        eq(saved.byId['pecs-transverse-shoulder-adduction'].name, 'Unilateral Chest Flies',
             'a changed DEFAULT_EXERCISES label does not overwrite the saved name');
         // Every exercise is on the one program day. (Under the split this
         // pinned which side each frozen-id movement landed on; the ids that are

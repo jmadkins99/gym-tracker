@@ -1,5 +1,10 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) every movement seeds 'pin', so "shows its own value"
+// would be indistinguishable from "always shows the first option". The case
+// therefore saves Kelso Shrugs as plate one-sided first, the way this same
+// dropdown would, and expects that row to show it.
+//
 // The Settings > Manage Exercises load-type dropdown: that it exists on every
 // row, that it shows the exercise's OWN value rather than whichever option
 // happens to be first, that changing one writes it to localStorage stamped with
@@ -28,7 +33,7 @@ const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp } = require('../lib/browser');
-const { seedPersonalApp } = require('../lib/state');
+const { seedPersonalApp, seedExerciseConfig } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -98,11 +103,13 @@ async function readSavedLoadTypes(page) {
         path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
     const DEFAULT_EXERCISES = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
     const VERSION = currentConfigVersion(configSrc);
-    const seededById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
+    const PRESET = { 'traps-scapular-retraction': { loadType: 'plate-one-sided' } };
+    const seededById = Object.fromEntries(DEFAULT_EXERCISES.map(e =>
+        [e.id, (PRESET[e.id] || e).loadType]));
 
     // Pick a target whose seed is NOT the value we set it to, so the assertion
     // cannot pass by accident, and whose seed is not the first <option> either.
-    const TARGET = 'chest-flies';
+    const TARGET = 'pecs-transverse-shoulder-adduction';
     eq(seededById[TARGET], 'pin', 'the target exercise seeds as a pin stack');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -112,6 +119,7 @@ async function readSavedLoadTypes(page) {
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPersonalApp(page, { workoutHistory: [] });
+        await seedExerciseConfig(page, { overrides: PRESET });
         await page.evaluate((ns) => {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now()));
         }, NS);

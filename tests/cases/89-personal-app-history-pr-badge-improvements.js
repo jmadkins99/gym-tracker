@@ -48,13 +48,13 @@ const dayOffset = (days, hour) => {
 };
 
 const EXERCISES = [
-    ['frontal-pulldowns', 'Frontal Plane Pulldowns'],
-    ['upper-back-row', 'Transverse Plane Rows'],
-    ['kelso-shrugs', 'Kelso Shrugs'],
+    ['lats-frontal-shoulder-adduction', 'Frontal Pulldowns'],
+    ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Rows'],
+    ['traps-scapular-retraction', 'Kelso Shrugs'],
     // The display name comes from the live config, not from the stored rows —
     // the seeds below still carry "Preacher Curls" as logged, and History
     // renders them under today's label.
-    ['preacher-curls', 'Shoulder Flexion Curls'],
+    ['biceps-elbow-flexion-with-shoulder-flexion', 'Preacher Curls'],
 ];
 
 const BASELINE = workoutEntry({
@@ -62,9 +62,9 @@ const BASELINE = workoutEntry({
     day: 'posterior',
     submitted: true,
     exercises: [
-        { id: 'upper-back-row', name: 'Transverse Plane Rows', weight: '100', reps: '6' },
-        { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '5' },
-        { id: 'preacher-curls', name: 'Preacher Curls', weight: '55', reps: '4' },
+        { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', weight: '100', reps: '6' },
+        { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '190', reps: '5' },
+        { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '55', reps: '4' },
     ],
 });
 
@@ -73,10 +73,10 @@ const LATEST = workoutEntry({
     day: 'posterior',
     submitted: true,
     exercises: [
-        { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '110', reps: '6' },
-        { id: 'upper-back-row', name: 'Transverse Plane Rows', weight: '95', reps: '6' },
-        { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '6' },
-        { id: 'preacher-curls', name: 'Preacher Curls', weight: '55', reps: '5' },
+        { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '110', reps: '6' },
+        { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', weight: '95', reps: '6' },
+        { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '190', reps: '6' },
+        { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '55', reps: '5' },
     ],
 });
 
@@ -148,11 +148,11 @@ async function readCardBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-        eq(await readCardBadge(page, 'preacher-curls'), '🔥 1',
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), '🔥 1',
             'card streak counts mid-range rep progress (4 -> 5) as an improvement');
-        eq(await readCardBadge(page, 'kelso-shrugs'), '🔥 1',
+        eq(await readCardBadge(page, 'traps-scapular-retraction'), '🔥 1',
             'normal 3-6 exercise still gets the same card streak behavior');
-        eq(await readCardBadge(page, 'upper-back-row'), null,
+        eq(await readCardBadge(page, 'delts-transverse-shoulder-abduction-with-elbow-flexion'), null,
             'card streak does not count a weight drop, even at top reps');
 
         await bottomNav(page, 'History');
@@ -166,11 +166,11 @@ async function readCardBadge(page, exerciseId) {
 
         eq(historyRows['Kelso Shrugs'].badgeText, '🔥 PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
-        eq(historyRows['Shoulder Flexion Curls'].badgeText, '🔥 PR',
+        eq(historyRows['Preacher Curls'].badgeText, '🔥 PR',
             'History shows PR at 5 reps — mid-range, so not a range-top marker');
-        eq(historyRows['Transverse Plane Rows'].badgeText, null,
+        eq(historyRows['Transverse Rows'].badgeText, null,
             'History does not show PR for top reps after a weight drop');
-        eq(historyRows['Frontal Plane Pulldowns'].badgeText, null,
+        eq(historyRows['Frontal Pulldowns'].badgeText, null,
             'History does not show PR for top reps without any previous row');
         ok(historyRows['Kelso Shrugs'].badgeClass.includes('streak-badge'),
             'History PR badge reuses the streak-badge container class');
@@ -185,10 +185,10 @@ async function readCardBadge(page, exerciseId) {
         // improves, Kelso Shrugs repeats 190x6 and does not. Today's entry is
         // now the newest .history-item and is still unsubmitted.
         await bottomNav(page, 'Workout');
-        await enterSet(page, 'preacher-curls', '55', '6');
-        ok(await logCard(page), 'preacher-curls: LOG button clicked');
-        await enterSet(page, 'kelso-shrugs', '190', '6');
-        ok(await logCard(page), 'kelso-shrugs: LOG button clicked');
+        await enterSet(page, 'biceps-elbow-flexion-with-shoulder-flexion', '55', '6');
+        ok(await logCard(page), 'biceps-elbow-flexion-with-shoulder-flexion: LOG button clicked');
+        await enterSet(page, 'traps-scapular-retraction', '190', '6');
+        ok(await logCard(page), 'traps-scapular-retraction: LOG button clicked');
 
         await bottomNav(page, 'History');
         await page.waitForSelector('.history-item', { timeout: 8000 });
@@ -205,9 +205,9 @@ async function readCardBadge(page, exerciseId) {
         // moment the set is logged, exactly as the lone-PR badge above is.
         // Case 100 owns that rule; what this line pins is that logging alone,
         // with no Submit Day, is enough to earn it.
-        eq(todayRows['Shoulder Flexion Curls'].badgeText, '🔥 2',
+        eq(todayRows['Preacher Curls'].badgeText, '🔥 2',
             'History badges an improvement as soon as it is logged, before Submit Day');
-        eq(todayRows['Shoulder Flexion Curls'].badgeBorder, BADGE_BORDER,
+        eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
             'the pre-submit History badge is the same gold-outlined pill');
         eq(todayRows['Kelso Shrugs'].badgeText, null,
             'a repeated session gets no pre-submit History badge');
@@ -215,7 +215,7 @@ async function readCardBadge(page, exerciseId) {
         // so an unlogged row here is the case where a badge is conceivable and
         // must not appear. (Reverse Wrist Curls held this probe until the wrist
         // pair left the program.)
-        eq(todayRows['Transverse Plane Rows'].badgeText, null,
+        eq(todayRows['Transverse Rows'].badgeText, null,
             'an unlogged NA row in the in-progress entry gets no History badge');
 
         eq(errors, [], 'no console errors');

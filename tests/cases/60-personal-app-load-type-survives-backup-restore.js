@@ -113,7 +113,7 @@ async function readSavedLoadTypes(page) {
         workoutHistory: [],
         exerciseConfig: {
             exercises: DEFAULT_EXERCISES.map(ex => (
-                ex.id === 'chest-flies' ? { ...ex, loadType: 'plate-two-sided' } : { ...ex }
+                ex.id === 'pecs-transverse-shoulder-adduction' ? { ...ex, loadType: 'plate-two-sided' } : { ...ex }
             )),
         },
         exportDate: new Date().toISOString(),
@@ -165,7 +165,7 @@ async function readSavedLoadTypes(page) {
         const afterReload = await readSavedLoadTypes(page);
         eq(afterReload.version, VERSION,
             'the reload ran the migration and stamped the current version');
-        eq(afterReload.loadTypeById['chest-flies'], 'plate-two-sided',
+        eq(afterReload.loadTypeById['pecs-transverse-shoulder-adduction'], 'plate-two-sided',
             'the restored override survived the post-import rebuild');
 
         // === Half 2: a backup from before the field existed ================
@@ -181,15 +181,9 @@ async function readSavedLoadTypes(page) {
         ok(text.indexOf('/side') === -1,
             'and it is genuinely the pin branch, not a stale two-sided render');
 
-        text = await readBreakdownText(page, 'Leg Press', '240');
-        contains(text, '/side',
-            'a seeded two-sided machine still renders two-sided after a pre-v15 import');
-
-        // Calf Raises keeps its cap through all of this — caps are code-side.
-        await selectDayType(page, 'full-body');
-        text = await readBreakdownText(page, 'Calf Raises', '500');
-        contains(text, 'pin 405',
-            'the 405 cap still applies after a pre-v15 restore');
+        // Until v25 a seeded two-sided machine (Leg Press) and a seeded cap
+        // (Calf Raises) were checked here too. Every seed is 'pin' with no cap
+        // since Oct 2026, so there is no other seed for the fallback to reach.
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);

@@ -36,7 +36,7 @@ const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
-const EXERCISE_ID = 'chest-flies';
+const EXERCISE_ID = 'pecs-transverse-shoulder-adduction';
 const EXERCISE_NAME = 'Chest Flies';
 
 // Opens Settings > Manage Exercises and sets one exercise's dropdown. React

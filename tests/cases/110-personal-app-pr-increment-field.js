@@ -9,10 +9,10 @@
 // suggestion.
 //
 // The increment is the third USER-owned field on an exercise, after `name` and
-// `loadType`. Absent means "use the seed in PR_WEIGHT_INCREMENTS", so an
-// exercise nobody edits must not grow an `increment` key — that is asserted
-// too, because a save path that copied every seed in would freeze them and
-// quietly stop code-side seed changes from ever landing.
+// `loadType`. Absent means "use DEFAULT_PR_INCREMENT" (a per-id seed table
+// until v25, Oct 2026), so an exercise nobody edits must not grow an
+// `increment` key — that is asserted too, because a save path that copied the
+// default in would freeze it and quietly stop a code-side change from landing.
 //
 // The end-to-end half is the one that matters most. The field writing to
 // localStorage proves nothing if getSimplePR is still reading the id map.
@@ -21,7 +21,7 @@
 // pin stack so the number typed is the number suggested.
 //
 // To verify this test is real: in config.js make resolveIncrement return
-// PR_WEIGHT_INCREMENTS[exercise.id] unconditionally. The reopen after a reload
+// DEFAULT_PR_INCREMENT unconditionally. The reopen after a reload
 // reads 2.5 where it expects 5, and the card reads 202.5 where it expects 205.
 
 const path = require('path');
@@ -33,8 +33,8 @@ const { eq } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
-const TARGET = 'chest-flies';   // seeds 2.5, pin stack
-const CONTROL = 'calf-raise';   // seeds 5 — the non-vacuity pair
+const TARGET = 'pecs-transverse-shoulder-adduction';   // default 2.5, pin stack
+const CONTROL = 'calves-ankle-extension';   // default 2.5, never saved
 
 function daysAgo(n) {
     const d = new Date();
@@ -145,7 +145,7 @@ const readRawConfig = (page) =>
 
         await clickPencil(page, CONTROL);
         let row = await readRow(page, CONTROL);
-        eq(row.value, '5', 'Calf Raises opens on its own seed, 5');
+        eq(row.value, '2.5', 'Calf Raises opens on the default, 2.5');
         eq(row.below, true, 'the increment dropdown sits below the load-type dropdown');
         // Exactly the four plate steps, and no blank: every exercise has a seed,
         // so the "—" placeholder must not render.
@@ -157,11 +157,11 @@ const readRawConfig = (page) =>
         await clickRowButton(page, CONTROL, 'Cancel');
         eq(await countIncrementFields(page), 0, 'Cancel closes the field');
         await clickPencil(page, CONTROL);
-        eq((await readRow(page, CONTROL)).value, '5', 'after Cancel it reopens on the old 5');
+        eq((await readRow(page, CONTROL)).value, '2.5', 'after Cancel it reopens on the old 2.5');
         await clickRowButton(page, CONTROL, 'Cancel');
 
         await clickPencil(page, TARGET);
-        eq((await readRow(page, TARGET)).value, '2.5', 'Chest Flies opens on its own seed, 2.5');
+        eq((await readRow(page, TARGET)).value, '2.5', 'Chest Flies opens on the default, 2.5');
 
         // --- A step saves ----------------------------------------------------
         await chooseIncrement(page, TARGET, '5');

@@ -56,22 +56,22 @@ const at = (min, sec = 0) => new Date(base.getTime() + min * 60000 + sec * 1000)
 
 const TIMED = [
     // Anchored: 09:00 -> 09:06 = 6:00.
-    { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '6',
       startedAt: at(0), loggedAt: at(6) },
     // Un-anchored, and not first: measured back to the previous log less the
     // two-minute allowance, 09:08 -> 09:14 = 6:00, and marked with an asterisk.
     // Its presence is also what renders the footnote.
-    { id: 'incline-chest-press', name: 'Incline Chest Press', weight: '110', reps: '6',
+    { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '110', reps: '6',
       loggedAt: at(14) },
     // Anchored: 09:20 -> 09:25:30 = 5:30.
-    { id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '165', reps: '6',
       startedAt: at(20), loggedAt: at(25, 30) },
 ];
 
 const EXPECTED_ROWS = [
-    ['chest-press', '6:00'],
-    ['incline-chest-press', '6:00 *'],
-    ['chest-flies', '5:30'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '6:00'],
+    ['pecs-shoulder-flexion', '6:00 *'],
+    ['pecs-transverse-shoulder-adduction', '5:30'],
 ];
 
 // 09:00 -> 09:25:30. formatDuration floors to whole minutes under the hour.
@@ -79,8 +79,8 @@ const EXPECTED_TOTAL = '25m';
 
 // The pre-August-2026 shape: logged, submitted, and carrying no stamps at all.
 const UNTIMED = [
-    { id: 'chest-press', name: 'Chest Press', weight: '190', reps: '5' },
-    { id: 'chest-flies', name: 'Chest Flies', weight: '160', reps: '5' },
+    { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '190', reps: '5' },
+    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '160', reps: '5' },
 ];
 
 // One entry per workout, newest first, with which icon buttons its header row

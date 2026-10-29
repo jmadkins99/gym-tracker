@@ -86,7 +86,7 @@ async function clickNav(page, label) {
         contains(modalText, 'Stairmaster', 'edit modal shows stairmaster card');
         contains(modalText, 'Assault Bike', 'edit modal shows assault bike card');
         // Full-body exercises must NOT leak into a cardio workout's edit modal.
-        ok(!/Shoulder Press|Kelso Shrugs|Leg Press/.test(modalText),
+        ok(!/Lu Raises|Kelso Shrugs|Hip Adduction/.test(modalText),
             'edit modal does not show full-body exercises');
 
         eq(errors, [], 'no console errors during load');
