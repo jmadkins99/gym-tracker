@@ -53,12 +53,15 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await page.setViewport({ width: 390, height: 844 });
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
+        const roster = await page.evaluate(() => DEFAULT_EXERCISES.map(e => [e.id, e.name]));
         await seedPersonalApp(page, {
             workoutHistory: [{
                 date: new Date(Date.now() - 86400000).toISOString(),
                 day: 'anterior', week: 1, submitted: true, plateauBusters: [],
-                exercises: [{ id: 'chest-press', name: 'Chest Press', category: 'Anterior',
-                              type: 'standard', weight: '200', reps: '6' }],
+                // Every card needs a last session to open with a weight
+                // (no starting weights since v25), whichever comes first.
+                exercises: roster.map(([id, name]) => ({ id, name, category: 'Full Body',
+                    type: 'standard', weight: '200', reps: '6' })),
             }],
         });
         await page.evaluate((ns) =>

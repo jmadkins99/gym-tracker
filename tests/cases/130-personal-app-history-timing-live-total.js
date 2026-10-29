@@ -42,16 +42,16 @@ const NOW = todayAt(12).getTime();
 const iso = (hour, min) => todayAt(hour, min).toISOString();
 
 const IN_PROGRESS = [
-    { id: 'chest-press', name: 'Chest Press', weight: '200', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '6',
       startedAt: iso(11, 0), loggedAt: iso(11, 20) },
-    { id: 'chest-flies', name: 'Chest Flies', weight: '165', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '165', reps: '6',
       startedAt: iso(11, 35), loggedAt: iso(11, 40) },
 ];
 
 const SUBMITTED = [
-    { id: 'chest-press', name: 'Chest Press', weight: '195', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '195', reps: '6',
       startedAt: iso(7, 0), loggedAt: iso(7, 10) },
-    { id: 'chest-flies', name: 'Chest Flies', weight: '160', reps: '6',
+    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '160', reps: '6',
       startedAt: iso(7, 25), loggedAt: iso(7, 30) },
 ];
 
@@ -155,7 +155,7 @@ async function closeTiming(page) {
             'an unsubmitted day today runs from the first tap to now');
         eq(live.label, 'Time at the Gym So Far',
             'the live total says it is a running figure');
-        eq(live.rows, [['chest-press', '20:00'], ['chest-flies', '5:00']],
+        eq(live.rows, [['pecs-transverse-shoulder-adduction-with-elbow-extension', '20:00'], ['pecs-transverse-shoulder-adduction', '5:00']],
             'the per-movement rows are unchanged by the live end');
 
         // === 2. It ticks while open ======================================
@@ -175,7 +175,7 @@ async function closeTiming(page) {
             'a submitted day ends at its last log, whatever the time now');
         eq(done.label, 'Time at the Gym',
             'a finished session is titled plainly');
-        eq(done.rows, [['chest-press', '10:00'], ['chest-flies', '5:00']],
+        eq(done.rows, [['pecs-transverse-shoulder-adduction-with-elbow-extension', '10:00'], ['pecs-transverse-shoulder-adduction', '5:00']],
             'the submitted day\'s rows are as logged');
         await closeTiming(page);
 

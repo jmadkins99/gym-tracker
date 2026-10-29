@@ -17,7 +17,7 @@
         // here is the single source for the hero number, the breakdown, and the
         // input value — upstream kept three copies of it, which is exactly how a
         // breakdown comes to disagree with the number printed above it.
-        function computeCardModel(exercise, { previous, workoutHistory, currentWeek, data }) {
+        function computeCardModel(exercise, { previous, workoutHistory, data }) {
             const loadType = resolveLoadType(exercise);
             const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory) : false;
             const prWeightRecovery = ADVANCED_PR_TRACKING ? getPRWeightRecovery(exercise.id, workoutHistory) : null;
@@ -29,15 +29,13 @@
             const prStreak = PR_STREAK_TRACKING && exercise.type === 'standard'
                 ? getPRStreak(exercise.id, workoutHistory) : null;
 
-            const defaultWeight = currentWeek === 1 && !previous ? WEEK_1_DEFAULTS[exercise.id] : null;
-
-            // Verbatim from the old input value chain, plus the WEEK_1 tail the
-            // breakdown needed so it renders before an exercise has ever been
-            // logged.
+            // A never-logged exercise has no weight until its first session:
+            // the box is blank and the breakdown empty (starting weights went
+            // in v25).
             const targetWeight = data.weight !== undefined ? data.weight
                 : (simplePR?.weight || prWeightRecovery?.weight || failedPlateauBusterRetry?.weight
                     || prAutoRegulation?.weight || plateauBusterDecrement?.weight
-                    || previous?.weight || defaultWeight || WEEK_1_DEFAULTS[exercise.id] || '');
+                    || previous?.weight || '');
 
             const repRange = getStandardRepRange(exercise.id);
             const repOptions = getStandardRepOptions(exercise.id);
@@ -231,7 +229,7 @@
                             className="input-field"
                             value={targetWeight}
                             onChange={(e) => change('weight', e.target.value)}
-                            placeholder={previous?.weight || WEEK_1_DEFAULTS[exercise.id] || ''}
+                            placeholder={previous?.weight || ''}
                             disabled={isLogged}
                             style={simplePR ? { borderColor: HINT_GREEN } : {}}
                         />

@@ -1,5 +1,11 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) every movement defaults to pin-loaded with no cap, and
+// the per-machine seed checks that opened this case went with the seeds. What
+// is left is the two-sided rendering: the case sets Squats (Leg Press's row,
+// on a new id) to plate two-sided itself, through the saved config the way
+// the Settings dropdown does. The history below is about the retired ids.
+//
 // Leg Press's breakdown STYLE, which has now changed twice. It was two-side
 // plate-loaded, was reclassified to a capped pin stack in Aug 2026 when the
 // gym looked to have swapped the sled for a stack machine, and is back to
@@ -36,66 +42,15 @@
 // which is why both are asserted here.
 
 const path = require('path');
-const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { setWeightAndOpen } = require('../lib/deck');
-const { seedPersonalApp } = require('../lib/state');
+const { seedExerciseConfig, seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-// Same 4-arg shape as case 16 — see the note there.
-function extractLiteral(source, name, open, close) {
-    const start = source.indexOf(`const ${name} =`);
-    if (start === -1) throw new Error(`could not find ${name} in config.js`);
-    const openIdx = source.indexOf(open, start);
-    const closeIdx = source.indexOf(close + ';', openIdx);
-    return new Function(`return ${source.slice(openIdx, closeIdx + 1)}`)();
-}
-
 (async () => {
-    const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
-    const DEFAULT_EXERCISES = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
-    const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS', '{', '}');
-    const PIN_STACK_CAPS = extractLiteral(configSrc, 'PIN_STACK_CAPS', '{', '}');
-    const loadTypeById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
-
-    // Config-level invariants, before touching the browser. These are SEED
-    // values — loadType is a user setting now, and this case runs on a fresh
-    // install, so the seed is what renders. `machineWeight: 0` used to be
-    // asserted here; it went away with the old maps, having never been read by
-    // any code, the same way `overflowPlateMode` did.
-    eq(loadTypeById['hip-adduction'], 'plate-two-sided',
-        'hip-adduction (Leg Press) seeds as two-sided plate-loaded');
-    eq(INCREMENTS['hip-adduction'], 5,
-        'hip-adduction PR increment is 5, which is 2.5/side');
-
-    // Leg Press's own 390 went with its pin-stack classification and has not
-    // come back. The surviving caps are asserted here rather than only in test
-    // 16 because this is where the cap/increment pairing is checked — the two
-    // have to be read together, and 405 is exactly the kind of number that
-    // invites being copied onto a neighbouring machine.
-    eq(loadTypeById['calf-raise'], 'pin', 'calf-raise seeds as a pin stack');
-    eq(PIN_STACK_CAPS['calf-raise'], 405, 'calf-raise is capped at 405');
-    eq(INCREMENTS['calf-raise'], 5,
-        'calf-raise PR increment is 5, exactly one pin-stack step');
-    ok(!('hip-adduction' in PIN_STACK_CAPS),
-        'Leg Press carries no cap — the 390 left with the stack classification');
-
-    // Back Extensions went single-plate -> two-side in the Aug 2026 trip that
-    // took Leg Press to a stack, and pin-loaded in Sep 2026 when the machine
-    // was finally read correctly. The pairing to watch is its cap and its
-    // increment: 5 was one plate step a side and is now one stack notch, so the
-    // number stayed while everything around it moved. Leg Press does NOT
-    // follow it — these two have been reclassified in opposite directions
-    // twice now, and moving them together is the mistake worth catching.
-    eq(loadTypeById['leg-curls'], 'pin',
-        'leg-curls (Back Extensions) seeds as a pin stack');
-    eq(PIN_STACK_CAPS['leg-curls'], 260, 'leg-curls is capped at 260');
-    eq(INCREMENTS['leg-curls'], 5,
-        'leg-curls PR increment is 5, exactly one pin-stack step');
-
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();
     try {
@@ -103,12 +58,13 @@ function extractLiteral(source, name, open, close) {
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPersonalApp(page, { workoutHistory: [] });
+        await seedExerciseConfig(page, { overrides: { 'quads-knee-extension-during-hip-flexion': { loadType: 'plate-two-sided' } } });
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-        const text = await setWeightAndOpen(page, 'Leg Press', 200);
+        const text = await setWeightAndOpen(page, 'Squats', 200);
 
         contains(text, '140 lbs', 'warmup #1 total = 140 (70% of 200)');
         contains(text, '70/side', 'warmup #1 per side = 70 lbs (= 140/2)');
@@ -120,11 +76,11 @@ function extractLiteral(source, name, open, close) {
         // The pin-stack branch renders a single weight with no per-side split.
         // Its absence proves the revert took effect rather than both branches
         // somehow rendering.
-        ok(text.indexOf('pin ') === -1, 'no pin-stack overflow rendering remains on Leg Press');
-        ok(text.indexOf('/side') !== -1, 'Leg Press uses the two-sided plate format');
+        ok(text.indexOf('pin ') === -1, 'no pin-stack overflow rendering remains on Squats');
+        ok(text.indexOf('/side') !== -1, 'Squats uses the two-sided plate format');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Leg Press renders a two-sided plate breakdown with a matching increment.');
+        console.log('PASS: Squats, set two-sided, renders a two-sided plate breakdown.');
     } finally {
         await browser.close();
         await server.stop();

@@ -1,5 +1,9 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) every movement defaults to pin-loaded, so this case
+// sets Kelso Shrugs to plate one-sided itself, through the saved config the
+// way the Settings dropdown does. The history below is about the retired ids.
+//
 // Kelso Shrugs is a PLATE-LOADED one-sided exercise (it used to be a pin
 // stack capped at 200 lbs; that was changed to plate-loaded in config.js).
 // The weight breakdown therefore shows the plate-loaded shape — warmup and
@@ -22,7 +26,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
-const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { seedExerciseConfig, seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -55,10 +59,11 @@ async function readCard(page, name) {
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
-                exercises: [{ id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '215', reps: '5' }],
+                exercises: [{ id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '215', reps: '5' }],
             }),
         ];
         await seedPersonalApp(page, { workoutHistory });
+        await seedExerciseConfig(page, { overrides: { 'traps-scapular-retraction': { loadType: 'plate-one-sided' } } });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'full-body');

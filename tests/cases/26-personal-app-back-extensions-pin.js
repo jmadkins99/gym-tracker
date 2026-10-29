@@ -1,5 +1,12 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) nothing is capped by default, so this case switches
+// the Gympin on for Back Extensions itself, at 260, through the saved config
+// the way the Settings form does. The fixture is a June backup, so its ids
+// are the retired ones and Back Extensions has no history in it under the new
+// id; the breakdown is driven from a typed weight. The history below is about
+// the retired ids.
+//
 // Back Extensions (id `leg-curls`) is a pin stack capped at 260, so a working
 // weight above the cap renders the OVERFLOW shape: the pin pegged at its max
 // plus loose plates for the excess, as one pile with no per-side split. This
@@ -39,7 +46,7 @@ const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { setWeightAndOpen } = require('../lib/deck');
-const { seedPersonalApp } = require('../lib/state');
+const { seedExerciseConfig, seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -54,6 +61,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPersonalApp(page, { workoutHistory: fixture.workoutHistory });
+        await seedExerciseConfig(page, { overrides: { 'erectors-spinal-extension': { gympin: true, stackMax: 260 } } });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 

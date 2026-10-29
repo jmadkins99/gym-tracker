@@ -28,11 +28,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // Fresh-install names, in canonical order.
 const EXPECTED = [
-    'Chest Flies', 'Chest Press', 'Incline Chest Press', 'Recline Curls',
-    'Shoulder Flexion Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
-    'Sagittal Plane Pullovers', 'Lateral Raises', 'Frontal Plane Pulldowns',
-    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Plane Rows', 'Shoulder Press',
-    'Back Extensions', 'Leg Press', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
+    'Chest Flies', 'Chest Press', 'Low to High Flies', 'Recline Curls',
+    'Preacher Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
+    'Sagittal Pulldowns', 'Lateral Raises', 'Frontal Pulldowns',
+    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Rows', 'Lu Raises',
+    'Back Extensions', 'Squats', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
 ];
 
 async function openManageExercises(page) {
@@ -94,7 +94,7 @@ const readRows = (page) => page.evaluate(() =>
         });
         await new Promise(r => setTimeout(r, 200));
         const moved = await readRows(page);
-        eq(moved.slice(11, 13), ['Transverse Plane Rows', 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
+        eq(moved.slice(11, 13), ['Transverse Rows', 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Manage Exercises lists the one Full Body day in order, arrows live throughout.');

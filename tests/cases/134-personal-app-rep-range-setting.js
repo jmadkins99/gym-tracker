@@ -29,8 +29,8 @@ const { eq } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
-const TARGET = 'chest-flies';   // seeds 2.5, pin stack
-const CONTROL = 'calf-raise';   // left on the default range throughout
+const TARGET = 'pecs-transverse-shoulder-adduction';   // seeds 2.5, pin stack
+const CONTROL = 'calves-ankle-extension';   // left on the default range throughout
 
 function daysAgo(n) {
     const d = new Date();

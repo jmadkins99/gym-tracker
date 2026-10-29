@@ -31,7 +31,7 @@ const NS = 'gym-local:';
         const workoutHistory = [
             workoutEntry({
                 date: '2026-05-30T20:00:00Z', day: 'fullbody',
-                exercises: [{ id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '160', reps: '4' }],
+                exercises: [{ id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '160', reps: '4' }],
             }),
         ];
         await seedPersonalApp(page, { workoutHistory });
@@ -44,7 +44,7 @@ const NS = 'gym-local:';
         // mounts three cards, so this navigates to it and opens it first —
         // reaching straight for [data-exercise-id] only worked when every card
         // was on screen.
-        await goToCardAndLog(page, 'Frontal Plane Pulldowns');
+        await goToCardAndLog(page, 'Frontal Pulldowns');
 
         // Persisted immediately (before any reload)?
         let saved = await page.evaluate((ns) =>
@@ -59,7 +59,7 @@ const NS = 'gym-local:';
 
         // A logged card opens itself as a review, so after the reload it should
         // be found already showing its numbers with a spent LOG button.
-        await goToCard(page, 'Frontal Plane Pulldowns');
+        await goToCard(page, 'Frontal Pulldowns');
         const restored = await page.evaluate((sel) => {
             const slot = document.querySelector(sel);
             const btn = slot.querySelector('.log-btn');
@@ -78,7 +78,7 @@ const NS = 'gym-local:';
         eq(saved.length, 2, 'history intact after reload');
         const today = saved[0];
         ok(!today.submitted, 'today entry still unsubmitted after reload');
-        const fp = today.exercises.find(e => e.id === 'frontal-pulldowns');
+        const fp = today.exercises.find(e => e.id === 'lats-frontal-shoulder-adduction');
         eq(fp.weight, '160', 'logged weight persisted through reload');
         eq(fp.reps, '4', 'logged reps persisted through reload');
 

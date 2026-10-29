@@ -99,16 +99,16 @@ const CLOUD_PROBE = (aStart, aLog, uLog, undefLog) => {
         plateauBusters: [],
         exercises: [
             // Anchored: both stamps present.
-            { id: 'chest-press', name: 'Chest Press', category: 'Anterior',
+            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Anterior',
               type: 'standard', weight: '200', reps: '6',
               startedAt: aStart, loggedAt: aLog },
             // Panel never opened, so logExercise never adds the key at all.
-            { id: 'incline-chest-press', name: 'Incline Chest Press', category: 'Anterior',
+            { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', category: 'Anterior',
               type: 'standard', weight: '110', reps: '6', loggedAt: uLog },
             // The shape a careless refactor would produce: the key present and
             // explicitly undefined. Firestore rejects that, so sanitize must
             // strip it rather than pass it through.
-            { id: 'chest-flies', name: 'Chest Flies', category: 'Anterior',
+            { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Anterior',
               type: 'standard', weight: '165', reps: '6',
               startedAt: undefined, loggedAt: undefLog },
         ],
@@ -124,9 +124,9 @@ const CLOUD_PROBE = (aStart, aLog, uLog, undefLog) => {
 
     // Asserted here, in the page, where `undefined` still exists.
     const keyChecks = {
-        anchoredHasStartedAt: hasOwn(savedEx('chest-press'), 'startedAt'),
-        noKeyHasStartedAt: hasOwn(savedEx('incline-chest-press'), 'startedAt'),
-        explicitUndefinedHasStartedAt: hasOwn(savedEx('chest-flies'), 'startedAt'),
+        anchoredHasStartedAt: hasOwn(savedEx('pecs-transverse-shoulder-adduction-with-elbow-extension'), 'startedAt'),
+        noKeyHasStartedAt: hasOwn(savedEx('pecs-shoulder-flexion'), 'startedAt'),
+        explicitUndefinedHasStartedAt: hasOwn(savedEx('pecs-transverse-shoulder-adduction'), 'startedAt'),
     };
 
     // === 2. loadAll — reading it back ===================================
@@ -182,8 +182,8 @@ const CLOUD_PROBE = (aStart, aLog, uLog, undefLog) => {
         ok(/^users\/test-uid\/workouts\/w-2026-08-28-/.test(r.savedPath),
             `the workout lands under the signed-in user's own tree (${r.savedPath})`);
 
-        const sentAnchored = r.savedExercises.find(e => e.id === 'chest-press');
-        const sentNoKey = r.savedExercises.find(e => e.id === 'incline-chest-press');
+        const sentAnchored = r.savedExercises.find(e => e.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension');
+        const sentNoKey = r.savedExercises.find(e => e.id === 'pecs-shoulder-flexion');
 
         eq(sentAnchored.startedAt, ANCHORED_START, 'startedAt is written to Firestore');
         eq(sentAnchored.loggedAt, ANCHORED_LOG, 'loggedAt is written to Firestore');
@@ -199,18 +199,18 @@ const CLOUD_PROBE = (aStart, aLog, uLog, undefLog) => {
             'Firestore rejects undefined values outright');
 
         // === 2. loadAll ================================================
-        eq(r.readBack.find(e => e.id === 'chest-press').startedAt, ANCHORED_START,
+        eq(r.readBack.find(e => e.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').startedAt, ANCHORED_START,
             'startedAt comes back on the next device');
-        eq(r.readBack.find(e => e.id === 'chest-press').loggedAt, ANCHORED_LOG,
+        eq(r.readBack.find(e => e.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').loggedAt, ANCHORED_LOG,
             'loggedAt comes back on the next device');
-        eq(r.readBack.find(e => e.id === 'incline-chest-press').loggedAt, UNANCHORED_LOG,
+        eq(r.readBack.find(e => e.id === 'pecs-shoulder-flexion').loggedAt, UNANCHORED_LOG,
             'the un-anchored movement round-trips too');
 
         // === 3. First sign-in import ===================================
         eq(r.importCount, 1, 'the one-time import uploaded the local workout');
         ok(/^users\/import-uid\/workouts\//.test(r.importPath),
             `the import writes under the importing user's tree (${r.importPath})`);
-        const imported = r.importExercises.find(e => e.id === 'chest-press');
+        const imported = r.importExercises.find(e => e.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension');
         eq(imported.startedAt, ANCHORED_START,
             'history logged BEFORE signing in keeps its startedAt on import');
         eq(imported.loggedAt, ANCHORED_LOG,

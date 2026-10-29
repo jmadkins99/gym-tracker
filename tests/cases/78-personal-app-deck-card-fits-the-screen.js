@@ -58,7 +58,7 @@ const DEVICES = [
                 workoutHistory: [{
                     date: new Date(Date.now() - 86400000).toISOString(),
                     day: 'anterior', week: 1, submitted: true, plateauBusters: [],
-                    exercises: [{ id: 'chest-press', name: 'Chest Press', category: 'Anterior',
+                    exercises: [{ id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Anterior',
                                   type: 'standard', weight: '287.5', reps: '6' }],
                 }],
             });

@@ -31,11 +31,11 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             // newest first
             workoutEntry({
                 date: '2026-05-30T20:00:00Z', day: 2,
-                exercises: [{ id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '160', reps: '4' }],
+                exercises: [{ id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '160', reps: '4' }],
             }),
             workoutEntry({
                 date: '2026-02-01T20:00:00Z', day: 1,
-                exercises: [{ id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '220', reps: '8' }],
+                exercises: [{ id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '220', reps: '8' }],
             }),
         ];
 
@@ -44,9 +44,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-                const frontal = await readDeckCard(page, 'Frontal Plane Pulldowns');
+                const frontal = await readDeckCard(page, 'Frontal Pulldowns');
 
-        ok(frontal, 'Frontal Plane Pulldowns card is rendered in Full Body view');
+        ok(frontal, 'Frontal Pulldowns card is rendered in Full Body view');
         contains(frontal.last, '160', '"Last:" shows recent weight');
         contains(frontal.last, '4',   '"Last:" shows recent reps');
         eq(frontal.weightValue, '160',

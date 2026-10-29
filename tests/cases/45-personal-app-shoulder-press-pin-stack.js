@@ -1,5 +1,10 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) Shoulder Press's row is Lu Raises on a new id, and
+// every movement defaults to pin-loaded at 2.5 lb steps (case 135 checks the
+// increment for all of them). This case keeps the plain pin-stack render. The
+// history below is about the retired `shoulder-press` id.
+//
 // Shoulder Press's breakdown STYLE, which has now changed twice. It was
 // pin-stack, was reclassified to two-sided plate-loaded in Aug 2026, and moved
 // back to pin-stack later the same month. Test 16 only asserts that a Weight
@@ -48,7 +53,6 @@ function extractLiteral(source, name, open, close) {
 (async () => {
     const configSrc = fs.readFileSync(path.join(PERSONAL_APP_ROOT, 'js', 'config.js'), 'utf8');
     const DEFAULT_EXERCISES = extractLiteral(configSrc, 'DEFAULT_EXERCISES', '[', ']');
-    const INCREMENTS = extractLiteral(configSrc, 'PR_WEIGHT_INCREMENTS', '{', '}');
     const loadTypeById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
 
     // Config-level invariants, before touching the browser. Note this is the
@@ -56,10 +60,8 @@ function extractLiteral(source, name, open, close) {
     // config.js pins is only what a fresh install starts with. The browser half
     // below really is running against this seed — seedPersonalApp clears
     // gymExerciseConfig, so there is no saved override in play.
-    eq(loadTypeById['shoulder-press'], 'pin',
-        'shoulder-press seeds as a plain pin stack');
-    eq(INCREMENTS['shoulder-press'], 2.5,
-        'shoulder-press PR increment is 2.5, a legal pin-stack micro-plate step');
+    eq(loadTypeById['delts-shoulder-abduction-above-90-degrees'], 'pin',
+        'delts-shoulder-abduction-above-90-degrees seeds as a plain pin stack');
 
     // The old "not in PLATE_LOADED too" assertion is deleted rather than
     // translated. Its subject was that two independent maps could disagree,
@@ -86,7 +88,7 @@ function extractLiteral(source, name, open, close) {
 
         // The breakdown is part of the card's revealed face now, so this
         // navigates to Shoulder Press, opens it, and types the weight in.
-        const text = await setWeightAndOpen(page, 'Shoulder Press', 200);
+        const text = await setWeightAndOpen(page, 'Lu Raises', 200);
 
         contains(text, '140 lbs', 'warmup #1 = 70% of 200 = 140, already on the stack');
         contains(text, '180 lbs', 'warmup #2 = 90% of 200 = 180, already on the stack');
@@ -95,14 +97,14 @@ function extractLiteral(source, name, open, close) {
         // Their absence is what proves the reclassification took effect rather
         // than both branches somehow rendering.
         ok(text.indexOf('/side') === -1,
-            'no two-sided plate rendering remains on Shoulder Press');
+            'no two-sided plate rendering remains on Lu Raises');
         ok(text.indexOf(' × ') === -1,
             'and no plate list — a pin stack has no plates to name');
         ok(text.indexOf('pin ') === -1,
             'plain pin stack, not the capped-overflow branch');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Shoulder Press renders a pin-stack breakdown with a matching increment.');
+        console.log('PASS: Lu Raises renders a plain pin-stack breakdown.');
     } finally {
         await browser.close();
         await server.stop();

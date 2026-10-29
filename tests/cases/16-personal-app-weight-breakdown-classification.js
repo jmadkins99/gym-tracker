@@ -19,8 +19,8 @@
 //   - case 58, which is the only place a CHANGED loadType is proven to change
 //     what renders. That is the case to reach for when touching the breakdown.
 //
-// Also pinned here: the shape of PIN_STACK_CAPS, and that a cap only ever
-// names a real, pin-seeded exercise. Since Sep 2026 the table is the seed for
+// Also pinned here: the shape of PIN_STACK_CAPS (empty since v25, Oct 2026),
+// and that a cap only ever names a real, pin-seeded exercise. Since Sep 2026 the table is the seed for
 // the per-exercise Gympin setting (cases 128 and 129) rather than the
 // authority, but a seed on a plate machine is the same dead config it always
 // was, so the check stands.
@@ -30,7 +30,7 @@ const fs = require('fs');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { readDeckNames, readDeckCard } = require('../lib/deck');
-const { seedPersonalApp } = require('../lib/state');
+const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -67,8 +67,6 @@ function extractLiteral(source, name, open, close) {
     // on a seeded plate machine (26, 46) or a seeded stack (07, 45) are vacuous.
     ok(DEFAULT_EXERCISES.some(e => e.loadType === 'pin'),
         'rotation seeds at least one pin stack');
-    ok(DEFAULT_EXERCISES.some(e => e.loadType.startsWith('plate-')),
-        'rotation seeds at least one plate-loaded exercise');
 
     // Every card must show a button — see the header on why this is weak now.
     const expectedByName = new Map(DEFAULT_EXERCISES.map(e => [e.name, true]));
@@ -80,19 +78,10 @@ function extractLiteral(source, name, open, close) {
     // classification one. The overflow *rendering* is covered by
     // 08-personal-app-pin-stack-overflow, 26-personal-app-back-extensions-pin
     // and 105-personal-app-shoulder-press-microplate-overflow.
-    eq(loadTypeById['calf-raise'], 'pin', 'Calf Raises seeds as a pin stack');
-    eq(PIN_STACK_CAPS['calf-raise'], 405, 'Calf Raises caps at 405');
-    eq(loadTypeById['lateral-raises'], 'pin', 'Lateral Raises seeds as a pin stack');
-    eq(PIN_STACK_CAPS['lateral-raises'], 100, 'Lateral Raises caps at 100');
-    eq(loadTypeById['leg-curls'], 'pin', 'Back Extensions seeds as a pin stack');
-    eq(PIN_STACK_CAPS['leg-curls'], 260, 'Back Extensions caps at 260');
-    eq(loadTypeById['shoulder-press'], 'pin', 'Shoulder Press seeds as a pin stack');
-    eq(PIN_STACK_CAPS['shoulder-press'], 250, 'Shoulder Press caps at 250');
-    ok(!('cable-wrist-curls' in PIN_STACK_CAPS),
-        'Cable Wrist Curls is uncapped');
-    eq(Object.keys(PIN_STACK_CAPS),
-        ['lateral-raises', 'shoulder-press', 'leg-curls', 'calf-raise'],
-        'exactly four capped stacks in the program, ordered by ceiling');
+    // v25 (Oct 2026) started every movement on a new id with the Gympin off,
+    // so nothing is capped by default; the loop below still holds any cap
+    // added later to a real pin-seeded id.
+    eq(Object.keys(PIN_STACK_CAPS), [], 'no stack is capped by default');
 
     // A cap is keyed by id and read only when loadType is 'pin', so a cap on a
     // non-pin id — or on an id that does not exist — is dead config that reads
@@ -112,7 +101,15 @@ function extractLiteral(source, name, open, close) {
         const page = await browser.newPage();
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
-        await seedPersonalApp(page, { workoutHistory: [] });
+        // A card has no weight, and so no breakdown, until it has been logged
+        // once (no starting weights since v25), so both get a session.
+        await seedPersonalApp(page, { workoutHistory: [workoutEntry({
+            date: '2026-05-27T20:00:00Z', day: 'full-body',
+            exercises: [
+                { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', weight: '30', reps: '5' },
+                { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', weight: '50', reps: '5' },
+            ],
+        })] });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 

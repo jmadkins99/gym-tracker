@@ -45,35 +45,52 @@ function currentConfigVersion() {
 }
 
 // The order shipped before the July 2026 reorder.
+// The ids were translated to v25's when every movement took a new id (Oct
+// 2026): this case is about the ORDER and the version stamp, and on the old
+// ids it would only re-test the retirement case 135 already covers. The wrist
+// pair is still retired and still has to drop.
 const OLD_ORDER_IDS = [
-    'curls-shoulder-extension', 'overhead-tricep-extensions', 'lateral-raises',
-    'reverse-wrist-curls', 'cable-wrist-curls', 'preacher-curls',
-    'tricep-pushdown', 'chest-flies', 'incline-chest-press', 'hammer-row',
-    'frontal-pulldowns', 'upper-back-row', 'kelso-shrugs', 'ab-crunch',
-    'shoulder-press', 'calf-raise', 'leg-extensions', 'leg-curls',
-    'hip-adduction',
+    'biceps-elbow-flexion-with-shoulder-extension',
+    'triceps-elbow-extension-with-shoulder-flexion',
+    'delts-shoulder-abduction-stop-at-90-degrees',
+    'reverse-wrist-curls',
+    'cable-wrist-curls',
+    'biceps-elbow-flexion-with-shoulder-flexion',
+    'triceps-elbow-extension',
+    'pecs-transverse-shoulder-adduction',
+    'pecs-shoulder-flexion',
+    'lats-sagittal-shoulder-extension',
+    'lats-frontal-shoulder-adduction',
+    'delts-transverse-shoulder-abduction-with-elbow-flexion',
+    'traps-scapular-retraction',
+    'abs-spinal-flexion',
+    'delts-shoulder-abduction-above-90-degrees',
+    'calves-ankle-extension',
+    'adductors-transverse-hip-adduction',
+    'erectors-spinal-extension',
+    'quads-knee-extension-during-hip-flexion',
 ];
 
 // The canonical Full Body day (Oct 2026 order). Names are the fresh-install ones
 // because the seed below builds each entry from DEFAULT_EXERCISES — except
 // chest-flies, renamed by the user.
 const EXPECTED_NEW_ORDER = [
-    'My Renamed Flies',       // chest-flies, renamed by the user below
+    'My Renamed Flies',       // pecs-transverse-shoulder-adduction, renamed by the user below
     'Chest Press',            // added Aug 2026; arrives via the migration
-    'Incline Chest Press',
+    'Low to High Flies',
     'Recline Curls',
-    'Shoulder Flexion Curls',
+    'Preacher Curls',
     'Overhead Tricep Extensions',
     'Ab Crunches',
-    'Sagittal Plane Pullovers',
+    'Sagittal Pulldowns',
     'Lateral Raises',
-    'Frontal Plane Pulldowns',
+    'Frontal Pulldowns',
     'Tricep Extensions',
     'Kelso Shrugs',
-    'Transverse Plane Rows',
-    'Shoulder Press',
+    'Transverse Rows',
+    'Lu Raises',
     'Back Extensions',
-    'Leg Press',
+    'Squats',
     'Hip Adduction',
     'Calf Raises',
     'Leg Extensions',         // added Aug 2026; arrives via the migration
@@ -93,7 +110,7 @@ const EXPECTED_NEW_ORDER = [
             const byId = new Map(DEFAULT_EXERCISES.map(e => [e.id, e]));
             const exercises = oldIds.map((id, idx) => {
                 const base = { ...byId.get(id), order: idx };
-                return id === 'chest-flies'
+                return id === 'pecs-transverse-shoulder-adduction'
                     ? { ...base, name: 'My Renamed Flies' }
                     : base;
             });

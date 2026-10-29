@@ -1,5 +1,9 @@
 // What this test covers
 // ----------------------
+// The seed's ids were translated to v25's when every movement took a new id
+// (Oct 2026), keeping it what this header says it is: a constructed config
+// with today's id set.
+//
 // That EXERCISE_CONFIG_VERSION 13 -> 14 is what actually delivers the
 // Anterior/Posterior reassignment to a device that already has a saved config.
 //
@@ -65,30 +69,30 @@ function currentConfigVersion() {
 // 13 Upper then 6 Lower, order 0..18. Same id set as the current defaults —
 // that is the point.
 const V13_LAYOUT = [
-    ['chest-flies', 'Chest Flies', 'upper'],
-    ['incline-chest-press', 'Incline Chest Press', 'upper'],
-    ['curls-shoulder-extension', 'Recline Curls', 'upper'],
-    ['overhead-tricep-extensions', 'Overhead Tricep Extensions', 'upper'],
-    ['chest-press', 'Chest Press', 'upper'],
-    ['lateral-raises', 'Lateral Raises', 'upper'],
-    ['shoulder-press', 'Shoulder Press', 'upper'],
+    ['pecs-transverse-shoulder-adduction', 'Chest Flies', 'upper'],
+    ['pecs-shoulder-flexion', 'Incline Chest Press', 'upper'],
+    ['biceps-elbow-flexion-with-shoulder-extension', 'Recline Curls', 'upper'],
+    ['triceps-elbow-extension-with-shoulder-flexion', 'Overhead Tricep Extensions', 'upper'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'Chest Press', 'upper'],
+    ['delts-shoulder-abduction-stop-at-90-degrees', 'Lateral Raises', 'upper'],
+    ['delts-shoulder-abduction-above-90-degrees', 'Shoulder Press', 'upper'],
     // Renamed by the user. Lands on Posterior in v14, so this also proves a
     // rename survives a move across days.
-    ['frontal-pulldowns', 'My Renamed Pulldowns', 'upper'],
-    ['upper-back-row', 'Transverse Plane Rows', 'upper'],
-    ['kelso-shrugs', 'Kelso Shrugs', 'upper'],
-    ['hammer-row', 'Sagittal Plane Pulldowns', 'upper'],
-    ['tricep-pushdown', 'Tricep Extensions', 'upper'],
-    ['preacher-curls', 'Preacher Curls', 'upper'],
+    ['lats-frontal-shoulder-adduction', 'My Renamed Pulldowns', 'upper'],
+    ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Plane Rows', 'upper'],
+    ['traps-scapular-retraction', 'Kelso Shrugs', 'upper'],
+    ['lats-sagittal-shoulder-extension', 'Sagittal Plane Pulldowns', 'upper'],
+    ['triceps-elbow-extension', 'Tricep Extensions', 'upper'],
+    ['biceps-elbow-flexion-with-shoulder-flexion', 'Preacher Curls', 'upper'],
     // The wrist pair sat here in the real v13 config. See the header for why
     // this constructed seed leaves them out. The third column is the LEGACY
     // Upper/Lower day the old config recorded, which does not change.
-    ['leg-curls', 'Back Extensions', 'lower'],
-    ['ab-crunch', 'Ab Crunches', 'lower'],
-    ['actual-leg-extensions', 'Leg Extensions', 'lower'],
-    ['leg-extensions', 'Hip Adduction', 'lower'],
-    ['calf-raise', 'Calf Raises', 'lower'],
-    ['hip-adduction', 'Leg Press', 'lower'],
+    ['erectors-spinal-extension', 'Back Extensions', 'lower'],
+    ['abs-spinal-flexion', 'Ab Crunches', 'lower'],
+    ['quads-knee-extension', 'Leg Extensions', 'lower'],
+    ['adductors-transverse-hip-adduction', 'Hip Adduction', 'lower'],
+    ['calves-ankle-extension', 'Calf Raises', 'lower'],
+    ['quads-knee-extension-during-hip-flexion', 'Leg Press', 'lower'],
 ];
 
 // Where each id must end up after the migration: every one on the single
@@ -96,11 +100,11 @@ const V13_LAYOUT = [
 // maps, so this literal tracks the roster order in DEFAULT_EXERCISES and has to
 // be resorted on every reorder.
 const EXPECTED_DAY_BY_ID = Object.fromEntries([
-    'chest-flies', 'chest-press', 'incline-chest-press', 'curls-shoulder-extension',
-    'preacher-curls', 'overhead-tricep-extensions', 'ab-crunch', 'hammer-row',
-    'lateral-raises', 'frontal-pulldowns', 'tricep-pushdown', 'kelso-shrugs',
-    'upper-back-row', 'shoulder-press', 'leg-curls', 'hip-adduction', 'leg-extensions',
-    'calf-raise', 'actual-leg-extensions',
+    'pecs-transverse-shoulder-adduction', 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'pecs-shoulder-flexion', 'biceps-elbow-flexion-with-shoulder-extension',
+    'biceps-elbow-flexion-with-shoulder-flexion', 'triceps-elbow-extension-with-shoulder-flexion', 'abs-spinal-flexion', 'lats-sagittal-shoulder-extension',
+    'delts-shoulder-abduction-stop-at-90-degrees', 'lats-frontal-shoulder-adduction', 'triceps-elbow-extension', 'traps-scapular-retraction',
+    'delts-transverse-shoulder-abduction-with-elbow-flexion', 'delts-shoulder-abduction-above-90-degrees', 'erectors-spinal-extension', 'quads-knee-extension-during-hip-flexion', 'adductors-transverse-hip-adduction',
+    'calves-ankle-extension', 'quads-knee-extension',
 ].map(id => [id, 'full-body']));
 
 async function readSavedConfig(page) {
@@ -170,7 +174,7 @@ async function readSavedConfig(page) {
         eq(saved.ids.length, 19, 'the saved config still holds exactly 19 ids');
 
         // 4. The user's rename survived a move across days.
-        eq(saved.nameById['frontal-pulldowns'], 'My Renamed Pulldowns',
+        eq(saved.nameById['lats-frontal-shoulder-adduction'], 'My Renamed Pulldowns',
             'a user rename survives the reassignment, including across a day change');
 
         // 5. order is re-densified 0..20 in the new layout.

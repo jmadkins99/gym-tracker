@@ -44,9 +44,9 @@ const BASELINE = workoutEntry({
     day: 'posterior',
     submitted: true,
     exercises: [
-        { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '190', reps: '5' },
-        { id: 'upper-back-row', name: 'Transverse Plane Rows', weight: '100', reps: '5' },
-        { id: 'preacher-curls', name: 'Preacher Curls', weight: '55', reps: '4' },
+        { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '190', reps: '5' },
+        { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', weight: '100', reps: '5' },
+        { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '55', reps: '4' },
     ],
 });
 
@@ -55,18 +55,18 @@ const LATEST = workoutEntry({
     day: 'posterior',
     submitted: true,
     exercises: [
-        { id: 'kelso-shrugs', name: 'Kelso Shrugs', weight: '200', reps: '3' },
-        { id: 'upper-back-row', name: 'Transverse Plane Rows', weight: '105', reps: '4' },
-        { id: 'preacher-curls', name: 'Preacher Curls', weight: '55', reps: '3' },
+        { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '200', reps: '3' },
+        { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', weight: '105', reps: '4' },
+        { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '55', reps: '3' },
     ],
 });
 
 // Display names as today's config renders them; the seeds above carry the
 // stored name, which History does not use.
 const NAMES = {
-    'kelso-shrugs': 'Kelso Shrugs',
-    'upper-back-row': 'Transverse Plane Rows',
-    'preacher-curls': 'Shoulder Flexion Curls',
+    'traps-scapular-retraction': 'Kelso Shrugs',
+    'delts-transverse-shoulder-abduction-with-elbow-flexion': 'Transverse Rows',
+    'biceps-elbow-flexion-with-shoulder-flexion': 'Preacher Curls',
 };
 
 async function enterSet(page, exerciseId, weight, reps) {
@@ -132,7 +132,7 @@ async function readHistoryBadges(page) {
         // isImprovement is the one rule behind every surface below, so name it
         // here before walking through three screens that only echo it.
         const verdicts = await page.evaluate(() => {
-            const at = (weight, reps) => ({ id: 'kelso-shrugs', type: 'standard', weight, reps });
+            const at = (weight, reps) => ({ id: 'traps-scapular-retraction', type: 'standard', weight, reps });
             const last = at('190', '5');
             return {
                 moreWeightFailed: isImprovement(at('200', '3'), last),
@@ -153,11 +153,11 @@ async function readHistoryBadges(page) {
             'a failed set is still the baseline: four reps at that weight next time is an improvement');
 
         // === 2. The card's streak pill ==================================
-        eq(await readCardBadge(page, 'kelso-shrugs'), null,
+        eq(await readCardBadge(page, 'traps-scapular-retraction'), null,
             'no streak pill for a weight bump that ended at three reps');
-        eq(await readCardBadge(page, 'upper-back-row'), '🔥 1',
+        eq(await readCardBadge(page, 'delts-transverse-shoulder-abduction-with-elbow-flexion'), '🔥 1',
             'the same weight bump at four reps still gets one');
-        eq(await readCardBadge(page, 'preacher-curls'), null,
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), null,
             'and dropping to three at the same weight breaks the streak');
 
         // === 3. History agrees ==========================================
@@ -165,28 +165,28 @@ async function readHistoryBadges(page) {
         await page.waitForSelector('.history-item', { timeout: 8000 });
         const badges = await readHistoryBadges(page);
 
-        eq(badges[NAMES['kelso-shrugs']], null,
+        eq(badges[NAMES['traps-scapular-retraction']], null,
             'History shows no PR badge for the failed set');
-        eq(badges[NAMES['upper-back-row']], '🔥 PR',
+        eq(badges[NAMES['delts-transverse-shoulder-abduction-with-elbow-flexion']], '🔥 PR',
             'History does badge the real improvement beside it');
-        eq(badges[NAMES['preacher-curls']], null,
+        eq(badges[NAMES['biceps-elbow-flexion-with-shoulder-flexion']], null,
             'History shows no PR badge for the drop to three reps');
 
         // === 4. The logged card, before any Submit Day ==================
         // 210x3 is the bug's exact shape one more time, now through the deck:
         // heavier than the 200 just logged, and still a failed set.
         await bottomNav(page, 'Workout');
-        await enterSet(page, 'kelso-shrugs', '210', '3');
-        ok(await logCard(page), 'kelso-shrugs: LOG button clicked');
+        await enterSet(page, 'traps-scapular-retraction', '210', '3');
+        ok(await logCard(page), 'traps-scapular-retraction: LOG button clicked');
         const failedPill = await page.evaluate((sel) =>
             !!document.querySelector(sel + ' [data-logged-pr-badge]'), ACTIVE);
         eq(failedPill, false, 'the logged card shows no PR pill for a failed set');
 
         // The real one celebrates and then advances, so read it before the
         // auto-advance rather than after.
-        await enterSet(page, 'upper-back-row', '105', '5');
+        await enterSet(page, 'delts-transverse-shoulder-abduction-with-elbow-flexion', '105', '5');
         ok(await logCard(page, { settle: 750, waitForAutoAdvance: false }),
-            'upper-back-row: LOG button clicked');
+            'delts-transverse-shoulder-abduction-with-elbow-flexion: LOG button clicked');
         const realPill = await page.evaluate((sel) => {
             const badge = document.querySelector(sel + ' [data-logged-pr-badge]');
             return badge ? badge.textContent.trim() : null;

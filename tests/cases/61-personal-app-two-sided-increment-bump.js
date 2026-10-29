@@ -68,7 +68,7 @@ function daysAgo(n) {
         // in lexical global scope — bare identifiers here, never window.X.
         const table = await page.evaluate(() => DEFAULT_EXERCISES.map(ex => ({
             id: ex.id,
-            raw: PR_WEIGHT_INCREMENTS[ex.id],
+            raw: resolveIncrement({ id: ex.id }),
             pin: getWeightIncrement({ id: ex.id }, 'pin'),
             oneSided: getWeightIncrement({ id: ex.id }, 'plate-one-sided'),
             twoSided: getWeightIncrement({ id: ex.id }, 'plate-two-sided'),
@@ -116,7 +116,7 @@ function daysAgo(n) {
         // plate. A saved `increment` override drives the branch through the
         // same path the Settings field writes to, so no global needs mutating.
         const synthetic = await page.evaluate(() => {
-            const ex = { id: 'chest-flies', increment: 1.25 };
+            const ex = { id: 'pecs-transverse-shoulder-adduction', increment: 1.25 };
             return {
                 pin: getWeightIncrement(ex, 'pin'),
                 oneSided: getWeightIncrement(ex, 'plate-one-sided'),
@@ -143,7 +143,7 @@ function daysAgo(n) {
         const history = [workoutEntry({
             date: daysAgo(7),
             day: 'anterior',
-            exercises: [{ id: 'chest-flies', name: 'Chest Flies', weight: '200', reps: '6' }],
+            exercises: [{ id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '200', reps: '6' }],
         })];
 
         // Control pass first: seeded as a pin stack, so no bump.
@@ -167,7 +167,7 @@ function daysAgo(n) {
         // treated as stale and rebuilt, which would undo the override.
         const version = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
         await seedExerciseConfig(page, {
-            overrides: { 'chest-flies': { loadType: 'plate-two-sided' } },
+            overrides: { 'pecs-transverse-shoulder-adduction': { loadType: 'plate-two-sided' } },
             version,
             ns: NS,
         });
@@ -185,7 +185,7 @@ function daysAgo(n) {
         // saved step doubles to 2.5 (202.5). The pin pass is what makes the
         // two-sided one non-vacuous — without it 202.5 could just be the seed.
         await seedExerciseConfig(page, {
-            overrides: { 'chest-flies': { loadType: 'pin', increment: 1.25 } },
+            overrides: { 'pecs-transverse-shoulder-adduction': { loadType: 'pin', increment: 1.25 } },
             version,
             ns: NS,
         });
@@ -197,7 +197,7 @@ function daysAgo(n) {
             'a saved 1.25 override on a pin stack suggests 200 + 1.25');
 
         await seedExerciseConfig(page, {
-            overrides: { 'chest-flies': { loadType: 'plate-two-sided', increment: 1.25 } },
+            overrides: { 'pecs-transverse-shoulder-adduction': { loadType: 'plate-two-sided', increment: 1.25 } },
             version,
             ns: NS,
         });

@@ -27,22 +27,22 @@ const { eq, ok, contains } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 const ANTERIOR_IDS = [
-    'chest-press', 'incline-chest-press', 'chest-flies', 'shoulder-press',
-    'lateral-raises', 'overhead-tricep-extensions', 'tricep-pushdown',
-    'reverse-wrist-curls', 'cable-wrist-curls', 'ab-crunch',
-    'actual-leg-extensions', 'hip-adduction',
+    'pecs-transverse-shoulder-adduction-with-elbow-extension', 'pecs-shoulder-flexion', 'pecs-transverse-shoulder-adduction', 'delts-shoulder-abduction-above-90-degrees',
+    'delts-shoulder-abduction-stop-at-90-degrees', 'triceps-elbow-extension-with-shoulder-flexion', 'triceps-elbow-extension',
+    'reverse-wrist-curls', 'cable-wrist-curls', 'abs-spinal-flexion',
+    'quads-knee-extension', 'quads-knee-extension-during-hip-flexion',
 ];
 
 // The Aug 2026 rosters, as those workouts were actually performed.
 const LEGACY_UPPER_IDS = [
-    'chest-flies', 'incline-chest-press', 'curls-shoulder-extension',
-    'overhead-tricep-extensions', 'chest-press', 'lateral-raises',
-    'shoulder-press', 'frontal-pulldowns', 'upper-back-row', 'kelso-shrugs',
-    'hammer-row', 'tricep-pushdown', 'preacher-curls',
+    'pecs-transverse-shoulder-adduction', 'pecs-shoulder-flexion', 'biceps-elbow-flexion-with-shoulder-extension',
+    'triceps-elbow-extension-with-shoulder-flexion', 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'delts-shoulder-abduction-stop-at-90-degrees',
+    'delts-shoulder-abduction-above-90-degrees', 'lats-frontal-shoulder-adduction', 'delts-transverse-shoulder-abduction-with-elbow-flexion', 'traps-scapular-retraction',
+    'lats-sagittal-shoulder-extension', 'triceps-elbow-extension', 'biceps-elbow-flexion-with-shoulder-flexion',
 ];
 const LEGACY_LOWER_IDS = [
-    'leg-curls', 'reverse-wrist-curls', 'cable-wrist-curls', 'ab-crunch',
-    'actual-leg-extensions', 'leg-extensions', 'calf-raise', 'hip-adduction',
+    'erectors-spinal-extension', 'reverse-wrist-curls', 'cable-wrist-curls', 'abs-spinal-flexion',
+    'quads-knee-extension', 'adductors-transverse-hip-adduction', 'calves-ankle-extension', 'quads-knee-extension-during-hip-flexion',
 ];
 
 async function clickNav(page, label) {

@@ -73,14 +73,12 @@ const FULL_BODY_ERA = [
 // stored-name data that has to be re-read through today's labels before it can
 // be asserted against the screen. This is the one place that conversion lives.
 //
-// Renames so far: curls-shoulder-extension in the Full Body era, and the two
-// from Sep 2026. A rename is by id, so it reaches back through history on
-// purpose — the machine is the same machine.
-const RENAMED_SINCE = {
-    'curls-shoulder-extension': 'Recline Curls',
-    'preacher-curls': 'Shoulder Flexion Curls',
-    'hammer-row': 'Sagittal Plane Pullovers',
-};
+// A rename is by id, so it reaches back through history on purpose (case 100
+// pins that on current ids). Every id in these eras retired in v25 (Oct 2026),
+// so none is in the live config any more and every row shows the name it was
+// logged under: there is nothing left to re-read. Until v25 this held
+// curls-shoulder-extension, preacher-curls and hammer-row.
+const RENAMED_SINCE = {};
 const asRenderedToday = (era) => era.map(([id, name]) => RENAMED_SINCE[id] || name);
 
 // Same 19 rows, in the same stored order, but with today's names for the ones

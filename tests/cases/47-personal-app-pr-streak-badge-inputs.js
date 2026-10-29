@@ -30,7 +30,7 @@ const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
-const EXERCISE = 'chest-press';
+const EXERCISE = 'pecs-transverse-shoulder-adduction-with-elbow-extension';
 
 // React installs its own value setter on the input/select prototypes, so a
 // plain `el.value = x` is invisible to it. Same native-setter dance as case 23.

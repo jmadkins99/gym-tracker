@@ -1,5 +1,11 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) nothing is capped by default, and Shoulder Press's row
+// is now Lu Raises on a new id. The overflow math is still worth pinning, so
+// this case switches the Gympin on for Lu Raises itself, at 250, through the
+// saved config the way the Settings form does. The history below is about the
+// retired `shoulder-press` id.
+//
 // Shoulder Press (id `shoulder-press`) is a pin stack capped at 250, added
 // Sep 2026. Unlike every other cap in the program it was already PASSED on the
 // day it landed: the user is working at 255, up from 232.5-233.75 in the June
@@ -47,6 +53,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { setWeightAndOpen } = require('../lib/deck');
+const { seedExerciseConfig } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -58,12 +65,16 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const page = await browser.newPage();
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
+        await seedExerciseConfig(page, {
+            overrides: { 'delts-shoulder-abduction-above-90-degrees': { gympin: true, stackMax: 250 } },
+        });
+        await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
         await selectDayType(page, 'full-body');
 
         // === 1. Today's working weight: 255, five over the cap ==========
-        const today = await setWeightAndOpen(page, 'Shoulder Press', 255);
+        const today = await setWeightAndOpen(page, 'Lu Raises', 255);
 
         contains(today, '255 lbs', 'top set total shown as 255 lbs');
         contains(today, 'pin 250', 'the pin is pegged at the 250 cap');
@@ -79,7 +90,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             'a 5 lb excess is one 5, never a 2.5 pair');
 
         // === 2. Next session: 257.5, the first micro-plate overflow =====
-        const next = await setWeightAndOpen(page, 'Shoulder Press', 257.5);
+        const next = await setWeightAndOpen(page, 'Lu Raises', 257.5);
 
         contains(next, '257.5 lbs', 'top set total shown as 257.5 lbs (unrounded)');
         contains(next, 'pin 250', 'the pin is still pegged at the cap');
@@ -98,7 +109,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // against the excess being handed to the plate-loaded branch, which
         // would render 7.5 as "3.75/side" and still satisfy every contains above.
         ok(next.indexOf('/side') === -1,
-            'no per-side figures — Shoulder Press is a stack, not a two-sided sled');
+            'no per-side figures — Lu Raises is a stack, not a two-sided sled');
 
         // === 3. The boundary: exactly at the cap is not overflow ========
         //
@@ -110,7 +121,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // the pin row: a top set renders only in overflow mode, being otherwise
         // redundant with the Weight (lbs) input just typed into, so its absence
         // is the same statement the boundary is making.
-        const atCap = await setWeightAndOpen(page, 'Shoulder Press', 250);
+        const atCap = await setWeightAndOpen(page, 'Lu Raises', 250);
         ok(atCap.indexOf('pin 250') === -1,
             'a working weight exactly at the cap sits on the pin, no overflow row');
         ok(atCap.indexOf('TOP SET') === -1,

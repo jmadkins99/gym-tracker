@@ -74,8 +74,8 @@ async function readSavedConfig(page) {
     const seededById = Object.fromEntries(DEFAULT_EXERCISES.map(e => [e.id, e.loadType]));
 
     ok(VERSION > 14, `the config version is past 14 (got ${VERSION})`);
-    eq(seededById['chest-flies'], 'pin',
-        'chest-flies seeds as a pin stack, so a two-sided override is distinguishable');
+    eq(seededById['pecs-transverse-shoulder-adduction'], 'pin',
+        'pecs-transverse-shoulder-adduction seeds as a pin stack, so a two-sided override is distinguishable');
 
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();
@@ -89,8 +89,8 @@ async function readSavedConfig(page) {
         await seedExerciseConfig(page, {
             version: VERSION - 1,
             overrides: {
-                'chest-flies': { loadType: 'plate-two-sided', name: 'My Renamed Flies' },
-                'calf-raise': { loadType: 'plate-one-sided' },
+                'pecs-transverse-shoulder-adduction': { loadType: 'plate-two-sided', name: 'My Renamed Flies' },
+                'calves-ankle-extension': { loadType: 'plate-one-sided' },
             },
             ns: NS,
         });
@@ -101,16 +101,16 @@ async function readSavedConfig(page) {
         ok(saved, 'a config is in localStorage after the migration');
         eq(saved.version, VERSION,
             'the migration ran and stamped the current version');
-        eq(saved.loadTypeById['chest-flies'], 'plate-two-sided',
+        eq(saved.loadTypeById['pecs-transverse-shoulder-adduction'], 'plate-two-sided',
             'the chosen load type survived the version bump');
-        eq(saved.loadTypeById['calf-raise'], 'plate-one-sided',
+        eq(saved.loadTypeById['calves-ankle-extension'], 'plate-one-sided',
             'a second override survived too — this is not a one-id special case');
-        eq(saved.nameById['chest-flies'], 'My Renamed Flies',
+        eq(saved.nameById['pecs-transverse-shoulder-adduction'], 'My Renamed Flies',
             'the rename still survives as well (the pre-existing half of that line)');
 
         // Untouched exercises keep their seeds rather than being blanked.
         const drifted = Object.entries(saved.loadTypeById)
-            .filter(([id, lt]) => !['chest-flies', 'calf-raise'].includes(id)
+            .filter(([id, lt]) => !['pecs-transverse-shoulder-adduction', 'calves-ankle-extension'].includes(id)
                 && lt !== seededById[id])
             .map(([id, lt]) => `${id}: ${lt} (seeded ${seededById[id]})`);
         eq(drifted, [], 'every other exercise kept its seeded load type');

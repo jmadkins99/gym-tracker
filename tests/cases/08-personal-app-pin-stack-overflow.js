@@ -1,5 +1,10 @@
 // What this test covers
 // ----------------------
+// Since v25 (Oct 2026) nothing is capped by default: every movement took a new
+// id with the Gympin off, and PIN_STACK_CAPS is empty. So this case switches
+// the Gympin on for Calf Raises itself, at 405, through the saved config the
+// way the Settings form does. The history below is about the retired ids.
+//
 // The pin-stack OVERFLOW path: a capped stack renders "Pin: <max> lbs" plus
 // the largest plate combination that fits the excess (rounded DOWN).
 //
@@ -37,7 +42,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
-const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -75,12 +80,15 @@ async function readCard(page, exerciseName) {
             workoutEntry({
                 date: '2026-05-27T20:00:00Z', day: 1,
                 exercises: [
-                    { id: 'calf-raise', name: 'Calf Raises', weight: '500', reps: '5' },
-                    { id: 'leg-extensions', name: 'Hip Adduction', weight: '115', reps: '5' },
+                    { id: 'calves-ankle-extension', name: 'Calf Raises', weight: '500', reps: '5' },
+                    { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', weight: '115', reps: '5' },
                 ],
             }),
         ];
         await seedPersonalApp(page, { workoutHistory });
+        await seedExerciseConfig(page, {
+            overrides: { 'calves-ankle-extension': { gympin: true, stackMax: 405 } },
+        });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'full-body');

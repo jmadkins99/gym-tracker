@@ -28,7 +28,7 @@ const NS = 'gym-local:';
             workoutHistory: [
                 workoutEntry({
                     date: '2026-05-30T20:00:00Z', day: 'fullbody',
-                    exercises: [{ id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: '160', reps: '4' }],
+                    exercises: [{ id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '160', reps: '4' }],
                 }),
             ],
         });

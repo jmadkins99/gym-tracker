@@ -1,5 +1,9 @@
 // What this test covers
 // ----------------------
+// The seed's ids were translated to v25's when every movement took a new id
+// (Oct 2026), keeping it what this header says it is: a constructed config
+// with today's id set.
+//
 // What a device that was running Anterior / Posterior becomes when it loads
 // the Full Body build — the upgrade half of test 123.
 //
@@ -42,54 +46,55 @@ const NS = 'gym-local:';
 
 // The v21 layout: 10 Anterior then 9 Posterior, order 0..18.
 const V21_LAYOUT = [
-    ['tricep-pushdown', 'Tricep Extensions', 'anterior'],
-    ['chest-press', 'Chest Press', 'anterior'],
-    ['incline-chest-press', 'Incline Chest Press', 'anterior'],
-    ['chest-flies', 'Chest Flies', 'anterior'],
-    ['overhead-tricep-extensions', 'Overhead Tricep Extensions', 'anterior'],
-    ['ab-crunch', 'Ab Crunches', 'anterior'],
-    ['lateral-raises', 'Lateral Raises', 'anterior'],
-    ['shoulder-press', 'Shoulder Press', 'anterior'],
-    ['hip-adduction', 'Leg Press', 'anterior'],
-    ['actual-leg-extensions', 'Leg Extensions', 'anterior'],
-    ['curls-shoulder-extension', 'Recline Curls', 'posterior'],
-    ['preacher-curls', 'Shoulder Flexion Curls', 'posterior'],
+    ['triceps-elbow-extension', 'Tricep Extensions', 'anterior'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'Chest Press', 'anterior'],
+    ['pecs-shoulder-flexion', 'Incline Chest Press', 'anterior'],
+    ['pecs-transverse-shoulder-adduction', 'Chest Flies', 'anterior'],
+    ['triceps-elbow-extension-with-shoulder-flexion', 'Overhead Tricep Extensions', 'anterior'],
+    ['abs-spinal-flexion', 'Ab Crunches', 'anterior'],
+    ['delts-shoulder-abduction-stop-at-90-degrees', 'Lateral Raises', 'anterior'],
+    ['delts-shoulder-abduction-above-90-degrees', 'Shoulder Press', 'anterior'],
+    ['quads-knee-extension-during-hip-flexion', 'Leg Press', 'anterior'],
+    ['quads-knee-extension', 'Leg Extensions', 'anterior'],
+    ['biceps-elbow-flexion-with-shoulder-extension', 'Recline Curls', 'posterior'],
+    ['biceps-elbow-flexion-with-shoulder-flexion', 'Shoulder Flexion Curls', 'posterior'],
     // Still on the old name. The rename to Pullovers reached fresh installs
     // only, so a real device may well carry this.
-    ['hammer-row', 'Sagittal Plane Pulldowns', 'posterior'],
-    ['kelso-shrugs', 'Kelso Shrugs', 'posterior'],
-    ['upper-back-row', 'Transverse Plane Rows', 'posterior'],
+    ['lats-sagittal-shoulder-extension', 'Sagittal Plane Pulldowns', 'posterior'],
+    ['traps-scapular-retraction', 'Kelso Shrugs', 'posterior'],
+    ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Plane Rows', 'posterior'],
     // Renamed by the user.
-    ['frontal-pulldowns', 'My Renamed Pulldowns', 'posterior'],
-    ['leg-curls', 'Back Extensions', 'posterior'],
-    ['leg-extensions', 'Hip Adduction', 'posterior'],
-    ['calf-raise', 'Calf Raises', 'posterior'],
+    ['lats-frontal-shoulder-adduction', 'My Renamed Pulldowns', 'posterior'],
+    ['erectors-spinal-extension', 'Back Extensions', 'posterior'],
+    ['adductors-transverse-hip-adduction', 'Hip Adduction', 'posterior'],
+    ['calves-ankle-extension', 'Calf Raises', 'posterior'],
 ];
 
 // The user switched Kelso Shrugs to a pin stack in Settings.
-const LOAD_TYPE_OVERRIDE = { id: 'kelso-shrugs', loadType: 'pin' };
+// Kelso seeds 'pin' since v25, so the user's choice has to be something else.
+const LOAD_TYPE_OVERRIDE = { id: 'traps-scapular-retraction', loadType: 'plate-one-sided' };
 
 const EXPECTED_ORDER = [
-    'chest-flies', 'chest-press', 'incline-chest-press', 'curls-shoulder-extension',
-    'preacher-curls', 'overhead-tricep-extensions', 'ab-crunch', 'hammer-row',
-    'lateral-raises', 'frontal-pulldowns', 'tricep-pushdown', 'kelso-shrugs',
-    'upper-back-row', 'shoulder-press', 'leg-curls', 'hip-adduction', 'leg-extensions',
-    'calf-raise', 'actual-leg-extensions',
+    'pecs-transverse-shoulder-adduction', 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'pecs-shoulder-flexion', 'biceps-elbow-flexion-with-shoulder-extension',
+    'biceps-elbow-flexion-with-shoulder-flexion', 'triceps-elbow-extension-with-shoulder-flexion', 'abs-spinal-flexion', 'lats-sagittal-shoulder-extension',
+    'delts-shoulder-abduction-stop-at-90-degrees', 'lats-frontal-shoulder-adduction', 'triceps-elbow-extension', 'traps-scapular-retraction',
+    'delts-transverse-shoulder-abduction-with-elbow-flexion', 'delts-shoulder-abduction-above-90-degrees', 'erectors-spinal-extension', 'quads-knee-extension-during-hip-flexion', 'adductors-transverse-hip-adduction',
+    'calves-ankle-extension', 'quads-knee-extension',
 ];
 
 const HISTORY = [
     workoutEntry({
         date: '2026-09-19T15:00:00.000Z', day: 'anterior',
         exercises: [
-            { id: 'chest-press', name: 'Chest Press', weight: 150, reps: 8 },
-            { id: 'lateral-raises', name: 'Lateral Raises', weight: 45, reps: 7 },
+            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: 150, reps: 8 },
+            { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: 45, reps: 7 },
         ],
     }),
     workoutEntry({
         date: '2026-09-20T15:00:00.000Z', day: 'posterior',
         exercises: [
-            { id: 'frontal-pulldowns', name: 'Frontal Plane Pulldowns', weight: 160, reps: 7 },
-            { id: 'calf-raise', name: 'Calf Raises', weight: 205, reps: 8 },
+            { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Plane Pulldowns', weight: 160, reps: 7 },
+            { id: 'calves-ankle-extension', name: 'Calf Raises', weight: 205, reps: 8 },
         ],
     }),
 ];
@@ -145,16 +150,16 @@ async function readSavedConfig(page) {
 
         // 2 + 3. User-owned fields survived, which also proves no wipe ran.
         const byId = Object.fromEntries(saved.exercises.map(e => [e.id, e]));
-        eq(byId['frontal-pulldowns'].name, 'My Renamed Pulldowns', 'the rename survives (no config wipe)');
-        eq(byId['hammer-row'].name, 'Sagittal Plane Pulldowns', "the device's own name for hammer-row survives");
-        eq(byId['kelso-shrugs'].loadType, 'pin', 'the load-type choice survives');
+        eq(byId['lats-frontal-shoulder-adduction'].name, 'My Renamed Pulldowns', 'the rename survives (no config wipe)');
+        eq(byId['lats-sagittal-shoulder-extension'].name, 'Sagittal Plane Pulldowns', "the device's own name for lats-sagittal-shoulder-extension survives");
+        eq(byId['traps-scapular-retraction'].loadType, 'plate-one-sided', 'the load-type choice survives');
 
         // It reaches the screen: one day, no toggle.
         const toggles = await page.evaluate(() => document.querySelectorAll('[data-day-type]').length);
         eq(toggles, 0, 'no day toggle after the upgrade');
         const names = await readDeckNames(page);
         eq(names.length, 19, 'the deck holds all 19 movements');
-        eq(names[EXPECTED_ORDER.indexOf('frontal-pulldowns')], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
+        eq(names[EXPECTED_ORDER.indexOf('lats-frontal-shoulder-adduction')], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
 
         // 4. Last session's weight, from both former days.
         contains((await readDeckCard(page, 'Chest Press')).last, '150', 'Chest Press keeps its Anterior last weight');
