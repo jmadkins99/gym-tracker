@@ -28,11 +28,13 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // Fresh-install names, in canonical order.
 const EXPECTED = [
-    'Chest Flies', 'Chest Press', 'Low to High Flies', 'Recline Curls',
-    'Preacher Curls', 'Overhead Tricep Extensions', 'Ab Crunches',
-    'Sagittal Pulldowns', 'Lateral Raises', 'Frontal Pulldowns',
-    'Tricep Extensions', 'Kelso Shrugs', 'Transverse Rows', 'Lu Raises',
-    'Back Extensions', 'Squats', 'Hip Adduction', 'Calf Raises', 'Leg Extensions',
+    'Recline Curls', 'Preacher Curls', 'Chest Flies', 'Low to High Flies',
+    'Chest Press', 'Supinations', 'Tricep Extensions', 'Lateral Raises',
+    'Overhead Tricep Extensions', 'Lu Raises', 'JM Press',
+    'Sagittal Pulldowns', 'Frontal Pulldowns', 'Kelso Shrugs',
+    'Reverse Wrist Curls', 'Wrist Curls', 'Ab Crunches', 'Back Extensions',
+    'Leg Extensions', 'Calf Raises', 'Squats', 'Transverse Rows',
+    'Hip Adduction',
 ];
 
 async function openManageExercises(page) {
@@ -86,7 +88,7 @@ const readRows = (page) => page.evaluate(() =>
         eq(stuck, [], 'every row between the ends can move both ways');
 
         // And an arrow actually moves a row: Kelso Shrugs down one swaps it
-        // with Transverse Plane Rows.
+        // with whatever follows it. Derived, so a reorder does not rot it.
         await page.evaluate(() => {
             const row = Array.from(document.querySelectorAll('.modal .exercise-row'))
                 .find(r => r.querySelector('.exercise-row-name')?.textContent.trim() === 'Kelso Shrugs');
@@ -94,7 +96,8 @@ const readRows = (page) => page.evaluate(() =>
         });
         await new Promise(r => setTimeout(r, 200));
         const moved = await readRows(page);
-        eq(moved.slice(11, 13), ['Transverse Rows', 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
+        const k = EXPECTED.indexOf('Kelso Shrugs');
+        eq(moved.slice(k, k + 2), [EXPECTED[k + 1], 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Manage Exercises lists the one Full Body day in order, arrows live throughout.');

@@ -344,6 +344,14 @@
         // The names here now differ from Jessi's program, which keeps its own.
         // Test 135 is the pin.
         //
+        // 26 adds four movements on ids no program used before (Supinations,
+        // JM Press, Reverse Wrist Curls, Wrist Curls) and reorders the day to
+        // open with the curls. The id set changes, so setsEqual would catch it
+        // alone; the bump is what carries the new order with it. The new four
+        // start like every other movement since v25: pin-loaded, 2.5, Gympin
+        // off, 4-6 reps. Reverse Wrist Curls shares a name with the retired
+        // `reverse-wrist-curls` and nothing else: its history does not carry.
+        //
         // ----------------------------------------------------------------
         // LANDING A REORDER
         // ----------------------------------------------------------------
@@ -373,7 +381,7 @@
         // a fresh install only. Getting a rename
         // onto an existing device is a Settings job here; on Jessi's side it
         // needs a one-time JESSI_REV<N>_* pass. A pure reorder needs neither.
-        const EXERCISE_CONFIG_VERSION = 25;
+        const EXERCISE_CONFIG_VERSION = 26;
 
         // The days of the current program, in toggle order. Everything that
         // used to hard-code the split reads this instead: the deck's day toggle
@@ -409,26 +417,32 @@
         // Anterior/Posterior split (Aug 2026), which had replaced Upper/Lower.
         // Oct 2026 (v25): every movement on a new id, see the note above
         // EXERCISE_CONFIG_VERSION.
+        // v26 added Supinations, JM Press, Reverse Wrist Curls and Wrist
+        // Curls and reordered the day.
         const DEFAULT_EXERCISES = [
-            { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
-            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
-            { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
-            { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
-            { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
-            { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
-            { id: 'abs-spinal-flexion', name: 'Ab Crunches', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
-            { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
-            { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
-            { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
-            { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 10 },
-            { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 11 },
-            { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 12 },
-            { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
-            { id: 'erectors-spinal-extension', name: 'Back Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 14 },
-            { id: 'quads-knee-extension-during-hip-flexion', name: 'Squats', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 15 },
-            { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 16 },
-            { id: 'calves-ankle-extension', name: 'Calf Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 17 },
-            { id: 'quads-knee-extension', name: 'Leg Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 18 }
+            { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
+            { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
+            { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
+            { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
+            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'biceps-wrist-supination', name: 'Supinations', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
+            { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
+            { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
+            { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
+            { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
+            { id: 'triceps-elbow-extension-during-shoulder-flexion', name: 'JM Press', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 10 },
+            { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 11 },
+            { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 12 },
+            { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
+            { id: 'brachioradialis-elbow-flexion', name: 'Reverse Wrist Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 14 },
+            { id: 'forearm-wrist-flexion', name: 'Wrist Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 15 },
+            { id: 'abs-spinal-flexion', name: 'Ab Crunches', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 16 },
+            { id: 'erectors-spinal-extension', name: 'Back Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 17 },
+            { id: 'quads-knee-extension', name: 'Leg Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 18 },
+            { id: 'calves-ankle-extension', name: 'Calf Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 19 },
+            { id: 'quads-knee-extension-during-hip-flexion', name: 'Squats', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 20 },
+            { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 21 },
+            { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 22 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

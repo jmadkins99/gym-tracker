@@ -14,7 +14,7 @@
 //      choose between, so no [data-day-type] button renders.
 //   2. Every weekday opens on 'full-body'. There are no rest days in the
 //      schedule, so the weekday map is gone rather than trivially constant.
-//   3. The deck renders all 19 movements in the Full Body order and nothing
+//   3. The deck renders every movement in the Full Body order and nothing
 //      else — the retired cardio movements stay unreachable.
 //   4. A 'full-body' workout is labelled "Full Body" in History.
 //
@@ -36,33 +36,37 @@ const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-// Fresh-install display names. Several ids do not match their names (e.g.
-// `hip-adduction` renders Leg Press, `leg-extensions` renders Hip Adduction);
-// the roster in config.js is the place that explains each one.
+// Fresh-install display names, in order.
 const EXPECTED_FULL_BODY = [
-    'Chest Flies',
-    'Chest Press',
-    'Low to High Flies',
     'Recline Curls',
     'Preacher Curls',
-    'Overhead Tricep Extensions',
-    'Ab Crunches',
-    'Sagittal Pulldowns',
-    'Lateral Raises',
-    'Frontal Pulldowns',
+    'Chest Flies',
+    'Low to High Flies',
+    'Chest Press',
+    'Supinations',
     'Tricep Extensions',
-    'Kelso Shrugs',
-    'Transverse Rows',
+    'Lateral Raises',
+    'Overhead Tricep Extensions',
     'Lu Raises',
+    'JM Press',
+    'Sagittal Pulldowns',
+    'Frontal Pulldowns',
+    'Kelso Shrugs',
+    'Reverse Wrist Curls',
+    'Wrist Curls',
+    'Ab Crunches',
     'Back Extensions',
-    'Squats',
-    'Hip Adduction',
-    'Calf Raises',
     'Leg Extensions',
+    'Calf Raises',
+    'Squats',
+    'Transverse Rows',
+    'Hip Adduction',
 ];
 
+// Reverse Wrist Curls came back in Oct 2026 (v26) as a new movement on a new
+// id, so only its retired partner is listed.
 const RETIRED = ['Body Weight Squats', 'Burpee Jump Tucks', 'Assault Bike', 'Stairmaster',
-    'Reverse Wrist Curls', 'Cable Wrist Curls'];
+    'Cable Wrist Curls'];
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -91,7 +95,7 @@ const RETIRED = ['Body Weight Squats', 'Burpee Jump Tucks', 'Assault Bike', 'Sta
 
         // 3. The roster, in order.
         const names = await readDeckNames(page);
-        eq(names, EXPECTED_FULL_BODY, 'Full Body renders all 19 movements in order');
+        eq(names, EXPECTED_FULL_BODY, 'Full Body renders every movement in order');
         for (const name of RETIRED) {
             ok(!names.includes(name), `"${name}" is not on the program`);
         }

@@ -44,7 +44,9 @@ const { eq, ok, contains } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
 
-// The v21 layout: 10 Anterior then 9 Posterior, order 0..18.
+// The v21 layout: 12 Anterior then 11 Posterior, order 0..22. v26's four (Oct
+// 2026) never existed in v21; they are added, two a day, only so the seed
+// keeps today's id set.
 const V21_LAYOUT = [
     ['triceps-elbow-extension', 'Tricep Extensions', 'anterior'],
     ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'Chest Press', 'anterior'],
@@ -56,6 +58,8 @@ const V21_LAYOUT = [
     ['delts-shoulder-abduction-above-90-degrees', 'Shoulder Press', 'anterior'],
     ['quads-knee-extension-during-hip-flexion', 'Leg Press', 'anterior'],
     ['quads-knee-extension', 'Leg Extensions', 'anterior'],
+    ['triceps-elbow-extension-during-shoulder-flexion', 'JM Press', 'anterior'],
+    ['biceps-wrist-supination', 'Supinations', 'anterior'],
     ['biceps-elbow-flexion-with-shoulder-extension', 'Recline Curls', 'posterior'],
     ['biceps-elbow-flexion-with-shoulder-flexion', 'Shoulder Flexion Curls', 'posterior'],
     // Still on the old name. The rename to Pullovers reached fresh installs
@@ -68,18 +72,38 @@ const V21_LAYOUT = [
     ['erectors-spinal-extension', 'Back Extensions', 'posterior'],
     ['adductors-transverse-hip-adduction', 'Hip Adduction', 'posterior'],
     ['calves-ankle-extension', 'Calf Raises', 'posterior'],
+    ['brachioradialis-elbow-flexion', 'Reverse Wrist Curls', 'posterior'],
+    ['forearm-wrist-flexion', 'Wrist Curls', 'posterior'],
 ];
 
-// The user switched Kelso Shrugs to a pin stack in Settings.
-// Kelso seeds 'pin' since v25, so the user's choice has to be something else.
+// The user switched Kelso Shrugs to plate one-sided in Settings. Kelso seeds
+// 'pin' since v25, so the user's choice has to be something else.
 const LOAD_TYPE_OVERRIDE = { id: 'traps-scapular-retraction', loadType: 'plate-one-sided' };
 
 const EXPECTED_ORDER = [
-    'pecs-transverse-shoulder-adduction', 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'pecs-shoulder-flexion', 'biceps-elbow-flexion-with-shoulder-extension',
-    'biceps-elbow-flexion-with-shoulder-flexion', 'triceps-elbow-extension-with-shoulder-flexion', 'abs-spinal-flexion', 'lats-sagittal-shoulder-extension',
-    'delts-shoulder-abduction-stop-at-90-degrees', 'lats-frontal-shoulder-adduction', 'triceps-elbow-extension', 'traps-scapular-retraction',
-    'delts-transverse-shoulder-abduction-with-elbow-flexion', 'delts-shoulder-abduction-above-90-degrees', 'erectors-spinal-extension', 'quads-knee-extension-during-hip-flexion', 'adductors-transverse-hip-adduction',
-    'calves-ankle-extension', 'quads-knee-extension',
+    'biceps-elbow-flexion-with-shoulder-extension',
+    'biceps-elbow-flexion-with-shoulder-flexion',
+    'pecs-transverse-shoulder-adduction',
+    'pecs-shoulder-flexion',
+    'pecs-transverse-shoulder-adduction-with-elbow-extension',
+    'biceps-wrist-supination',
+    'triceps-elbow-extension',
+    'delts-shoulder-abduction-stop-at-90-degrees',
+    'triceps-elbow-extension-with-shoulder-flexion',
+    'delts-shoulder-abduction-above-90-degrees',
+    'triceps-elbow-extension-during-shoulder-flexion',
+    'lats-sagittal-shoulder-extension',
+    'lats-frontal-shoulder-adduction',
+    'traps-scapular-retraction',
+    'brachioradialis-elbow-flexion',
+    'forearm-wrist-flexion',
+    'abs-spinal-flexion',
+    'erectors-spinal-extension',
+    'quads-knee-extension',
+    'calves-ankle-extension',
+    'quads-knee-extension-during-hip-flexion',
+    'delts-transverse-shoulder-abduction-with-elbow-flexion',
+    'adductors-transverse-hip-adduction',
 ];
 
 const HISTORY = [
@@ -146,7 +170,7 @@ async function readSavedConfig(page) {
         eq(saved.exercises.map(e => e.id), EXPECTED_ORDER, 'ids are in the Full Body order');
         eq([...new Set(saved.exercises.map(e => e.day))], ['full-body'], "every id is on 'full-body'");
         eq([...new Set(saved.exercises.map(e => e.category))], ['Full Body'], 'every category is Full Body');
-        eq(saved.exercises.map(e => e.order), Array.from({ length: 19 }, (_, i) => i), 'order is dense 0..18');
+        eq(saved.exercises.map(e => e.order), Array.from({ length: 23 }, (_, i) => i), 'order is dense 0..22');
 
         // 2 + 3. User-owned fields survived, which also proves no wipe ran.
         const byId = Object.fromEntries(saved.exercises.map(e => [e.id, e]));
@@ -158,7 +182,7 @@ async function readSavedConfig(page) {
         const toggles = await page.evaluate(() => document.querySelectorAll('[data-day-type]').length);
         eq(toggles, 0, 'no day toggle after the upgrade');
         const names = await readDeckNames(page);
-        eq(names.length, 19, 'the deck holds all 19 movements');
+        eq(names.length, 23, 'the deck holds all 23 movements');
         eq(names[EXPECTED_ORDER.indexOf('lats-frontal-shoulder-adduction')], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
 
         // 4. Last session's weight, from both former days.

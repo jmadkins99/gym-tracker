@@ -85,44 +85,50 @@ const FULL_BODY = [
 ];
 
 const EXPECTED_FULL_BODY = [
-    // The saved config below says "Unilateral Chest Flies" while the current
-    // DEFAULT_EXERCISES says "Chest Flies". The saved name has to win — the
-    // migration takes order/day/category from defaults but never the name, so
-    // changing a default label can't silently rewrite what a device displays.
-    'Unilateral Chest Flies',
-    // Arrives purely via migrateExerciseConfig — the saved config below predates
-    // it — and lands at its DEFAULT_EXERCISES position, not appended at the end.
-    'Chest Press',
-    'Incline Chest Press',
+    // Positions are DEFAULT_EXERCISES' (v26 order); names are the saved ones
+    // wherever the seed has the id, and the fresh-install ones for the six it
+    // predates. Nothing below is the seed's own order.
     'Recline Curls',
     // The Sep 2026 renames do NOT appear here, and that is the point: the saved
     // config below carries "Preacher Curls" and "Sagittal Plane Pulldowns", and
     // migrateExerciseConfig preserves a saved name by id even when the default
     // label has since changed. These rows take the new *position* from
-    // DEFAULT_EXERCISES and the old *name* from the device. Only a fresh
-    // install sees Shoulder Flexion Curls / Sagittal Plane Pullovers; test 123
-    // is the pin on that half.
+    // DEFAULT_EXERCISES and the old *name* from the device.
     'Preacher Curls',
-    'Overhead Tricep Extensions',
-    'Ab Crunches',
-    'Sagittal Plane Pulldowns',
-    'Lateral Raises',
-    'My Renamed Pulldowns',   // lats-frontal-shoulder-adduction, renamed by the user below
+    // The saved config below says "Unilateral Chest Flies" while the current
+    // DEFAULT_EXERCISES says "Chest Flies". The saved name has to win — the
+    // migration takes order/day/category from defaults but never the name, so
+    // changing a default label can't silently rewrite what a device displays.
+    'Unilateral Chest Flies',
+    'Incline Chest Press',
+    // Arrives purely via migrateExerciseConfig — the saved config below predates
+    // it — and lands at its DEFAULT_EXERCISES position, not appended at the end.
+    'Chest Press',
+    'Supinations',            // v26, arrives via the migration
     'Tricep Extensions',
-    'Kelso Shrugs',
-    'Transverse Plane Rows',
+    'Lateral Raises',
+    'Overhead Tricep Extensions',
     'Shoulder Press',
+    'JM Press',               // v26, arrives via the migration
+    'Sagittal Plane Pulldowns',
+    'My Renamed Pulldowns',   // lats-frontal-shoulder-adduction, renamed by the user below
+    'Kelso Shrugs',
+    // A new id under an old name. The seed's retired `reverse-wrist-curls`
+    // drops; this one arrives with the migration and inherits nothing from it.
+    'Reverse Wrist Curls',
+    'Wrist Curls',            // v26, arrives via the migration
+    'Ab Crunches',
     'Back Extensions',
-    // hip-adduction, renamed by the user below. Its position comes from
-    // DEFAULT_EXERCISES, not from the saved config — the migration takes order
-    // and day from defaults while preserving the user's name, and this row is
-    // where those two rules meet. The saved config has it last; landing here
-    // proves defaults won on position.
-    'My Renamed Leg Press',
-    'Hip Adduction',
+    'Leg Extensions',         // like Chest Press, added by the migration
     'Calf Raises',
-    // Like Chest Press above, added by the migration under its own fresh id.
-    'Leg Extensions',
+    // Renamed by the user below. Its position comes from DEFAULT_EXERCISES,
+    // not from the saved config — the migration takes order and day from
+    // defaults while preserving the user's name, and this row is where those
+    // two rules meet. The saved config has it last; landing here proves
+    // defaults won on position.
+    'My Renamed Leg Press',
+    'Transverse Plane Rows',
+    'Hip Adduction',
 ];
 
 async function readSavedConfig(page) {
@@ -177,10 +183,10 @@ async function readSavedConfig(page) {
         const saved = await readSavedConfig(page);
         eq(saved.version, currentConfigVersion(),
             'reconciled config is persisted with the current EXERCISE_CONFIG_VERSION');
-        // 19 in, 19 out, but not the same 19: leg extensions and chest press
-        // arrive, and the wrist pair — retired from the roster in Sep 2026 —
-        // leaves. The count alone would hide that, so both halves are asserted.
-        eq(saved.ids.length, 19, 'leg extensions + chest press in, the wrist pair out: 19 ids');
+        // 19 in, 23 out, and not a superset: leg extensions, chest press and
+        // v26's four arrive, and the wrist pair — retired from the roster in
+        // Sep 2026 — leaves. The count alone would hide that, so both halves are asserted.
+        eq(saved.ids.length, 23, 'leg extensions, chest press and the v26 four in, the wrist pair out: 23 ids');
         ok(!saved.byId['reverse-wrist-curls'] && !saved.byId['cable-wrist-curls'],
             'the retired wrist pair is dropped from a saved config that still carried it');
         ok(!saved.byId['stairmaster'],
@@ -204,10 +210,10 @@ async function readSavedConfig(page) {
         eq([...new Set(Object.values(saved.byId).map(e => e.day))], ['full-body'],
             'every exercise is on full-body');
 
-        // `order` must stay a dense 0..18 run, since moveExercise and the
+        // `order` must stay a dense 0..22 run, since moveExercise and the
         // load-time sort both index off it.
-        eq(saved.orders, Array.from({ length: 19 }, (_, i) => i),
-            'order is a dense 0..18 sequence');
+        eq(saved.orders, Array.from({ length: 23 }, (_, i) => i),
+            'order is a dense 0..22 sequence');
 
         // 5. Second load changes nothing.
         await page.reload({ waitUntil: 'networkidle0' });
@@ -226,7 +232,7 @@ async function readSavedConfig(page) {
             const cfg = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
             cfg.exercises.push({
                 id: 'stairmaster', name: 'Stairmaster', category: 'Cardio',
-                day: 'full-body', type: 'stairmaster', order: 19,
+                day: 'full-body', type: 'stairmaster', order: 23,
             });
             cfg.version = 5;
             localStorage.setItem(ns + 'gymExerciseConfig', JSON.stringify(cfg));
@@ -240,8 +246,8 @@ async function readSavedConfig(page) {
             'stairmaster is dropped from a saved config that still carried it');
         eq(dropped.version, currentConfigVersion(),
             'the drop is persisted with the current EXERCISE_CONFIG_VERSION');
-        eq(dropped.ids.length, 19, 'the saved config is back to 19 ids');
-        eq(dropped.orders, Array.from({ length: 19 }, (_, i) => i),
+        eq(dropped.ids.length, 23, 'the saved config is back to 23 ids');
+        eq(dropped.orders, Array.from({ length: 23 }, (_, i) => i),
             'order stays dense after the removal — no hole where stairmaster sat');
         eq(dropped, saved, 'the dropped config matches the canonical one exactly');
 

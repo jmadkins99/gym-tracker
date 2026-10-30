@@ -50,15 +50,15 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                 exercises: [
                     // Whatever leads the day has to be in here: section 3
                     // below asserts the OPEN card shows last session's weight,
-                    // so the active card needs history to show. Chest Flies
-                    // leads since the second Oct 2026 reorder (Chest Press
-                    // before it, Tricep Extensions from Sep), so its 130 is
-                    // the number section 3 looks for.
+                    // so the active card needs history to show. Recline Curls
+                    // leads since v26 (Oct 2026; Chest Flies before it, Chest
+                    // Press before that), so its 130 is the number section 3
+                    // looks for.
                     { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Anterior',
                       type: 'standard', weight: '200', reps: '6' },
                     { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Anterior',
                       type: 'standard', weight: '110', reps: '5' },
-                    { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Anterior',
+                    { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', category: 'Anterior',
                       type: 'standard', weight: '130', reps: '5' },
                 ],
             }],
@@ -80,8 +80,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const front = await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-front').innerText, ACTIVE);
 
-        // Chest Flies leads Full Body since the second Oct 2026 reorder.
-        eq(await activeName(page), 'Chest Flies', 'it names the first movement of the day');
+        // Recline Curls leads Full Body since v26 (Oct 2026).
+        eq(await activeName(page), 'Recline Curls', 'it names the first movement of the day');
         eq(/\d/.test(front), false,
             'THE POINT: no digit appears on the front face — no weight, no reps, no ' +
             'last session. Leaking any of them removes the reason to swipe up, and ' +
