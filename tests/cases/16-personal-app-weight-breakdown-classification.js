@@ -114,7 +114,7 @@ function extractLiteral(source, name, open, close) {
         await waitForApp(page);
 
         // Full Body (Sep 2026) is one day, so one sweep covers the rotation.
-        // Names only: the deck shows one card at a time and opening all 19 to
+        // Names only: the deck shows one card at a time and opening all of them to
         // read them would cost seconds per sweep for nothing this case needs.
         await selectDayType(page, 'full-body');
         const names = await readDeckNames(page);

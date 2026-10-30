@@ -7,9 +7,9 @@
 // design, chosen over rewriting history, so what this case pins is that the
 // fresh start is fresh and that nothing old was touched:
 //
-//   - A v24 device reloads into the 19 new ids, in order, under the new names,
-//     at version 25, every one pin-loaded, 2.5 lb steps, Gympin off and the
-//     default rep range. The v24 customisations (1.25 steps, 4-8 ranges, a
+//   - A v24 device reloads into the current roster (the 19 new ids from v25,
+//     plus whatever later versions added), at the current version, every
+//     one pin-loaded, 2.5 lb steps, Gympin off and the default rep range. The v24 customisations (1.25 steps, 4-8 ranges, a
 //     Gympin left off) stay behind on the retired ids rather than carrying.
 //   - Stored history is left exactly as it was, old ids, plateau busters and
 //     names included.
@@ -37,7 +37,9 @@ const { eq, ok } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
 
-// The expectation: the v25 roster in order.
+// The 19 id/name pairs v25 introduced. Later versions add to and reorder the
+// roster, so the order and the full list are read from the app (CURRENT);
+// these are checked as members of it.
 const EXPECTED = [
     ['pecs-transverse-shoulder-adduction', 'Chest Flies'],
     ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'Chest Press'],
@@ -170,9 +172,19 @@ const content = (history) => history.map(({ week, ...w }) => w);
 
         // --- The config: new ids, new names, plain defaults ---
         const { config, history } = await readStored(page);
-        eq(config.version, 25, 'the reloaded config is at version 25');
-        eq(config.exercises.map(e => [e.id, e.name]), EXPECTED,
-            'the config holds exactly the 19 new ids, in order, under the new names');
+        const CURRENT = await page.evaluate(() => ({
+            version: EXERCISE_CONFIG_VERSION,
+            roster: DEFAULT_EXERCISES.map(e => [e.id, e.name]),
+        }));
+        ok(CURRENT.version >= 25, `the app is at v25 or later (got ${CURRENT.version})`);
+        eq(config.version, CURRENT.version, 'the reloaded config is at the current version');
+        eq(config.exercises.map(e => [e.id, e.name]), CURRENT.roster,
+            'the config holds exactly the current roster, in order');
+        const current = new Set(CURRENT.roster.map(r => r.join('=')));
+        eq(EXPECTED.filter(r => !current.has(r.join('='))), [],
+            'every v25 id is in it under its v25 name');
+        eq(config.exercises.filter(e => V24_CONFIG.exercises.some(o => o.id === e.id)).map(e => e.id), [],
+            'and none of the v24 ids survived');
         const settings = await page.evaluate((exercises) => exercises.map(e => [
             e.id, resolveLoadType(e), resolveIncrement(e), resolveGympin(e).on,
             JSON.stringify(getStandardRepRange(e.id)),
@@ -189,8 +201,8 @@ const content = (history) => history.map(({ week, ...w }) => w);
             'stored history is exactly as seeded: old ids, plateau busters and names');
 
         // --- The deck ---
-        eq(await readDeckNames(page), EXPECTED.map(([, name]) => name),
-            'the deck shows the 19 cards in order under the new names');
+        eq(await readDeckNames(page), CURRENT.roster.map(([, name]) => name),
+            'the deck shows every card in order under the new names');
 
         for (const name of ['Squats', 'Recline Curls']) {
             const card = await readDeckCard(page, name);
@@ -234,7 +246,7 @@ const content = (history) => history.map(({ week, ...w }) => w);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         const after = await readStored(page);
-        eq(after.config.exercises.map(e => e.id), EXPECTED.map(([id]) => id),
+        eq(after.config.exercises.map(e => e.id), CURRENT.roster.map(([id]) => id),
             'an imported v24 backup comes back on the new ids after one reload');
         eq(content(after.history), content(seededHistory),
             'the imported history is kept as it was');

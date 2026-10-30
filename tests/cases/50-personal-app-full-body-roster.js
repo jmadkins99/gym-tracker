@@ -2,7 +2,7 @@
 // ----------------------
 // The canonical roster, as declared in DEFAULT_EXERCISES and PROGRAM_DAYS.
 // This is the single source-level pin on the Sep 2026 switch from
-// Anterior/Posterior to one Full Body day: all 19 movements, in what order,
+// Anterior/Posterior to one Full Body day: every movement, in what order,
 // on a day PROGRAM_DAYS declares, with a `category` that agrees with it.
 //
 // Deliberately source-only — it parses config.js and never opens a browser, so
@@ -12,16 +12,9 @@
 // Until Sep 2026 this was the Anterior/Posterior roster; its git history has
 // the two-day version of every table below.
 //
-// The id/name mismatches below are frozen and intentional. Workout history
-// references ids, so an id can never be renamed to match its label:
-//   leg-curls              renders as Back Extensions
-//   leg-extensions         renders as Hip Adduction
-//   hip-adduction          renders as Leg Press
-//   actual-leg-extensions  renders as Leg Extensions (the real one)
-//   hammer-row             renders as Sagittal Plane Pullovers
-//   tricep-pushdown        renders as Tricep Extensions
-//   curls-shoulder-extension renders as Recline Curls
-//   preacher-curls         renders as Shoulder Flexion Curls
+// Since v25 (Oct 2026) every id names the muscle and joint action, so ids and
+// labels no longer contradict each other. Workout history references ids, so
+// a different movement takes a new id rather than reusing an old one.
 //
 // If you are here because you intentionally reordered the day or moved an
 // exercise between days: update the table below AND bump
@@ -37,25 +30,29 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // [id, display name], in render order.
 const FULL_BODY = [
-    ['pecs-transverse-shoulder-adduction', 'Chest Flies'],
-    ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'Chest Press'],
-    ['pecs-shoulder-flexion', 'Low to High Flies'],
     ['biceps-elbow-flexion-with-shoulder-extension', 'Recline Curls'],
     ['biceps-elbow-flexion-with-shoulder-flexion', 'Preacher Curls'],
-    ['triceps-elbow-extension-with-shoulder-flexion', 'Overhead Tricep Extensions'],
-    ['abs-spinal-flexion', 'Ab Crunches'],
-    ['lats-sagittal-shoulder-extension', 'Sagittal Pulldowns'],
-    ['delts-shoulder-abduction-stop-at-90-degrees', 'Lateral Raises'],
-    ['lats-frontal-shoulder-adduction', 'Frontal Pulldowns'],
+    ['pecs-transverse-shoulder-adduction', 'Chest Flies'],
+    ['pecs-shoulder-flexion', 'Low to High Flies'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'Chest Press'],
+    ['biceps-wrist-supination', 'Supinations'],
     ['triceps-elbow-extension', 'Tricep Extensions'],
-    ['traps-scapular-retraction', 'Kelso Shrugs'],
-    ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Rows'],
+    ['delts-shoulder-abduction-stop-at-90-degrees', 'Lateral Raises'],
+    ['triceps-elbow-extension-with-shoulder-flexion', 'Overhead Tricep Extensions'],
     ['delts-shoulder-abduction-above-90-degrees', 'Lu Raises'],
+    ['triceps-elbow-extension-during-shoulder-flexion', 'JM Press'],
+    ['lats-sagittal-shoulder-extension', 'Sagittal Pulldowns'],
+    ['lats-frontal-shoulder-adduction', 'Frontal Pulldowns'],
+    ['traps-scapular-retraction', 'Kelso Shrugs'],
+    ['brachioradialis-elbow-flexion', 'Reverse Wrist Curls'],
+    ['forearm-wrist-flexion', 'Wrist Curls'],
+    ['abs-spinal-flexion', 'Ab Crunches'],
     ['erectors-spinal-extension', 'Back Extensions'],
-    ['quads-knee-extension-during-hip-flexion', 'Squats'],
-    ['adductors-transverse-hip-adduction', 'Hip Adduction'],
-    ['calves-ankle-extension', 'Calf Raises'],
     ['quads-knee-extension', 'Leg Extensions'],
+    ['calves-ankle-extension', 'Calf Raises'],
+    ['quads-knee-extension-during-hip-flexion', 'Squats'],
+    ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Rows'],
+    ['adductors-transverse-hip-adduction', 'Hip Adduction'],
 ];
 
 // Every day literal an earlier program stored. None may be reused by the

@@ -6,7 +6,7 @@
 //
 // What the pill SAYS follows History's rule exactly (Sep 2026): "🔥 PR" for a
 // lone PR, "🔥 N" once the run is two or more. Both branches are exercised
-// below — Chest Flies lands on a run of two, Incline Chest Press on a run of one —
+// below — Recline Curls lands on a run of two, Low to High Flies on a run of one —
 // and the number comes from getPRStreakInWorkout counted as of today's entry, so
 // the card shows what History will show for the same row after Submit Day.
 // Before Sep 2026 this pill always read "PR", which understated a run the
@@ -45,8 +45,8 @@ const OLDER = workoutEntry({
     day: 'anterior',
     submitted: true,
     exercises: [
-        { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '100', reps: '4' },
-        { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '100', reps: '4' },
+        { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', weight: '100', reps: '4' },
+        { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '100', reps: '4' },
     ],
 });
 
@@ -55,8 +55,8 @@ const PREVIOUS = workoutEntry({
     day: 'anterior',
     submitted: true,
     exercises: [
-        { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '100', reps: '5' },
-        { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '100', reps: '5' },
+        { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', weight: '100', reps: '5' },
+        { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '100', reps: '5' },
         { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '120', reps: '5' },
         // Only in PREVIOUS, deliberately: one prior session means an
         // improvement today is a run of ONE, which is the "🔥 PR" branch.
@@ -155,7 +155,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await waitForApp(page);
         await selectDayType(page, 'full-body');
 
-        const before = await readHeader(page, 'pecs-transverse-shoulder-adduction');
+        const before = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
         eq(before.streak, '🔥 1',
             'before logging, the card shows the numeric submitted-history streak');
         eq(before.streakBg, BADGE_BG,
@@ -165,9 +165,9 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(before.loggedPR, null,
             'before logging, the current-session PR badge is absent');
 
-        await logSet(page, 'pecs-transverse-shoulder-adduction', '100', '6', { settle: 250 });
+        await logSet(page, 'biceps-elbow-flexion-with-shoulder-extension', '100', '6', { settle: 250 });
         const celebrating = await readActiveReview(page);
-        eq(celebrating.id, 'pecs-transverse-shoulder-adduction',
+        eq(celebrating.id, 'biceps-elbow-flexion-with-shoulder-extension',
             'a PR log stays on the current logged card before advancing');
         eq(celebrating.celebrating, true,
             'a PR log runs the card celebration class');
@@ -184,7 +184,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
 
         await new Promise(r => setTimeout(r, 1300));
         const lingering = await readActiveReview(page);
-        eq(lingering.id, 'pecs-transverse-shoulder-adduction',
+        eq(lingering.id, 'biceps-elbow-flexion-with-shoulder-extension',
             'the PR celebration keeps the logged card visible for the two-second aura hold');
         eq(lingering.celebrating, true,
             'the PR aura is still pulsing before the delayed auto-advance');
@@ -192,17 +192,17 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await page.waitForFunction((sel, id) => {
             const card = document.querySelector(sel + ' .card[data-exercise-id]');
             return card && card.getAttribute('data-exercise-id') !== id;
-        }, { timeout: 4000 }, ACTIVE, 'pecs-transverse-shoulder-adduction');
+        }, { timeout: 4000 }, ACTIVE, 'biceps-elbow-flexion-with-shoulder-extension');
         // The two deck-index assertions here need the logged card to be the
         // EARLIEST unlogged one, because the deck jumps back to that (test 77)
-        // rather than simply stepping forward. Hence Chest Flies and Chest
-        // Press, the first two cards of Full Body since the second Oct 2026
-        // reorder — probing a card further down would assert a jump backwards
+        // rather than simply stepping forward. Hence Recline Curls and
+        // Preacher Curls, the first two cards of Full Body since v26 (Oct
+        // 2026) — probing a card further down would assert a jump backwards
         // and prove nothing about advancing.
         eq(await deckIndex(page), 2,
             'after the celebration, the deck advances to the next unlogged card');
 
-        const improved = await readHeader(page, 'pecs-transverse-shoulder-adduction');
+        const improved = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
         eq(improved.logged, 'logged', 'the PR row is in the logged review state');
         eq(improved.loggedPR, '🔥 2',
             'a logged same-weight rep improvement shows the current-session run count');
@@ -217,19 +217,19 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(improved.streak, null,
             'a logged PR review replaces the numeric pre-session streak');
 
-        await logSet(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension', '100', '5');
+        await logSet(page, 'biceps-elbow-flexion-with-shoulder-flexion', '100', '5');
         eq(await deckIndex(page), 3,
             'a non-PR log still advances without the PR celebration delay');
         eq(await readToast(page), { pr: false, animation: 'slideDown' },
             'a non-PR log keeps the plain toast');
-        const identical = await readHeader(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension');
+        const identical = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-flexion');
         eq(identical.logged, 'logged', 'the identical row is also in review state');
         eq(identical.loggedPR, null,
             'an identical logged row does not show the current-session PR badge');
         eq(identical.streak, null,
             'logged non-PR reviews do not keep showing the stale pre-session streak');
 
-        // A run of ONE: incline-chest-press has a single prior session, so today's
+        // A run of ONE: Low to High Flies has a single prior session, so today's
         // improvement is a lone PR and the pill reads the word, not a number.
         // Losing this probe would let a regression that always prints a count
         // (including a meaningless "🔥 1") pass unnoticed.
@@ -245,11 +245,11 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(weightDrop.loggedPR, null,
             'top reps after a weight drop is not a logged PR');
 
-        // Recline Curls, not Chest Press: Chest Press is card two and
+        // Chest Flies, not Preacher Curls: Preacher Curls is card two and
         // carries the history the advance assertions above need, so it is
         // not history-free.
-        await logSet(page, 'biceps-elbow-flexion-with-shoulder-extension', '50', '6');
-        const firstSession = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
+        await logSet(page, 'pecs-transverse-shoulder-adduction', '50', '6');
+        const firstSession = await readHeader(page, 'pecs-transverse-shoulder-adduction');
         eq(firstSession.loggedPR, null,
             'top reps on a first-ever submitted-baseline-free row is not a logged PR');
 

@@ -71,29 +71,33 @@ const OLD_ORDER_IDS = [
     'quads-knee-extension-during-hip-flexion',
 ];
 
-// The canonical Full Body day (Oct 2026 order). Names are the fresh-install ones
+// The canonical Full Body day (v26 order). Names are the fresh-install ones
 // because the seed below builds each entry from DEFAULT_EXERCISES — except
-// chest-flies, renamed by the user.
+// Chest Flies, renamed by the user.
 const EXPECTED_NEW_ORDER = [
-    'My Renamed Flies',       // pecs-transverse-shoulder-adduction, renamed by the user below
-    'Chest Press',            // added Aug 2026; arrives via the migration
-    'Low to High Flies',
     'Recline Curls',
     'Preacher Curls',
-    'Overhead Tricep Extensions',
-    'Ab Crunches',
-    'Sagittal Pulldowns',
-    'Lateral Raises',
-    'Frontal Pulldowns',
+    'My Renamed Flies',       // pecs-transverse-shoulder-adduction, renamed by the user below
+    'Low to High Flies',
+    'Chest Press',            // not in the seed; arrives via the migration
+    'Supinations',            // v26, arrives via the migration
     'Tricep Extensions',
-    'Kelso Shrugs',
-    'Transverse Rows',
+    'Lateral Raises',
+    'Overhead Tricep Extensions',
     'Lu Raises',
+    'JM Press',               // v26, arrives via the migration
+    'Sagittal Pulldowns',
+    'Frontal Pulldowns',
+    'Kelso Shrugs',
+    'Reverse Wrist Curls',    // v26, a new id: NOT the seed's retired reverse-wrist-curls
+    'Wrist Curls',            // v26, arrives via the migration
+    'Ab Crunches',
     'Back Extensions',
-    'Squats',
-    'Hip Adduction',
+    'Leg Extensions',         // not in the seed; arrives via the migration
     'Calf Raises',
-    'Leg Extensions',         // added Aug 2026; arrives via the migration
+    'Squats',
+    'Transverse Rows',
+    'Hip Adduction',
 ];
 
 (async () => {
@@ -145,7 +149,8 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move "Leg Extensions" (the last row) up one, above "Calf Raises".
+        // Move the last row up one. It was Leg Extensions until v26 (Oct 2026)
+        // put Hip Adduction at the end of the day.
         // Tricep Extensions was the probe here until Sep 2026 sent it to index
         // 0, where there is no up arrow to click — the probe has to be a row
         // with something above it, and the tail of the day is the stable place
@@ -155,14 +160,14 @@ const EXPECTED_NEW_ORDER = [
             // also holds a <select> whose textContent is every option label.
             const rows = Array.from(document.querySelectorAll('.exercise-row'));
             const row = rows.find(r =>
-                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Leg Extensions');
+                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Hip Adduction');
             const up = Array.from(row.querySelectorAll('button'))
                 .find(b => b.textContent.trim() === '↑');
             if (!up) return false;
             up.click();
             return true;
         });
-        ok(moved, 'clicked the up arrow on Leg Extensions in Manage Exercises');
+        ok(moved, 'clicked the up arrow on Hip Adduction in Manage Exercises');
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
@@ -170,7 +175,8 @@ const EXPECTED_NEW_ORDER = [
 
         const afterReorder = await readDeckNames(page);
         const expectedAfter = [...EXPECTED_NEW_ORDER];
-        expectedAfter.splice(17, 0, expectedAfter.splice(18, 1)[0]); // Leg Extensions up one
+        const last = expectedAfter.length - 1;
+        expectedAfter.splice(last - 1, 0, expectedAfter.splice(last, 1)[0]); // the last row up one
         eq(afterReorder, expectedAfter,
             'an in-app reorder survives reload (App.jsx stamps the version on save)');
 
