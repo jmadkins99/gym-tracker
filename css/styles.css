@@ -947,6 +947,17 @@
             color: #9a9ab2;
         }
 
+        /* The user's hint under the name: the "Last:" line's gray, a size down,
+           one line. Meant to be glanced at, not read. */
+        .card-open-hint {
+            margin: -2px 0 6px;
+            font-size: 12px;
+            color: #5c5c74;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .card-body {
             flex: 1;
             min-height: 0;
@@ -1280,6 +1291,7 @@
            scaled into illegibility. */
         .kb-open .breakdown,
         .kb-open .card-last,
+        .kb-open .card-open-hint,
         .kb-open .hero-tag {
             display: none;
         }

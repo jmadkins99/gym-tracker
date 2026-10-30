@@ -40,7 +40,7 @@
         // - Drops saved exercises that are no longer in defaults.
         // - Applies the canonical order from DEFAULT_EXERCISES.
         // - Preserves the user-owned fields by id: display name, loadType,
-        //   increment, gympin, stackMax, repMin, repMax and enabled.
+        //   increment, gympin, stackMax, repMin, repMax, enabled and hint.
         // Pure function: takes the parsed config and returns the reconciled
         // config, or null if no changes are needed. The caller persists.
         //
@@ -106,7 +106,9 @@
                         repMin: saved.repMin,
                         repMax: saved.repMax,
                         // And the Settings on/off: absent means on.
-                        enabled: saved.enabled
+                        enabled: saved.enabled,
+                        // And the card hint: absent means none.
+                        hint: saved.hint
                     });
                 } else {
                     result.push({ ...defaultEx });
