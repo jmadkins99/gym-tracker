@@ -14,7 +14,7 @@
             return { on, max: String(max) };
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, updateExerciseEnabled, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -24,6 +24,7 @@
             const [tempStackMax, setTempStackMax] = useState('');
             const [tempRepMin, setTempRepMin] = useState(REP_RANGE_FLOOR);
             const [tempRepMax, setTempRepMax] = useState(REP_RANGE_FLOOR);
+            const [tempEnabled, setTempEnabled] = useState(true);
 
             // What the rep range form opens on: the range in force, in the
             // user's terms (one above the dropdown's failed-set bottom).
@@ -43,6 +44,7 @@
                 const repRange = repRangeFormValues(exercise);
                 setTempRepMin(repRange.repMin);
                 setTempRepMax(repRange.repMax);
+                setTempEnabled(exercise.enabled !== false);
             };
 
             // Each field is only written when it changed, so a plain rename is
@@ -75,6 +77,9 @@
                 if (tempRepMin !== wasRange.repMin || tempRepMax !== wasRange.repMax) {
                     updateExerciseRepRange(exercise.id, { repMin: tempRepMin, repMax: tempRepMax });
                 }
+                if (tempEnabled !== (exercise.enabled !== false)) {
+                    updateExerciseEnabled(exercise.id, tempEnabled);
+                }
                 handleCancelEdit();
             };
 
@@ -86,6 +91,7 @@
                 setTempStackMax('');
                 setTempRepMin(REP_RANGE_FLOOR);
                 setTempRepMax(REP_RANGE_FLOOR);
+                setTempEnabled(true);
             };
 
             if (settingsView === 'exercises') {
@@ -111,7 +117,8 @@
                                         borderRadius: '8px',
                                         padding: '12px',
                                         marginBottom: '8px',
-                                        border: '1px solid #2a2a3a'
+                                        border: '1px solid #2a2a3a',
+                                        opacity: exercise.enabled === false ? 0.5 : 1
                                     }}>
                                         {editingExercise === exercise.id ? (
                                             <div>
@@ -385,6 +392,29 @@
                                                     </div>
                                                 ) : null}
                                             </div>
+                                        ) : null}
+
+                                        {/* On the workout or not, last in the form: it
+                                            is about the exercise, not the machine.
+                                            Edit-mode only and committed by Save, like
+                                            the increment. Off takes the card off the
+                                            deck and leaves the row, its place and its
+                                            history alone. */}
+                                        {editingExercise === exercise.id ? (
+                                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer', marginTop: '12px' }}>
+                                                <span style={{ fontSize: '12px', color: '#8a8aa0' }}>
+                                                    Enabled
+                                                </span>
+                                                <span className="switch">
+                                                    <input
+                                                        type="checkbox"
+                                                        data-field="enabled"
+                                                        checked={tempEnabled}
+                                                        onChange={(e) => setTempEnabled(e.target.checked)}
+                                                    />
+                                                    <span className="switch-track"></span>
+                                                </span>
+                                            </label>
                                         ) : null}
 
                                         {/* At a glance, outside edit mode: which stacks

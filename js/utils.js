@@ -125,6 +125,21 @@
             return 'Full Body';
         }
 
+        // Whether a row in today's workout was actually logged. The first log
+        // of a day writes a row for EVERY exercise on it, blank ones
+        // included, so being present in the record means nothing on its
+        // own — only data does. Shared by App's loggedExercises derivation
+        // and restoreOpenCard (which got this wrong by checking presence and
+        // so never restored anything once a set was logged), and by
+        // getWorkoutExerciseList below.
+        function hasLoggedData(exercise) {
+            const filled = (v) => !!v && v !== 'NA';
+            if (exercise.type === 'assault-bike') return filled(exercise.intensity);
+            if (exercise.type === 'stairmaster') return filled(exercise.time);
+            if (exercise.type === 'bodyweight') return filled(exercise.reps);
+            return filled(exercise.weight) || filled(exercise.reps);
+        }
+
         // Which exercise definitions a stored workout should render against, in
         // the History tab and the Edit modal.
         //
@@ -144,14 +159,21 @@
         // function. Display names still resolve through the current config by
         // id, so a rename the user makes today reaches every past workout that
         // movement appears in.
+        //
+        // An exercise switched off in Settings is left out of a session where
+        // it was not logged, so History does not list it as NA; where it was
+        // logged it still shows, so nothing logged is ever hidden.
         function getWorkoutExerciseList(workout, exercises) {
             const byId = new Map(exercises.map(e => [e.id, e]));
+            const rowById = new Map(workout.exercises.map(e => [e.id, e]));
+            const shown = (e) => byId.get(e.id)?.enabled !== false
+                || (rowById.has(e.id) && hasLoggedData(rowById.get(e.id)));
 
             if (workout.exercises.every(e => byId.get(e.id)?.day === workout.day)) {
-                return exercises.filter(e => e.day === workout.day);
+                return exercises.filter(e => e.day === workout.day && shown(e));
             }
 
-            return workout.exercises.map(e =>
+            return workout.exercises.filter(shown).map(e =>
                 byId.has(e.id) ? { ...e, name: byId.get(e.id).name } : e);
         }
 

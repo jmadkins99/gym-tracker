@@ -263,20 +263,6 @@
             }, [workoutHistory.length, currentWeek]);
 
             // Restore logged state and workout data from today's unsubmitted workout
-            // Whether a row in today's workout was actually logged. The first log
-            // of a day writes a row for EVERY exercise on it, blank ones
-            // included, so being present in the record means nothing on its
-            // own — only data does. Shared by the loggedExercises derivation
-            // below and restoreOpenCard, which got this wrong by checking
-            // presence and so never restored anything once a set was logged.
-            const hasLoggedData = (exercise) => {
-                const filled = (v) => !!v && v !== 'NA';
-                if (exercise.type === 'assault-bike') return filled(exercise.intensity);
-                if (exercise.type === 'stairmaster') return filled(exercise.time);
-                if (exercise.type === 'bodyweight') return filled(exercise.reps);
-                return filled(exercise.weight) || filled(exercise.reps);
-            };
-
             useEffect(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -320,7 +306,11 @@
                 }
             }, [workoutHistory]);
 
-            const getCurrentExercises = () => exercises.filter(ex => ex.day === activeDayType);
+            // The cards on the deck, and so the rows a new day is saved with.
+            // A disabled exercise (Settings, Oct 2026) is left out here and
+            // nowhere else, so it keeps its place in `exercises` and its order.
+            const getCurrentExercises = () =>
+                exercises.filter(ex => ex.day === activeDayType && ex.enabled !== false);
 
             const getTodayWorkout = () => {
                 const today = new Date();
@@ -402,6 +392,18 @@
                 setExercises(prev => {
                     const updated = prev.map(ex =>
                         ex.id === exerciseId ? { ...ex, repMin, repMax } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
+            // Whether the exercise is on the workout, the eighth user-owned
+            // field. Absent means on; only the switch in Settings writes it.
+            const updateExerciseEnabled = (exerciseId, enabled) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, enabled } : ex
                     );
                     saveExerciseConfig(updated);
                     return updated;
@@ -558,11 +560,13 @@
                     : []);
                 const exercise = Object.keys(exerciseStartTimes)
                     .map(id => roster.find(ex => ex.id === id))
-                    .find(ex => ex && !loggedToday.has(ex.id));
+                    .find(ex => ex && ex.enabled !== false && !loggedToday.has(ex.id));
                 if (!exercise) return;
 
+                // The deck's own list, so the index lands on the right card
+                // when a disabled one sits before it.
                 const dayRoster = roster
-                    .filter(ex => ex.day === exercise.day)
+                    .filter(ex => ex.day === exercise.day && ex.enabled !== false)
                     .sort((a, b) => a.order - b.order);
                 setActiveDayType(exercise.day);
                 setDeckIndex(dayRoster.findIndex(ex => ex.id === exercise.id));
@@ -1064,6 +1068,7 @@
                             updateExerciseIncrement={updateExerciseIncrement}
                             updateExerciseGympin={updateExerciseGympin}
                             updateExerciseRepRange={updateExerciseRepRange}
+                            updateExerciseEnabled={updateExerciseEnabled}
                             moveExercise={moveExercise}
                         />
                     )}
