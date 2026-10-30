@@ -14,7 +14,7 @@
             return { on, max: String(max) };
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, updateExerciseEnabled, moveExercise }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise }) {
             const fileInputRef = useRef();
             const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
@@ -25,6 +25,7 @@
             const [tempRepMin, setTempRepMin] = useState(REP_RANGE_FLOOR);
             const [tempRepMax, setTempRepMax] = useState(REP_RANGE_FLOOR);
             const [tempEnabled, setTempEnabled] = useState(true);
+            const [tempHint, setTempHint] = useState('');
 
             // What the rep range form opens on: the range in force, in the
             // user's terms (one above the dropdown's failed-set bottom).
@@ -45,6 +46,7 @@
                 setTempRepMin(repRange.repMin);
                 setTempRepMax(repRange.repMax);
                 setTempEnabled(exercise.enabled !== false);
+                setTempHint(exercise.hint || '');
             };
 
             // Each field is only written when it changed, so a plain rename is
@@ -80,6 +82,12 @@
                 if (tempEnabled !== (exercise.enabled !== false)) {
                     updateExerciseEnabled(exercise.id, tempEnabled);
                 }
+                // Blank or whitespace means no hint, saved as absent, so the
+                // card has nothing to render.
+                const hint = tempHint.trim();
+                if (hint !== (exercise.hint || '')) {
+                    updateExerciseHint(exercise.id, hint || undefined);
+                }
                 handleCancelEdit();
             };
 
@@ -92,11 +100,18 @@
                 setTempRepMin(REP_RANGE_FLOOR);
                 setTempRepMax(REP_RANGE_FLOOR);
                 setTempEnabled(true);
+                setTempHint('');
             };
 
             if (settingsView === 'exercises') {
                 return (
-                    <div className="modal-overlay" onClick={onClose}>
+                    // While one exercise is being edited it is the only row, at the
+                    // top. In the long list iOS scrolled the modal to a focused
+                    // field and then panned the screen too, which the app undoes,
+                    // so the field landed above the top edge. Alone and pinned
+                    // high, the name and hint fields sit above the keyboard with
+                    // nothing to scroll.
+                    <div className="modal-overlay" onClick={onClose} style={editingExercise ? { alignItems: 'flex-start' } : null}>
                         <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
                             <div className="modal-title">Exercises</div>
 
@@ -106,7 +121,8 @@
                                 would silently do nothing. A one-day program
                                 (Full Body) is one list with no heading. */}
                             {PROGRAM_DAYS.map(({ id: dayKey, label: dayLabel }) => {
-                              const dayExercises = exercises.filter(e => e.day === dayKey);
+                              const dayExercises = exercises.filter(e => e.day === dayKey
+                                  && (!editingExercise || e.id === editingExercise));
                               if (dayExercises.length === 0) return null;
                               return (
                                 <div key={dayKey} style={{ marginBottom: '20px' }}>
@@ -136,6 +152,26 @@
                                                         marginBottom: '8px'
                                                     }}
                                                     autoFocus
+                                                />
+                                                {/* The card hint, a second text field
+                                                    under the name. One line and capped,
+                                                    so it never grows the card. */}
+                                                <input
+                                                    type="text"
+                                                    data-field="hint"
+                                                    value={tempHint}
+                                                    maxLength={60}
+                                                    placeholder="Hint (optional), e.g. cable pin 7"
+                                                    onChange={(e) => setTempHint(e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px',
+                                                        background: '#0d0d1a',
+                                                        border: '1px solid #2a2a3a',
+                                                        borderRadius: '4px',
+                                                        color: '#b8b8d0',
+                                                        marginBottom: '8px'
+                                                    }}
                                                 />
                                                 <div style={{ display: 'flex', gap: '8px' }}>
                                                     <button

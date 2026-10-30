@@ -410,6 +410,19 @@
                 });
             };
 
+            // A short note shown under the name on the open card, the ninth
+            // user-owned field. Undefined means none; Settings never saves a
+            // blank one.
+            const updateExerciseHint = (exerciseId, hint) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, hint } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
             // Reordering is scoped to the exercise's own day. Swapping across
             // a day boundary would move a card in the settings list without
             // changing which day it belongs to, so the arrow would look like it
@@ -1069,6 +1082,7 @@
                             updateExerciseGympin={updateExerciseGympin}
                             updateExerciseRepRange={updateExerciseRepRange}
                             updateExerciseEnabled={updateExerciseEnabled}
+                            updateExerciseHint={updateExerciseHint}
                             moveExercise={moveExercise}
                         />
                     )}

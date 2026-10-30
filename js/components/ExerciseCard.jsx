@@ -364,6 +364,11 @@
                             <div className="streak-badge" data-streak={prStreak}>🔥 {prStreak}</div>
                         ) : null}
                     </div>
+                    {/* The user's own note for this exercise (Settings). Open
+                        face only: it often carries a number, and the front has
+                        none on purpose. Nothing renders when there is no hint. */}
+                    {exercise.hint && exercise.hint.trim()
+                        ? <div className="card-open-hint">{exercise.hint}</div> : null}
 
                     <div className="card-body" ref={fitBox}>
                       <div className="card-fit" ref={fitInner} style={{ transform: 'scale(' + fit + ')' }}>
