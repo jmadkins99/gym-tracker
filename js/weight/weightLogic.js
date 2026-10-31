@@ -94,6 +94,20 @@
             ]));
         }
 
+        // Fills every day from `fromKey` to `toKey` (inclusive) that has no
+        // entry, all with one weight — for when a plan restarts after a gap.
+        // Stamped like addEntry, plus `filled` so they can be found again.
+        function fillGap(log, fromKey, toKey, weight) {
+            const have = new Set((log || []).map((e) => e.date));
+            const addedAt = new Date().toISOString();
+            const added = [];
+            for (const d = parseDayKey(fromKey); localDayKey(d) <= toKey; d.setDate(d.getDate() + 1)) {
+                const key = localDayKey(d);
+                if (!have.has(key)) added.push({ date: key, weight, addedAt, filled: true });
+            }
+            return sortedLog((log || []).concat(added));
+        }
+
         // Drops a day from the log. The escape hatch for a reading that should
         // never have been recorded at all — a second person on the scale, a
         // number typed into the wrong day — as opposed to one that is merely
