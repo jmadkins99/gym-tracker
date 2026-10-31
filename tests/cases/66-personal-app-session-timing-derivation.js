@@ -22,10 +22,9 @@
 //
 // A fourth rule sits on top of all of them: no single movement may claim more
 // than 30 minutes. Past that the number is nonsense rather than merely wrong,
-// so the row reports NA and — when it is the FIRST movement — its rejected
-// start is kept out of the session total too. One constant covers both routes
-// to an over-long span: a stale foreground stamp, and a panel left open for
-// hours and then logged without being reopened.
+// so the row counts as a 5:00 placeholder, asterisked. One constant covers both
+// routes to an over-long span: a stale foreground stamp, and a panel left open
+// for hours and then logged without being reopened.
 //
 // The Day Breakdown's row-level PR badges ride along here, because this is the
 // case that already opens that modal. Since Sep 2026 they read the way History
@@ -79,9 +78,9 @@ const EXERCISES = [
     { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '110', reps: '6',
       loggedAt: at(14) },
     // Anchored 08:20 and logged 09:35 — 75 minutes, which no single working set
-    // takes. The panel was opened and abandoned; the row reports NA rather than
-    // a number. It is NOT the first movement, so the session total is untouched
-    // by it; the probe below covers the first-movement case.
+    // takes. The panel was opened and abandoned; the row counts as the 5:00
+    // placeholder. Its log is 8:30 after the previous one, so the total still
+    // runs to it; the probe below covers the first-movement case.
     { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: '55', reps: '6',
       startedAt: at(-40), loggedAt: at(35) },
 ];
@@ -91,9 +90,8 @@ const EXPECTED_ROWS = [
     ['pecs-shoulder-flexion', '6:00 *'],
     ['pecs-transverse-shoulder-adduction', '5:30'],
     ['delts-shoulder-abduction-above-90-degrees', '0:00 *'],
-    // Over the 30-minute ceiling. No asterisk: it is not an estimate, it is a
-    // refusal to guess.
-    ['delts-shoulder-abduction-stop-at-90-degrees', 'NA'],
+    // Over the 30-minute ceiling: the asterisked placeholder.
+    ['delts-shoulder-abduction-stop-at-90-degrees', '5:00 *'],
 ];
 const EXPECTED_BADGES = [
     // 200x4 -> 200x5 -> 200x6: a run of two, so the row carries the count.
@@ -108,8 +106,8 @@ const EXPECTED_BADGES = [
 const BADGE_BG = 'rgba(0, 0, 0, 0)';
 const BADGE_BORDER = 'rgb(212, 175, 55)';
 
-// 09:35 - 09:00 = 35m. The NA row still ends the session — it was performed,
-// and its LOG is real even though its start is not believable.
+// 09:35 - 09:00 = 35m. The placeholder row still ends the session — its LOG is
+// real even though its start is not believable.
 const EXPECTED_TOTAL = '35m';
 
 (async () => {
@@ -228,8 +226,8 @@ const EXPECTED_TOTAL = '35m';
                 noWorkout: getSessionTiming(null, null),
 
                 // An over-long FIRST movement must not drag the session total
-                // with it. A takes 50 minutes on paper; the total should be the
-                // 10 minutes from A's log to B's, not 60.
+                // with it. A takes 50 minutes on paper; the total should be its
+                // 5:00 placeholder plus the 10 minutes to B's log, not 60.
                 firstRowCapped: (() => {
                     const t = getSessionTiming({
                         exercises: [
@@ -256,16 +254,16 @@ const EXPECTED_TOTAL = '35m';
 
         eq(probe.atCap.first, 1800,
             'a movement of exactly 30 minutes is still reported');
-        eq(probe.justPastCap.first, null,
-            'one minute over the ceiling is already NA — the boundary is exact');
-        eq(probe.pastCap.first, null,
-            'a stamp 45 minutes stale anchors nothing');
+        eq(probe.justPastCap.first, 300,
+            'one minute over the ceiling is already the placeholder — the boundary is exact');
+        eq(probe.pastCap.first, 300,
+            'a stamp 45 minutes stale counts as the placeholder');
         eq(probe.fromTheFuture.first, null,
             'a foreground stamp AFTER the log is never used');
 
-        eq(probe.firstRowCapped.first, null,
-            'an over-long first movement reports NA');
-        eq(probe.firstRowCapped.total, 600,
+        eq(probe.firstRowCapped.first, 300,
+            'an over-long first movement counts as the 5:00 placeholder');
+        eq(probe.firstRowCapped.total, 900,
             'and its rejected start is kept out of the session total');
 
         eq(probe.noTimestamps, null,

@@ -46,7 +46,7 @@
                             <span style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
                                 {row.seconds === null
                                     ? 'NA'
-                                    : formatSecondsToTime(row.seconds) + (row.estimated ? ' *' : '')}
+                                    : formatSecondsToTime(row.seconds) + (row.estimated || row.placeholder ? ' *' : '')}
                             </span>
                             </div>
                         );
