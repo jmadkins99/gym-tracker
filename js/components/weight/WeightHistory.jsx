@@ -527,7 +527,12 @@
         function WeightHistory({ log, range, setRange, progress, onEditPlan, onEditEntry,
                                  onAddEntry, onDeleteEntry, todayKey }) {
             const points = readingSeries(log, range || 0);
-            const weeks = weeklyAverages(log).slice().reverse();
+            // With a plan, the ledger covers only its weeks — nothing at all
+            // until its first reading. Without one, the whole log.
+            const planStart = progress ? progress.plan.startDate : null;
+            const weeks = weeklyAverages(log)
+                .filter((w) => !planStart || w.weekStart >= planStart)
+                .reverse();
             const rate = weeklyAverageRate(log);
             const rangeAvg = rangeAverage(log, range || 0);
             // Which week's dailies are open, by its Monday. One at a time: the
@@ -648,7 +653,7 @@
                         </button>
                     )}
 
-                    <div className="section-title">By week</div>
+                    {weeks.length > 0 && <div className="section-title">By week</div>}
 
                     {/* The projected rows go ABOVE the real ones because the
                         ledger is newest-first and these are the newest weeks

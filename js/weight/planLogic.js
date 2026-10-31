@@ -526,6 +526,19 @@
             };
         }
 
+        // Whether a check-in earns the gold aura: below the previous reading —
+        // within the current plan, once it has started, so a plan's first
+        // reading has nothing to beat — or at or under this week's target. The
+        // 0.05 is the check-in card's MET_BAND: a reading it prints as "on
+        // target" counts. `log` is the log before this reading lands.
+        function checkInCelebrates(progress, log, todayKey, weight) {
+            const started = progress && progress.weekNumber >= 1 ? progress : null;
+            const prior = sortedLog((log || []).filter((e) => e.date < todayKey
+                && (!started || e.date >= started.plan.startDate)));
+            const last = prior.length ? prior[prior.length - 1] : null;
+            return !!((last && weight < last.weight) || (started && weight - started.planWeight < 0.05));
+        }
+
         function formatMonthDay(dayKey) {
             return parseDayKey(dayKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }

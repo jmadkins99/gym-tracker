@@ -141,12 +141,37 @@
             const handleCheckIn = (weight) => {
                 const next = upsertEntry(log, todayKey, weight);
                 persist(next);
-                // The gold aura is gym-tracker's PR celebration, reused. It
-                // fires on every check-in — standing on the scale is the thing
-                // being rewarded, never the number it showed.
-                clearTimeout(celebrationTimer.current);
-                setCelebrating(true);
-                celebrationTimer.current = setTimeout(() => setCelebrating(false), PR_CELEBRATION_MS);
+                // The gold aura is gym-tracker's PR celebration, reused.
+                if (checkInCelebrates(progress, log, todayKey, weight)) {
+                    clearTimeout(celebrationTimer.current);
+                    setCelebrating(true);
+                    celebrationTimer.current = setTimeout(() => setCelebrating(false), PR_CELEBRATION_MS);
+                }
+            };
+
+            // Moving a plan's start later leaves the days in between unweighed.
+            // Offer to fill them with the new start weight: from the old start
+            // (or the first reading, if later) through the day before the new
+            // start — future days included, so the plan opens on its first
+            // real check-in.
+            const savePlan = (next) => {
+                const old = normalizePlan(plan);
+                const first = sortedLog(log)[0];
+                if (old && first && next.startDate > old.startDate) {
+                    const from = first.date > old.startDate ? first.date : old.startDate;
+                    const dayBefore = parseDayKey(next.startDate);
+                    dayBefore.setDate(dayBefore.getDate() - 1);
+                    const to = localDayKey(dayBefore);
+                    const filled = fillGap(log, from, to, next.startWeight);
+                    if (filled.length > log.length && confirm(
+                        'Your plan now starts ' + formatMonthDay(next.startDate) + ' instead of '
+                        + formatMonthDay(old.startDate) + '. Fill every unlogged day from '
+                        + formatMonthDay(from) + ' to ' + formatMonthDay(to) + ' with '
+                        + formatWeight(next.startWeight) + ' lb?')) {
+                        persist(filled);
+                    }
+                }
+                persistPlan(next);
             };
 
             // Corrections from the History ledger. Separate handlers rather
@@ -241,7 +266,7 @@
                             onReset={resetData}
                             entryCount={log.length}
                             plan={plan}
-                            onSavePlan={persistPlan}
+                            onSavePlan={savePlan}
                             onClearPlan={() => persistPlan(null)}
                             startOnPlan={settingsOnPlan}
                         />

@@ -78,6 +78,19 @@
             );
         }
 
+        // The Mondays the plan start can be set to: a year back to half a year
+        // ahead, reaching further back if the saved start is older than that.
+        function mondayOptions(current) {
+            const d = getMondayOfWeek(new Date());
+            d.setDate(d.getDate() - 52 * 7);
+            const start = localDayKey(d) < current ? localDayKey(d) : localDayKey(getMondayOfWeek(parseDayKey(current)));
+            const end = getMondayOfWeek(new Date());
+            end.setDate(end.getDate() + 26 * 7);
+            const keys = [];
+            for (const m = parseDayKey(start); m <= end; m.setDate(m.getDate() + 7)) keys.push(localDayKey(m));
+            return keys;
+        }
+
         function WeightSettingsModal({ onClose, onExport, onImport, onReset, entryCount,
                                       plan, onSavePlan, onClearPlan, startOnPlan }) {
             const fileInputRef = React.useRef(null);
@@ -257,8 +270,24 @@
                         ) : (
                             <>
                                 <PlanField label="Name" value={draft.name} onChange={set('name')} />
-                                <PlanField label="Start (Monday)" value={draft.startDate}
-                                           onChange={set('startDate')} type="date" />
+                                {/* A list of Mondays rather than a date input: iOS
+                                    Safari's picker ignores `step`, so it could not
+                                    be held to Mondays any other way. */}
+                                <label className="plan-field">
+                                    <span className="plan-field-label">Start</span>
+                                    <span className="plan-field-input">
+                                        <select className="input-field" value={draft.startDate}
+                                                onChange={(e) => set('startDate')(e.target.value)}>
+                                            {mondayOptions(draft.startDate).map((key) => (
+                                                <option key={key} value={key}>
+                                                    {parseDayKey(key).toLocaleDateString('en-US', {
+                                                        weekday: 'short', month: 'short',
+                                                        day: 'numeric', year: 'numeric' })}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </span>
+                                </label>
                                 <PlanField label="Start weight" value={draft.startWeight}
                                            onChange={set('startWeight')} suffix="lb" />
 
