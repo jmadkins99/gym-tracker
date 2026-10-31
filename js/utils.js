@@ -210,7 +210,7 @@
 
         // The longest a single movement is allowed to claim. Past this the
         // number is not wrong-but-plausible, it is nonsense, and the row reports
-        // NA instead of a figure nobody should trust.
+        // OVERLONG_PLACEHOLDER_SECONDS instead, asterisked as a stand-in.
         //
         // It catches two different things with one rule, which is why there is
         // one constant and not two. A stale foreground stamp — a tab brought
@@ -222,7 +222,14 @@
         //
         // 30 minutes is deliberately generous. These are single working sets in
         // the 4-6 rep range; nothing legitimate comes close.
+        //
+        // The same 30 minutes also bounds the gap between two LOG presses: a
+        // longer one is a break, and is left out of the session total.
         const MAX_EXERCISE_SECONDS = 30 * 60;
+
+        // What an over-long movement counts as. A set did happen, so a typical
+        // movement's worth is closer to the truth than NA's zero.
+        const OVERLONG_PLACEHOLDER_SECONDS = 5 * 60;
 
         // Reconstruct how long a session took, and how long each movement in it
         // took, from the timestamps logExercise stamps on each exercise.
@@ -239,9 +246,14 @@
         // roster would then attribute a wildly wrong span to whatever sat
         // between them.
         //
-        // A row's `seconds` is null when the movement cannot be honestly timed —
-        // no usable start, or a span so long it is not credible. The caller
-        // renders those NA.
+        // A row's `seconds` is null when the movement has no usable start at
+        // all; the caller renders those NA. A span over MAX_EXERCISE_SECONDS is
+        // replaced by OVERLONG_PLACEHOLDER_SECONDS and flagged `placeholder`.
+        //
+        // The total is the first movement's own time plus, for each later one,
+        // the span back to the previous log — the set plus the walk over. A span
+        // over MAX_EXERCISE_SECONDS is a break, so only that movement's own time
+        // is counted for it.
         //
         // Returns null for any workout with no timestamps at all, which is every
         // workout logged before August 2026 — history is never migrated here, so
@@ -269,7 +281,7 @@
             const foregroundMs = foregroundAt ? new Date(foregroundAt).getTime() : NaN;
 
             const rows = [];
-            let sessionStartMs = null;
+            let totalMs = 0;
 
             for (let i = 0; i < logged.length; i++) {
                 const { entry, loggedMs } = logged[i];
@@ -299,28 +311,27 @@
                     estimated = true;
                 }
 
-                // Refuse a span no single movement plausibly takes. Dropping the
-                // start rather than the row means the movement still appears —
-                // it was performed — but reports NA instead of a figure that
-                // would quietly wreck the session total too.
-                if (startMs !== null && loggedMs - startMs > MAX_EXERCISE_SECONDS * 1000) {
-                    startMs = null;
+                // A span no single movement plausibly takes counts as the
+                // placeholder instead, so it neither reads as a real figure nor
+                // wrecks the session total.
+                let ownMs = startMs === null ? null : loggedMs - startMs;
+                const placeholder = ownMs !== null && ownMs > MAX_EXERCISE_SECONDS * 1000;
+                if (placeholder) {
+                    ownMs = OVERLONG_PLACEHOLDER_SECONDS * 1000;
                     estimated = false;
                 }
 
-                if (i === 0) {
-                    // The session starts where its first movement starts. With
-                    // no usable anchor that is the log itself, which undercounts
-                    // by one movement rather than inventing a start — and is
-                    // what keeps a rejected anchor out of the total as well.
-                    sessionStartMs = startMs !== null ? startMs : loggedMs;
-                }
+                const gapMs = i > 0 ? loggedMs - logged[i - 1].loggedMs : null;
+                totalMs += gapMs !== null && gapMs <= MAX_EXERCISE_SECONDS * 1000
+                    ? gapMs
+                    : (ownMs || 0);
 
                 rows.push({
                     id: entry.id,
                     name: entry.name,
-                    seconds: startMs === null ? null : Math.round((loggedMs - startMs) / 1000),
-                    estimated
+                    seconds: ownMs === null ? null : Math.round(ownMs / 1000),
+                    estimated,
+                    placeholder
                 });
             }
 
@@ -331,7 +342,7 @@
 
             return {
                 totalSeconds: Math.round(
-                    ((live ? liveMs : lastLoggedMs) - sessionStartMs) / 1000),
+                    (totalMs + (live ? liveMs - lastLoggedMs : 0)) / 1000),
                 rows,
                 live
             };
