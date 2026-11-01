@@ -282,11 +282,12 @@
                                             undoes it. The blank option only renders
                                             for an exercise with no increment at all —
                                             without it a <select> would silently show
-                                            1.25 for a value it does not have. The hint
-                                            covers the one case where the card shows a
-                                            different number: a two-sided machine
-                                            doubles a step that does not halve onto a
-                                            real plate. */}
+                                            0 for a value it does not have. The hint
+                                            covers the two cases where the card does not
+                                            simply add the number chosen: 0 never bumps
+                                            at all, and a two-sided machine doubles a
+                                            step that does not halve onto a real
+                                            plate. */}
                                         {editingExercise === exercise.id ? (() => {
                                             const chosen = tempIncrement === '' ? null : Number(tempIncrement);
                                             const effective = chosen === null ? null
@@ -309,10 +310,17 @@
                                                     >
                                                         {tempIncrement === '' ? <option value="">—</option> : null}
                                                         {PR_INCREMENT_OPTIONS.map(step => (
-                                                            <option key={step} value={String(step)}>{step}</option>
+                                                            <option key={step} value={String(step)}>
+                                                                {step === 0 ? '0 — never bump' : step}
+                                                            </option>
                                                         ))}
                                                     </select>
-                                                    {chosen !== null && effective !== chosen ? (
+                                                    {chosen === 0 ? (
+                                                        <div data-field="increment-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
+                                                            Never bumps: max reps still counts as a PR, but
+                                                            the card keeps last session's weight and reps.
+                                                        </div>
+                                                    ) : chosen !== null && effective !== chosen ? (
                                                         <div data-field="increment-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
                                                             Two-sided: suggests +{effective} lbs
                                                         </div>
