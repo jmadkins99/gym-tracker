@@ -12,13 +12,18 @@
 //     of the rep range, and the green "+N lbs" hero tag is gone;
 //   - the session still counts as a PR everywhere PRs are read from history:
 //     the flame streak pill is untouched;
+//   - the gold "Plateau detected" banner stays away: six sessions at the same
+//     weight and reps is the setting working on a 0, not a plateau — while an
+//     exercise on a real step still gets the banner from the same history;
 //   - 0 is not doubled on a two-sided machine the way a 1.25 is (case 61),
 //     because off is off on every load type.
 //
 // To verify this test is real: in config.js drop the 0 from
 // PR_INCREMENT_OPTIONS. resolveIncrement then rejects the saved 0 and falls
 // back to 2.5, so the card reads 202.5 where this expects 200 and the reps
-// reset to 4 where this expects 6.
+// reset to 4 where this expects 6. For the banner half, drop the
+// getWeightIncrement guard from `stagnation` in ExerciseCard: the 0-increment
+// card then grows the "Plateau detected" banner the control gets.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -133,6 +138,30 @@ const cardExtras = (page) => page.evaluate((sel) => {
     };
 }, ACTIVE);
 
+const plateauTag = (page) => page.evaluate((sel) => {
+    const tag = document.querySelector(sel + ' .hero-tag.flat');
+    return tag ? tag.textContent.trim() : null;
+}, ACTIVE);
+
+// Six sessions at one weight and one rep count — what getStagnationWarning
+// wants — written STRAIGHT to localStorage rather than through
+// seedPersonalApp, which clears the saved exerciseConfig and would take the
+// 0 with it. Five reps, under the top of the range, so no bump is pending for
+// either exercise and the banner is free to render.
+const seedStagnantHistory = (page) => page.evaluate((ns, hist) => {
+    localStorage.setItem(ns + 'gymWorkoutHistory', JSON.stringify(hist));
+}, NS, [7, 14, 21, 28, 35, 42].map(offset => ({
+    date: daysAgo(offset),
+    day: 'full-body',
+    submitted: true,
+    week: 1,
+    plateauBusters: [],
+    exercises: [
+        { type: 'standard', minReps: 6, maxReps: 8, id: TARGET, name: 'Chest Flies', weight: '200', reps: '5' },
+        { type: 'standard', minReps: 6, maxReps: 8, id: CONTROL, name: 'Calf Raises', weight: '100', reps: '5' },
+    ],
+})));
+
 async function reload(page) {
     await page.reload({ waitUntil: 'networkidle0' });
     await waitForApp(page);
@@ -214,6 +243,21 @@ async function reload(page) {
         const calves = await readDeckCard(page, 'Calf Raises');
         eq(calves.weightValue, '102.5', 'the untouched control still bumps by its 2.5 seed');
         eq(calves.repsValue, '4', 'and still resets to the bottom of its range');
+
+        // --- And no "Plateau detected" banner on a 0 -------------------------
+        // Six identical sessions is the state a 0-increment exercise is MEANT
+        // to sit in, so the banner that would normally call that a plateau has
+        // nothing to say. The control, on its 2.5 seed, reads the same history
+        // and still gets it.
+        await seedStagnantHistory(page);
+        await reload(page);
+        await selectDayType(page, 'full-body');
+        flies = await readDeckCard(page, 'Chest Flies');
+        eq(flies.weightValue, '200', 'the 0-increment card still holds its weight');
+        eq(await plateauTag(page), null, 'and six identical sessions raise no plateau banner on it');
+        await readDeckCard(page, 'Calf Raises');
+        eq(await plateauTag(page), 'Plateau detected',
+            'while the control on a real step gets the banner from the same history');
 
         // --- Off is off on every load type -----------------------------------
         const steps = await page.evaluate(() => ({
