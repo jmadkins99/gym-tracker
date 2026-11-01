@@ -25,7 +25,16 @@
             const prAutoRegulation = ADVANCED_PR_TRACKING && !prWeightRecovery && !failedPlateauBusterRetry ? getPRAutoRegulation(exercise, workoutHistory, loadType) : null;
             const plateauBusterDecrement = ADVANCED_PR_TRACKING && showPlateauBuster && !prWeightRecovery ? getPlateauBusterDecrement(exercise, workoutHistory, loadType) : null;
             const simplePR = SIMPLE_PR_TRACKING ? getSimplePR(exercise, workoutHistory, loadType) : null;
-            const stagnation = SIMPLE_PR_TRACKING && !simplePR ? getStagnationWarning(exercise.id, workoutHistory) : null;
+            // The stagnation banner is suppressed for an exercise whose PR
+            // increment is 0: six sessions at the same weight and reps is the
+            // setting doing its job there, not a plateau to warn about. The
+            // guard has to be here rather than in getStagnationWarning, which
+            // is handed an id and cannot resolve a step. Note it is NOT
+            // redundant with `!simplePR`: a 0 increment is exactly what makes
+            // getSimplePR return null, so the banner would otherwise move into
+            // the gap the bump left behind and sit on that card forever.
+            const stagnation = SIMPLE_PR_TRACKING && !simplePR && getWeightIncrement(exercise, loadType)
+                ? getStagnationWarning(exercise.id, workoutHistory) : null;
             const prStreak = PR_STREAK_TRACKING && exercise.type === 'standard'
                 ? getPRStreak(exercise.id, workoutHistory) : null;
 
