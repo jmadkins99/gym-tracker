@@ -15,7 +15,9 @@ Client counterpart: [public-gym-app](https://github.com/jmadkins99/public-gym-ap
   Settings → Manage Exercises), offered from one below min reps up to max reps.
   The bottom value is a failed set and never counts as a PR.
 - **Progression**: hit max reps and the weight bumps by the exercise's PR
-  increment (1.25, 2.5, 5 or 10 lb).
+  increment (1.25, 2.5, 5 or 10 lb), or set it to 0 to hold an exercise where
+  it is — max reps still counts as a PR, but the card keeps last session's
+  weight and reps instead of suggesting the next weight up.
 - **PRs**: flame streak pill, PR badges on logged cards, Submit Day and History.
 - **Weight Breakdown**: warmup sets at ~70% and ~90%, per load type (pin-loaded,
   plates on both sides, plates on one side, Gympin). Opening it starts the

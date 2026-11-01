@@ -26,10 +26,20 @@
         // It replaced a per-id seed table when every movement took a new id.
         const DEFAULT_PR_INCREMENT = 2.5;
 
-        // The only increments the Settings dropdown offers: the real plate
-        // steps. resolveIncrement also rejects a saved value outside this list,
-        // so a hand-edited backup cannot smuggle in a 3 no gym can load.
-        const PR_INCREMENT_OPTIONS = [1.25, 2.5, 5, 10];
+        // The only increments the Settings dropdown offers: 0 plus the real
+        // plate steps. resolveIncrement also rejects a saved value outside this
+        // list, so a hand-edited backup cannot smuggle in a 3 no gym can load.
+        //
+        // 0 means "never bump this one". Hitting the top of the rep range still
+        // counts as a PR everywhere PRs are read from history — the badge, the
+        // flame streak, the Submit Day and History toasts — but
+        // getWeightIncrement hands back a falsy 0, so getSimplePR bails out and
+        // the card carries last session's weight AND reps forward instead of
+        // suggesting a heavier weight at the bottom of the range. That is the
+        // whole mechanism: every caller of getWeightIncrement already guards on
+        // truthiness (it was the shape for "this exercise has no step"), so 0
+        // needed no new branch in the suggestion logic. Case 139 pins it.
+        const PR_INCREMENT_OPTIONS = [0, 1.25, 2.5, 5, 10];
 
         // Standard weighted rep dropdowns. Internally a range is the dropdown's
         // ends: `min` is the bottom value, the one you log when the set failed,
@@ -172,6 +182,10 @@
         // a legal step, else DEFAULT_PR_INCREMENT. Same shape as
         // resolveLoadType, and the fallback is load-bearing for the same reason —
         // an exercise nobody has edited carries no `increment` at all.
+        //
+        // A saved 0 is a legal step ("never bump", see PR_INCREMENT_OPTIONS),
+        // so the test here is `includes`, never truthiness: a `saved || DEFAULT`
+        // would read 0 as "nothing saved" and quietly hand back 2.5.
         function resolveIncrement(exercise) {
             const saved = exercise && exercise.increment;
             if (PR_INCREMENT_OPTIONS.includes(saved)) return saved;
@@ -191,6 +205,10 @@
         // The default is 2.5, so against untouched config this branch never
         // fires. Since the increment became editable (Sep 2026) it does
         // the moment someone types 1.25 on a two-sided machine. Case 61 pins it.
+        //
+        // A 0 falls through it untouched — (0 / 2) % 1.25 is 0 — so "never
+        // bump" stays 0 on a two-sided machine rather than being doubled into
+        // a step. Returning 0 here is what switches the bump off downstream.
         function getWeightIncrement(exercise, loadType) {
             const base = resolveIncrement(exercise);
             if (base === undefined) return undefined;

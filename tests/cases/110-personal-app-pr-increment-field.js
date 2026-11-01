@@ -4,9 +4,9 @@
 // once the pencil is clicked, that it sits below the load-type dropdown, that it
 // opens on the exercise's own increment, that Save writes a legal step to
 // localStorage for that one exercise (stamped with the current config version)
-// and it survives a reload, that it offers exactly the four plate steps, that
-// Cancel discards, and that the saved number actually reaches the card's PR
-// suggestion.
+// and it survives a reload, that it offers 0 plus exactly the four plate steps,
+// that Cancel discards, and that the saved number actually reaches the card's
+// PR suggestion. Case 139 covers what a saved 0 does to the card.
 //
 // The increment is the third USER-owned field on an exercise, after `name` and
 // `loadType`. Absent means "use DEFAULT_PR_INCREMENT" (a per-id seed table
@@ -147,9 +147,10 @@ const readRawConfig = (page) =>
         let row = await readRow(page, CONTROL);
         eq(row.value, '2.5', 'Calf Raises opens on the default, 2.5');
         eq(row.below, true, 'the increment dropdown sits below the load-type dropdown');
-        // Exactly the four plate steps, and no blank: every exercise has a seed,
-        // so the "—" placeholder must not render.
-        eq(row.options, ['1.25', '2.5', '5', '10'], 'the dropdown offers exactly the four plate steps');
+        // 0 ("never bump") plus exactly the four plate steps, and no blank:
+        // every exercise has a seed, so the "—" placeholder must not render.
+        eq(row.options, ['0', '1.25', '2.5', '5', '10'],
+            'the dropdown offers 0 plus exactly the four plate steps');
         eq(await countIncrementFields(page), 1, 'only the row being edited shows the field');
 
         // --- Cancel discards ----------------------------------------------
