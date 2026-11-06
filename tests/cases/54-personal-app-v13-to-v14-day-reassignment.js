@@ -68,7 +68,8 @@ function currentConfigVersion() {
 // The v13 layout as it shipped, minus ids the roster has since retired:
 // 17 Upper then 6 Lower, order 0..22. Same id set as the current defaults —
 // that is the point. v26's four (Oct 2026) never existed in v13; they sit at
-// the end of Upper only so the seed keeps today's id set.
+// the end of Upper only so the seed keeps today's id set, and so does
+// v27's Dumbbell Lat Pullover (Nov 2026).
 const V13_LAYOUT = [
     ['pecs-transverse-shoulder-adduction', 'Chest Flies', 'upper'],
     ['pecs-shoulder-flexion', 'Incline Chest Press', 'upper'],
@@ -89,6 +90,8 @@ const V13_LAYOUT = [
     ['triceps-elbow-extension-during-shoulder-flexion', 'JM Press', 'upper'],
     ['brachioradialis-elbow-flexion', 'Reverse Wrist Curls', 'upper'],
     ['forearm-wrist-flexion', 'Wrist Curls', 'upper'],
+    // v27 (Nov 2026), added for the same reason as v26's four.
+    ['lats-sagittal-shoulder-extension-above-120-degrees', 'Dumbbell Lat Pullover', 'upper'],
     // The wrist pair sat here in the real v13 config. See the header for why
     // this constructed seed leaves them out. The third column is the LEGACY
     // Upper/Lower day the old config recorded, which does not change.
@@ -107,6 +110,7 @@ const V13_LAYOUT = [
 const EXPECTED_DAY_BY_ID = Object.fromEntries([
     'biceps-elbow-flexion-with-shoulder-extension',
     'biceps-elbow-flexion-with-shoulder-flexion',
+    'lats-sagittal-shoulder-extension-above-120-degrees',
     'pecs-transverse-shoulder-adduction',
     'pecs-shoulder-flexion',
     'pecs-transverse-shoulder-adduction-with-elbow-extension',
@@ -116,15 +120,15 @@ const EXPECTED_DAY_BY_ID = Object.fromEntries([
     'triceps-elbow-extension-with-shoulder-flexion',
     'delts-shoulder-abduction-above-90-degrees',
     'triceps-elbow-extension-during-shoulder-flexion',
-    'lats-sagittal-shoulder-extension',
-    'lats-frontal-shoulder-adduction',
-    'traps-scapular-retraction',
     'brachioradialis-elbow-flexion',
     'forearm-wrist-flexion',
+    'lats-sagittal-shoulder-extension',
+    'lats-frontal-shoulder-adduction',
     'abs-spinal-flexion',
-    'erectors-spinal-extension',
     'quads-knee-extension',
     'calves-ankle-extension',
+    'traps-scapular-retraction',
+    'erectors-spinal-extension',
     'quads-knee-extension-during-hip-flexion',
     'delts-transverse-shoulder-abduction-with-elbow-flexion',
     'adductors-transverse-hip-adduction',
@@ -189,25 +193,25 @@ async function readSavedConfig(page) {
         // how it broke once already.
         ok(saved.version > 13, 'that version is past 13, so the v13 layout really was stale');
 
-        // 2. Every one of the 23 ids moved to its v14 day.
+        // 2. Every one of the 24 ids moved to its v14 day.
         eq(saved.dayById, EXPECTED_DAY_BY_ID,
-            'all 23 ids are reassigned to the Full Body day');
+            'all 24 ids are reassigned to the Full Body day');
 
         // 3. Nothing was added or dropped on the way through.
-        eq(saved.ids.length, 23, 'the saved config still holds exactly 23 ids');
+        eq(saved.ids.length, 24, 'the saved config still holds exactly 24 ids');
 
         // 4. The user's rename survived a move across days.
         eq(saved.nameById['lats-frontal-shoulder-adduction'], 'My Renamed Pulldowns',
             'a user rename survives the reassignment, including across a day change');
 
         // 5. order is re-densified 0..20 in the new layout.
-        eq(saved.orders, Array.from({ length: 23 }, (_, i) => i),
-            'order is a dense 0..22 run in the new layout');
+        eq(saved.orders, Array.from({ length: 24 }, (_, i) => i),
+            'order is a dense 0..23 run in the new layout');
 
         // 6. It reaches the screen, not just storage.
         ok(await selectDayType(page, 'full-body'), 'Full Body is on screen after the migration');
         const fullBody = await readDeckNames(page);
-        eq(fullBody.length, 23, 'Full Body renders 23 cards');
+        eq(fullBody.length, 24, 'Full Body renders 24 cards');
         ok(fullBody.includes('My Renamed Pulldowns'),
             'the renamed pulldowns card renders on its new day');
 

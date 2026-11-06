@@ -103,7 +103,7 @@ async function readSaved(page) {
         await selectDayType(page, 'full-body');
         contains(await setWeightAndOpen(page, 'Chest Flies', 165), 'pin 150',
             'the card reads the surviving 150');
-        const backOff = await setWeightAndOpen(page, 'Back Extensions', 270);
+        const backOff = await setWeightAndOpen(page, 'Stiff Legged Deadlift', 270);
         ok(backOff.indexOf('pin 260') === -1, 'and the surviving false: no pin 260');
         ok(backOff.indexOf('TOP SET') === -1, 'no Top set row at all');
 
@@ -120,9 +120,9 @@ async function readSaved(page) {
         eq(written, [], 'a pre-Gympin config picks up no fields at all from the rebuild');
 
         await selectDayType(page, 'full-body');
-        const backSeed = await setWeightAndOpen(page, 'Back Extensions', 270);
+        const backSeed = await setWeightAndOpen(page, 'Stiff Legged Deadlift', 270);
         ok(backSeed.indexOf('TOP SET') === -1,
-            'Back Extensions has no ceiling: nothing is seeded since v25');
+            'Stiff Legged Deadlift has no ceiling: nothing is seeded since v25');
         ok((await setWeightAndOpen(page, 'Chest Flies', 165)).indexOf('TOP SET') === -1,
             'and Chest Flies, unseeded, still has no ceiling');
 

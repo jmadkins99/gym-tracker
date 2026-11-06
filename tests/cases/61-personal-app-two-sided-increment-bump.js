@@ -74,11 +74,11 @@ function daysAgo(n) {
             twoSided: getWeightIncrement({ id: ex.id }, 'plate-two-sided'),
         })));
 
-        // 23 since Oct 2026 (v26 added four); 19 from Sep 2026, when the wrist
+        // 24 since Nov 2026 (v27 added the pullover); 23 from Oct 2026 (v26 added four); 19 from Sep 2026, when the wrist
         // pair left; 21 before that. The number is asserted rather than
         // derived so a roster change has to come through here deliberately —
         // the sweep below is only as good as its coverage of the whole list.
-        eq(table.length, 23, 'swept all 23 exercises');
+        eq(table.length, 24, 'swept all 24 exercises');
         ok(table.every(r => typeof r.raw === 'number'),
             'every exercise has a raw PR increment to adjust');
 

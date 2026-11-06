@@ -74,6 +74,8 @@ const V21_LAYOUT = [
     ['calves-ankle-extension', 'Calf Raises', 'posterior'],
     ['brachioradialis-elbow-flexion', 'Reverse Wrist Curls', 'posterior'],
     ['forearm-wrist-flexion', 'Wrist Curls', 'posterior'],
+    // v27 (Nov 2026), added for the same reason as v26's four.
+    ['lats-sagittal-shoulder-extension-above-120-degrees', 'Dumbbell Lat Pullover', 'posterior'],
 ];
 
 // The user switched Kelso Shrugs to plate one-sided in Settings. Kelso seeds
@@ -83,6 +85,7 @@ const LOAD_TYPE_OVERRIDE = { id: 'traps-scapular-retraction', loadType: 'plate-o
 const EXPECTED_ORDER = [
     'biceps-elbow-flexion-with-shoulder-extension',
     'biceps-elbow-flexion-with-shoulder-flexion',
+    'lats-sagittal-shoulder-extension-above-120-degrees',
     'pecs-transverse-shoulder-adduction',
     'pecs-shoulder-flexion',
     'pecs-transverse-shoulder-adduction-with-elbow-extension',
@@ -92,15 +95,15 @@ const EXPECTED_ORDER = [
     'triceps-elbow-extension-with-shoulder-flexion',
     'delts-shoulder-abduction-above-90-degrees',
     'triceps-elbow-extension-during-shoulder-flexion',
-    'lats-sagittal-shoulder-extension',
-    'lats-frontal-shoulder-adduction',
-    'traps-scapular-retraction',
     'brachioradialis-elbow-flexion',
     'forearm-wrist-flexion',
+    'lats-sagittal-shoulder-extension',
+    'lats-frontal-shoulder-adduction',
     'abs-spinal-flexion',
-    'erectors-spinal-extension',
     'quads-knee-extension',
     'calves-ankle-extension',
+    'traps-scapular-retraction',
+    'erectors-spinal-extension',
     'quads-knee-extension-during-hip-flexion',
     'delts-transverse-shoulder-abduction-with-elbow-flexion',
     'adductors-transverse-hip-adduction',
@@ -170,7 +173,7 @@ async function readSavedConfig(page) {
         eq(saved.exercises.map(e => e.id), EXPECTED_ORDER, 'ids are in the Full Body order');
         eq([...new Set(saved.exercises.map(e => e.day))], ['full-body'], "every id is on 'full-body'");
         eq([...new Set(saved.exercises.map(e => e.category))], ['Full Body'], 'every category is Full Body');
-        eq(saved.exercises.map(e => e.order), Array.from({ length: 23 }, (_, i) => i), 'order is dense 0..22');
+        eq(saved.exercises.map(e => e.order), Array.from({ length: 24 }, (_, i) => i), 'order is dense 0..23');
 
         // 2 + 3. User-owned fields survived, which also proves no wipe ran.
         const byId = Object.fromEntries(saved.exercises.map(e => [e.id, e]));
@@ -182,7 +185,7 @@ async function readSavedConfig(page) {
         const toggles = await page.evaluate(() => document.querySelectorAll('[data-day-type]').length);
         eq(toggles, 0, 'no day toggle after the upgrade');
         const names = await readDeckNames(page);
-        eq(names.length, 23, 'the deck holds all 23 movements');
+        eq(names.length, 24, 'the deck holds all 24 movements');
         eq(names[EXPECTED_ORDER.indexOf('lats-frontal-shoulder-adduction')], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
 
         // 4. Last session's weight, from both former days.

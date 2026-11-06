@@ -55,7 +55,7 @@ const EXPECTED = [
     ['traps-scapular-retraction', 'Kelso Shrugs'],
     ['delts-transverse-shoulder-abduction-with-elbow-flexion', 'Transverse Rows'],
     ['delts-shoulder-abduction-above-90-degrees', 'Lu Raises'],
-    ['erectors-spinal-extension', 'Back Extensions'],
+    ['erectors-spinal-extension', 'Stiff Legged Deadlift'],  // Back Extensions until v27
     ['quads-knee-extension-during-hip-flexion', 'Squats'],
     ['adductors-transverse-hip-adduction', 'Hip Adduction'],
     ['calves-ankle-extension', 'Calf Raises'],
