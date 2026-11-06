@@ -36,6 +36,15 @@ startup rather than anything the runner controls. `TEST_JOBS=1` restores
 strictly sequential behaviour, which is what to reach for if a failure
 looks timing-dependent and you want to rule concurrency out.
 
+**Timeouts and retries.** A case that runs longer than 120 seconds
+(`TEST_CASE_TIMEOUT=n` to change it) is killed along with its Chrome and
+counts as a failure, so one hung case can no longer hang the whole run.
+After the parallel pass, every failed case is run once more, alone. Most
+flakes here are load (`ERR_NO_BUFFER_SPACE`, a script not loaded yet), and
+a real bug fails the same way twice. A case that passes only on retry
+prints `PASS (retry)` with its first attempt's output and is named in the
+summary; only a case that fails both times fails the run.
+
 **Waiting.** Cases wait for conditions, not clocks — `waitForApp`,
 `waitForStorageKey` and `waitFor` in `lib/browser.js`. A fixed
 `setTimeout` is a bet on how fast the machine is, and running six cases at
