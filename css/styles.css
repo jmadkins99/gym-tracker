@@ -422,6 +422,19 @@
 
 
 
+        /* A downward swipe on a card pulls its settings down over it. */
+        .modal.quick-edit .exercise-clock {
+            margin: -8px 0 12px;
+        }
+
+        .modal.quick-edit {
+            animation: quickEditIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        @keyframes quickEditIn {
+            from { transform: translateY(-100%); }
+        }
+
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -1141,7 +1154,10 @@
         }
 
         /* ---- Live session clock, above the card ---- */
-        .session-clock {
+        /* The quick edit's clock wears the same face but is its own class, so
+           .kb-open does not hide it while a hint is being typed. */
+        .session-clock,
+        .exercise-clock {
             display: flex;
             justify-content: center;
             align-items: baseline;

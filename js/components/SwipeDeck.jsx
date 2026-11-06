@@ -69,7 +69,7 @@
                              logExercise, completeDay, getCurrentExercises, currentWeek,
                              workoutHistory, expandedWeightBreakdown, openWeightBreakdown,
                              closeWeightBreakdown, activeDayType, setActiveDayType, foregroundAt,
-                             deckIndex, setDeckIndex }) {
+                             deckIndex, setDeckIndex, onEditExercise }) {
             const exercises = getCurrentExercises();
             // One slot past the last exercise is the finish card.
             const finishIndex = exercises.length;
@@ -239,8 +239,9 @@
                 } else {
                     const el = activeSlotRef.current;
                     if (!el) return;
-                    // Downward drags have no meaning here; damp them so the
-                    // card feels anchored rather than broken.
+                    // Down opens the exercise's settings over the card, so it
+                    // only needs to hint at moving; damp it so the card feels
+                    // anchored rather than broken.
                     const dy = g.dy < 0 ? g.dy : g.dy * 0.2;
                     el.style.transition = 'none';
                     el.style.transform = 'translateY(' + dy + 'px)';
@@ -350,6 +351,14 @@
                 const flickedUp = g.vy < -FLICK_SPEED && g.dy < -FLICK_MIN_PIXELS;
                 if (g.axis === 'y' && (g.dy < -SWIPE_V_PIXELS || flickedUp) && exercise && !isRevealed) {
                     openWeightBreakdown(exercise.id);
+                    return;
+                }
+                // Down opens this exercise's settings over the deck. Nothing
+                // here closes the panel or touches the anchor, so an open card
+                // keeps its startedAt and is still open when the settings close.
+                const flickedDown = g.vy > FLICK_SPEED && g.dy > FLICK_MIN_PIXELS;
+                if (g.axis === 'y' && (g.dy > SWIPE_V_PIXELS || flickedDown) && exercise) {
+                    onEditExercise(exercise.id);
                 }
             };
 

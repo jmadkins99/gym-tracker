@@ -32,6 +32,8 @@
             // range lookups in config.js always see the saved ranges.
             setActiveExercises(exercises);
             const [showSettings, setShowSettings] = useState(false);
+            // The exercise a downward swipe on its card opened in Settings.
+            const [quickEditId, setQuickEditId] = useState(null);
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
@@ -1069,9 +1071,11 @@
                     {showSuccess && <div className={"success-message" + (successIsPR ? " pr-toast" : "")}>{successMessage}</div>}
 
 
-                    {showSettings && (
+                    {(showSettings || quickEditId) && (
                         <SettingsModal
-                            onClose={() => setShowSettings(false)}
+                            onClose={() => { setShowSettings(false); setQuickEditId(null); }}
+                            editOnly={quickEditId}
+                            startedAt={quickEditId ? exerciseStartTimes[quickEditId] : null}
                             onExport={exportData}
                             onImport={importData}
                             onReset={resetData}
@@ -1146,6 +1150,7 @@
                             activeDayType={activeDayType}
                             setActiveDayType={setActiveDayType}
                             foregroundAt={lastForegroundAt}
+                            onEditExercise={setQuickEditId}
                         />}
                         {currentView === 'weekly' && <WeeklyView
                             workoutHistory={workoutHistory}

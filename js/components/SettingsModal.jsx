@@ -14,9 +14,31 @@
             return { on, max: String(max) };
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise }) {
+        // Time on the exercise a swipe down opened, counted from its card's
+        // start anchor. Read-only: the anchor is App's, and this never writes
+        // it. Ticks in its own component, like the deck's SessionClock, so the
+        // form is not re-rendered every second under a field being typed in.
+        function ExerciseClock({ startedAt }) {
+            const [now, setNow] = useState(() => Date.now());
+            React.useEffect(() => {
+                const id = setInterval(() => setNow(Date.now()), 1000);
+                return () => clearInterval(id);
+            }, []);
+            const seconds = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000));
+            return (
+                <div className="exercise-clock" data-exercise-clock>
+                    <span>{formatDuration(seconds) + ' ' + (seconds % 60) + 's'}</span>
+                    <span className="session-clock-label">on this exercise</span>
+                </div>
+            );
+        }
+
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise, editOnly, startedAt }) {
             const fileInputRef = useRef();
-            const [settingsView, setSettingsView] = useState('main'); // 'main', 'exercises'
+            // editOnly is an exercise id from a downward swipe on its card: the
+            // modal opens straight into that one exercise's form and closes
+            // with it, so the deck underneath is never left.
+            const [settingsView, setSettingsView] = useState(editOnly ? 'exercises' : 'main'); // 'main', 'exercises'
             const [editingExercise, setEditingExercise] = useState(null);
             const [tempName, setTempName] = useState('');
             const [tempIncrement, setTempIncrement] = useState('');
@@ -101,7 +123,50 @@
                 setTempRepMax(REP_RANGE_FLOOR);
                 setTempEnabled(true);
                 setTempHint('');
+                if (editOnly) onClose();
             };
+
+            // Before paint, so the full list never flashes behind the form.
+            React.useLayoutEffect(() => {
+                const exercise = editOnly && exercises.find(e => e.id === editOnly);
+                if (exercise) handleStartEdit(exercise);
+            }, []);
+
+            // Swipe up, or a tap outside, SAVES a quick edit: it is how you get
+            // back to the card, and a note typed between sets must not be lost
+            // to it. Cancel is still there to back out. Mouse pointerup and the
+            // tap's click can both land, so only the first one counts.
+            const modalRef = useRef(null);
+            const swipeStart = useRef(null);
+            const quickSaved = useRef(false);
+            const quickSave = () => {
+                const exercise = exercises.find(e => e.id === editingExercise);
+                if (quickSaved.current || !exercise) return;
+                quickSaved.current = true;
+                handleSaveEdit(exercise);
+            };
+            const onQuickPointerDown = (e) => {
+                const m = modalRef.current;
+                // A mouse drag in a text box is selecting text, and a drag in a
+                // form with more below is scrolling it — neither is a dismiss.
+                const selecting = e.pointerType === 'mouse' && e.target.closest('input, textarea');
+                const atBottom = !m || m.scrollTop + m.clientHeight >= m.scrollHeight - 1;
+                swipeStart.current = !selecting && atBottom ? { x: e.clientX, y: e.clientY } : null;
+            };
+            // Ended from pointerup AND touchend: on a phone the browser can
+            // claim the drag as a scroll and cancel the pointer, but touchend
+            // still arrives. Whichever comes first consumes the start.
+            const onQuickSwipeEnd = (x, y) => {
+                const start = swipeStart.current;
+                swipeStart.current = null;
+                if (start && start.y - y > SWIPE_V_PIXELS && start.y - y > Math.abs(x - start.x)) quickSave();
+            };
+            const quickHandlers = editOnly ? {
+                onClick: quickSave,
+                onPointerDown: onQuickPointerDown,
+                onPointerUp: (e) => onQuickSwipeEnd(e.clientX, e.clientY),
+                onTouchEnd: (e) => onQuickSwipeEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY),
+            } : { onClick: onClose };
 
             if (settingsView === 'exercises') {
                 return (
@@ -111,9 +176,12 @@
                     // so the field landed above the top edge. Alone and pinned
                     // high, the name and hint fields sit above the keyboard with
                     // nothing to scroll.
-                    <div className="modal-overlay" onClick={onClose} style={editingExercise ? { alignItems: 'flex-start' } : null}>
-                        <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
-                            <div className="modal-title">Exercises</div>
+                    <div className="modal-overlay" {...quickHandlers} style={editingExercise ? { alignItems: 'flex-start' } : null}>
+                        <div className={'modal' + (editOnly ? ' quick-edit' : '')} ref={modalRef} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
+                            <div className="modal-title">{editOnly ? 'Settings' : 'Exercises'}</div>
+                            {/* Only on a card that was opened: an unopened one
+                                has no start, and a logged one has stopped. */}
+                            {editOnly && startedAt && <ExerciseClock startedAt={startedAt} />}
 
                             {/* Grouped by day so the up/down arrows stop at each
                                 day's boundary — moveExercise refuses to swap
@@ -151,7 +219,7 @@
                                                         color: '#b8b8d0',
                                                         marginBottom: '8px'
                                                     }}
-                                                    autoFocus
+                                                    autoFocus={!editOnly}
                                                 />
                                                 {/* The card hint, a second text field
                                                     under the name. One line and capped,
@@ -476,9 +544,11 @@
                               );
                             })}
 
-                            <button className="modal-btn" onClick={() => setSettingsView('main')}>
-                                ← Back to Settings
-                            </button>
+                            {!editOnly && (
+                                <button className="modal-btn" onClick={() => setSettingsView('main')}>
+                                    ← Back to Settings
+                                </button>
+                            )}
                         </div>
                     </div>
                 );
