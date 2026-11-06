@@ -41,6 +41,7 @@ if [ "${1:-}" = "--affected" ]; then AFFECTED=1; shift; fi
 PATTERN="${1:-}"
 ONLY="${TEST_CASES:-}"
 JOBS="${TEST_JOBS:-6}"
+CASE_TIMEOUT="${TEST_CASE_TIMEOUT:-120}"
 
 # TEST_SHARD=i/n runs every n-th case starting at the i-th (1-based), so n
 # machines can split the suite between them -- CI's matrix does this. Taken
@@ -162,15 +163,51 @@ echo
 OUTDIR=$(mktemp -d)
 trap 'rm -rf "$OUTDIR"' EXIT
 
-for i in "${!NAMES[@]}"; do
-    slot=$(printf '%04d' "$i")
-    {
-        if node -r "$PRELOAD" "${FILES[$i]}" > "$OUTDIR/$slot.log" 2>&1; then
-            echo 0 > "$OUTDIR/$slot.code"
-        else
-            echo 1 > "$OUTDIR/$slot.code"
+# A case gets TEST_CASE_TIMEOUT seconds (default 120, about ten times the
+# slowest case) and is then killed. Without a limit, one hung case -- a Chrome
+# that never closes, a promise that never resolves -- hangs the whole run with
+# no output at all, because nothing is printed until every case is done. The
+# kill has to take the case's Chrome with it: its `finally { browser.close() }`
+# never runs when the process is killed from outside, so a plain kill leaves a
+# ~200 MB Chrome behind for every timeout. On Windows taskkill /T walks the
+# tree for us; on Linux puppeteer puts Chrome in a process group of its own, so
+# killing node's group would miss it, and the tree is walked by parent pid
+# instead, stopping each parent first so it cannot spawn a child mid-walk.
+kill_tree() {
+    if [ -r "/proc/$1/winpid" ]; then
+        taskkill //T //F //PID "$(cat "/proc/$1/winpid")" > /dev/null 2>&1
+    else
+        kill -STOP "$1" 2>/dev/null
+        local kid
+        for kid in $(pgrep -P "$1"); do kill_tree "$kid"; done
+        kill -KILL "$1" 2>/dev/null
+    fi
+}
+
+# run_case <index> <suffix>: runs one case into $OUTDIR/<slot><suffix>.log and
+# writes 0 (pass) or 1 (fail or timeout) to the matching .code file.
+run_case() {
+    local slot pid start code
+    slot=$(printf '%04d' "$1")
+    node -r "$PRELOAD" "${FILES[$1]}" > "$OUTDIR/$slot$2.log" 2>&1 &
+    pid=$!
+    start=$SECONDS
+    while kill -0 "$pid" 2>/dev/null; do
+        if [ $(( SECONDS - start )) -ge "$CASE_TIMEOUT" ]; then
+            kill_tree "$pid"
+            wait "$pid" 2>/dev/null
+            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its Chrome. Its output up to then is above." >> "$OUTDIR/$slot$2.log"
+            echo 1 > "$OUTDIR/$slot$2.code"
+            return
         fi
-    } &
+        sleep 0.5
+    done
+    wait "$pid"; code=$?
+    [ "$code" = 0 ] && echo 0 > "$OUTDIR/$slot$2.code" || echo 1 > "$OUTDIR/$slot$2.code"
+}
+
+for i in "${!NAMES[@]}"; do
+    run_case "$i" "" &
     # Cap in-flight jobs. `wait -n` returns as soon as any one finishes, so a
     # slow case never blocks the queue behind it.
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do
@@ -179,10 +216,29 @@ for i in "${!NAMES[@]}"; do
 done
 wait
 
+# Every failed case gets one more try, one at a time with nothing else
+# running. Most flakes here come from load -- ERR_NO_BUFFER_SPACE, or a script
+# that had not finished loading ("APP_NAMESPACE is not defined") while five
+# other Chromes competed for the machine -- and a quiet machine removes that
+# cause. A real bug fails the same way twice, and only a case that fails both
+# times turns the run red. A pass on retry is still reported as one, with the
+# first attempt's output, so a flake gets looked into rather than hidden. Its
+# coverage entry is the one the passing retry wrote, since that ran last.
+RETRY=()
+for i in "${!NAMES[@]}"; do
+    [ "$(cat "$OUTDIR/$(printf '%04d' "$i").code" 2>/dev/null)" = "0" ] || RETRY+=("$i")
+done
+if [ "${#RETRY[@]}" -gt 0 ]; then
+    echo "Retrying ${#RETRY[@]} failed case(s) one at a time..."
+    echo
+    for i in "${RETRY[@]}"; do run_case "$i" .retry; done
+fi
+
 # Report in filename order regardless of the order they finished, so two runs
 # of the same filter are diffable against each other.
 FAIL=0
 PASSED=0
+RETRY_PASSED=()
 for i in "${!NAMES[@]}"; do
     slot=$(printf '%04d' "$i")
     code=$(cat "$OUTDIR/$slot.code" 2>/dev/null || echo 1)
@@ -190,6 +246,13 @@ for i in "${!NAMES[@]}"; do
     if [ "$code" = "0" ]; then
         echo "PASS"
         PASSED=$((PASSED + 1))
+    elif [ "$(cat "$OUTDIR/$slot.retry.code" 2>/dev/null)" = "0" ]; then
+        echo "PASS (retry)"
+        PASSED=$((PASSED + 1))
+        RETRY_PASSED+=("${NAMES[$i]}")
+        echo "─── first attempt's output ──────────────────"
+        sed 's/^/    /' "$OUTDIR/$slot.log" 2>/dev/null
+        echo "─────────────────────────────────────────────"
     else
         echo "FAIL"
         # A failed case may have stopped before loading everything it
@@ -197,8 +260,10 @@ for i in "${!NAMES[@]}"; do
         # case unknown to lib/select.js, which then runs it on every push until
         # it passes again.
         rm -f "$COVERAGE_DIR/${NAMES[$i]}.json"
-        echo "─── output ──────────────────────────────────"
+        echo "─── first attempt's output ──────────────────"
         sed 's/^/    /' "$OUTDIR/$slot.log" 2>/dev/null
+        echo "─── retry's output ──────────────────────────"
+        sed 's/^/    /' "$OUTDIR/$slot.retry.log" 2>/dev/null
         echo "─────────────────────────────────────────────"
         FAIL=1
     fi
@@ -231,6 +296,9 @@ elif [ -n "$PATTERN" ]; then
     echo "  $PASSED / $TOTAL passed  (filtered: \"$PATTERN\")"
 else
     echo "  $PASSED / $TOTAL passed"
+fi
+if [ "${#RETRY_PASSED[@]}" -gt 0 ]; then
+    echo "  ${#RETRY_PASSED[@]} passed only on retry: ${RETRY_PASSED[*]}"
 fi
 echo "================================================"
 exit $FAIL
