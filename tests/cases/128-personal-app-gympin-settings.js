@@ -174,7 +174,7 @@ async function readSaved(page) {
         await openManageExercises(page);
         let back = await readGympinForm(page, 'erectors-spinal-extension');
         eq(back.hasForm, false, 'no form outside edit mode');
-        eq(back.status, '📌 Gympin past 260 lbs', 'Back Extensions says where the Gympin takes over');
+        eq(back.status, '📌 Gympin past 260 lbs', 'Stiff Legged Deadlift says where the Gympin takes over');
         eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, null,
             'Chest Flies, a stack with no ceiling, says nothing');
         eq((await readGympinForm(page, 'quads-knee-extension-during-hip-flexion')).status, null,
@@ -228,7 +228,7 @@ async function readSaved(page) {
             'switching off folds the number away');
         await rowButton(page, 'erectors-spinal-extension', 'Save');
         saved = await readSaved(page);
-        eq(saved.byId['erectors-spinal-extension'].gympin, false, 'Back Extensions saved off');
+        eq(saved.byId['erectors-spinal-extension'].gympin, false, 'Stiff Legged Deadlift saved off');
         eq(saved.byId['erectors-spinal-extension'].stackMax, 260,
             'and keeps its 260, so switching back on needs no retyping');
         eq((await readGympinForm(page, 'erectors-spinal-extension')).status, null, 'the list line is gone');
@@ -253,8 +253,8 @@ async function readSaved(page) {
         contains(fliesCard, 'pin 150', 'pegged at the 150 the user typed');
         contains(fliesCard, '10, 5', 'with the 15 lb excess as a 10 and a 5');
 
-        const backCard = await setWeightAndOpen(page, 'Back Extensions', 270);
-        ok(backCard.indexOf('pin 260') === -1, 'Back Extensions no longer pegs at 260');
+        const backCard = await setWeightAndOpen(page, 'Stiff Legged Deadlift', 270);
+        ok(backCard.indexOf('pin 260') === -1, 'Stiff Legged Deadlift no longer pegs at 260');
         ok(backCard.indexOf('TOP SET') === -1, 'and has no Top set row at all — a stack with no ceiling');
         contains(backCard, '190 lbs', 'its warmups are untouched');
 

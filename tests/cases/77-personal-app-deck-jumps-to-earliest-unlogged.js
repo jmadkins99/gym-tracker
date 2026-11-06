@@ -92,7 +92,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             'post-log jump skips');
 
         // === 5. Fill the day: the last log reaches the finish card =====
-        for (let guard = 0; guard < 20; guard++) {
+        for (let guard = 0; guard < 30; guard++) {
             if (await onFinishCard(page)) break;
             await revealCard(page);
             if (!(await logCard(page))) break;

@@ -83,7 +83,7 @@ const FIXTURE = path.resolve(__dirname, '..', 'fixtures', 'josh-backup-2026-06-3
         await selectDayType(page, 'full-body');
 
         // Open the Back Extensions breakdown at 270 lbs — 10 over the cap.
-        const text = await setWeightAndOpen(page, 'Back Extensions', 270);
+        const text = await setWeightAndOpen(page, 'Stiff Legged Deadlift', 270);
 
         contains(text, '270 lbs', 'top set total shown as 270 lbs (unrounded)');
         contains(text, 'pin 260', 'top set overflows: the pin is pegged at the 260 cap');

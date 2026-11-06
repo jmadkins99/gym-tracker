@@ -71,12 +71,13 @@ const OLD_ORDER_IDS = [
     'quads-knee-extension-during-hip-flexion',
 ];
 
-// The canonical Full Body day (v26 order). Names are the fresh-install ones
+// The canonical Full Body day (v27 order). Names are the fresh-install ones
 // because the seed below builds each entry from DEFAULT_EXERCISES — except
 // Chest Flies, renamed by the user.
 const EXPECTED_NEW_ORDER = [
     'Recline Curls',
     'Preacher Curls',
+    'Dumbbell Lat Pullover',    // v27, arrives via the migration
     'My Renamed Flies',       // pecs-transverse-shoulder-adduction, renamed by the user below
     'Low to High Flies',
     'Chest Press',            // not in the seed; arrives via the migration
@@ -86,15 +87,15 @@ const EXPECTED_NEW_ORDER = [
     'Overhead Tricep Extensions',
     'Lu Raises',
     'JM Press',               // v26, arrives via the migration
-    'Sagittal Pulldowns',
-    'Frontal Pulldowns',
-    'Kelso Shrugs',
     'Reverse Wrist Curls',    // v26, a new id: NOT the seed's retired reverse-wrist-curls
     'Wrist Curls',            // v26, arrives via the migration
+    'Sagittal Pulldowns',
+    'Frontal Pulldowns',
     'Ab Crunches',
-    'Back Extensions',
     'Leg Extensions',         // not in the seed; arrives via the migration
     'Calf Raises',
+    'Kelso Shrugs',
+    'Stiff Legged Deadlift',
     'Squats',
     'Transverse Rows',
     'Hip Adduction',

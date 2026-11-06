@@ -28,12 +28,12 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 // Fresh-install names, in canonical order.
 const EXPECTED = [
-    'Recline Curls', 'Preacher Curls', 'Chest Flies', 'Low to High Flies',
-    'Chest Press', 'Supinations', 'Tricep Extensions', 'Lateral Raises',
-    'Overhead Tricep Extensions', 'Lu Raises', 'JM Press',
-    'Sagittal Pulldowns', 'Frontal Pulldowns', 'Kelso Shrugs',
-    'Reverse Wrist Curls', 'Wrist Curls', 'Ab Crunches', 'Back Extensions',
-    'Leg Extensions', 'Calf Raises', 'Squats', 'Transverse Rows',
+    'Recline Curls', 'Preacher Curls', 'Dumbbell Lat Pullover', 'Chest Flies',
+    'Low to High Flies', 'Chest Press', 'Supinations', 'Tricep Extensions',
+    'Lateral Raises', 'Overhead Tricep Extensions', 'Lu Raises', 'JM Press',
+    'Reverse Wrist Curls', 'Wrist Curls', 'Sagittal Pulldowns',
+    'Frontal Pulldowns', 'Ab Crunches', 'Leg Extensions', 'Calf Raises',
+    'Kelso Shrugs', 'Stiff Legged Deadlift', 'Squats', 'Transverse Rows',
     'Hip Adduction',
 ];
 
