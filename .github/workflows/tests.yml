@@ -24,6 +24,10 @@ concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# Read-only token for every job unless it says otherwise (deploy does).
+permissions:
+  contents: read
+
 jobs:
   shard:
     name: shard ${{ matrix.shard }}
