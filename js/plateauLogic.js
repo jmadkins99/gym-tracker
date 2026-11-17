@@ -63,9 +63,16 @@
             const range = getStandardRepRange(exerciseId);
             if (parseInt(previousExercise.reps, 10) >= range.max) {
                 const lastWeight = parseFloat(previousExercise.weight);
-                const increment = getWeightIncrement(exerciseConfig, loadType);
+                let increment = getWeightIncrement(exerciseConfig, loadType);
+                let weight = lastWeight + increment;
+                if (resolveCableStack(exerciseConfig)) {
+                    weight = snapToCableStack(weight);
+                    // Topped out: nothing heavier to make, so carry forward like a 0 increment.
+                    if (weight <= lastWeight) return null;
+                    increment = weight - lastWeight;   // the real jump, which the snap can widen
+                }
                 return {
-                    weight: (lastWeight + increment).toString(),
+                    weight: weight.toString(),
                     lastWeight: previousExercise.weight,
                     lastReps: previousExercise.reps,
                     increment

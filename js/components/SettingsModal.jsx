@@ -33,7 +33,7 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise, editOnly, startedAt }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseCableStack, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise, editOnly, startedAt }) {
             const fileInputRef = useRef();
             // editOnly is an exercise id from a downward swipe on its card: the
             // modal opens straight into that one exercise's form and closes
@@ -44,6 +44,7 @@
             const [tempIncrement, setTempIncrement] = useState('');
             const [tempGympin, setTempGympin] = useState(false);
             const [tempStackMax, setTempStackMax] = useState('');
+            const [tempCableStack, setTempCableStack] = useState(false);
             const [tempRepMin, setTempRepMin] = useState(REP_RANGE_FLOOR);
             const [tempRepMax, setTempRepMax] = useState(REP_RANGE_FLOOR);
             const [tempEnabled, setTempEnabled] = useState(true);
@@ -64,6 +65,7 @@
                 const gympin = gympinFormValues(exercise);
                 setTempGympin(gympin.on);
                 setTempStackMax(gympin.max);
+                setTempCableStack(exercise.cableStack === true);
                 const repRange = repRangeFormValues(exercise);
                 setTempRepMin(repRange.repMin);
                 setTempRepMax(repRange.repMax);
@@ -87,13 +89,18 @@
                 // touches fields it was never shown. Written as a pair when
                 // either half changed, since the two are one answer. A blank
                 // number saves as undefined, which resolveGympin reads as
-                // "use the seed, else off".
-                if (resolveLoadType(exercise) === 'pin') {
+                // "use the seed, else off". With GYMPIN_ENABLED off the form is
+                // hidden, so the saved pair is left exactly as it was.
+                if (GYMPIN_ENABLED && resolveLoadType(exercise) === 'pin') {
                     const was = gympinFormValues(exercise);
                     const stackMax = tempStackMax.trim() === '' ? undefined : Number(tempStackMax);
                     if (tempGympin !== was.on || String(stackMax ?? '') !== was.max) {
                         updateExerciseGympin(exercise.id, { gympin: tempGympin, stackMax });
                     }
+                }
+                // Pin-loaded only, like the Gympin pair, and only on a change.
+                if (resolveLoadType(exercise) === 'pin' && tempCableStack !== (exercise.cableStack === true)) {
+                    updateExerciseCableStack(exercise.id, tempCableStack);
                 }
                 // Only an explicit change is saved, so an untouched exercise
                 // keeps following the default range.
@@ -119,6 +126,7 @@
                 setTempIncrement('');
                 setTempGympin(false);
                 setTempStackMax('');
+                setTempCableStack(false);
                 setTempRepMin(REP_RANGE_FLOOR);
                 setTempRepMax(REP_RANGE_FLOOR);
                 setTempEnabled(true);
@@ -455,7 +463,7 @@
                                             with the same numbers. Edit-mode only and
                                             committed by Save, like the increment, so
                                             Cancel undoes it. */}
-                                        {editingExercise === exercise.id && resolveLoadType(exercise) === 'pin' ? (
+                                        {GYMPIN_ENABLED && editingExercise === exercise.id && resolveLoadType(exercise) === 'pin' ? (
                                             <div data-field="gympin-form" style={{ marginTop: '12px' }}>
                                                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer' }}>
                                                     <span style={{ fontSize: '12px', color: '#8a8aa0' }}>
@@ -503,6 +511,27 @@
                                                         )}
                                                     </div>
                                                 ) : null}
+                                            </div>
+                                        ) : null}
+
+                                        {/* The Dutch cable stack switch, Pin-loaded rows
+                                            only, saved by Save like the Gympin. */}
+                                        {editingExercise === exercise.id && resolveLoadType(exercise) === 'pin' ? (
+                                            <div data-field="cable-stack-form" style={{ marginTop: '12px' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer' }}>
+                                                    <span style={{ fontSize: '12px', color: '#8a8aa0' }}>
+                                                        Dutch gym cable stack PR adjustment
+                                                    </span>
+                                                    <span className="switch">
+                                                        <input
+                                                            type="checkbox"
+                                                            data-field="cableStack"
+                                                            checked={tempCableStack}
+                                                            onChange={(e) => setTempCableStack(e.target.checked)}
+                                                        />
+                                                        <span className="switch-track"></span>
+                                                    </span>
+                                                </label>
                                             </div>
                                         ) : null}
 

@@ -425,6 +425,18 @@
                 });
             };
 
+            // The Dutch cable stack switch, the tenth user-owned field. Absent
+            // means off (resolveCableStack); only Settings writes it.
+            const updateExerciseCableStack = (exerciseId, cableStack) => {
+                setExercises(prev => {
+                    const updated = prev.map(ex =>
+                        ex.id === exerciseId ? { ...ex, cableStack } : ex
+                    );
+                    saveExerciseConfig(updated);
+                    return updated;
+                });
+            };
+
             // Reordering is scoped to the exercise's own day. Swapping across
             // a day boundary would move a card in the settings list without
             // changing which day it belongs to, so the arrow would look like it
@@ -1084,6 +1096,7 @@
                             updateExerciseLoadType={updateExerciseLoadType}
                             updateExerciseIncrement={updateExerciseIncrement}
                             updateExerciseGympin={updateExerciseGympin}
+                            updateExerciseCableStack={updateExerciseCableStack}
                             updateExerciseRepRange={updateExerciseRepRange}
                             updateExerciseEnabled={updateExerciseEnabled}
                             updateExerciseHint={updateExerciseHint}

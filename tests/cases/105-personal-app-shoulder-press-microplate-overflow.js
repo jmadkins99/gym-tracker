@@ -59,7 +59,8 @@ const { eq, ok, contains } = require('../lib/assert');
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
 (async () => {
-    const server = await start({ root: PERSONAL_APP_ROOT });
+    // Gympin is shelved behind GYMPIN_ENABLED (Nov 2026); serve it switched on.
+    const server = await start({ root: PERSONAL_APP_ROOT, flags: { GYMPIN_ENABLED: true } });
     const browser = await launch();
     try {
         const page = await browser.newPage();
