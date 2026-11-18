@@ -13,6 +13,11 @@
         const PR_STREAK_TRACKING = true;
         const PR_STREAK_MIN = 1;   // fewest consecutive improvements that earn a badge
 
+        // Gympin is shelved, not deleted: false hides its Settings form and
+        // makes resolveGympin answer off. Flip to true to bring it back; the
+        // saved `gympin`/`stackMax` fields are never touched while it is off.
+        const GYMPIN_ENABLED = false;
+
         // PR Auto-Regulation: Weight increments when you hit the top of the
         // exercise's standard rep range.
         // 5 lbs where a 5 is the natural step — two-sided plate-loaded (= 2.5
@@ -170,12 +175,36 @@
         // touched the form.
         function resolveGympin(exercise) {
             const off = { on: false, max: null };
-            if (!exercise || resolveLoadType(exercise) !== 'pin') return off;
+            if (!GYMPIN_ENABLED || !exercise || resolveLoadType(exercise) !== 'pin') return off;
             const seedMax = PIN_STACK_CAPS[exercise.id];
             const on = typeof exercise.gympin === 'boolean' ? exercise.gympin : seedMax !== undefined;
             const saved = Number(exercise.stackMax);
             const max = Number.isFinite(saved) && saved > 0 ? saved : (seedMax ?? null);
             return on && max !== null ? { on: true, max } : off;
+        }
+
+        // The work gym's cable stack: 6, 10, 14 … 82 lb, plus two 1.25 lb
+        // microplates of Josh's own that sit on top. `cableStack` is a USER
+        // field set from Settings > Manage Exercises; on, getSimplePR rounds
+        // a bump up to a weight that stack can actually make.
+        const CABLE_STACK_MIN = 6;
+        const CABLE_STACK_STEP = 4;
+        const CABLE_STACK_MAX = 82;
+        const CABLE_STACK_TOP = CABLE_STACK_MAX + 2.5;   // the heaviest it makes: 82 + both 1.25s
+
+        // On only for a Pin-loaded exercise, like resolveGympin, so a switch
+        // left on across a reclassification is inert rather than wrong.
+        function resolveCableStack(exercise) {
+            return !!exercise && exercise.cableStack === true && resolveLoadType(exercise) === 'pin';
+        }
+
+        // Smallest weight you can make that's ≥ w: a stack plate plus 0, 1, or 2 of your 1.25s.
+        // Capped at CABLE_STACK_TOP. Every value is a multiple of 0.25, so the float math is exact.
+        function snapToCableStack(w) {
+            const base = CABLE_STACK_MIN + CABLE_STACK_STEP * Math.floor((w - CABLE_STACK_MIN) / CABLE_STACK_STEP);  // the stack plate at or below w
+            const extra = w - base;                        // somewhere from 0 to under 4
+            const snapped = extra === 0 ? base : extra <= 1.25 ? base + 1.25 : extra <= 2.5 ? base + 2.5 : base + CABLE_STACK_STEP;
+            return Math.min(snapped, CABLE_STACK_TOP);
         }
 
         // The raw PR step for an exercise: the user's saved `increment` if it is
@@ -405,7 +434,7 @@
         //
         // What a bump does and does not carry: `order`, `day` and `category`
         // are code-owned and ride in on it. `name`, `loadType`, `increment`,
-        // `gympin` and `stackMax` are USER-owned and preserved by
+        // `gympin`, `stackMax` and `cableStack` are USER-owned and preserved by
         // migrateExerciseConfig, so a change to those in the seed data reaches
         // a fresh install only. Getting a rename
         // onto an existing device is a Settings job here; on Jessi's side it

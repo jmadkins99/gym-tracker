@@ -40,7 +40,8 @@
         // - Drops saved exercises that are no longer in defaults.
         // - Applies the canonical order from DEFAULT_EXERCISES.
         // - Preserves the user-owned fields by id: display name, loadType,
-        //   increment, gympin, stackMax, repMin, repMax, enabled and hint.
+        //   increment, gympin, stackMax, cableStack, repMin, repMax, enabled
+        //   and hint.
         // Pure function: takes the parsed config and returns the reconciled
         // config, or null if no changes are needed. The caller persists.
         //
@@ -101,6 +102,8 @@
                         // seed from PIN_STACK_CAPS when either is absent.
                         gympin: saved.gympin,
                         stackMax: saved.stackMax,
+                        // And the Dutch cable stack switch: absent means off.
+                        cableStack: saved.cableStack,
                         // And for the rep range: getStandardRepRange falls back
                         // to the default when the pair is absent.
                         repMin: saved.repMin,

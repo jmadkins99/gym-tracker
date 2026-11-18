@@ -16,7 +16,19 @@ const MIME = {
     '.png':  'image/png',
 };
 
-function start({ root, port = 0 } = {}) {
+// `flags` overrides code flags in js/config.js as it is served, e.g.
+// { GYMPIN_ENABLED: true }, so a case can cover a shelved feature without
+// editing the source. A flag that is not there throws, so a rename fails loudly.
+function serveFlags(src, flags) {
+    for (const [name, value] of Object.entries(flags)) {
+        const re = new RegExp(`const ${name} = [^;]*;`);
+        if (!re.test(src)) throw new Error(`flag ${name} not found in js/config.js`);
+        src = src.replace(re, `const ${name} = ${JSON.stringify(value)};`);
+    }
+    return src;
+}
+
+function start({ root, port = 0, flags } = {}) {
     if (!root) throw new Error('start({root}) requires a root directory');
 
     const server = http.createServer((req, res) => {
@@ -33,6 +45,7 @@ function start({ root, port = 0 } = {}) {
                 res.writeHead(404); res.end('not found'); return;
             }
             const ext = path.extname(filePath).toLowerCase();
+            if (flags && urlPath === '/js/config.js') data = serveFlags(data.toString('utf8'), flags);
             res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
             res.end(data);
         });

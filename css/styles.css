@@ -503,7 +503,7 @@
             display: none;
         }
 
-        /* ---- Switch (Settings > Manage Exercises > Gympin) ----
+        /* ---- Switch (Settings > Manage Exercises toggles) ----
            A checkbox drawn as a track and a knob. The input stays in the
            DOM, invisible, so the label click and the keyboard still drive
            it; only the track is painted. Accent when on, like every other

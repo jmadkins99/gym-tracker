@@ -33,8 +33,13 @@
             // redundant with `!simplePR`: a 0 increment is exactly what makes
             // getSimplePR return null, so the banner would otherwise move into
             // the gap the bump left behind and sit on that card forever.
-            const stagnation = SIMPLE_PR_TRACKING && !simplePR && getWeightIncrement(exercise, loadType)
+            const stalled = SIMPLE_PR_TRACKING && !simplePR && getWeightIncrement(exercise, loadType)
                 ? getStagnationWarning(exercise.id, workoutHistory) : null;
+            // Same reasoning for a Dutch cable stack at its top: getSimplePR
+            // has nothing heavier to offer there, so sitting at it is the
+            // ceiling, not a plateau.
+            const stagnation = stalled && !(resolveCableStack(exercise) && parseFloat(stalled.weight) >= CABLE_STACK_TOP)
+                ? stalled : null;
             const prStreak = PR_STREAK_TRACKING && exercise.type === 'standard'
                 ? getPRStreak(exercise.id, workoutHistory) : null;
 
