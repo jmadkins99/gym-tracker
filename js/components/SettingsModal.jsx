@@ -613,7 +613,7 @@
                                 </div>
                                 {lockedDayType && (
                                     <div className="settings-day-note" data-day-note>
-                                        Today is {PROGRAM_DAYS.find(d => d.id === lockedDayType).label}. It switches tomorrow.
+                                        Today is {PROGRAM_DAYS.find(d => d.id === lockedDayType).label}. It switches after Submit Day.
                                     </div>
                                 )}
                             </div>

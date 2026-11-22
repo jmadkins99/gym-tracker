@@ -12,7 +12,7 @@ Client counterpart: [public-gym-app](https://github.com/jmadkins99/public-gym-ap
   History.
 - **Day**: the app opens on the opposite of your last Anterior or Posterior
   workout (Anterior if there's none). Settings → Day switches it until
-  midnight, and the first LOG locks it for the rest of the day.
+  midnight, and the first LOG locks it until Submit Day.
 - **Logging**: one card per exercise, pre-filled from last session; LOG saves
   each exercise, Submit Day closes the day.
 - **Reps dropdown**: each exercise's rep range (default 4–6, editable in

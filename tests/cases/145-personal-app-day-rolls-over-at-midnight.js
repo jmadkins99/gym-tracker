@@ -99,7 +99,7 @@ const historyLength = (page) => page.evaluate((ns) =>
         eq((await todayWorkout(page, NS)).day, 'posterior-2', 'stamped Posterior');
         toggle = await readDayToggle(page);
         eq([toggle.active, toggle.locked, toggle.note],
-            ['posterior-2', true, 'Today is Posterior. It switches tomorrow.'], 'and locked on Posterior');
+            ['posterior-2', true, 'Today is Posterior. It switches after Submit Day.'], 'and locked on Posterior');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: the day lock rolls over at midnight without a reload');

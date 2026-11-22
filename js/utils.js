@@ -100,20 +100,23 @@
             },
         };
 
-        // The day today's session is on, once one exists, or null. A session
-        // is written at the first LOG and stamped with its day then, so from
-        // that moment the day is fixed for the rest of the date: the Settings
-        // toggle locks on it. Only a current PROGRAM_DAYS day counts; a session
-        // on a retired day (the switchover date) locks nothing.
+        // The day today's open session is on, or null. A session is written at
+        // the first LOG and stamped with its day then, so from that moment
+        // until Submit Day closes it the day is fixed: the Settings toggle
+        // locks on it. A submitted session locks nothing, and a LOG after it
+        // starts a new session that locks on its own day. Only a current
+        // PROGRAM_DAYS day counts; a session on a retired day (the switchover
+        // date) locks nothing.
         function getLockedDayType(history, date = new Date()) {
             const days = PROGRAM_DAYS.map(d => d.id);
             const today = date.toDateString();
-            const session = history.find(w =>
-                new Date(w.date).toDateString() === today && days.includes(w.day));
+            const session = history.find(w => !w.submitted
+                && new Date(w.date).toDateString() === today && days.includes(w.day));
             return session ? session.day : null;
         }
 
-        // Which day the app opens on: today's, if something is logged;
+        // Which day the app opens on: today's, if something is logged and not
+        // yet submitted;
         // otherwise the day after the most recent session of THIS program, in
         // PROGRAM_DAYS order (Anterior, Posterior, Anterior, ...); with none
         // yet, the first day. Derived from history rather than stored, so it

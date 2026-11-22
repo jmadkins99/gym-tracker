@@ -997,6 +997,12 @@
                 setWorkoutData({});
                 clearStartTimes();
 
+                // The session is closed, so the lock lifts. Move to the day a
+                // load would now open on, the other one, and drop any pick
+                // made for the session just submitted, so a reload agrees.
+                todayOnlyStorage.remove('dayPick');
+                showDay(getDefaultDayType(updatedHistory));
+
                 setShowDayBreakdown(true);
             };
 

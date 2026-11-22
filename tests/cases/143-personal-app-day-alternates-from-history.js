@@ -1,7 +1,7 @@
 // What this test covers
 // ----------------------
 // Which day the app opens on, under the Nov 2026 Anterior/Posterior program,
-// and the lock that fixes it for the rest of the date once anything is logged.
+// and the lock that fixes it from the first LOG until Submit Day.
 //
 //   1. No history at all: Anterior, unlocked.
 //   2. The most recent Anterior or Posterior session of THIS program was
@@ -11,22 +11,28 @@
 //      whatever was logged in September.
 //   3. The most recent was Posterior: Anterior.
 //   4. Log one card: the Settings toggle is locked on today's day with
-//      "Today is Posterior. It switches tomorrow.", a tap on Anterior does
-//      nothing, and a reload keeps both the day and the lock. The workout is
-//      stamped with its day at the first LOG, so letting the day change after
-//      that would put the rest of the session's cards under the wrong day.
+//      "Today is Posterior. It switches after Submit Day.", a tap on Anterior
+//      does nothing, and a reload keeps both the day and the lock. The workout
+//      is stamped with its day at the first LOG, so letting the day change
+//      after that would put the rest of the session's cards under the wrong
+//      day.
+//   5. Submit Day: the session is closed, so the lock lifts. The app moves to
+//      Anterior, the opposite of the session just submitted, exactly as a load
+//      would, and a reload agrees. A LOG after that starts a second session
+//      today, on Anterior, and locks on it.
 //
 // The day is derived from history rather than stored, so there is no flag to
 // drift between devices: a second synced phone opens on the same day.
 //
 // To verify this test is real: make getDefaultDayType return
 // PROGRAM_DAYS[0].id again. (2) fails on the active day. Or drop the lock
-// from the Settings toggle: (4) fails on `locked`.
+// from the Settings toggle: (4) fails on `locked`. Or count submitted sessions
+// in getLockedDayType: (5) fails on `locked`.
 
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, readDayToggle, openSettings, closeSettings } = require('../lib/browser');
-const { activeName, revealCard, logCard } = require('../lib/deck');
+const { activeName, revealCard, logCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -95,7 +101,7 @@ async function loadWith(page, history) {
 
         toggle = await readDayToggle(page);
         eq([toggle.active, toggle.locked], ['posterior-2', true], 'after a LOG the toggle is locked on Posterior');
-        eq(toggle.note, 'Today is Posterior. It switches tomorrow.', 'and says why');
+        eq(toggle.note, 'Today is Posterior. It switches after Submit Day.', 'and says why');
 
         await openSettings(page);
         await page.evaluate(() => document.querySelector('.modal [data-day-type="anterior-2"]').click());
@@ -110,8 +116,37 @@ async function loadWith(page, history) {
         toggle = await readDayToggle(page);
         eq([toggle.active, toggle.locked], ['posterior-2', true], 'a reload keeps the day and the lock');
 
+        // === 5. Submit Day lifts the lock ==================================
+        ok(await submitDay(page), 'submitted the Posterior day');
+        await page.evaluate(() => {
+            const overlay = document.querySelector('.modal-overlay');
+            if (overlay) overlay.click();
+        });
+        await new Promise(r => setTimeout(r, 250));
+        toggle = await readDayToggle(page);
+        eq([toggle.active, toggle.locked, toggle.note], ['anterior-2', false, ''],
+            'after Submit Day the toggle is unlocked, on Anterior');
+        eq(await activeName(page), 'Chest Flies', 'and the deck is the Anterior day from the top');
+
+        await page.reload({ waitUntil: 'networkidle0' });
+        await waitForApp(page);
+        eq([(await readDayToggle(page)).active, (await readDayToggle(page)).locked], ['anterior-2', false],
+            'a reload agrees: Anterior, unlocked');
+
+        await revealCard(page);
+        ok(await logCard(page), 'logged an Anterior card after submitting');
+        const today = new Date().toDateString();
+        const todays = await page.evaluate((ns, today) =>
+            JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]')
+                .filter(w => new Date(w.date).toDateString() === today)
+                .map(w => [w.day, !!w.submitted]), NS, today);
+        eq(todays.sort(), [['anterior-2', false], ['posterior-2', true]],
+            'that is a second session today, on Anterior, beside the submitted Posterior one');
+        toggle = await readDayToggle(page);
+        eq([toggle.active, toggle.locked], ['anterior-2', true], 'and it locks on Anterior');
+
         eq(errors, [], 'no console errors');
-        console.log('PASS: the day alternates from history and locks after a LOG');
+        console.log('PASS: the day alternates from history, locks after a LOG and unlocks on Submit Day');
     } finally {
         await browser.close();
         await server.stop();
