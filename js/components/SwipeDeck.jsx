@@ -68,7 +68,7 @@
         function SwipeDeck({ workoutData, loggedExercises, handleInputChange, getPreviousWorkout,
                              logExercise, completeDay, getCurrentExercises, currentWeek,
                              workoutHistory, expandedWeightBreakdown, openWeightBreakdown,
-                             closeWeightBreakdown, activeDayType, setActiveDayType, foregroundAt,
+                             closeWeightBreakdown, activeDayType, foregroundAt,
                              deckIndex, setDeckIndex, onEditExercise }) {
             const exercises = getCurrentExercises();
             // One slot past the last exercise is the finish card.
@@ -122,9 +122,11 @@
             // ref. This effect used to run on every mount as well as every
             // change, and since the deck is unmounted while History is on
             // screen, coming back from History ran the day-switch reset: card
-            // one, panel shut. Nothing had switched. The day pills live on this
-            // component, so a genuine change always happens while it is mounted
-            // and the ref sees it.
+            // one, panel shut. Nothing had switched. The day toggle has lived in
+            // Settings since Nov 2026, so a switch can now happen while the deck
+            // is unmounted (Settings over History); App's showDay does the
+            // index and panel reset itself for that case, and this effect is
+            // what clears a celebration when the deck is mounted.
             const lastDayType = React.useRef(activeDayType);
             React.useEffect(() => {
                 if (lastDayType.current === activeDayType) return;
@@ -491,23 +493,6 @@
 
             return (
                 <div className="deck">
-                    {/* Only when there is a choice to make: a one-day program
-                        (Full Body) renders no toggle at all. */}
-                    {PROGRAM_DAYS.length > 1 && (
-                        <div className="day-toggle" data-day-type-toggle>
-                            {PROGRAM_DAYS.map(({ id, label }) => (
-                                <button
-                                    key={id}
-                                    data-day-type={id}
-                                    className={'day-pill' + (activeDayType === id ? ' active' : '')}
-                                    onClick={() => setActiveDayType(id)}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
                     {liveWorkout && <SessionClock workout={liveWorkout} foregroundAt={foregroundAt} />}
 
                     <div

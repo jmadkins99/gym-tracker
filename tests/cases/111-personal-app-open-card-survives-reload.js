@@ -22,10 +22,15 @@
 //   4. An anchor for a movement already logged today (e.g. by another synced
 //      device) is not resumed.
 //   5. Yesterday's anchor is not resumed.
+//   6. Once today is locked to a day, an anchor on the OTHER day (left by a
+//      card opened before another synced device logged first) is not resumed,
+//      and does not pull the deck off the locked day.
 //
-// Choosing the non-default day is what makes (1) non-vacuous for the day
-// toggle, and choosing card three is what makes it non-vacuous for position:
-// a restore that forgot either would still pass on card one of today's default.
+// Choosing card three is what makes (1) non-vacuous for position: a restore
+// that forgot it would still pass on card one. Since Nov 2026 the day half of
+// (1) no longer rests on the anchor alone: the first LOG locks the day (case
+// 143) and a pick survives a reload (case 144), so the day checks here are the
+// lock holding through every reload below.
 //
 // Logging a card FIRST is the gym, and the first version of this case did
 // not do it. The first log of a day writes a row for every exercise on that
@@ -36,17 +41,18 @@
 // logged card: card one renders open because it is logged, so "a card is open"
 // held while the deck sat on the wrong one. Hence the position and id checks.
 //
-// It is card TWO rather than card one since the Sep 2026 Full Body switch.
-// With one program day the reloads below land on card one of the same day,
-// and a logged card one would read as open for that reason alone.
+// It is card TWO rather than card one: the reloads below land on card one of
+// the locked day, and a logged card one would read as open for that reason
+// alone.
 //
 // To verify this test is real: delete the restoreOpenCard(...) call in App.jsx's
-// hydration. (1) fails on the day pill. Or make closeWeightBreakdown only clear
+// hydration. (1) fails on the position. Or make closeWeightBreakdown only clear
 // expandedWeightBreakdown, as it used to: (3) fails, reopening the card you left.
+// Or drop the lock check from restoreOpenCard: (6) fails on the day.
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, readDayToggle, waitFor } = require('../lib/browser');
 const { goToCardById, revealCard, isRevealed, logCard, logCardById, deckPosition, startAnchors, todayWorkout } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -60,13 +66,7 @@ const activeCardId = (page) => page.evaluate(() => {
     return card ? card.getAttribute('data-exercise-id') : null;
 });
 
-// A one-day program (Full Body, Sep 2026) renders no toggle; its one day is
-// then the active day by definition.
-const activeDay = (page) => page.evaluate(() => {
-    const pill = document.querySelector('.day-pill.active');
-    if (pill) return pill.getAttribute('data-day-type');
-    return PROGRAM_DAYS.length === 1 ? PROGRAM_DAYS[0].id : null;
-});
+const activeDay = async (page) => (await readDayToggle(page)).active;
 
 async function reload(page) {
     await page.reload({ waitUntil: 'networkidle0' });
@@ -94,19 +94,17 @@ async function seedAnchor(page, id, dateString) {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await reload(page);
 
-        // The day a fresh load lands on, and the card three into the OTHER day.
-        const { defaultDay, otherDay, target, total } = await page.evaluate(() => {
-            const defaultDay = getDefaultDayType(new Date());
-            // The other program day when there is one. On a one-day program
-            // this is the default day itself, and the day half of (1) is
-            // vacuous until PROGRAM_DAYS grows again; position and reveal
-            // still carry the case.
-            const otherDay = PROGRAM_DAYS.map(d => d.id).find(d => d !== defaultDay) ?? defaultDay;
-            const roster = DEFAULT_EXERCISES.filter(e => e.day === otherDay)
+        // With no history a fresh load is on Anterior; the session below is
+        // Posterior, card three in.
+        const defaultDay = 'anterior-2';
+        const otherDay = 'posterior-2';
+        const { target, total, otherDayCard } = await page.evaluate((other, def) => {
+            const byOrder = (day) => DEFAULT_EXERCISES.filter(e => e.day === day)
                 .sort((a, b) => a.order - b.order);
-            return { defaultDay, otherDay, target: roster[2].id, total: roster.length };
-        });
-        eq(await activeDay(page), defaultDay, `a fresh load shows today's default day, ${defaultDay}`);
+            const roster = byOrder(other);
+            return { target: roster[2].id, total: roster.length, otherDayCard: byOrder(def)[2].id };
+        }, otherDay, defaultDay);
+        eq(await activeDay(page), defaultDay, `a fresh load shows the default day, ${defaultDay}`);
 
         // === 1. Open card three on the other day, reload ==================
         await selectDayType(page, otherDay);
@@ -122,7 +120,7 @@ async function seedAnchor(page, id, dateString) {
         await new Promise(r => setTimeout(r, GAP_MS));
         await reload(page);
 
-        eq(await activeDay(page), otherDay, 'after the reload the day toggle is back on the card\'s day');
+        eq(await activeDay(page), otherDay, 'after the reload the deck is back on the session\'s day');
         eq(await deckPosition(page), `3 of ${total}`, 'the deck is back on card three');
         eq(await activeCardId(page), target, `and that card is ${target}`);
         ok(await isRevealed(page), 'and it is still open — no second swipe needed');
@@ -146,10 +144,9 @@ async function seedAnchor(page, id, dateString) {
         eq(Object.keys(await startAnchors(page, NS)), [], 'logging dropped the anchor');
         await reload(page);
         eq(await isRevealed(page), false, 'with no anchor, nothing is reopened');
-        eq(await activeDay(page), defaultDay, 'and the day is the ordinary default');
+        eq(await activeDay(page), otherDay, 'and the day is still the locked one');
 
         // === 3. Leaving an open card drops its anchor =====================
-        await selectDayType(page, otherDay);
         const roster = await page.evaluate((day) => DEFAULT_EXERCISES
             .filter(e => e.day === day).sort((a, b) => a.order - b.order).map(e => e.id), otherDay);
         await goToCardById(page, roster[3]);
@@ -162,14 +159,14 @@ async function seedAnchor(page, id, dateString) {
         }, NS, roster[3]);
         await reload(page);
         eq(await isRevealed(page), false, 'a card you walked away from is not reopened');
-        eq(await activeDay(page), defaultDay, 'and the day is not dragged back to it');
+        eq(await activeDay(page), otherDay, 'and the day stays put');
 
         // === 4. An anchor for a movement already logged today =============
         // `target` was logged in (1); fake a leftover anchor for it.
         await seedAnchor(page, target, await page.evaluate(() => new Date().toDateString()));
         await reload(page);
         eq(await isRevealed(page), false, 'an anchor for an already-logged movement is not resumed');
-        eq(await activeDay(page), defaultDay, 'and does not switch the day');
+        eq(await activeDay(page), otherDay, 'and does not switch the day');
 
         // === 5. Yesterday's anchor ========================================
         await seedAnchor(page, roster[1], await page.evaluate(() => {
@@ -177,7 +174,13 @@ async function seedAnchor(page, id, dateString) {
         }));
         await reload(page);
         eq(await isRevealed(page), false, 'yesterday\'s anchor is not resumed');
-        eq(await activeDay(page), defaultDay, 'and does not switch the day');
+        eq(await activeDay(page), otherDay, 'and does not switch the day');
+
+        // === 6. An anchor on the other day, once today is locked ==========
+        await seedAnchor(page, otherDayCard, await page.evaluate(() => new Date().toDateString()));
+        await reload(page);
+        eq(await isRevealed(page), false, `an anchor on ${defaultDay} is not resumed once today is ${otherDay}`);
+        eq(await activeDay(page), otherDay, 'and the deck stays on the locked day');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: the open card survives a reload with its original start time');

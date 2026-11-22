@@ -183,7 +183,7 @@ async function reload(page) {
         const VERSION = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
 
         // --- Control: on the 2.5 seed a max-reps session bumps ---------------
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         let flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5', 'on the 2.5 seed, 6 reps bumps the weight: 200 + 2.5');
         eq(flies.repsValue, '4', 'and the reps reset to the bottom of the rep range');
@@ -231,7 +231,7 @@ async function reload(page) {
 
         // --- The card stops suggesting anything ------------------------------
         await reload(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '200', 'a max-reps session no longer bumps the weight');
         eq(flies.repsValue, '6', "and last session's 6 reps carry over, no reset to the range bottom");
@@ -240,6 +240,7 @@ async function reload(page) {
             'the green hero tag is gone, but the PR streak still counts the session');
 
         // The control proves 0 is per-exercise, not a global switch.
+        await selectDayType(page, 'posterior-2');
         const calves = await readDeckCard(page, 'Calf Raises');
         eq(calves.weightValue, '102.5', 'the untouched control still bumps by its 2.5 seed');
         eq(calves.repsValue, '4', 'and still resets to the bottom of its range');
@@ -251,10 +252,11 @@ async function reload(page) {
         // and still gets it.
         await seedStagnantHistory(page);
         await reload(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '200', 'the 0-increment card still holds its weight');
         eq(await plateauTag(page), null, 'and six identical sessions raise no plateau banner on it');
+        await selectDayType(page, 'posterior-2');
         await readDeckCard(page, 'Calf Raises');
         eq(await plateauTag(page), 'Plateau detected',
             'while the control on a real step gets the banner from the same history');

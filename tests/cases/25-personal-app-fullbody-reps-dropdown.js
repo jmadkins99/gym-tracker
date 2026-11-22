@@ -66,7 +66,7 @@ async function readStandardCard(page, name) {
         await page.evaluate(() => localStorage.setItem('gym-local:firstWorkoutMonday', '2026-05-25T00:00:00.000Z'));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // Every standard exercise uses exactly 3/4/5/6.
         const sp = await readStandardCard(page, 'Lu Raises');
@@ -84,7 +84,7 @@ async function readStandardCard(page, name) {
         // for it. Keeping Kelso Shrugs specifically matters: the expected
         // 190 -> 192.5 bump is its own PR increment, so substituting an
         // Anterior movement to save the hop would change what is covered.
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
         const ks = await readStandardCard(page, 'Kelso Shrugs');
         eq(ks.repsValue, '4', 'after hitting 6, reps reset to 4 for the new weight');
         eq(ks.weightValue, '192.5', 'after hitting 6, weight auto-bumps by the PR increment');
@@ -96,7 +96,7 @@ async function readStandardCard(page, name) {
         // One-tap LOG on Shoulder Press (no interaction) persists 5 reps @ 100.
         // On the deck that means navigating to it and opening it — LOG exists
         // only on the revealed face, which is the point of the screen.
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         await goToCardAndLog(page, 'Lu Raises');
         const saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);
@@ -106,7 +106,7 @@ async function readStandardCard(page, name) {
         eq(loggedSP.weight, '100', 'one-tap LOG persists the pre-filled weight');
 
         eq(errors, [], 'no console errors');
-        console.log('PASS: full-body reps dropdown carries over / resets on bump / one-tap logs.');
+        console.log('PASS: reps dropdown carries over / resets on bump / one-tap logs.');
     } finally {
         await browser.close();
         await server.stop();

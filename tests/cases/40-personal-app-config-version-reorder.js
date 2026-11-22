@@ -71,35 +71,37 @@ const OLD_ORDER_IDS = [
     'quads-knee-extension-during-hip-flexion',
 ];
 
-// The canonical Full Body day (v27 order). Names are the fresh-install ones
-// because the seed below builds each entry from DEFAULT_EXERCISES — except
-// Chest Flies, renamed by the user.
-const EXPECTED_NEW_ORDER = [
-    'Recline Curls',
-    'Preacher Curls',
-    'Dumbbell Lat Pullover',    // v27, arrives via the migration
+// The canonical v28 days, Anterior then Posterior. Names are the
+// fresh-install ones because the seed below builds each entry from
+// DEFAULT_EXERCISES — except Chest Flies, renamed by the user.
+const EXPECTED_ANTERIOR = [
     'My Renamed Flies',       // pecs-transverse-shoulder-adduction, renamed by the user below
     'Low to High Flies',
+    'High to Low Flies',      // v28, arrives via the migration
     'Chest Press',            // not in the seed; arrives via the migration
-    'Supinations',            // v26, arrives via the migration
     'Tricep Extensions',
     'Lateral Raises',
     'Overhead Tricep Extensions',
     'Lu Raises',
     'JM Press',               // v26, arrives via the migration
-    'Reverse Wrist Curls',    // v26, a new id: NOT the seed's retired reverse-wrist-curls
-    'Wrist Curls',            // v26, arrives via the migration
+    'Leg Extensions',         // not in the seed; arrives via the migration
+    'Squats',
+];
+const EXPECTED_POSTERIOR = [
+    'Recline Curls',
+    'Preacher Curls',
+    'Supinations',            // v26, arrives via the migration
     'Sagittal Pulldowns',
     'Frontal Pulldowns',
     'Ab Crunches',
-    'Leg Extensions',         // not in the seed; arrives via the migration
-    'Calf Raises',
     'Kelso Shrugs',
+    'Reverse Wrist Curls',    // v26, a new id: NOT the seed's retired reverse-wrist-curls
+    'Wrist Curls',            // v26, arrives via the migration
+    'Calf Raises',
     'Stiff Legged Deadlift',
-    'Squats',
-    'Transverse Rows',
-    'Hip Adduction',
 ];
+// The seed's Transverse Rows and Hip Adduction are retired in v28 and drop,
+// like the wrist pair.
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -126,11 +128,12 @@ const EXPECTED_NEW_ORDER = [
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
-
-        const names = await readDeckNames(page);
-        eq(names, EXPECTED_NEW_ORDER,
-            'stale config is reordered to the canonical layout, renames preserved');
+        await selectDayType(page, 'anterior-2');
+        eq(await readDeckNames(page), EXPECTED_ANTERIOR,
+            'stale config is reordered to the canonical Anterior layout, renames preserved');
+        await selectDayType(page, 'posterior-2');
+        eq(await readDeckNames(page), EXPECTED_POSTERIOR,
+            'and to the canonical Posterior layout');
 
         const stamped = await page.evaluate((ns) => {
             const raw = localStorage.getItem(ns + 'gymExerciseConfig');
@@ -150,32 +153,30 @@ const EXPECTED_NEW_ORDER = [
                 .find(b => b.textContent.includes('Manage Exercises'));
             btn.click();
         });
-        // Move the last row up one. It was Leg Extensions until v26 (Oct 2026)
-        // put Hip Adduction at the end of the day.
-        // Tricep Extensions was the probe here until Sep 2026 sent it to index
-        // 0, where there is no up arrow to click — the probe has to be a row
-        // with something above it, and the tail of the day is the stable place
-        // to find one.
+        // Move the last Posterior row up one. The probe has to be a row with
+        // something above it on its own day (the arrows stop at a day's
+        // boundary), and the tail of a day is the stable place to find one.
+        // It was Hip Adduction at the end of Full Body until v28 (Nov 2026).
         const moved = await page.evaluate(() => {
             // Match on the name element, not the row's textContent: the row
             // also holds a <select> whose textContent is every option label.
             const rows = Array.from(document.querySelectorAll('.exercise-row'));
             const row = rows.find(r =>
-                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Hip Adduction');
+                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Stiff Legged Deadlift');
             const up = Array.from(row.querySelectorAll('button'))
                 .find(b => b.textContent.trim() === '↑');
             if (!up) return false;
             up.click();
             return true;
         });
-        ok(moved, 'clicked the up arrow on Hip Adduction in Manage Exercises');
+        ok(moved, 'clicked the up arrow on Stiff Legged Deadlift in Manage Exercises');
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
         const afterReorder = await readDeckNames(page);
-        const expectedAfter = [...EXPECTED_NEW_ORDER];
+        const expectedAfter = [...EXPECTED_POSTERIOR];
         const last = expectedAfter.length - 1;
         expectedAfter.splice(last - 1, 0, expectedAfter.splice(last, 1)[0]); // the last row up one
         eq(afterReorder, expectedAfter,

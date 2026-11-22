@@ -52,7 +52,7 @@ const anchorOf = async (page) => {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'full-body');
+        await selectDeckDay(page, 'anterior-2');
 
         // === 1. Swipe away, come back: closed ==========================
         await revealCard(page);

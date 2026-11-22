@@ -82,7 +82,7 @@ const PAN = 120;        // how far Safari shoves the visible area down
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'full-body');
+        await selectDeckDay(page, 'anterior-2');
 
         const overflow = () => page.evaluate(() => {
             window.scrollTo(0, 99999);

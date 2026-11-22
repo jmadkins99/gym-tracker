@@ -159,7 +159,7 @@ async function reload(page) {
 
         // --- The card -------------------------------------------------------
         await reload(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         const flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '54', 'after 52.5 x 6 the card suggests 54, not 53.75');
         eq((await heroTags(page)).up, '+1.5 lbs', 'and the hero tag says the real jump');
@@ -177,10 +177,11 @@ async function reload(page) {
             ],
         })));
         await reload(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         const top = await readDeckCard(page, 'Chest Flies');
         eq([top.weightValue, top.repsValue], ['84.5', '6'], 'at 84.5 weight and reps carry forward');
         eq(await heroTags(page), { up: null, flat: null }, 'with no bump tag and no plateau banner');
+        await selectDayType(page, 'posterior-2');
         await readDeckCard(page, 'Calf Raises');
         eq((await heroTags(page)).flat, 'Plateau detected', 'while the control still gets the banner');
 

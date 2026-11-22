@@ -72,7 +72,7 @@ const has = (page, field) =>
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
         const card = await setWeightAndOpen(page, 'Stiff Legged Deadlift', 270);
         ok(card.indexOf('pin 260') === -1, 'the card renders no Gympin overflow row');
 

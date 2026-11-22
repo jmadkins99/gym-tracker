@@ -66,7 +66,7 @@ async function readCard(page, name) {
         await seedExerciseConfig(page, { overrides: { 'traps-scapular-retraction': { loadType: 'plate-one-sided' } } });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
         const clicked = await clickBreakdown(page, 'Kelso Shrugs');
         ok(clicked, 'Kelso Shrugs opens to show its breakdown');

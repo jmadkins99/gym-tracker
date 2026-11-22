@@ -29,7 +29,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { workoutEntry } = require('../lib/state');
 const { ACTIVE, readDeckNames, readDeckCard, bottomNav } = require('../lib/deck');
 const { eq, ok } = require('../lib/assert');
@@ -60,6 +60,12 @@ const EXPECTED = [
     ['adductors-transverse-hip-adduction', 'Hip Adduction'],
     ['calves-ankle-extension', 'Calf Raises'],
     ['quads-knee-extension', 'Leg Extensions'],
+];
+// v25 ids a later version took off the roster (v28, Nov 2026). They are
+// checked as absent rather than dropped from EXPECTED, which is v25's list.
+const RETIRED_SINCE_V25 = [
+    'delts-transverse-shoulder-abduction-with-elbow-flexion',  // Transverse Rows
+    'adductors-transverse-hip-adduction',                      // Hip Adduction
 ];
 
 // The seed: a v24 device as it was the day before, with the user's real
@@ -112,13 +118,14 @@ const OLD_SESSION = workoutEntry({
         { id: 'leg-extensions', name: 'Hip Adduction', weight: '230', reps: '5' },
     ],
 });
-// A later session already on the new ids: Lu Raises at 30, and Hip Adduction
-// logged with the weight box still blank, which is what Log saves then.
+// A later session already on the new ids: Lu Raises at 30, and Leg
+// Extensions logged with the weight box still blank, which is what Log saves
+// then. (The blank row was Hip Adduction until v28 retired it.)
 const NEW_SESSION = workoutEntry({
     date: lastWeek(2), day: 'full-body',
     exercises: [
         { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '30', reps: '5' },
-        { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', weight: '', reps: '5' },
+        { id: 'quads-knee-extension', name: 'Leg Extensions', weight: '', reps: '5' },
     ],
 });
 
@@ -181,8 +188,11 @@ const content = (history) => history.map(({ week, ...w }) => w);
         eq(config.exercises.map(e => [e.id, e.name]), CURRENT.roster,
             'the config holds exactly the current roster, in order');
         const current = new Set(CURRENT.roster.map(r => r.join('=')));
-        eq(EXPECTED.filter(r => !current.has(r.join('='))), [],
-            'every v25 id is in it under its v25 name');
+        eq(EXPECTED.filter(([id]) => !RETIRED_SINCE_V25.includes(id))
+            .filter(r => !current.has(r.join('='))), [],
+            'every v25 id still on the roster is in it under its v25 name');
+        eq(config.exercises.filter(e => RETIRED_SINCE_V25.includes(e.id)), [],
+            'and the ones v28 retired are not');
         eq(config.exercises.filter(e => V24_CONFIG.exercises.some(o => o.id === e.id)).map(e => e.id), [],
             'and none of the v24 ids survived');
         const settings = await page.evaluate((exercises) => exercises.map(e => [
@@ -200,11 +210,17 @@ const content = (history) => history.map(({ week, ...w }) => w);
         eq(content(history), content(seededHistory),
             'stored history is exactly as seeded: old ids, plateau busters and names');
 
-        // --- The deck ---
-        eq(await readDeckNames(page), CURRENT.roster.map(([, name]) => name),
-            'the deck shows every card in order under the new names');
+        // --- The deck, Anterior then Posterior ---
+        const deckNames = [];
+        for (const day of ['anterior-2', 'posterior-2']) {
+            await selectDayType(page, day);
+            deckNames.push(...await readDeckNames(page));
+        }
+        eq(deckNames, CURRENT.roster.map(([, name]) => name),
+            'the two days show every card in order under the new names');
 
-        for (const name of ['Squats', 'Recline Curls']) {
+        for (const [day, name] of [['anterior-2', 'Squats'], ['posterior-2', 'Recline Curls']]) {
+            await selectDayType(page, day);
             const card = await readDeckCard(page, name);
             eq([card.last, card.weightValue, card.heroWeight, card.breakdown],
                 ['', '', '', []],
@@ -217,9 +233,10 @@ const content = (history) => history.map(({ week, ...w }) => w);
 
         // A blank-weight log renders the next session as blank too, not as a
         // broken card.
-        const hip = await readDeckCard(page, 'Hip Adduction');
-        eq([hip.weightValue, hip.breakdown], ['', []],
-            `Hip Adduction after a blank-weight log: blank box, no breakdown (Last: "${hip.last}")`);
+        await selectDayType(page, 'anterior-2');
+        const legExt = await readDeckCard(page, 'Leg Extensions');
+        eq([legExt.weightValue, legExt.breakdown], ['', []],
+            `Leg Extensions after a blank-weight log: blank box, no breakdown (Last: "${legExt.last}")`);
 
         const lu = await readDeckCard(page, 'Lu Raises');
         ok(/30/.test(lu.last) && !/255/.test(lu.last),

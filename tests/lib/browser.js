@@ -114,41 +114,79 @@ async function waitForApp(page, timeoutMs = 8000) {
     await new Promise(r => setTimeout(r, 250));
 }
 
-// Selects a day type via the in-app toggle, so tests are independent of the
-// real weekday (the view otherwise opens on whichever day the weekday rule
-// picks).
+// The day toggle lives in Settings (Nov 2026), above Manage Exercises. These
+// open the gear, act, and close it again, so a case is left exactly where it
+// was — on the deck, or on History — with only the day changed.
+async function openSettings(page) {
+    await page.evaluate(() => document.querySelector('.settings-btn').click());
+    await waitFor(page, 'the Settings modal to open',
+        () => !!document.querySelector('.modal .modal-title'));
+}
+
+async function closeSettings(page) {
+    await page.evaluate(() => {
+        const close = Array.from(document.querySelectorAll('.modal .modal-btn'))
+            .find(b => b.textContent.trim() === 'Close');
+        if (close) close.click();
+    });
+    await waitFor(page, 'the Settings modal to close', () => !document.querySelector('.modal'));
+}
+
+// What the Settings day toggle shows: every day it offers, which one is
+// active, whether it is locked, and the note under it ('' when none).
+async function readDayToggle(page) {
+    await openSettings(page);
+    const state = await page.evaluate(() => {
+        const toggle = document.querySelector('.modal [data-day-type-toggle]');
+        const pills = Array.from(document.querySelectorAll('.modal [data-day-type]'));
+        return {
+            days: pills.map(b => b.getAttribute('data-day-type')),
+            active: (pills.find(b => b.classList.contains('active')) || { getAttribute: () => null })
+                .getAttribute('data-day-type'),
+            locked: !!toggle && toggle.hasAttribute('data-locked'),
+            note: (document.querySelector('.modal [data-day-note]')?.textContent || '').trim(),
+        };
+    });
+    await closeSettings(page);
+    return state;
+}
+
+// Selects a day via the Settings toggle, so tests are independent of which
+// day the app picked from history.
 //
-// Throws by default when the toggle is not there. It used to return false and
-// let the caller carry on, but almost every call site ignores the return value,
-// so a renamed day literal would leave ~20 cases silently testing whatever day
-// today happens to default to — passing or failing depending on the weekday,
-// which reads as flakiness rather than a bug. Failing loudly here turns that
-// into one precise message naming the toggles that do exist.
+// Throws by default when it cannot: no pill for that day, or the toggle is
+// locked on another one (something was logged today). It used to return false
+// and let the caller carry on, but almost every call site ignores the return
+// value, so a renamed day literal would leave ~20 cases silently testing
+// whatever day the app opened on — which reads as flakiness rather than a bug.
+// Failing loudly here turns that into one precise message.
+//
+// Asking for the day already showing is a success without a click, locked or
+// not; that is the state the caller wanted.
 //
 // Pass { optional: true } when the absence of a toggle is the thing under test
 // (e.g. asserting a retired day type is gone).
-//
-// A one-day program (Full Body, Sep 2026) renders no toggle at all. Asking for
-// that one day is then a success without a click — it is already showing —
-// but asking for any other day still throws, for the reason above.
 async function selectDayType(page, type, { optional = false } = {}) {
+    await openSettings(page);
     const result = await page.evaluate((t) => {
-        const btn = document.querySelector(`[data-day-type="${t}"]`);
-        if (btn) { btn.click(); return { clicked: true, available: [] }; }
-        const days = PROGRAM_DAYS.map(d => d.id);
-        if (days.length === 1 && days[0] === t) return { clicked: false, onlyDay: true, available: [] };
-        return {
-            clicked: false,
-            available: Array.from(document.querySelectorAll('[data-day-type]'))
-                .map(b => b.getAttribute('data-day-type')),
-        };
+        const toggle = document.querySelector('.modal [data-day-type-toggle]');
+        const pills = Array.from(document.querySelectorAll('.modal [data-day-type]'));
+        const available = pills.map(b => b.getAttribute('data-day-type'));
+        const btn = pills.find(b => b.getAttribute('data-day-type') === t);
+        if (!btn) return { clicked: false, available };
+        if (btn.classList.contains('active')) return { clicked: false, already: true, available };
+        if (toggle.hasAttribute('data-locked')) return { clicked: false, locked: true, available };
+        btn.click();
+        return { clicked: true, available };
     }, type);
-    if (result.onlyDay) return true;
+    await closeSettings(page);
+    if (result.already) return true;
 
     if (!result.clicked && !optional) {
-        throw new Error(
-            `no day-type toggle for "${type}" ` +
-            `(available: ${result.available.length ? result.available.join(', ') : 'none'})`);
+        throw new Error(result.locked
+            ? `the day toggle is locked, so "${type}" cannot be chosen (something was logged today)`
+            : `no day-type toggle for "${type}" ` +
+              `(available: ${result.available.length ? result.available.join(', ') : 'none'})`);
     }
     if (result.clicked) await new Promise(r => setTimeout(r, 150));
     return result.clicked;
@@ -203,5 +241,6 @@ const waitForCards = (page) =>
     waitFor(page, 'exercise cards to render',
         () => document.querySelectorAll('.exercise-card').length > 0);
 
-module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType,
+module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
+                   openSettings, closeSettings,
                    waitFor, waitForStorageKey, waitForCards };

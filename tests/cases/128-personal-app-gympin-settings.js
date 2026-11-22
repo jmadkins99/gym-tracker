@@ -247,13 +247,14 @@ async function readSaved(page) {
         // === 7. The card reads the setting, across a reload ================
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         const fliesCard = await setWeightAndOpen(page, 'Chest Flies', 165);
         contains(fliesCard, 'TOP SET', 'Chest Flies now has a Top set row');
         contains(fliesCard, 'pin 150', 'pegged at the 150 the user typed');
         contains(fliesCard, '10, 5', 'with the 15 lb excess as a 10 and a 5');
 
+        await selectDayType(page, 'posterior-2');
         const backCard = await setWeightAndOpen(page, 'Stiff Legged Deadlift', 270);
         ok(backCard.indexOf('pin 260') === -1, 'Stiff Legged Deadlift no longer pegs at 260');
         ok(backCard.indexOf('TOP SET') === -1, 'and has no Top set row at all — a stack with no ceiling');
@@ -271,6 +272,7 @@ async function readSaved(page) {
         eq(saved.byId['pecs-transverse-shoulder-adduction'], { hasGympin: true, gympin: true, hasStackMax: true, stackMax: 150 },
             'the fields are kept, not deleted, by the reclassification');
         await closeSettings(page);
+        await selectDayType(page, 'anterior-2');
         const plateCard = await setWeightAndOpen(page, 'Chest Flies', 165);
         ok(plateCard.indexOf('pin 150') === -1, 'the card renders no pin row on a plate machine');
         contains(plateCard, '/side', 'it renders the two-sided shape instead');

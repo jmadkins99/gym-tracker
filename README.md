@@ -7,8 +7,12 @@ Client counterpart: [public-gym-app](https://github.com/jmadkins99/public-gym-ap
 
 ## Features
 
-- **Program**: one Full Body day of 19 weighted exercises, defined in
-  `PROGRAM_DAYS` in `js/config.js`. Older splits stay readable in History.
+- **Program**: an Anterior and a Posterior day of 11 weighted exercises each,
+  defined in `PROGRAM_DAYS` in `js/config.js`. Older splits stay readable in
+  History.
+- **Day**: the app opens on the opposite of your last Anterior or Posterior
+  workout (Anterior if there's none). Settings → Day switches it until
+  midnight, and the first LOG locks it for the rest of the day.
 - **Logging**: one card per exercise, pre-filled from last session; LOG saves
   each exercise, Submit Day closes the day.
 - **Reps dropdown**: each exercise's rep range (default 4–6, editable in

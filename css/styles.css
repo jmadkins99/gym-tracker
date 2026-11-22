@@ -620,6 +620,24 @@
             box-shadow: 0 2px 12px rgba(var(--accent-rgb), 0.45);
         }
 
+        /* The day toggle in Settings, above Manage Exercises. */
+        .settings-day { margin-bottom: 12px; }
+        .settings-day-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #8a8aa5;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin: 0 0 6px 4px;
+        }
+        .settings-day .day-toggle[data-locked] { opacity: 0.45; }
+        .settings-day .day-pill:disabled { cursor: default; }
+        .settings-day-note {
+            font-size: 12px;
+            color: #6a6a85;
+            margin: 6px 0 0 4px;
+        }
+
         /* ---- The card stage ---- */
         .deck-stage {
             flex: 1;
@@ -1349,7 +1367,6 @@
         }
 
         .kb-open .deck-foot,
-        .kb-open .day-toggle,
         .kb-open .session-clock {
             display: none;
         }

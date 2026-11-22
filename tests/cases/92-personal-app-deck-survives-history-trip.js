@@ -52,7 +52,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'full-body');
+        await selectDeckDay(page, 'anterior-2');
 
         // === 1. An open card survives the round trip =====================
         // Card 3 rather than card 1: landing on the right card by accident is
