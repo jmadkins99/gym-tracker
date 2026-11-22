@@ -134,7 +134,7 @@ async function readCardBadge(page, exerciseId) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
         eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-extension'), '🔥 3',
             'the card counts the Recline Curls run at three');

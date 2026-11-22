@@ -74,11 +74,13 @@ function daysAgo(n) {
             twoSided: getWeightIncrement({ id: ex.id }, 'plate-two-sided'),
         })));
 
-        // 24 since Nov 2026 (v27 added the pullover); 23 from Oct 2026 (v26 added four); 19 from Sep 2026, when the wrist
-        // pair left; 21 before that. The number is asserted rather than
+        // 22 since v28 (Nov 2026: High to Low Flies in, the pullover,
+        // Transverse Rows and Hip Adduction out); 24 at v27, which added the
+        // pullover; 23 from Oct 2026 (v26 added four); 19 from Sep 2026, when
+        // the wrist pair left; 21 before that. The number is asserted rather than
         // derived so a roster change has to come through here deliberately —
         // the sweep below is only as good as its coverage of the whole list.
-        eq(table.length, 24, 'swept all 24 exercises');
+        eq(table.length, 22, 'swept all 22 exercises');
         ok(table.every(r => typeof r.raw === 'number'),
             'every exercise has a raw PR increment to adjust');
 
@@ -153,7 +155,7 @@ function daysAgo(n) {
         }, NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         // One card at a time now: navigate to it and open it rather than
         // reading every card off the screen at once.
         let flies = await readDeckCard(page, 'Chest Flies');
@@ -173,7 +175,7 @@ function daysAgo(n) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         ok(flies, 'found the Chest Flies card after switching it two-sided');
         eq(flies.weightValue, '202.5',
@@ -191,7 +193,7 @@ function daysAgo(n) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '201.25',
             'a saved 1.25 override on a pin stack suggests 200 + 1.25');
@@ -203,7 +205,7 @@ function daysAgo(n) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5',
             'the same saved 1.25 on a two-sided machine is doubled to 200 + 2.5');

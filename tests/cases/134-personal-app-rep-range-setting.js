@@ -134,7 +134,7 @@ async function reload(page) {
         const VERSION = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
 
         // Control: on the default range, 6 reps is the top, so the card bumps.
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         let flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5', 'before editing, 6 reps tops the default range: 200 + 2.5');
         eq(await cardRepOptions(page), nums(3, 6), 'before editing, the dropdown is 3..6');
@@ -189,11 +189,12 @@ async function reload(page) {
 
         // --- It reaches the cards ---------------------------------------------
         await reload(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(await cardRepOptions(page), nums(5, 8), '6-8 gives a 5..8 dropdown: one under Min, up to Max');
         eq(flies.weightValue, '200', '6 reps is no longer the top, so no bump');
         eq(flies.repsValue, '6', 'and last session\'s 6 carries over');
+        await selectDayType(page, 'posterior-2');
         await readDeckCard(page, 'Calf Raises');
         eq(await cardRepOptions(page), nums(3, 6), 'the untouched control keeps 3..6');
 
@@ -202,7 +203,7 @@ async function reload(page) {
             localStorage.setItem(ns + 'gymWorkoutHistory', JSON.stringify(hist));
         }, NS, lastSession('8'));
         await reload(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5', '8 reps tops 6-8: 200 + 2.5');
         eq(flies.repsValue, '6', 'and reps reset to Min, 6');

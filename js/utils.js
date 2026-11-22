@@ -76,13 +76,66 @@
             return getConsecutiveWeek(new Date(), workoutHistory);
         }
 
-        // Which day type the app opens on. Full Body (Sep 2026) is one day, so
-        // this is simply the first program day; the date parameter stays so a
-        // future multi-day split can map weekdays again without touching the
-        // call site. (Anterior/Posterior did, via a POSTERIOR_DAYS list — see
-        // git history for that shape.)
-        function getDefaultDayType(date = new Date()) {
-            return PROGRAM_DAYS[0].id;
+        // Device-local storage that only answers on the date it was written.
+        // For session scaffolding that must survive a reload but never leak
+        // into tomorrow: the open card's start anchor (exerciseStartTimes) and
+        // a day picked by hand (dayPick). Each caller keeps its own key, since
+        // the two mean different things and are cleared at different times.
+        // Stored as { date, ...fields }; load() hands back that object, or
+        // null when it is missing, unreadable or from another date.
+        const todayOnlyStorage = {
+            load(key) {
+                try {
+                    const saved = JSON.parse(storage.getItem(key) || 'null');
+                    return saved && saved.date === new Date().toDateString() ? saved : null;
+                } catch (e) {
+                    return null;
+                }
+            },
+            save(key, fields) {
+                storage.setItem(key, JSON.stringify({ date: new Date().toDateString(), ...fields }));
+            },
+            remove(key) {
+                storage.removeItem(key);
+            },
+        };
+
+        // The day today's open session is on, or null. A session is written at
+        // the first LOG and stamped with its day then, so from that moment
+        // until Submit Day closes it the day is fixed: the Settings toggle
+        // locks on it. A submitted session locks nothing, and a LOG after it
+        // starts a new session that locks on its own day. Only a current
+        // PROGRAM_DAYS day counts; a session on a retired day (the switchover
+        // date) locks nothing.
+        function getLockedDayType(history, date = new Date()) {
+            const days = PROGRAM_DAYS.map(d => d.id);
+            const today = date.toDateString();
+            const session = history.find(w => !w.submitted
+                && new Date(w.date).toDateString() === today && days.includes(w.day));
+            return session ? session.day : null;
+        }
+
+        // Which day the app opens on: today's, if something is logged and not
+        // yet submitted;
+        // otherwise the day after the most recent session of THIS program, in
+        // PROGRAM_DAYS order (Anterior, Posterior, Anterior, ...); with none
+        // yet, the first day. Derived from history rather than stored, so it
+        // cannot drift and every synced device agrees. Sessions on another
+        // program's days ('full-body', the Aug–Sep 2026 'anterior') are
+        // skipped: alternating off them would hang the new program's first
+        // day on whatever was logged months ago.
+        //
+        // A day picked by hand in Settings overrides this until midnight; that
+        // lives in App.jsx, since it is device state rather than history.
+        function getDefaultDayType(history = [], date = new Date()) {
+            const locked = getLockedDayType(history, date);
+            if (locked) return locked;
+            const days = PROGRAM_DAYS.map(d => d.id);
+            const latest = history
+                .filter(w => days.includes(w.day))
+                .reduce((best, w) => (!best || new Date(w.date) > new Date(best.date) ? w : best), null);
+            if (!latest) return days[0];
+            return days[(days.indexOf(latest.day) + 1) % days.length];
         }
 
         // Human label for a stored workout's `day`, across every split this app
@@ -97,7 +150,11 @@
         // session came from. The code paths stay distinct; do not "simplify"
         // them together.
         function getWorkoutDayLabel(workout) {
-            // Sep 2026 Full Body. Not the Jun–Aug 2026 'fullbody' below, which
+            // Nov 2026 Anterior/Posterior (PROGRAM_DAYS). Same words as the
+            // Aug–Sep 2026 pair below, on ids of their own.
+            if (workout.day === 'anterior-2') return 'Anterior';
+            if (workout.day === 'posterior-2') return 'Posterior';
+            // Sep–Nov 2026 Full Body. Not the Jun–Aug 2026 'fullbody' below, which
             // reaches the same label by falling through; see PROGRAM_DAYS.
             if (workout.day === 'full-body') return 'Full Body';
             // Aug–Sep 2026 Anterior/Posterior. Load-bearing forever, like the

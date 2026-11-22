@@ -12,11 +12,12 @@
 // Seeded posterior history, two sessions:
 //
 //   Kelso Shrugs           190x5 -> 200x3  weight UP, failed set: no PR  <- the bug
-//   Transverse Plane Rows  100x5 -> 105x4  weight UP, real set:   PR     <- control
+//   Sagittal Pulldowns     100x5 -> 105x4  weight UP, real set:   PR     <- control
 //   Shoulder Flexion Curls  55x4 ->  55x3  same weight, down to 3: no PR
 //
-// The controls matter in both directions: without Transverse Plane Rows this
+// The controls matter in both directions: without Sagittal Pulldowns this
 // case would also pass against an app that had stopped awarding PRs entirely.
+// (Transverse Plane Rows held that control until v28 retired it, Nov 2026.)
 //
 // A failed set is still a baseline — the machine gave you what it gave you —
 // so coming back and getting four reps at that same weight is a genuine
@@ -45,7 +46,7 @@ const BASELINE = workoutEntry({
     submitted: true,
     exercises: [
         { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '190', reps: '5' },
-        { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', weight: '100', reps: '5' },
+        { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', weight: '100', reps: '5' },
         { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '55', reps: '4' },
     ],
 });
@@ -56,7 +57,7 @@ const LATEST = workoutEntry({
     submitted: true,
     exercises: [
         { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', weight: '200', reps: '3' },
-        { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', weight: '105', reps: '4' },
+        { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', weight: '105', reps: '4' },
         { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '55', reps: '3' },
     ],
 });
@@ -65,7 +66,7 @@ const LATEST = workoutEntry({
 // stored name, which History does not use.
 const NAMES = {
     'traps-scapular-retraction': 'Kelso Shrugs',
-    'delts-transverse-shoulder-abduction-with-elbow-flexion': 'Transverse Rows',
+    'lats-sagittal-shoulder-extension': 'Sagittal Pulldowns',
     'biceps-elbow-flexion-with-shoulder-flexion': 'Preacher Curls',
 };
 
@@ -126,7 +127,7 @@ async function readHistoryBadges(page) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
         // === 1. The arbiter, directly ===================================
         // isImprovement is the one rule behind every surface below, so name it
@@ -155,7 +156,7 @@ async function readHistoryBadges(page) {
         // === 2. The card's streak pill ==================================
         eq(await readCardBadge(page, 'traps-scapular-retraction'), null,
             'no streak pill for a weight bump that ended at three reps');
-        eq(await readCardBadge(page, 'delts-transverse-shoulder-abduction-with-elbow-flexion'), '🔥 1',
+        eq(await readCardBadge(page, 'lats-sagittal-shoulder-extension'), '🔥 1',
             'the same weight bump at four reps still gets one');
         eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), null,
             'and dropping to three at the same weight breaks the streak');
@@ -167,7 +168,7 @@ async function readHistoryBadges(page) {
 
         eq(badges[NAMES['traps-scapular-retraction']], null,
             'History shows no PR badge for the failed set');
-        eq(badges[NAMES['delts-transverse-shoulder-abduction-with-elbow-flexion']], '🔥 PR',
+        eq(badges[NAMES['lats-sagittal-shoulder-extension']], '🔥 PR',
             'History does badge the real improvement beside it');
         eq(badges[NAMES['biceps-elbow-flexion-with-shoulder-flexion']], null,
             'History shows no PR badge for the drop to three reps');
@@ -184,9 +185,9 @@ async function readHistoryBadges(page) {
 
         // The real one celebrates and then advances, so read it before the
         // auto-advance rather than after.
-        await enterSet(page, 'delts-transverse-shoulder-abduction-with-elbow-flexion', '105', '5');
+        await enterSet(page, 'lats-sagittal-shoulder-extension', '105', '5');
         ok(await logCard(page, { settle: 750, waitForAutoAdvance: false }),
-            'delts-transverse-shoulder-abduction-with-elbow-flexion: LOG button clicked');
+            'lats-sagittal-shoulder-extension: LOG button clicked');
         const realPill = await page.evaluate((sel) => {
             const badge = document.querySelector(sel + ' [data-logged-pr-badge]');
             return badge ? badge.textContent.trim() : null;

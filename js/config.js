@@ -410,6 +410,20 @@
         // the rename reaches a fresh install and nothing else. Jessi's
         // program is not touched; it has not tracked this one since v26.
         //
+        // 28 is the Nov 2026 switch from one Full Body day back to two,
+        // Anterior ('anterior-2') and Posterior ('posterior-2'), done
+        // alternately. Every movement crosses days, so this is a day change
+        // rather than a reorder: the bump carries `day`, `category` and
+        // `order`, and names, load types and every other user-owned setting
+        // survive. High to Low Flies takes Dumbbell Lat Pullover's place on a
+        // NEW id, `pecs-shoulder-adduction`: reusing the pullover's would have
+        // handed the flies its weights as their "Last:" and PR baseline. It
+        // starts like every movement since v25 (pin-loaded, 2.5, 4-6 reps).
+        // Lat Pullover, Transverse Rows and Hip Adduction come off the roster;
+        // migrateExerciseConfig drops their saved settings, and History keeps
+        // their sessions. Nothing is migrated, so every other "Last:" and PR
+        // streak carries over by id. Jessi's program is not touched.
+        //
         // ----------------------------------------------------------------
         // LANDING A REORDER
         // ----------------------------------------------------------------
@@ -439,12 +453,13 @@
         // a fresh install only. Getting a rename
         // onto an existing device is a Settings job here; on Jessi's side it
         // needs a one-time JESSI_REV<N>_* pass. A pure reorder needs neither.
-        const EXERCISE_CONFIG_VERSION = 27;
+        const EXERCISE_CONFIG_VERSION = 28;
 
         // The days of the current program, in toggle order. Everything that
-        // used to hard-code the split reads this instead: the deck's day toggle
-        // (rendered only when there is more than one day to choose between),
-        // the Settings grouping, and getDefaultDayType. Every id here must be a
+        // used to hard-code the split reads this instead: the day toggle in
+        // Settings (rendered only when there is more than one day to choose
+        // between), the Manage Exercises grouping, and getDefaultDayType, which
+        // alternates through it in this order. Every id here must be a
         // `day` some DEFAULT_EXERCISES entry carries, and each needs a line in
         // getWorkoutDayLabel so its workouts are labelled in History.
         //
@@ -452,10 +467,14 @@
         // of DEFAULT_EXERCISES, bump EXERCISE_CONFIG_VERSION, add the label.
         // No migration — history is keyed by exercise id, and past workouts
         // keep the `day` they were stored with. Give a new program a day id no
-        // earlier era used (hence 'full-body', not the Jun–Aug 2026 'fullbody'),
-        // so History never mistakes an old session for a current one.
+        // earlier era used (hence 'full-body', not the Jun–Aug 2026 'fullbody',
+        // and 'anterior-2' / 'posterior-2', not the Aug–Sep 2026 'anterior' /
+        // 'posterior'), so History never mistakes an old session for a current
+        // one, and getDefaultDayType never alternates off a session from a
+        // program that is gone.
         const PROGRAM_DAYS = [
-            { id: 'full-body', label: 'Full Body' },
+            { id: 'anterior-2', label: 'Anterior' },
+            { id: 'posterior-2', label: 'Posterior' },
         ];
 
         // Display names here are the defaults a fresh install sees. An id names
@@ -471,38 +490,35 @@
         // 0..N run: moveExercise reindexes off it and the load-time sort is a
         // plain numeric sort over the flat list.
         //
-        // Sep 2026: one Full Body day, six sessions a week, replacing the
-        // Anterior/Posterior split (Aug 2026), which had replaced Upper/Lower.
-        // Oct 2026 (v25): every movement on a new id, see the note above
-        // EXERCISE_CONFIG_VERSION.
-        // v26 added Supinations, JM Press, Reverse Wrist Curls and Wrist
-        // Curls and reordered the day. v27 added Dumbbell Lat Pullover and
-        // reordered it again.
+        // Nov 2026 (v28): alternating Anterior and Posterior days, replacing
+        // one Full Body day (Sep 2026), which had replaced the Aug 2026
+        // Anterior/Posterior split and Upper/Lower before it. The names are
+        // labels, not an anatomy rule: curls, Wrist Curls and Ab Crunches are
+        // Posterior because the program says so. See the note above
+        // EXERCISE_CONFIG_VERSION for what came and went.
         const DEFAULT_EXERCISES = [
-            { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 0 },
-            { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 1 },
-            { id: 'lats-sagittal-shoulder-extension-above-120-degrees', name: 'Dumbbell Lat Pullover', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 2 },
-            { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 3 },
-            { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 4 },
-            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 5 },
-            { id: 'biceps-wrist-supination', name: 'Supinations', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 6 },
-            { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 7 },
-            { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 8 },
-            { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 9 },
-            { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 10 },
-            { id: 'triceps-elbow-extension-during-shoulder-flexion', name: 'JM Press', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 11 },
-            { id: 'brachioradialis-elbow-flexion', name: 'Reverse Wrist Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 12 },
-            { id: 'forearm-wrist-flexion', name: 'Wrist Curls', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 13 },
-            { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 14 },
-            { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 15 },
-            { id: 'abs-spinal-flexion', name: 'Ab Crunches', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 16 },
-            { id: 'quads-knee-extension', name: 'Leg Extensions', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 17 },
-            { id: 'calves-ankle-extension', name: 'Calf Raises', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 18 },
-            { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 19 },
-            { id: 'erectors-spinal-extension', name: 'Stiff Legged Deadlift', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 20 },
-            { id: 'quads-knee-extension-during-hip-flexion', name: 'Squats', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 21 },
-            { id: 'delts-transverse-shoulder-abduction-with-elbow-flexion', name: 'Transverse Rows', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 22 },
-            { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', category: 'Full Body', day: 'full-body', type: 'standard', loadType: 'pin', order: 23 }
+            { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 0 },
+            { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 1 },
+            { id: 'pecs-shoulder-adduction', name: 'High to Low Flies', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 2 },
+            { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 3 },
+            { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 4 },
+            { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 5 },
+            { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 6 },
+            { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 7 },
+            { id: 'triceps-elbow-extension-during-shoulder-flexion', name: 'JM Press', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 8 },
+            { id: 'quads-knee-extension', name: 'Leg Extensions', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 9 },
+            { id: 'quads-knee-extension-during-hip-flexion', name: 'Squats', category: 'Anterior', day: 'anterior-2', type: 'standard', loadType: 'pin', order: 10 },
+            { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 11 },
+            { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 12 },
+            { id: 'biceps-wrist-supination', name: 'Supinations', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 13 },
+            { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 14 },
+            { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 15 },
+            { id: 'abs-spinal-flexion', name: 'Ab Crunches', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 16 },
+            { id: 'traps-scapular-retraction', name: 'Kelso Shrugs', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 17 },
+            { id: 'brachioradialis-elbow-flexion', name: 'Reverse Wrist Curls', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 18 },
+            { id: 'forearm-wrist-flexion', name: 'Wrist Curls', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 19 },
+            { id: 'calves-ankle-extension', name: 'Calf Raises', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 20 },
+            { id: 'erectors-spinal-extension', name: 'Stiff Legged Deadlift', category: 'Posterior', day: 'posterior-2', type: 'standard', loadType: 'pin', order: 21 }
         ];
 
         // Retired from logging: `body-weight-squats`, `burpee-jump-tucks`, and

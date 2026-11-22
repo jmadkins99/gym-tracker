@@ -72,7 +72,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // === 1. Today's working weight: 255, five over the cap ==========
         const today = await setWeightAndOpen(page, 'Lu Raises', 255);

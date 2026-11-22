@@ -84,7 +84,7 @@ function extractLiteral(source, name, open, close) {
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // The breakdown is part of the card's revealed face now, so this
         // navigates to Shoulder Press, opens it, and types the weight in.

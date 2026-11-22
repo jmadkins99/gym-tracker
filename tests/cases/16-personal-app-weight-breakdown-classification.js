@@ -104,7 +104,7 @@ function extractLiteral(source, name, open, close) {
         // A card has no weight, and so no breakdown, until it has been logged
         // once (no starting weights since v25), so both get a session.
         await seedPersonalApp(page, { workoutHistory: [workoutEntry({
-            date: '2026-05-27T20:00:00Z', day: 'full-body',
+            date: '2026-05-27T20:00:00Z', day: 'anterior-2',
             exercises: [
                 { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', weight: '30', reps: '5' },
                 { id: 'triceps-elbow-extension-with-shoulder-flexion', name: 'Overhead Tricep Extensions', weight: '50', reps: '5' },
@@ -113,14 +113,17 @@ function extractLiteral(source, name, open, close) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // Full Body (Sep 2026) is one day, so one sweep covers the rotation.
-        // Names only: the deck shows one card at a time and opening all of them to
-        // read them would cost seconds per sweep for nothing this case needs.
-        await selectDayType(page, 'full-body');
-        const names = await readDeckNames(page);
+        // One sweep per day covers the rotation. Names only: the deck shows one
+        // card at a time and opening all of them to read them would cost
+        // seconds per sweep for nothing this case needs.
+        const names = [];
+        for (const day of ['posterior-2', 'anterior-2']) {
+            await selectDayType(page, day);
+            names.push(...await readDeckNames(page));
+        }
 
         ok(names.length === DEFAULT_EXERCISES.length,
-            `rendered ${DEFAULT_EXERCISES.length} cards on the day (got ${names.length})`);
+            `rendered ${DEFAULT_EXERCISES.length} cards across the two days (got ${names.length})`);
 
         for (const name of names) {
             ok(expectedByName.has(name), `card "${name}" is a known rotation exercise`);
@@ -130,7 +133,8 @@ function extractLiteral(source, name, open, close) {
         // breakdown once opened. That used to be a button on the card face; it
         // is now part of the revealed face, so this opens a sample rather than
         // all 21 — the source-level check below is what covers every id.
-        for (const name of ['Recline Curls', 'Overhead Tricep Extensions']) {
+        for (const [day, name] of [['anterior-2', 'Overhead Tricep Extensions'], ['posterior-2', 'Recline Curls']]) {
+            await selectDayType(page, day);
             const card = await readDeckCard(page, name);
             ok(card && card.hasWeightBreakdown,
                 `"${name}" (pin-loaded) shows a warmup breakdown when opened`);

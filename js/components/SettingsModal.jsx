@@ -33,7 +33,7 @@
             );
         }
 
-        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseCableStack, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise, editOnly, startedAt }) {
+        function SettingsModal({ onClose, onExport, onImport, onReset, exercises, updateExerciseName, updateExerciseLoadType, updateExerciseIncrement, updateExerciseGympin, updateExerciseCableStack, updateExerciseRepRange, updateExerciseEnabled, updateExerciseHint, moveExercise, editOnly, startedAt, activeDayType, lockedDayType, onChooseDay }) {
             const fileInputRef = useRef();
             // editOnly is an exercise id from a downward swipe on its card: the
             // modal opens straight into that one exercise's form and closes
@@ -195,14 +195,16 @@
                                 day's boundary — moveExercise refuses to swap
                                 across it, so an arrow that looked enabled there
                                 would silently do nothing. A one-day program
-                                (Full Body) is one list with no heading. */}
+                                is one list with no heading, and so is the
+                                lone row being edited: the heading would push
+                                its fields down toward the keyboard. */}
                             {PROGRAM_DAYS.map(({ id: dayKey, label: dayLabel }) => {
                               const dayExercises = exercises.filter(e => e.day === dayKey
                                   && (!editingExercise || e.id === editingExercise));
                               if (dayExercises.length === 0) return null;
                               return (
                                 <div key={dayKey} style={{ marginBottom: '20px' }}>
-                                    {PROGRAM_DAYS.length > 1 && <div className="section-title">{dayLabel}</div>}
+                                    {PROGRAM_DAYS.length > 1 && !editingExercise && <div className="section-title">{dayLabel}</div>}
                                     {dayExercises.map((exercise, idx) => (
                                     <div key={exercise.id} className="exercise-row" data-exercise-id={exercise.id} style={{
                                         background: '#1a1a2a',
@@ -587,6 +589,35 @@
                 <div className="modal-overlay" onClick={onClose}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-title">Settings</div>
+
+                        {/* Which day the deck shows. Locked once anything is
+                            logged today: the session was stamped with its day
+                            at the first LOG. Only rendered when there is a
+                            choice to make. */}
+                        {PROGRAM_DAYS.length > 1 && (
+                            <div className="settings-day">
+                                <div className="settings-day-label">Day</div>
+                                <div className="day-toggle" data-day-type-toggle
+                                     {...(lockedDayType ? { 'data-locked': '' } : {})}>
+                                    {PROGRAM_DAYS.map(({ id, label }) => (
+                                        <button
+                                            key={id}
+                                            data-day-type={id}
+                                            className={'day-pill' + (activeDayType === id ? ' active' : '')}
+                                            disabled={!!lockedDayType}
+                                            onClick={() => onChooseDay(id)}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {lockedDayType && (
+                                    <div className="settings-day-note" data-day-note>
+                                        Today is {PROGRAM_DAYS.find(d => d.id === lockedDayType).label}. It switches after Submit Day.
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <button className="modal-btn" onClick={() => setSettingsView('exercises')}>
                             ✏️ Manage Exercises

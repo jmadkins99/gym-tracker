@@ -6,7 +6,7 @@
 //
 // What the pill SAYS follows History's rule exactly (Sep 2026): "🔥 PR" for a
 // lone PR, "🔥 N" once the run is two or more. Both branches are exercised
-// below — Recline Curls lands on a run of two, Low to High Flies on a run of one —
+// below — Recline Curls lands on a run of two, Sagittal Pulldowns on a run of one —
 // and the number comes from getPRStreakInWorkout counted as of today's entry, so
 // the card shows what History will show for the same row after Submit Day.
 // Before Sep 2026 this pill always read "PR", which understated a run the
@@ -57,10 +57,10 @@ const PREVIOUS = workoutEntry({
     exercises: [
         { id: 'biceps-elbow-flexion-with-shoulder-extension', name: 'Recline Curls', weight: '100', reps: '5' },
         { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '100', reps: '5' },
-        { id: 'delts-shoulder-abduction-above-90-degrees', name: 'Lu Raises', weight: '120', reps: '5' },
+        { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '120', reps: '5' },
         // Only in PREVIOUS, deliberately: one prior session means an
         // improvement today is a run of ONE, which is the "🔥 PR" branch.
-        { id: 'pecs-shoulder-flexion', name: 'Low to High Flies', weight: '150', reps: '4' },
+        { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', weight: '150', reps: '4' },
     ],
 });
 
@@ -153,7 +153,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
         const before = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
         eq(before.streak, '🔥 1',
@@ -229,27 +229,27 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(identical.streak, null,
             'logged non-PR reviews do not keep showing the stale pre-session streak');
 
-        // A run of ONE: Low to High Flies has a single prior session, so today's
+        // A run of ONE: Sagittal Pulldowns has a single prior session, so today's
         // improvement is a lone PR and the pill reads the word, not a number.
         // Losing this probe would let a regression that always prints a count
         // (including a meaningless "🔥 1") pass unnoticed.
-        await logSet(page, 'pecs-shoulder-flexion', '150', '5');
-        const lonePR = await readHeader(page, 'pecs-shoulder-flexion');
+        await logSet(page, 'lats-sagittal-shoulder-extension', '150', '5');
+        const lonePR = await readHeader(page, 'lats-sagittal-shoulder-extension');
         eq(lonePR.loggedPR, '🔥 PR',
             'a lone PR still reads "PR" — the count starts at a run of two');
         eq(lonePR.loggedPRStreak, null,
             'a lone PR carries no data-streak attribute, matching History');
 
-        await logSet(page, 'delts-shoulder-abduction-above-90-degrees', '115', '6');
-        const weightDrop = await readHeader(page, 'delts-shoulder-abduction-above-90-degrees');
+        await logSet(page, 'lats-frontal-shoulder-adduction', '115', '6');
+        const weightDrop = await readHeader(page, 'lats-frontal-shoulder-adduction');
         eq(weightDrop.loggedPR, null,
             'top reps after a weight drop is not a logged PR');
 
-        // Chest Flies, not Preacher Curls: Preacher Curls is card two and
+        // Supinations, not Preacher Curls: Preacher Curls is card two and
         // carries the history the advance assertions above need, so it is
         // not history-free.
-        await logSet(page, 'pecs-transverse-shoulder-adduction', '50', '6');
-        const firstSession = await readHeader(page, 'pecs-transverse-shoulder-adduction');
+        await logSet(page, 'biceps-wrist-supination', '50', '6');
+        const firstSession = await readHeader(page, 'biceps-wrist-supination');
         eq(firstSession.loggedPR, null,
             'top reps on a first-ever submitted-baseline-free row is not a logged PR');
 

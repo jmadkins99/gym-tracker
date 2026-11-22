@@ -32,8 +32,11 @@ const NS = 'gym-local:';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const JM = 'triceps-elbow-extension-during-shoulder-flexion';      // JM Press
-const SUP = 'biceps-wrist-supination';                              // Supinations
-const TRICEPS = 'triceps-elbow-extension';                          // Tricep Extensions, right after Supinations
+// Both subjects are on Anterior, the day a load with no Anterior or Posterior
+// history opens on, so the deck half never has to switch day. Chest Press took
+// over from Supinations when v28 (Nov 2026) put Supinations on Posterior.
+const CP = 'pecs-transverse-shoulder-adduction-with-elbow-extension'; // Chest Press
+const TRICEPS = 'triceps-elbow-extension';                          // Tricep Extensions, right after Chest Press
 
 // Monday of last week plus `dayOffset` days; see case 100.
 function lastWeek(dayOffset) {
@@ -117,21 +120,22 @@ const listNames = (page) => page.evaluate(() =>
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
-        const { roster, version } = await page.evaluate(() => ({
+        const { roster, version, anteriorNames } = await page.evaluate(() => ({
             roster: DEFAULT_EXERCISES.map(e => [e.id, e.name]),
             version: EXERCISE_CONFIG_VERSION,
+            anteriorNames: DEFAULT_EXERCISES.filter(e => e.day === 'anterior-2').map(e => e.name),
         }));
         const allNames = roster.map(([, n]) => n);
         const nameOf = (id) => roster.find(([i]) => i === id)[1];
 
         // Last week's session, as the deck writes one: a row for every
         // exercise, blank where nothing was logged. JM Press was not logged;
-        // Supinations was.
+        // Chest Press was.
         const session = workoutEntry({
             date: lastWeek(0), day: 'full-body',
             exercises: roster.map(([id, name]) => ({
                 id, name, category: 'Full Body', weight: '', reps: '',
-                ...(id === SUP ? { weight: '40', reps: '5' } : {}),
+                ...(id === CP ? { weight: '150', reps: '5' } : {}),
             })),
         });
         await seedPersonalApp(page, { workoutHistory: [session] });
@@ -149,11 +153,11 @@ const listNames = (page) => page.evaluate(() =>
         eq('enabled' in (await readSaved(page)).byId[JM], false, 'Cancel writes nothing');
 
         await saveEnabled(page, JM, false);
-        await saveEnabled(page, SUP, false);
+        await saveEnabled(page, CP, false);
         let saved = await readSaved(page);
-        eq([saved.byId[JM].enabled, saved.byId[SUP].enabled], [false, false], 'Save writes enabled: false');
+        eq([saved.byId[JM].enabled, saved.byId[CP].enabled], [false, false], 'Save writes enabled: false');
         eq(saved.version, version, 'stamped with the current EXERCISE_CONFIG_VERSION');
-        eq(Object.values(saved.byId).filter(e => 'enabled' in e).map(e => e.id).sort(), [JM, SUP].sort(),
+        eq(Object.values(saved.byId).filter(e => 'enabled' in e).map(e => e.id).sort(), [JM, CP].sort(),
             'no other exercise gained the field');
         ok(await rowOpacity(page, JM) < 1, 'a disabled row is dimmed');
         eq(await rowOpacity(page, TRICEPS), 1, 'an enabled row is not');
@@ -164,7 +168,7 @@ const listNames = (page) => page.evaluate(() =>
         await closeSettings(page);
 
         // === 2. The deck ====================================================
-        const without = allNames.filter(n => n !== nameOf(JM) && n !== nameOf(SUP));
+        const without = anteriorNames.filter(n => n !== nameOf(JM) && n !== nameOf(CP));
         eq(await readDeckNames(page), without, 'the deck drops the two disabled cards and keeps the order');
 
         // === 3. History =====================================================
@@ -178,7 +182,7 @@ const listNames = (page) => page.evaluate(() =>
         const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.history-exercise-name'))
             .map(e => e.textContent.trim()));
         ok(!rows.includes(nameOf(JM)), 'History hides a disabled row that was not logged');
-        ok(rows.includes(nameOf(SUP)), 'and keeps a disabled row that was');
+        ok(rows.includes(nameOf(CP)), 'and keeps a disabled row that was');
         eq(rows.length, roster.length - 1, 'every other row is still there');
         await bottomNav(page, 'Workout');
 
@@ -187,14 +191,14 @@ const listNames = (page) => page.evaluate(() =>
         await revealCard(page);
         await logCard(page);
         const today = await todayWorkout(page);
-        ok(today && !today.exercises.some(e => e.id === JM || e.id === SUP),
+        ok(today && !today.exercises.some(e => e.id === JM || e.id === CP),
             'today\'s session is saved without rows for the disabled exercises');
 
         // === 5. Re-enabling puts it back in the same spot ===================
         await openManageExercises(page);
         await saveEnabled(page, JM, true);
         await closeSettings(page);
-        eq(await readDeckNames(page), allNames.filter(n => n !== nameOf(SUP)),
+        eq(await readDeckNames(page), anteriorNames.filter(n => n !== nameOf(CP)),
             'JM Press is back on the deck where it was');
 
         // === 6. It survives a version bump ==================================
@@ -207,10 +211,10 @@ const listNames = (page) => page.evaluate(() =>
         eq(saved.byId[JM].enabled, false, 'and JM Press is still off after it');
 
         // === 7. Reopening the open card counts enabled cards only ==========
-        // Supinations, off, sits right before Tricep Extensions. An index
+        // Chest Press, off, sits right before Tricep Extensions. An index
         // counted over every exercise would reopen one card too far along.
         await seedPersonalApp(page, { workoutHistory: [] });
-        await seedExerciseConfig(page, { version, overrides: { [SUP]: { enabled: false } } });
+        await seedExerciseConfig(page, { version, overrides: { [CP]: { enabled: false } } });
         await page.evaluate((ns, id) => localStorage.setItem(ns + 'exerciseStartTimes', JSON.stringify({
             date: new Date().toDateString(), times: { [id]: Date.now() - 60000 },
         })), NS, TRICEPS);

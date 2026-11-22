@@ -73,7 +73,7 @@ async function readCard(page, exerciseName) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
         // Seed Calf Raises at 500 lbs — over the 405 pin cap, so all three set
-        // entries appear and warmup 2 + top set overflow. Hip Adduction is
+        // entries appear and warmup 2 + top set overflow. Frontal Pulldowns is
         // seeded at 115 as the uncapped control: an uncapped stack must render
         // plain pin positions at any weight, so the contrast is what proves the
         // overflow rows above come from the CAP rather than from the weight.
@@ -82,7 +82,7 @@ async function readCard(page, exerciseName) {
                 date: '2026-05-27T20:00:00Z', day: 1,
                 exercises: [
                     { id: 'calves-ankle-extension', name: 'Calf Raises', weight: '500', reps: '5' },
-                    { id: 'adductors-transverse-hip-adduction', name: 'Hip Adduction', weight: '115', reps: '5' },
+                    { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '115', reps: '5' },
                 ],
             }),
         ];
@@ -92,7 +92,7 @@ async function readCard(page, exerciseName) {
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
         // --- Capped stack: Calf Raises at 500 over a 405 cap ---
         const clickedCalf = await clickBreakdown(page, 'Calf Raises');
@@ -137,24 +137,25 @@ async function readCard(page, exerciseName) {
         ok(!/\/side/.test(calfRaises),
             'overflow plates render as a single pile, never "Per side"');
 
-        // --- Un-capped stack: Hip Adduction must NOT overflow at 115 ---
+        // --- Un-capped stack: Frontal Pulldowns must NOT overflow at 115 ---
         // This half ran against Cable Wrist Curls for as long as that movement
         // existed — first at its 97.5 cap, then as the proof the cap was really
-        // gone — and moved to Hip Adduction when the wrist pair left the
-        // program in Sep 2026. Any uncapped stack on this day serves: what is
+        // gone — then moved to Hip Adduction when the wrist pair left the
+        // program in Sep 2026, and to Frontal Pulldowns when v28 (Nov 2026)
+        // retired Hip Adduction. Any uncapped stack on this day serves: what is
         // being pinned is that a stack with no PIN_STACK_CAPS entry never
         // renders the overflow shape, however heavy the set.
 
-        const clickedControl = await clickBreakdown(page, 'Hip Adduction');
-        ok(clickedControl, 'Hip Adduction card has a Weight Breakdown button');
+        const clickedControl = await clickBreakdown(page, 'Frontal Pulldowns');
+        ok(clickedControl, 'Frontal Pulldowns card has a Weight Breakdown button');
         await new Promise(r => setTimeout(r, 250));
 
-        const cable = await readCard(page, 'Hip Adduction');
+        const cable = await readCard(page, 'Frontal Pulldowns');
 
         ok(!/pin \d/.test(cable),
-            'Hip Adduction (uncapped) renders no pin-at-max overflow row at 115');
+            'Frontal Pulldowns (uncapped) renders no pin-at-max overflow row at 115');
         ok(!/Top Set/.test(cable),
-            'Hip Adduction shows no Top Set row (top set is overflow-only)');
+            'Frontal Pulldowns shows no Top Set row (top set is overflow-only)');
 
         // It should still render plain pin warmups. Under the Aug 2026 rule
         // these round to the nearest 10 rather than to the nearest achievable

@@ -20,6 +20,7 @@ const ACTIVE = '.deck-slot:not([aria-hidden="true"])';
 // `gym-local:`. Case 36 pins that on purpose — it is what keeps the
 // tests off the real data and off Firebase.
 const { DEFAULT_NS } = require('./state');
+const { selectDayType } = require('./browser');
 
 // Long enough for the rail transition (300ms) plus a render. Swipes commit the
 // index immediately, so this is about the animation settling visually, not
@@ -150,12 +151,11 @@ async function stepTo(page, target, { max = 40 } = {}) {
 }
 
 // Choose the day, then wait for the deck to rebuild around the new roster.
+// The toggle moved from the deck into Settings in Nov 2026; this is
+// selectDayType plus the rebuild wait.
 async function selectDeckDay(page, type) {
-    await page.evaluate((t) => {
-        const btn = document.querySelector('[data-day-type="' + t + '"]');
-        if (btn) btn.click();
-    }, type);
-    await new Promise((r) => setTimeout(r, 400));
+    await selectDayType(page, type);
+    await new Promise((r) => setTimeout(r, 250));
 }
 
 // Switch tabs from the bottom bar.

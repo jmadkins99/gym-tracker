@@ -53,7 +53,7 @@ const NS = 'gym-local:';
         }, NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'posterior-2');
 
                 const renamed = await readDeckCard(page, 'My Custom Pulldowns');
 

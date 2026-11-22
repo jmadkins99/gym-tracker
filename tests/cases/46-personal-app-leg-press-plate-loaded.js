@@ -62,7 +62,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await page.evaluate(() => localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         const text = await setWeightAndOpen(page, 'Squats', 200);
 

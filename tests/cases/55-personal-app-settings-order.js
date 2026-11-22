@@ -1,22 +1,22 @@
 // What this test covers
 // ----------------------
 // Settings > Manage Exercises agrees with the roster, and its reorder arrows
-// work across the whole list on a one-day program.
+// stop at each day's edge.
 //
 // The list is grouped by PROGRAM_DAYS because moveExercise refuses to swap an
 // exercise across a day boundary: if the grouping disagreed with the roster,
 // the arrows would render enabled and silently do nothing — no error, nothing
-// visibly wrong. With one day (Full Body, Sep 2026) there is one group and no
-// heading, so the arrows must be live on every row except the two ends. A
-// leftover two-day grouping would either hide every row (no exercise is on
-// 'anterior' any more) or disable arrows mid-list.
+// visibly wrong. With two days (Anterior and Posterior, v28, Nov 2026) there
+// are two headed groups, and the arrows must be live on every row except the
+// two ends of each group. A leftover one-day grouping would either hide every
+// row (no exercise is on 'full-body' any more) or leave arrows enabled across
+// the boundary.
 //
-// Until Sep 2026 this also pinned the Anterior | Posterior toggle's order and
-// labels. The toggle is gone for a one-day program; test 123 pins its absence.
+// From Sep to Nov 2026 the program was one Full Body day and this case pinned
+// the absence of a heading instead.
 //
-// To verify this test is real: put the old `[['anterior', 'Anterior'],
-// ['posterior', 'Posterior']]` grouping back in SettingsModal.jsx. The list
-// comes back empty and this fails.
+// To verify this test is real: put the Sep 2026 `[['full-body', 'Full Body']]`
+// grouping back in SettingsModal.jsx. The list comes back empty and this fails.
 
 const path = require('path');
 const { start } = require('../lib/server');
@@ -26,16 +26,18 @@ const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-// Fresh-install names, in canonical order.
-const EXPECTED = [
-    'Recline Curls', 'Preacher Curls', 'Dumbbell Lat Pullover', 'Chest Flies',
-    'Low to High Flies', 'Chest Press', 'Supinations', 'Tricep Extensions',
-    'Lateral Raises', 'Overhead Tricep Extensions', 'Lu Raises', 'JM Press',
-    'Reverse Wrist Curls', 'Wrist Curls', 'Sagittal Pulldowns',
-    'Frontal Pulldowns', 'Ab Crunches', 'Leg Extensions', 'Calf Raises',
-    'Kelso Shrugs', 'Stiff Legged Deadlift', 'Squats', 'Transverse Rows',
-    'Hip Adduction',
+// Fresh-install names, in canonical order, by day.
+const ANTERIOR = [
+    'Chest Flies', 'Low to High Flies', 'High to Low Flies', 'Chest Press',
+    'Tricep Extensions', 'Lateral Raises', 'Overhead Tricep Extensions',
+    'Lu Raises', 'JM Press', 'Leg Extensions', 'Squats',
 ];
+const POSTERIOR = [
+    'Recline Curls', 'Preacher Curls', 'Supinations', 'Sagittal Pulldowns',
+    'Frontal Pulldowns', 'Ab Crunches', 'Kelso Shrugs', 'Reverse Wrist Curls',
+    'Wrist Curls', 'Calf Raises', 'Stiff Legged Deadlift',
+];
+const EXPECTED = [...ANTERIOR, ...POSTERIOR];
 
 async function openManageExercises(page) {
     await page.click('.settings-btn');
@@ -71,8 +73,8 @@ const readRows = (page) => page.evaluate(() =>
 
         const headings = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.modal .section-title')).map(e => e.textContent.trim()));
-        eq(headings, [], 'one program day, so no day heading');
-        eq(await readRows(page), EXPECTED, 'every movement is listed, in canonical order');
+        eq(headings, ['Anterior', 'Posterior'], 'a heading per program day');
+        eq(await readRows(page), EXPECTED, 'every movement is listed, by day, in canonical order');
 
         const arrows = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.modal .exercise-row')).map(row => {
@@ -82,10 +84,15 @@ const readRows = (page) => page.evaluate(() =>
                     down: btns.find(b => b.textContent.trim() === '↓')?.disabled,
                 };
             }));
-        ok(arrows[0].up, 'the first row cannot move up');
-        ok(arrows[arrows.length - 1].down, 'the last row cannot move down');
-        const stuck = arrows.slice(1, -1).map((a, i) => (a.up || a.down) ? EXPECTED[i + 1] : null).filter(Boolean);
-        eq(stuck, [], 'every row between the ends can move both ways');
+        // Each day's first row cannot move up and its last cannot move down;
+        // every other row can move both ways.
+        const firsts = [0, ANTERIOR.length];
+        const lasts = [ANTERIOR.length - 1, EXPECTED.length - 1];
+        const wrong = arrows.map((a, i) => {
+            const want = { up: firsts.includes(i), down: lasts.includes(i) };
+            return (a.up !== want.up || a.down !== want.down) ? EXPECTED[i] : null;
+        }).filter(Boolean);
+        eq(wrong, [], 'arrows stop at each day\'s ends and are live everywhere else');
 
         // And an arrow actually moves a row: Kelso Shrugs down one swaps it
         // with whatever follows it. Derived, so a reorder does not rot it.
@@ -100,7 +107,7 @@ const readRows = (page) => page.evaluate(() =>
         eq(moved.slice(k, k + 2), [EXPECTED[k + 1], 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Manage Exercises lists the one Full Body day in order, arrows live throughout.');
+        console.log('PASS: Manage Exercises lists Anterior then Posterior in order, arrows stopping at each day\'s ends.');
     } finally {
         await browser.close();
         await server.stop();

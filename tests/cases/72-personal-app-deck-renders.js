@@ -51,9 +51,10 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                     // Whatever leads the day has to be in here: section 3
                     // below asserts the OPEN card shows last session's weight,
                     // so the active card needs history to show. Recline Curls
-                    // leads since v26 (Oct 2026; Chest Flies before it, Chest
-                    // Press before that), so its 130 is the number section 3
-                    // looks for.
+                    // leads the Posterior day (v28, Nov 2026), so its 130 is
+                    // the number section 3 looks for. The session's old
+                    // 'anterior' day is another program's, so it does not
+                    // decide the day; the case picks Posterior itself.
                     { id: 'triceps-elbow-extension', name: 'Tricep Extensions', category: 'Anterior',
                       type: 'standard', weight: '200', reps: '6' },
                     { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', category: 'Anterior',
@@ -67,7 +68,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), DEFAULT_NS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDeckDay(page, 'full-body');
+        await selectDeckDay(page, 'posterior-2');
 
         // === 1. One card, not a list ===================================
         eq(await page.$$eval('.deck-slot', (els) => els.length) >= 1, true,
@@ -80,7 +81,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         const front = await page.evaluate((sel) =>
             document.querySelector(sel + ' .card-front').innerText, ACTIVE);
 
-        // Recline Curls leads Full Body since v26 (Oct 2026).
+        // Recline Curls leads the Posterior day since v28 (Nov 2026).
         eq(await activeName(page), 'Recline Curls', 'it names the first movement of the day');
         eq(/\d/.test(front), false,
             'THE POINT: no digit appears on the front face — no weight, no reps, no ' +
@@ -115,15 +116,13 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         eq(await page.$$eval('.bottom-nav-btn', (els) =>
             els.map((e) => e.textContent.replace(/[^A-Za-z]/g, ''))),
             ['Workout', 'History'], 'the nav sits at the bottom with two tabs');
-        // The toggle's data-day-type hooks come from PROGRAM_DAYS, and a
-        // one-day program renders none at all (test 123 pins that).
-        eq(await page.$$eval('[data-day-type]', (els) =>
-            els.map((e) => e.getAttribute('data-day-type'))),
-            await page.evaluate(() => PROGRAM_DAYS.length > 1 ? PROGRAM_DAYS.map((d) => d.id) : []),
-            'the day toggle renders a hook per program day, or none for one day');
+        // The day toggle moved to Settings in Nov 2026 (case 143 covers it
+        // there), so the workout screen carries no day hooks of its own.
+        eq(await page.$$eval('[data-day-type]', (els) => els.length), 0,
+            'the workout screen renders no day toggle');
         // Derived: the roster has changed size several times already.
         const dayCount = await page.evaluate(() =>
-            DEFAULT_EXERCISES.filter((e) => e.day === getDefaultDayType(new Date())).length);
+            DEFAULT_EXERCISES.filter((e) => e.day === 'posterior-2').length);
         eq(await deckPosition(page), '1 of ' + dayCount,
             'the counter reports position in the day');
 

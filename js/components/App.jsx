@@ -62,15 +62,12 @@
             // this map stops mattering for it, so all the mirror buys is
             // surviving a mid-session reload with un-logged movements still
             // anchored — which case 37 shows is a real thing to do on a phone.
-            // Stamped with the date and dropped on a new day, so yesterday's
-            // anchors can never leak into today's numbers.
+            // Stamped with the date and dropped on a new day (todayOnlyStorage),
+            // so yesterday's anchors can never leak into today's numbers.
             // Persist the map alongside setting it. Returns the map so the
             // state updaters below can `return saveStartTimes(...)` directly.
             const saveStartTimes = (times) => {
-                storage.setItem('exerciseStartTimes', JSON.stringify({
-                    date: new Date().toDateString(),
-                    times
-                }));
+                todayOnlyStorage.save('exerciseStartTimes', { times });
                 return times;
             };
 
@@ -79,21 +76,16 @@
             // reason loggedExercises and workoutData are cleared there.
             const clearStartTimes = () => {
                 setExerciseStartTimes({});
-                storage.removeItem('exerciseStartTimes');
+                todayOnlyStorage.remove('exerciseStartTimes');
             };
 
-            const [exerciseStartTimes, setExerciseStartTimes] = useState(() => {
-                try {
-                    const saved = JSON.parse(storage.getItem('exerciseStartTimes') || 'null');
-                    return saved && saved.date === new Date().toDateString() ? saved.times : {};
-                } catch (e) {
-                    return {};
-                }
-            });
-            // Which PROGRAM_DAYS entry the workout view shows, chosen by
-            // getDefaultDayType on every load. With one day (Full Body) there
-            // is no toggle; with several, a manual pick only lasts the session.
-            const [activeDayType, setActiveDayType] = useState(() => getDefaultDayType(new Date()));
+            const [exerciseStartTimes, setExerciseStartTimes] = useState(() =>
+                (todayOnlyStorage.load('exerciseStartTimes') || {}).times || {});
+            // Which PROGRAM_DAYS entry the workout view shows (the active day).
+            // Set once history has loaded, by pickStartDay below; the initial
+            // value only covers the frames before hydration, which render no
+            // deck.
+            const [activeDayType, setActiveDayType] = useState(() => PROGRAM_DAYS[0].id);
             const [hydrated, setHydrated] = useState(false);
             const [showSyncPrompt, setShowSyncPrompt] = useState(false);
             // Is a keyboard up? Ask focus, not arithmetic.
@@ -231,6 +223,7 @@
                             setShowSyncPrompt(true);
                         }
 
+                        setActiveDayType(pickStartDay(savedHistory || []));
                         restoreOpenCard(
                             migratedConfig ? migratedConfig.exercises
                                 : (savedConfig && savedConfig.exercises) || DEFAULT_EXERCISES,
@@ -263,6 +256,20 @@
                     hasMigratedWeeks.current = true;
                 }
             }, [workoutHistory.length, currentWeek]);
+
+            // The date the app is on, re-read on every return to the
+            // foreground. A phone restores a backgrounded tab instead of
+            // reloading it, so without this, everything keyed to "today" (the
+            // logged cards, the day lock, the start day) would stay on the date
+            // the page was loaded until something else re-rendered it.
+            const [today, setToday] = useState(() => new Date().toDateString());
+            useEffect(() => {
+                const onVisible = () => {
+                    if (document.visibilityState === 'visible') setToday(new Date().toDateString());
+                };
+                document.addEventListener('visibilitychange', onVisible);
+                return () => document.removeEventListener('visibilitychange', onVisible);
+            }, []);
 
             // Restore logged state and workout data from today's unsubmitted workout
             useEffect(() => {
@@ -306,13 +313,66 @@
                     setLoggedExercises({});
                     setWorkoutData({});
                 }
-            }, [workoutHistory]);
+            }, [workoutHistory, today]);
 
             // The cards on the deck, and so the rows a new day is saved with.
             // A disabled exercise (Settings, Oct 2026) is left out here and
             // nowhere else, so it keeps its place in `exercises` and its order.
             const getCurrentExercises = () =>
                 exercises.filter(ex => ex.day === activeDayType && ex.enabled !== false);
+
+            // The day today's session is on, once anything is logged; the
+            // Settings toggle is locked while this is set.
+            const lockedDayType = useMemo(() => getLockedDayType(workoutHistory), [workoutHistory, today]);
+
+            // The day a load opens on, before any open card is restored: a
+            // logged session's day first, then a day picked by hand earlier
+            // today on this device, then the alternation from history.
+            const pickStartDay = (history) => {
+                const locked = getLockedDayType(history);
+                if (locked) return locked;
+                const pick = (todayOnlyStorage.load('dayPick') || {}).day;
+                if (PROGRAM_DAYS.some(d => d.id === pick)) return pick;
+                return getDefaultDayType(history);
+            };
+
+            // Show another day's cards, from the top, with nothing open. The
+            // reset lives here rather than only in the deck because Settings
+            // can be opened over History, when the deck is not mounted to see
+            // the change. Closing the open card drops its anchor, which is what
+            // stops restoreOpenCard dragging a reload back to the old day.
+            const showDay = (day) => {
+                if (day === activeDayType) return;
+                setActiveDayType(day);
+                setDeckIndex(0);
+                closeWeightBreakdown();
+            };
+
+            // A pick from the Settings toggle. Refused once anything is logged
+            // today; otherwise remembered on this device until midnight, so a
+            // reload before the first set does not flip it back.
+            const chooseDay = (day) => {
+                if (lockedDayType || day === activeDayType) return;
+                todayOnlyStorage.save('dayPick', { day });
+                showDay(day);
+            };
+
+            // Keep the active day on the locked one. They only disagree when
+            // another synced device logged today on the other day; this device
+            // would otherwise go on adding sets to that session from the wrong
+            // day's cards.
+            useEffect(() => {
+                if (hydrated && lockedDayType && lockedDayType !== activeDayType) showDay(lockedDayType);
+            }, [hydrated, lockedDayType]);
+
+            // A new date with the page still open: yesterday's lock and pick
+            // have lapsed, so choose the day again exactly as a load would.
+            const dateDaysWereChosenOn = useRef(today);
+            useEffect(() => {
+                if (!hydrated || dateDaysWereChosenOn.current === today) return;
+                dateDaysWereChosenOn.current = today;
+                showDay(pickStartDay(workoutHistory));
+            }, [hydrated, today]);
 
             const getTodayWorkout = () => {
                 const today = new Date();
@@ -589,6 +649,10 @@
                     .map(id => roster.find(ex => ex.id === id))
                     .find(ex => ex && ex.enabled !== false && !loggedToday.has(ex.id));
                 if (!exercise) return;
+                // A logged session fixes the day; an anchor from the other one
+                // (another device logged first) has nothing to resume here.
+                const locked = getLockedDayType(history);
+                if (locked && exercise.day !== locked) return;
 
                 // The deck's own list, so the index lands on the right card
                 // when a disabled one sits before it.
@@ -933,6 +997,12 @@
                 setWorkoutData({});
                 clearStartTimes();
 
+                // The session is closed, so the lock lifts. Move to the day a
+                // load would now open on, the other one, and drop any pick
+                // made for the session just submitted, so a reload agrees.
+                todayOnlyStorage.remove('dayPick');
+                showDay(getDefaultDayType(updatedHistory));
+
                 setShowDayBreakdown(true);
             };
 
@@ -1101,6 +1171,9 @@
                             updateExerciseEnabled={updateExerciseEnabled}
                             updateExerciseHint={updateExerciseHint}
                             moveExercise={moveExercise}
+                            activeDayType={activeDayType}
+                            lockedDayType={lockedDayType}
+                            onChooseDay={chooseDay}
                         />
                     )}
 
@@ -1161,7 +1234,6 @@
                             deckIndex={deckIndex}
                             setDeckIndex={setDeckIndex}
                             activeDayType={activeDayType}
-                            setActiveDayType={setActiveDayType}
                             foregroundAt={lastForegroundAt}
                             onEditExercise={setQuickEditId}
                         />}

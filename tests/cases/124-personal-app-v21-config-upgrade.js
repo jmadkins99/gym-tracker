@@ -4,39 +4,49 @@
 // (Oct 2026), keeping it what this header says it is: a constructed config
 // with today's id set.
 //
-// What a device that was running Anterior / Posterior becomes when it loads
-// the Full Body build — the upgrade half of test 123.
+// What a device with a saved config from an older program becomes when it
+// loads the current build — the upgrade half of test 123. The seed is the
+// Aug 2026 Anterior / Posterior (v21) config; it was written for the Sep 2026
+// Full Body switch and now carries a device all the way to the Nov 2026 (v28)
+// Anterior / Posterior program.
 //
-// The switch ships with NO migration of its own. History is looked up by
-// exercise id, never by day, and `day` / `category` / `order` are code-owned,
-// so an EXERCISE_CONFIG_VERSION bump through the existing
+// Program switches ship with NO migration of their own. History is looked up
+// by exercise id, never by day, and `day` / `category` / `order` are
+// code-owned, so an EXERCISE_CONFIG_VERSION bump through the existing
 // migrateExerciseConfig is the whole delivery mechanism. This case pins that
 // claim end to end:
 //
-//   1. The saved v21 config is rebuilt: every id on 'full-body', in the new
-//      order, version stamped past 21.
+//   1. The saved v21 config is rebuilt: every id on its v28 day, in the new
+//      order, version stamped past 21. The ids v28 retired (Dumbbell Lat
+//      Pullover, Transverse Rows, Hip Adduction) are dropped, and the one it
+//      added (High to Low Flies) arrives on its defaults.
 //   2. The user's rename and load-type choice survive the rebuild.
 //   3. Nothing wipes the saved config first. The seed deliberately does NOT
 //      plant the old `migratedToFullBody2` sentinel — the one-shot wipe that
 //      used to key off it is gone. If it came back, the rename in (2) would be
 //      lost, because a wiped config reseeds from defaults.
-//   4. Last session's weight carries over onto the Full Body cards, from both
-//      former days.
+//   4. Last session's weight carries over onto the new days' cards, from
+//      both former days. The old 'anterior' / 'posterior' ids are not the new
+//      'anterior-2' / 'posterior-2', so this is the id lookup at work, not a
+//      day match.
 //   5. The past sessions keep their own labels and the rows they were
 //      actually performed with — history is never migrated.
 //   6. A second load is a no-op.
 //
-// The seed is a CONSTRUCTED v21 config with today's id set, so the id-set
-// half of migrateExerciseConfig's guard is true and only the version can
-// trigger the rebuild — the same trick as test 54.
+// The seed is a CONSTRUCTED v21 config. Until v28 it carried today's id set,
+// so only the version could trigger the rebuild (the same trick as test 54).
+// v28 retired ids the seed holds and added one it lacks, so the id set now
+// triggers it too; the seed is left as it is, because it is the state a
+// device migrates from, and the retire/add half is worth pinning here.
 //
-// To verify this test is real: set EXERCISE_CONFIG_VERSION back to 21. The
-// day assertion fails and the deck still shows a toggle.
+// To verify this test is real: make migrateExerciseConfig keep saved ids that
+// are missing from DEFAULT_EXERCISES. The order assertion fails on the three
+// retired ids.
 
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { readDeckNames, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
@@ -82,29 +92,36 @@ const V21_LAYOUT = [
 // 'pin' since v25, so the user's choice has to be something else.
 const LOAD_TYPE_OVERRIDE = { id: 'traps-scapular-retraction', loadType: 'plate-one-sided' };
 
-const EXPECTED_ORDER = [
-    'biceps-elbow-flexion-with-shoulder-extension',
-    'biceps-elbow-flexion-with-shoulder-flexion',
-    'lats-sagittal-shoulder-extension-above-120-degrees',
+// v28, Anterior then Posterior.
+const EXPECTED_ANTERIOR = [
     'pecs-transverse-shoulder-adduction',
     'pecs-shoulder-flexion',
+    'pecs-shoulder-adduction',
     'pecs-transverse-shoulder-adduction-with-elbow-extension',
-    'biceps-wrist-supination',
     'triceps-elbow-extension',
     'delts-shoulder-abduction-stop-at-90-degrees',
     'triceps-elbow-extension-with-shoulder-flexion',
     'delts-shoulder-abduction-above-90-degrees',
     'triceps-elbow-extension-during-shoulder-flexion',
-    'brachioradialis-elbow-flexion',
-    'forearm-wrist-flexion',
+    'quads-knee-extension',
+    'quads-knee-extension-during-hip-flexion',
+];
+const EXPECTED_POSTERIOR = [
+    'biceps-elbow-flexion-with-shoulder-extension',
+    'biceps-elbow-flexion-with-shoulder-flexion',
+    'biceps-wrist-supination',
     'lats-sagittal-shoulder-extension',
     'lats-frontal-shoulder-adduction',
     'abs-spinal-flexion',
-    'quads-knee-extension',
-    'calves-ankle-extension',
     'traps-scapular-retraction',
+    'brachioradialis-elbow-flexion',
+    'forearm-wrist-flexion',
+    'calves-ankle-extension',
     'erectors-spinal-extension',
-    'quads-knee-extension-during-hip-flexion',
+];
+const EXPECTED_ORDER = [...EXPECTED_ANTERIOR, ...EXPECTED_POSTERIOR];
+const RETIRED_V28 = [
+    'lats-sagittal-shoulder-extension-above-120-degrees',
     'delts-transverse-shoulder-abduction-with-elbow-flexion',
     'adductors-transverse-hip-adduction',
 ];
@@ -165,32 +182,40 @@ async function readSavedConfig(page) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // 1. Rebuilt onto one day, in the new order.
+        // 1. Rebuilt onto the v28 days, in the new order.
         const saved = await readSavedConfig(page);
         ok(saved, 'the saved config still exists after load');
         eq(saved.version, currentConfigVersion(), 'stamped with the current version');
-        ok(saved.version > 21, 'past 21, so the Anterior/Posterior layout really was stale');
-        eq(saved.exercises.map(e => e.id), EXPECTED_ORDER, 'ids are in the Full Body order');
-        eq([...new Set(saved.exercises.map(e => e.day))], ['full-body'], "every id is on 'full-body'");
-        eq([...new Set(saved.exercises.map(e => e.category))], ['Full Body'], 'every category is Full Body');
-        eq(saved.exercises.map(e => e.order), Array.from({ length: 24 }, (_, i) => i), 'order is dense 0..23');
+        ok(saved.version > 21, 'past 21, so the old layout really was stale');
+        eq(saved.exercises.map(e => e.id), EXPECTED_ORDER, 'ids are in the v28 order');
+        eq(saved.exercises.filter(e => RETIRED_V28.includes(e.id)), [], 'the three retired ids are dropped');
+        eq(saved.exercises.map(e => e.day),
+            [...EXPECTED_ANTERIOR.map(() => 'anterior-2'), ...EXPECTED_POSTERIOR.map(() => 'posterior-2')],
+            "each id is on its v28 day, not the old 'anterior' / 'posterior'");
+        eq([...new Set(saved.exercises.map(e => e.category))], ['Anterior', 'Posterior'], 'categories follow the days');
+        eq(saved.exercises.map(e => e.order), Array.from({ length: 22 }, (_, i) => i), 'order is dense 0..21');
 
         // 2 + 3. User-owned fields survived, which also proves no wipe ran.
         const byId = Object.fromEntries(saved.exercises.map(e => [e.id, e]));
         eq(byId['lats-frontal-shoulder-adduction'].name, 'My Renamed Pulldowns', 'the rename survives (no config wipe)');
         eq(byId['lats-sagittal-shoulder-extension'].name, 'Sagittal Plane Pulldowns', "the device's own name for lats-sagittal-shoulder-extension survives");
         eq(byId['traps-scapular-retraction'].loadType, 'plate-one-sided', 'the load-type choice survives');
+        eq([byId['pecs-shoulder-adduction'].name, byId['pecs-shoulder-adduction'].loadType],
+            ['High to Low Flies', 'pin'], 'the added movement arrives on its defaults');
 
-        // It reaches the screen: one day, no toggle.
-        const toggles = await page.evaluate(() => document.querySelectorAll('[data-day-type]').length);
-        eq(toggles, 0, 'no day toggle after the upgrade');
-        const names = await readDeckNames(page);
-        eq(names.length, 24, 'the deck holds all 24 movements');
-        eq(names[EXPECTED_ORDER.indexOf('lats-frontal-shoulder-adduction')], 'My Renamed Pulldowns', 'the renamed card sits at its Full Body position');
-
-        // 4. Last session's weight, from both former days.
+        // It reaches the screen. The old 'anterior' / 'posterior' sessions are
+        // another program's days, so the deck opens on Anterior.
+        let names = await readDeckNames(page);
+        eq(names.length, EXPECTED_ANTERIOR.length, 'the deck holds the 11 Anterior movements');
         contains((await readDeckCard(page, 'Chest Press')).last, '150', 'Chest Press keeps its Anterior last weight');
         contains((await readDeckCard(page, 'Lateral Raises')).last, '45', 'Lateral Raises keeps its Anterior last weight');
+
+        await selectDayType(page, 'posterior-2');
+        names = await readDeckNames(page);
+        eq(names[EXPECTED_POSTERIOR.indexOf('lats-frontal-shoulder-adduction')], 'My Renamed Pulldowns',
+            'the renamed card sits at its Posterior position');
+
+        // 4. Last session's weight, from both former days.
         contains((await readDeckCard(page, 'My Renamed Pulldowns')).last, '160', 'Pulldowns keep their Posterior last weight');
         contains((await readDeckCard(page, 'Calf Raises')).last, '205', 'Calf Raises keep their Posterior last weight');
 
@@ -215,7 +240,7 @@ async function readSavedConfig(page) {
         eq(await readSavedConfig(page), saved, 'a second load is a no-op');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: an Anterior/Posterior device lands on Full Body with its history intact.');
+        console.log('PASS: a v21 device lands on the v28 program with its history intact.');
     } finally {
         await browser.close();
         await server.stop();

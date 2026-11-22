@@ -146,7 +146,7 @@ async function readSavedLoadTypes(page) {
 
         // === Half 1: a backup carrying an override =========================
         await importBackup(page, withOverride);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // Before any reload: the imported override is live immediately.
         let text = await readBreakdownText(page, 'Chest Flies', '200');
@@ -170,7 +170,7 @@ async function readSavedLoadTypes(page) {
 
         // === Half 2: a backup from before the field existed ================
         await importBackup(page, preV15);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // This is the resolveLoadType window: state holds entries with no
         // loadType at all, and the breakdown must still render its seeded shape

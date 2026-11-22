@@ -139,6 +139,14 @@ async function openEdit(page, index) {
             `legacy Lower is not relabelled (got "${lower.title}")`);
         eq(lower.rows.length, 8, 'the legacy Lower workout keeps its 8 fields, not today\'s 9');
 
+        // The Nov 2026 program's days are labelled by name, and the Aug–Sep
+        // 2026 ones keep theirs: the same two words, from different ids. A
+        // missing line here falls through to "Full Body" without an error.
+        eq(await page.evaluate(() => ['anterior-2', 'posterior-2', 'anterior', 'posterior', 'full-body']
+                .map(day => getWorkoutDayLabel({ day, date: new Date().toISOString() }))),
+            ['Anterior', 'Posterior', 'Anterior', 'Posterior', 'Full Body'],
+            'both Anterior/Posterior programs, and Full Body, keep their labels');
+
         eq(errors, [], 'no console errors during load');
         console.log('PASS: legacy Upper/Lower history keeps its own labels and rosters.');
     } finally {

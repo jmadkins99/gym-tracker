@@ -150,7 +150,7 @@ const EXPECTED_TOTAL = '35m';
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // === 1. What the modal renders ==================================
         // Submit Day lives on the finish card at the end of the deck now, so

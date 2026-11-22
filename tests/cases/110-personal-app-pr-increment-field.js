@@ -132,7 +132,7 @@ const readRawConfig = (page) =>
         const VERSION = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
 
         // Control: before any edit the card uses the 2.5 seed.
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         let flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5',
             'before editing, the card suggests the 2.5 seed: 200 + 2.5');
@@ -188,7 +188,7 @@ const readRawConfig = (page) =>
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
         flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '205', 'the card now suggests 200 + 5');
         const tag = await page.evaluate(() => {

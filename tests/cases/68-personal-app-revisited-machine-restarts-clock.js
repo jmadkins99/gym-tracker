@@ -101,7 +101,7 @@ async function savedExercise(page, id) {
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await selectDayType(page, 'full-body');
+        await selectDayType(page, 'anterior-2');
 
         // === 1. Walk away from a machine and come back =================
         await clickCardButton(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'Weight Breakdown');
