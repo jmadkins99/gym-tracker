@@ -73,12 +73,34 @@ jobs:
           merge_push="${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}"
           [ "$result" = success ] || { [ "$merge_push" = true ] && [ "$result" = skipped ]; }
 
-  deploy:
+  # Upload and deploy are separate jobs, as in GitHub's starter Pages
+  # workflow. In one job, deploy-pages looked the artifact up half a second
+  # after upload-pages-artifact finished and GitHub hadn't listed it yet
+  # ("No artifacts named github-pages were found"; kanban hit it twice). A job
+  # boundary gives it time. Re-running a failed deploy can't recover: it
+  # uploads a second github-pages artifact and fails on the duplicate. Start
+  # a fresh run instead ("Run workflow", or `gh workflow run tests.yml --ref
+  # main`).
+  build:
     needs: test
     # Spelled out rather than the implicit success(), which is murky about
     # skipped jobs further up the chain. !cancelled(), not always(): a
     # cancelled run must never deploy.
     if: ${{ !cancelled() && needs.test.result == 'success' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # The whole repo, as the old branch deploy served it. Hidden files
+      # (.github, .gitattributes) are left out by the action.
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    # Explicit for the same reason as build's: the shards skipped on the
+    # merge push would make the implicit success() skip this job too.
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,11 +110,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v5
-      # The whole repo, as the old branch deploy served it. Hidden files
-      # (.github, .gitattributes) are left out by the action.
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: .
       - uses: actions/deploy-pages@v4
         id: deploy
