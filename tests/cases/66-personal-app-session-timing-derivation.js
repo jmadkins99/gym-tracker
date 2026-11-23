@@ -121,13 +121,13 @@ const EXPECTED_TOTAL = '35m';
             workoutHistory: [
                 workoutEntry({
                     date: at(26, 30),
-                    day: 'anterior',
+                    day: 'anterior-2',
                     submitted: false,
                     exercises: EXERCISES,
                 }),
                 workoutEntry({
                     date: olderAt(),
-                    day: 'anterior',
+                    day: 'anterior-2',
                     submitted: true,
                     exercises: [
                         { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '4' },
@@ -135,7 +135,7 @@ const EXPECTED_TOTAL = '35m';
                 }),
                 workoutEntry({
                     date: baselineAt(),
-                    day: 'anterior',
+                    day: 'anterior-2',
                     submitted: true,
                     exercises: [
                         { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '200', reps: '5' },

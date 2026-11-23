@@ -318,8 +318,9 @@
             // The cards on the deck, and so the rows a new day is saved with.
             // A disabled exercise (Settings, Oct 2026) is left out here and
             // nowhere else, so it keeps its place in `exercises` and its order.
-            const getCurrentExercises = () =>
-                exercises.filter(ex => ex.day === activeDayType && ex.enabled !== false);
+            const getDayExercises = (day) =>
+                exercises.filter(ex => ex.day === day && ex.enabled !== false);
+            const getCurrentExercises = () => getDayExercises(activeDayType);
 
             // The day today's session is on, once anything is logged; the
             // Settings toggle is locked while this is set.
@@ -1181,7 +1182,7 @@
                         <DayBreakdownModal
                             onClose={() => setShowDayBreakdown(false)}
                             workoutHistory={workoutHistory}
-                            getCurrentExercises={getCurrentExercises}
+                            getDayExercises={getDayExercises}
                             getPreviousWorkout={getPreviousWorkout}
                             foregroundAt={lastForegroundAt}
                         />

@@ -1,4 +1,4 @@
-        function DayBreakdownModal({ onClose, workoutHistory, getCurrentExercises, getPreviousWorkout, foregroundAt }) {
+        function DayBreakdownModal({ onClose, workoutHistory, getDayExercises, getPreviousWorkout, foregroundAt }) {
             // Find today's workout
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -13,8 +13,11 @@
                 return null;
             }
 
-            // Get only exercises that match the current day
-            const currentDayExerciseIds = new Set(getCurrentExercises().map(e => e.id));
+            // The roster of the day this session was on, not the active day:
+            // Submit Day moves the deck to the next day before this opens, so
+            // the active day is already the other one (case 146).
+            const dayExercises = getDayExercises(todayWorkout.day);
+            const currentDayExerciseIds = new Set(dayExercises.map(e => e.id));
             const currentDayWorkoutExercises = todayWorkout.exercises.filter(e => currentDayExerciseIds.has(e.id));
 
             // Calculate PRs (just count them)
@@ -55,7 +58,7 @@
                     return (e.weight && e.weight !== 'NA') || (e.reps && e.reps !== 'NA');
                 }
             }).length;
-            const totalCount = getCurrentExercises().length;
+            const totalCount = dayExercises.length;
 
             // Reconstructed from the per-exercise timestamps logExercise
             // stamps. Null for any workout logged before August 2026, which
