@@ -71,7 +71,7 @@ const dayOffset = (days, hour) => {
 // Two days ago, submitted: the real baseline for everything below.
 const BASELINE = workoutEntry({
     date: dayOffset(-2, 9),
-    day: 'anterior',
+    day: 'anterior-2',
     submitted: true,
     // Chest Press was flagged a plateau buster here — 3 reps is a true failure,
     // which is exactly what makes the next session a deliberate weight drop.
@@ -90,7 +90,7 @@ const BASELINE = workoutEntry({
 // this up as "last time" for Lateral Raises.
 const ABANDONED = workoutEntry({
     date: dayOffset(-1, 9),
-    day: 'anterior',
+    day: 'anterior-2',
     submitted: false,
     exercises: [
         { id: 'delts-shoulder-abduction-stop-at-90-degrees', name: 'Lateral Raises', weight: '999', reps: '3' },
@@ -99,7 +99,7 @@ const ABANDONED = workoutEntry({
 
 const TODAY = workoutEntry({
     date: dayOffset(0, 9),
-    day: 'anterior',
+    day: 'anterior-2',
     submitted: false,
     exercises: [
         // The plateau-buster recovery: lighter, at more reps. NOT a PR.
