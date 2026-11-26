@@ -196,7 +196,7 @@ async function reload(page) {
         await clickPencil(page, TARGET);
         let row = await readRow(page, TARGET);
         eq(row.value, '2.5', 'the field opens on the 2.5 seed');
-        eq(row.options, ['0', '1.25', '2.5', '5', '10'], '0 is offered alongside the plate steps');
+        eq(row.options, ['0', '1.25', '2.5', '4', '5', '10'], '0 is offered alongside the other steps');
         eq(row.labels[0], '0 — never bump', 'and reads as words, not a bare 0');
         eq(row.hint, null, 'a plain 2.5 on a pin stack needs no hint');
 
