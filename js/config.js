@@ -22,7 +22,8 @@
         // exercise's standard rep range.
         // 5 lbs where a 5 is the natural step — two-sided plate-loaded (= 2.5
         // per side per move) and pin stacks moved a full stack notch at a time.
-        // 2.5 or 1.25 elsewhere; both are legal micro-plate steps.
+        // 2.5 or 1.25 elsewhere; both are legal micro-plate steps. 4 is for a
+        // machine that only moves in 4 lb steps and takes no micro-plates.
         //
         // The default for every exercise as of Oct 2026 (v25). The increment is
         // a user setting, editable from the pencil in Settings > Manage
@@ -31,9 +32,14 @@
         // It replaced a per-id seed table when every movement took a new id.
         const DEFAULT_PR_INCREMENT = 2.5;
 
-        // The only increments the Settings dropdown offers: 0 plus the real
-        // plate steps. resolveIncrement also rejects a saved value outside this
+        // The only increments the Settings dropdown offers: 0 plus the steps a
+        // real machine can load. resolveIncrement also rejects a saved value outside this
         // list, so a hand-edited backup cannot smuggle in a 3 no gym can load.
+        //
+        // Ascending, because the dropdown renders in this order. 4 (Nov 2026)
+        // is the one step that is not a plate pair: a two-sided machine
+        // doubles it to 8 (2 a side is not a plate), see getWeightIncrement.
+        // Case 147 pins it.
         //
         // 0 means "never bump this one". Hitting the top of the rep range still
         // counts as a PR everywhere PRs are read from history — the badge, the
@@ -44,7 +50,7 @@
         // whole mechanism: every caller of getWeightIncrement already guards on
         // truthiness (it was the shape for "this exercise has no step"), so 0
         // needed no new branch in the suggestion logic. Case 139 pins it.
-        const PR_INCREMENT_OPTIONS = [0, 1.25, 2.5, 5, 10];
+        const PR_INCREMENT_OPTIONS = [0, 1.25, 2.5, 4, 5, 10];
 
         // Standard weighted rep dropdowns. Internally a range is the dropdown's
         // ends: `min` is the bottom value, the one you log when the set failed,
@@ -223,8 +229,9 @@
 
         // A two-sided machine splits the increment across both sides, so the
         // total has to land on a real plate: 1.25 would be 0.625/side, which
-        // does not exist. 2.5 and 5 already halve legally (1.25 and 2.5/side)
-        // and are passed through untouched — the bump is minimal, not a floor.
+        // does not exist, and neither does 4's 2/side, so both double (to 2.5
+        // and 8). 2.5 and 5 already halve legally (1.25 and 2.5/side) and are
+        // passed through untouched — the bump is minimal, not a floor.
         //
         // The adjustment is derived on read, never stored. The saved increment
         // is the raw step the user typed, so switching an exercise back to a
@@ -233,7 +240,8 @@
         //
         // The default is 2.5, so against untouched config this branch never
         // fires. Since the increment became editable (Sep 2026) it does
-        // the moment someone types 1.25 on a two-sided machine. Case 61 pins it.
+        // the moment someone picks 1.25 or 4 on a two-sided machine. Cases 61
+        // (1.25) and 147 (4) pin it.
         //
         // A 0 falls through it untouched — (0 / 2) % 1.25 is 0 — so "never
         // bump" stays 0 on a two-sided machine rather than being doubled into
