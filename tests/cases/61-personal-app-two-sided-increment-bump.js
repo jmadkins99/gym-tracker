@@ -97,18 +97,19 @@ function daysAgo(n) {
         eq(bad, [],
             'every exercise, set two-sided, gets an increment that halves to a multiple of 1.25');
 
-        // 3. The bump is minimal: only a 1.25 raw increment moves.
+        // 3. The bump is minimal: only a raw increment that does not halve
+        // onto a plate moves (1.25, and since Nov 2026 4 — case 147 covers it).
         const overBumped = table
-            .filter(r => r.raw !== 1.25 && r.twoSided !== r.raw)
+            .filter(r => (r.raw / 2) % 1.25 === 0 && r.twoSided !== r.raw)
             .map(r => `${r.id}: ${r.raw} -> ${r.twoSided}`);
         eq(overBumped, [],
-            'only a 1.25 raw increment is bumped; 2.5 and 5 are already legal two-sided steps');
+            'only a step that does not halve onto a plate is bumped; 2.5 and 5 are already legal two-sided steps');
 
         // Non-vacuity, and the reason this looks the way it does.
         //
         // Since Aug 2026 no exercise ships a 1.25 increment — they were all
-        // raised to 2.5 — and the doubling branch ONLY fires for 1.25, because
-        // 2.5 and 5 already halve onto real plates. So assertions 2 and 3 above
+        // raised to 2.5 — and the doubling branch only fires for 1.25 (and 4,
+        // which no seed uses), because 2.5 and 5 already halve onto real plates. So assertions 2 and 3 above
         // are now satisfied by a helper that does nothing at all, and there is
         // no roster entry left to prove otherwise with.
         //

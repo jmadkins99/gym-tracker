@@ -9,7 +9,8 @@
 //   - after a max-reps session the card's green tag reads "+4 lbs" on a pin
 //     stack and on a one-sided plate machine;
 //   - on a two-sided plate machine it suggests +8, because 2 a side is not a
-//     plate (getWeightIncrement doubles it, like a 1.25);
+//     plate (getWeightIncrement doubles it, like a 1.25), and the Settings
+//     hint under the dropdown says so;
 //   - with the Dutch cable stack switch on, the suggestion snaps up to a
 //     weight that stack can make (53 + 4 = 57 → 58), capped at 84.5;
 //   - a saved 4 survives migrateExerciseConfig on a version bump, and a
@@ -99,7 +100,7 @@ const savedIncrement = (page) => page.evaluate((ns, id) => {
     return { version: cfg.version, increment: cfg.exercises.find(e => e.id === id).increment };
 }, NS, TARGET);
 
-const upTag = (page) => page.evaluate((sel) => {
+const readGreenTag = (page) => page.evaluate((sel) => {
     const t = document.querySelector(sel + ' .hero-tag.up');
     return t ? t.textContent.trim() : null;
 }, ACTIVE);
@@ -107,7 +108,7 @@ const upTag = (page) => page.evaluate((sel) => {
 async function readCard(page) {
     await selectDayType(page, 'anterior-2');
     const card = await readDeckCard(page, 'Chest Flies');
-    return { weight: card.weightValue, tag: await upTag(page) };
+    return { weight: card.weightValue, tag: await readGreenTag(page) };
 }
 
 async function seedHistory(page, weight) {
@@ -134,7 +135,12 @@ async function importBackup(page, backup) {
         return 'ok';
     }, JSON.stringify(backup));
     eq(fed, 'ok', 'fed the backup to the Settings file input');
-    await new Promise(r => setTimeout(r, 600));
+    // importData saves the restored config with no version key, so that is the
+    // sign the FileReader has landed.
+    await waitFor(page, 'the imported config to be saved', (ns) => {
+        const cfg = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
+        return !!cfg && cfg.version === undefined;
+    }, NS);
     await page.evaluate(() => {
         const overlay = document.querySelector('.modal-overlay');
         if (overlay) overlay.click();
@@ -186,6 +192,13 @@ async function importBackup(page, backup) {
 
         await seedExerciseConfig(page, { version: VERSION, ns: NS,
             overrides: { [TARGET]: { increment: 4, loadType: 'plate-two-sided' } } });
+        await reload(page);
+        await openManageExercises(page);
+        await clickPencil(page, TARGET);
+        eq(await page.evaluate((sel) => {
+            const hint = document.querySelector(sel + ' [data-field="increment-hint"]');
+            return hint ? hint.textContent.trim() : null;
+        }, rowSel(TARGET)), 'Two-sided: suggests +8 lbs', 'the Settings hint says a two-sided 4 suggests +8');
         await reload(page);
         eq(await readCard(page), { weight: '208', tag: '+8 lbs' },
             'on a two-sided plate machine it doubles to +8: 2 a side is not a plate');
