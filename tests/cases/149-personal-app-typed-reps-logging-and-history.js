@@ -16,9 +16,7 @@
 //     stamp); invalid or blank reps never overwrite a saved rep count.
 //   - Switching an exercise from 0 to a ranged step drops the typed reps that
 //     the dropdown does not offer, so LOG saves a value that is shown.
-//   - A session logged under a custom range keeps its verdict after the
-//     exercise switches to 0.
-//   - A backup that holds stamped and unstamped sets restores both unchanged.
+// (Custom-range verdicts and backup restore are case 150.)
 //
 // To verify this test is real: in App.jsx logExercise stop reading the typed
 // box (the untouched-LOG step fails); in EditWorkoutModal.jsx drop the stamping
@@ -142,21 +140,6 @@ async function saveEdit(page) {
     await waitFor(page, 'the edit modal to close', () => !document.querySelector('.modal'));
 }
 
-async function importBackup(page, backup) {
-    await openSettings(page);
-    await page.evaluate((json) => {
-        const input = document.querySelector('input.file-input');
-        const dt = new DataTransfer();
-        dt.items.add(new File([json], 'gym-tracker-backup.json', { type: 'application/json' }));
-        input.files = dt.files;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-    }, JSON.stringify(backup));
-    await waitFor(page, 'the import to land', (n) =>
-        JSON.parse(localStorage.getItem('gym-local:gymWorkoutHistory') || '[]').length === n,
-        backup.workoutHistory.length);
-    await closeSettings(page);
-}
-
 async function changeIncrement(page, step) {
     await openSettings(page);
     await page.evaluate(() => Array.from(document.querySelectorAll('.modal-btn'))
@@ -224,6 +207,12 @@ async function changeIncrement(page, step) {
         await pressLog(page, { expectLogged: true });
         eq((await todaysSet(page)).reps, '4', 'a valid number then logs');
 
+        // --- A leading zero is still a whole number --------------------------------
+        await setup(page, VERSION, [flies(7, '200', '8')]);
+        await typeInto(page, REPS, '05');
+        await pressLog(page, { expectLogged: true });
+        eq((await todaysSet(page)).reps, '5', '"05" logs as 5 reps');
+
         // --- A heavier, lower-rep set is a PR ---------------------------------
         await setup(page, VERSION, [flies(7, '200', '6', { noRange: true })]);
         await typeInto(page, WEIGHT, '210');
@@ -279,6 +268,31 @@ async function changeIncrement(page, step) {
         set = await todaysSet(page);
         eq([set.weight, set.noRange], ['205', true], 'editing a logged noRange set keeps its stamp');
 
+        // A legacy row has no `type` and renders as a standard exercise, so Save
+        // treats it the same way.
+        await setup(page, VERSION, []);
+        const week = await page.evaluate(() => Number(document.body.innerText.match(/Week (\d+)/)[1]));
+        const legacyRow = (row) => [{ ...workoutEntry({
+            date: daysAgo(0), day: 'upper', submitted: false, exercises: [
+                { id: TARGET, name: 'Chest Flies', type: undefined, ...row }] }), week }];
+        await setup(page, VERSION, legacyRow({ weight: '200', reps: '8' }));
+        await openEdit(page);
+        await typeInto(page, '[data-t="r"]', '3.5');
+        await saveEdit(page);
+        eq((await todaysSet(page)).reps, '8', 'a legacy row keeps its saved reps when the box holds 3.5');
+        await openEdit(page);
+        await typeInto(page, '[data-t="r"]', '05');
+        await saveEdit(page);
+        eq((await todaysSet(page)).reps, '5', 'a legacy row saves "05" as 5');
+        await setup(page, VERSION, legacyRow({ weight: '', reps: '' }));
+        await openEdit(page);
+        await typeInto(page, '[data-t="w"]', '200');
+        await typeInto(page, '[data-t="r"]', '3');
+        await saveEdit(page);
+        set = await todaysSet(page);
+        eq([set.reps, set.noRange, set.repMin], ['3', true, undefined],
+            'a legacy placeholder filled in History is stamped noRange');
+
         // A set logged under a range keeps that stamp when edited at 0.
         // Seeded as today's unsubmitted workout, in the week the app is showing.
         await setup(page, VERSION, []);
@@ -305,37 +319,15 @@ async function changeIncrement(page, step) {
         ok(dropdown, 'the ranged step brings the Reps dropdown back');
         ok(dropdown.options.includes(dropdown.value) && dropdown.value !== '15',
             'the dropdown shows an offered value, not the typed 15: ' + JSON.stringify(dropdown));
+        eq(await page.evaluate((sel) => document.querySelector(sel + ' .hero-reps').textContent.trim(), ACTIVE),
+            '× ' + dropdown.value, 'the big rep count shows the same value as the dropdown, not the stale 15');
         await pressLog(page, { expectLogged: true });
         set = await todaysSet(page);
         eq([set.reps, set.noRange, set.repMin !== undefined], [dropdown.value, undefined, true],
             'ranged LOG saves the shown, offered value with a range stamp');
 
-        // --- A custom-range verdict survives the switch to 0 ---------------------
-        const older = flies(14, '200', '5', { repMin: 5, repMax: 8 });
-        await setup(page, VERSION, [flies(7, '200', '6', { repMin: 7, repMax: 9 }), older]);
-        eq(await readHistory(page), [null, null],
-            '200 x 6 under a 7-9 range was a failed set, and stays one at 0');
-        await setup(page, VERSION, [flies(7, '200', '6', { noRange: true }), older]);
-        eq(await readHistory(page), ['PR', null], 'the same set logged with no range is a PR');
-
-        // --- Backup and restore ---------------------------------------------------
-        const sets = [
-            flies(7, '200', '3', { noRange: true }),
-            flies(14, '200', '2', { noRange: true }),
-            flies(21, '200', '4'),
-        ];
-        await setup(page, VERSION, []);
-        const exercises = await page.evaluate(() => JSON.parse(localStorage.getItem('gym-local:gymExerciseConfig')).exercises);
-        await importBackup(page, { workoutHistory: sets, exerciseConfig: { exercises }, exportDate: new Date().toISOString() });
-        const restored = (await readStore(page)).map(w => w.exercises.find(e => e.id === TARGET));
-        eq(restored.map(e => [e.reps, e.noRange, e.repMin]),
-            [['3', true, undefined], ['2', true, undefined], ['4', undefined, undefined]],
-            'stamped sets keep noRange and the legacy set stays unstamped after restore');
-        eq(await readHistory(page), ['PR', null, null],
-            'restored verdicts: the stamped 3 beats the stamped 2; the legacy 4 is the baseline');
-
         eq(errors, [], 'no console errors');
-        console.log('PASS: typed reps logging, History and backup at a PR increment of 0');
+        console.log('PASS: typed reps logging and History at a PR increment of 0');
     } finally {
         await browser.close();
         await server.stop();

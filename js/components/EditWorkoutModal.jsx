@@ -43,11 +43,16 @@
             // already logged keeps the stamp it has.
             const handleSave = () => {
                 const toSave = editedExercises.map(edited => {
-                    if (edited.type !== 'standard' || !usesTypedReps(edited.id)) return edited;
+                    // The render treats any row that is not a cardio or bodyweight
+                    // type as standard (legacy rows have no type), so Save does too.
+                    if (['assault-bike', 'stairmaster', 'bodyweight'].includes(edited.type)
+                        || !usesTypedReps(edited.id)) return edited;
                     const original = workout.exercises.find(e => e.id === edited.id);
                     let next = edited;
                     if (!isValidTypedReps(edited.reps)) {
                         next = { ...next, reps: original?.reps || '' };
+                    } else {
+                        next = { ...next, reps: normalizeTypedReps(edited.reps) };
                     }
                     const wasLogged = !!original && hasLoggedData(original);
                     if (!wasLogged && hasLoggedData(next) && next.noRange !== true) {

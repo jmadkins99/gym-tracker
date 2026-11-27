@@ -17,6 +17,17 @@
         // here is the single source for the hero number, the breakdown, and the
         // input value — upstream kept three copies of it, which is exactly how a
         // breakdown comes to disagree with the number printed above it.
+        // The one rep value an unlogged standard card shows, offers in the
+        // dropdown and logs. A typed-reps box shows its draft or default; a
+        // ranged card only honours a draft its dropdown offers, so a draft left
+        // over from an earlier 0 increment cannot show as a count LOG won't
+        // save. A logged card keeps showing the saved count.
+        function shownReps(model, data, isLogged) {
+            if (data.reps === undefined) return model.repsDefault;
+            if (isLogged || model.typedReps || model.repOptions.includes(String(data.reps))) return data.reps;
+            return model.repsDefault;
+        }
+
         function computeCardModel(exercise, { previous, workoutHistory, data }) {
             const loadType = resolveLoadType(exercise);
             const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory) : false;
@@ -262,7 +273,7 @@
                                 step="1"
                                 className="input-field"
                                 data-field="reps"
-                                value={data.reps !== undefined ? data.reps : repsDefault}
+                                value={shownReps(model, data, isLogged)}
                                 onChange={(e) => change('reps', e.target.value)}
                                 placeholder="Reps"
                                 disabled={isLogged}
@@ -271,7 +282,7 @@
                             <select
                                 className="input-field"
                                 data-field="reps"
-                                value={data.reps !== undefined && repOptions.includes(String(data.reps)) ? data.reps : repsDefault}
+                                value={shownReps(model, data, isLogged)}
                                 onChange={(e) => change('reps', e.target.value)}
                                 disabled={isLogged}
                                 style={stagnation ? { borderColor: HINT_ORANGE } : {}}
@@ -411,7 +422,7 @@
                                     {targetWeight || '—'}<span className="hero-unit">lbs</span>
                                 </div>
                                 <div className="hero-reps">
-                                    × {data.reps !== undefined ? data.reps : repsDefault}
+                                    × {shownReps(model, data, isLogged)}
                                 </div>
                                 {simplePR ? <div className="hero-tag up">+{simplePR.increment} lbs</div> : null}
                                 {stagnation ? <div className="hero-tag flat">Plateau detected</div> : null}

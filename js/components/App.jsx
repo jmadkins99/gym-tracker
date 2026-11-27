@@ -699,7 +699,7 @@
                     if (typed) {
                         const shown = data.reps !== undefined ? data.reps : (repsControl ? repsControl.value : '');
                         if (!isValidTypedReps(shown)) return { logged: false, isPR: false };
-                        data = { ...data, reps: String(shown).trim() };
+                        data = { ...data, reps: normalizeTypedReps(shown) };
                     } else if (!data.reps || !getStandardRepOptions(exerciseId).includes(String(data.reps))) {
                         if (repsControl && repsControl.value) {
                             data = { ...data, reps: repsControl.value };

@@ -115,9 +115,15 @@
 
         // Typed reps are whole numbers from 1 up. The box shows whatever was
         // typed (a "3.5" is never rewritten into a different number); LOG and
-        // History Save only accept a value that passes this.
+        // History Save only accept a value that passes this (digits only, 1 or
+        // more; a leading zero is fine).
         function isValidTypedReps(text) {
-            return /^[1-9]\d*$/.test(String(text ?? '').trim());
+            return /^\d+$/.test(String(text ?? '').trim()) && parseInt(text, 10) >= 1;
+        }
+
+        // The saved form of valid typed reps: "05" is 5.
+        function normalizeTypedReps(text) {
+            return String(parseInt(String(text).trim(), 10));
         }
 
         function getStandardRepOptions(exerciseId) {
