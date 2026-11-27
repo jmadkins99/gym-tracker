@@ -57,6 +57,17 @@ if [ -n "$SHARD" ]; then
     fi
 fi
 
+# Guardrails (check-cache-bust.sh, check-no-sync-waits.sh): a changed asset needs a new
+# ?v= in the HTML that loads it. Runs on full and --affected runs, not on a
+# filtered run, and not on a CI shard (CI has a job of its own for it, so four
+# shards would not repeat it).
+CACHE_FAIL=0
+if [ -z "$PATTERN" ] && [ -z "$ONLY" ] && [ -z "$SHARD" ]; then
+    bash ./check-cache-bust.sh || CACHE_FAIL=1
+    bash ./check-no-sync-waits.sh || CACHE_FAIL=1
+    echo
+fi
+
 # Every case is run with lib/coverage.js preloaded, which records the repo
 # files it reads into .coverage/<case>.json. That is the map --affected
 # selects from; it is rebuilt here on every run and never edited by hand.
@@ -94,7 +105,7 @@ if [ "$AFFECTED" = "1" ] && [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
             "")
                 echo "Affected: no case reads anything changed since $(git rev-parse --short "$BASE") -- nothing to run."
                 advance_base
-                exit 0 ;;
+                exit $CACHE_FAIL ;;
             *)
                 ONLY="$SELECTION"
                 ADVANCE_BASE=1 ;;
@@ -300,5 +311,6 @@ fi
 if [ "${#RETRY_PASSED[@]}" -gt 0 ]; then
     echo "  ${#RETRY_PASSED[@]} passed only on retry: ${RETRY_PASSED[*]}"
 fi
+if [ "$CACHE_FAIL" = "1" ]; then echo "  guardrail check FAILED (see the top of this output)"; fi
 echo "================================================"
-exit $FAIL
+exit $(( FAIL || CACHE_FAIL ))
