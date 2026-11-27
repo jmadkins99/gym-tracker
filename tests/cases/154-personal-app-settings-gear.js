@@ -6,18 +6,19 @@
 //   - there is exactly one .settings-btn, labelled aria-label="Settings" for
 //     screen readers, with no visible text (the word "Settings" is gone);
 //   - it holds one aria-hidden inline SVG, about 24 CSS px square, stroked and
-//     not filled;
+//     not filled, and actually painted (no zero opacity, hidden visibility or
+//     zero stroke width anywhere from its shapes up to the page);
 //   - the stroke is var(--accent-hi), checked against two different palettes
 //     from the accent bank, so a hard-coded colour that happens to match one
 //     day still fails on the other;
-//   - clicking it still opens the Settings modal.
+//   - clicking it still opens the modal titled "Settings".
 //
 // The 59 CSS px tap size is case 152's job; it scans .settings-btn already.
 //
 // Mutation check: put the text "Settings" back in either button and the
 // no-visible-text check names the page; give the gear a fixed stroke colour
 // and the second palette's check fails; drop fill="none" and the outline
-// check fails.
+// check fails; add opacity: 0 to .settings-gear and the painted check fails.
 
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, waitFor, setNow } = require('../lib/browser');
@@ -29,6 +30,7 @@ const NOW = '2026-11-23T10:00:00-07:00';
 
 // Evaluated in the page: the button, its gear and the gear's resolved colours,
 // with --accent-hi resolved to rgb() through a probe element so the two compare.
+// Installed on window (see install below) so the settle poll and the read share it.
 function readGear() {
     const btns = Array.from(document.querySelectorAll('.settings-btn'));
     if (btns.length !== 1) return { count: btns.length };
@@ -42,6 +44,14 @@ function readGear() {
     probe.remove();
     const shapes = svg ? Array.from(svg.querySelectorAll('path, circle')) : [];
     const r = svg ? svg.getBoundingClientRect() : null;
+    const painted = shapes.length > 0 && shapes.every((s) => {
+        if (getComputedStyle(s).visibility !== 'visible') return false;
+        if (parseFloat(getComputedStyle(s).strokeWidth) <= 0) return false;
+        for (let el = s; el; el = el.parentElement) {
+            if (parseFloat(getComputedStyle(el).opacity) === 0) return false;
+        }
+        return true;
+    });
     return {
         count: 1,
         label: btn.getAttribute('aria-label'),
@@ -51,6 +61,7 @@ function readGear() {
         w: r ? r.width : 0,
         h: r ? r.height : 0,
         shapeCount: shapes.length,
+        painted,
         strokes: Array.from(new Set(shapes.map((s) => getComputedStyle(s).stroke))),
         fills: Array.from(new Set(shapes.map((s) => getComputedStyle(s).fill))),
         accentHi,
@@ -58,6 +69,7 @@ function readGear() {
 }
 
 async function checkPage(page, where) {
+    await page.evaluate('window.readGear = ' + readGear.toString());
     const bank = await page.evaluate(() => window.accentColor.bank.map((p) => p.name));
     // Two palettes whose `hi` shades differ: Green and Orchid sit at opposite
     // ends of the hue wheel.
@@ -67,16 +79,10 @@ async function checkPage(page, where) {
         // .settings-btn eases its colour over 0.3s, so poll until the stroke
         // settles. On a timeout, fall through: the eq below names the colours.
         await waitFor(page, 'the gear to take the ' + name + ' accent', () => {
-            const shape = document.querySelector('.settings-btn svg path');
-            if (!shape) return false;
-            const probe = document.createElement('span');
-            probe.style.color = 'var(--accent-hi)';
-            document.body.appendChild(probe);
-            const want = getComputedStyle(probe).color;
-            probe.remove();
-            return getComputedStyle(shape).stroke === want;
+            const g = window.readGear();
+            return !!g.strokes && g.strokes.length === 1 && g.strokes[0] === g.accentHi;
         }).catch(() => {});
-        const g = await page.evaluate(readGear);
+        const g = await page.evaluate(() => window.readGear());
         const at = where + ' (' + name + ')';
         eq(g.count, 1, at + ': one .settings-btn in the header');
         eq(g.label, 'Settings', at + ': the button is labelled "Settings" for screen readers');
@@ -86,11 +92,13 @@ async function checkPage(page, where) {
         ok(g.w >= 22 && g.w <= 26 && g.h >= 22 && g.h <= 26,
             at + ': the gear is about 24 CSS px (got ' + g.w.toFixed(1) + 'x' + g.h.toFixed(1) + ')');
         ok(g.shapeCount > 0, at + ': the gear has shapes to draw');
+        ok(g.painted, at + ': the gear is painted (visible, opaque, with a stroke width)');
         eq(g.fills, ['none'], at + ': the gear is an outline, not filled');
         eq(g.strokes, [g.accentHi], at + ': the gear is stroked in var(--accent-hi)');
     }
     await page.click('.settings-btn');
-    await waitFor(page, where + ' Settings modal', () => !!document.querySelector('.modal .modal-title'));
+    await waitFor(page, where + ' Settings modal', () =>
+        Array.from(document.querySelectorAll('.modal .modal-title')).some((t) => t.textContent.trim() === 'Settings'));
 }
 
 (async () => {
