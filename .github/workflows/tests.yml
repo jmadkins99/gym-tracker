@@ -70,6 +70,14 @@ jobs:
           fetch-depth: 0
       - run: bash tests/check-cache-bust.sh
       - run: bash tests/check-no-sync-waits.sh
+      # The runner self-test: run.sh as a whole process against made-up cases
+      # (tests/selftest-cases). Plain node scripts, so it needs Node and no
+      # Chrome or npm install. #46 (Chrome per slot) adds Chrome cases to it
+      # and will need a Chrome here (ubuntu-latest already has one).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: bash tests/check-runner.sh
 
   # The one check the "protect main" ruleset requires, so the shard count can
   # change without touching the ruleset. `always()` because a job skipped

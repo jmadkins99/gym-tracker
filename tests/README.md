@@ -41,9 +41,25 @@ looks timing-dependent and you want to rule concurrency out.
 counts as a failure, so one hung case can no longer hang the whole run.
 After the parallel pass, every failed case is run once more, alone. Most
 flakes here are load (`ERR_NO_BUFFER_SPACE`, a script not loaded yet), and
-a real bug fails the same way twice. A case that passes only on retry
-prints `PASS (retry)` with its first attempt's output and is named in the
-summary; only a case that fails both times fails the run.
+a real bug fails the same way twice. A case that passes only on retry is
+reported as **FLAKY** (in the summary and, on CI, as a `::warning`
+annotation) with its first attempt's output; only a case that fails both
+times fails the run.
+
+**Last-run folder.** Every run replaces `tests/.last-run/` (git-ignored) at
+its start and leaves in it one `<case>.log` per case run (result line, first
+attempt's output, retry's output if any) and `summary.txt` (failed, FLAKY and
+passed cases with timings). Read a failure with `cat .last-run/<case>.log`,
+never by rerunning, and never pipe a run through `tail` or `head`.
+
+**`TEST_CASES` guard.** `TEST_CASES` set but empty, or naming a case that
+does not exist, exits non-zero with a message before any case runs. Unset it
+to run without a list.
+
+**Runner self-test.** `bash check-runner.sh` runs `run.sh` as a whole process
+against the made-up cases in `selftest-cases/`, using `TEST_CASES_DIR` (the
+cases folder) and `TEST_OUT_DIR` (the last-run folder), which exist only for
+it. CI's `guardrails` job runs it.
 
 **Waiting.** Cases wait for conditions, not clocks — `waitForApp`,
 `waitForStorageKey` and `waitFor` in `lib/browser.js`. A fixed
@@ -326,6 +342,7 @@ tests/
 ├── README.md          (you are here)
 ├── package.json       (just puppeteer-core)
 ├── run.sh             (the runner)
+├── check-runner.sh    (runner self-test; uses selftest-cases/)
 ├── lib/
 │   ├── assert.js      (eq / ok / contains)
 │   ├── browser.js     (puppeteer launch + page helpers)
