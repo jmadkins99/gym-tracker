@@ -100,9 +100,6 @@ merge a PR until that run is green on a branch that is up to date with
 2026: a hook runs on the pusher's machine, so `--no-verify`, a fresh clone or
 a phone session skipped it, and CI cannot be skipped.
 
-`run.sh --affected` stays the fast local check before a commit, and it is
-now what keeps `.coverage/_base` current (see the note in `run.sh`).
-
 public-gym-app has the same setup since Oct 2026: its own `tests/`, its own
 workflow, no pre-push hook.
 
@@ -110,7 +107,7 @@ workflow, no pre-push hook.
 
 ```
 1. On a fresh branch, make a code change (config swap, bug fix, etc.)
-2. cd tests && bash run.sh --affected
+2. cd tests && bash run.sh <pattern>
 3. All pass?
      → commit, push the branch, open a PR once its CI run is green
    Anything fails?

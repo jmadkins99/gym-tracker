@@ -33,16 +33,7 @@ export TZ=America/Phoenix
 # runs every personal-app case. Matched as a substring of the case name.
 #
 # TEST_CASES, if set, is an exact list of case names (whitespace-separated)
-# and replaces the filter.
-#
-# `bash run.sh --affected` runs only the cases the working tree's changes can
-# touch -- committed or not, since the last verified commit -- chosen by
-# lib/select.js, and falls back to the full suite whenever that selection
-# cannot vouch for a change. It is the everyday check before a commit; CI
-# runs the full suite on every branch push. Plain `bash run.sh` is the full
-# suite.
-AFFECTED=0
-if [ "${1:-}" = "--affected" ]; then AFFECTED=1; shift; fi
+# and replaces the filter. Plain `bash run.sh` is the full suite.
 PATTERN="${1:-}"
 ONLY="${TEST_CASES:-}"
 JOBS="${TEST_JOBS:-6}"
@@ -63,7 +54,7 @@ if [ -n "$SHARD" ]; then
 fi
 
 # Guardrails (check-cache-bust.sh, check-no-sync-waits.sh): a changed asset needs a new
-# ?v= in the HTML that loads it. Runs on full and --affected runs, not on a
+# ?v= in the HTML that loads it. Runs on a full run, not on a
 # filtered run, and not on a CI shard (CI has a job of its own for it, so four
 # shards would not repeat it).
 CACHE_FAIL=0
@@ -72,55 +63,6 @@ if [ -z "$PATTERN" ] && [ -z "$ONLY" ] && [ -z "$SHARD" ]; then
     bash ./check-no-sync-waits.sh || CACHE_FAIL=1
     echo
 fi
-
-# Every case is run with lib/coverage.js preloaded, which records the repo
-# files it reads into .coverage/<case>.json. That is the map --affected
-# selects from; it is rebuilt here on every run and never edited by hand.
-COVERAGE_DIR="$PWD/.coverage"
-PRELOAD="$PWD/lib/coverage.js"
-
-# .coverage/_base is the commit the map is verified against: --affected diffs
-# from it. A full run or an --affected run moves it to the commit checked out
-# when the run STARTED, so a commit made mid-run still shows up in the next
-# diff. Moving it is safe even when cases fail, because a failed case drops
-# its own entry and lib/select.js runs an unknown case every time.
-HEAD_AT_START="$(git rev-parse HEAD 2>/dev/null || true)"
-ADVANCE_BASE=0
-advance_base() {
-    mkdir -p "$COVERAGE_DIR"
-    if [ -n "$HEAD_AT_START" ]; then echo "$HEAD_AT_START" > "$COVERAGE_DIR/_base"
-    else rm -f "$COVERAGE_DIR/_base"; fi
-}
-
-if [ "$AFFECTED" = "1" ] && [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
-    BASE="$(cat "$COVERAGE_DIR/_base" 2>/dev/null || true)"
-    if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-        echo "Affected: no verified base yet, so running the full suite."
-    else
-        # Both lists come out relative to the repo root, as select.js expects:
-        # tracked changes (committed since BASE, staged, or not) plus new
-        # files git does not know about yet.
-        ROOT="$(git rev-parse --show-toplevel)"
-        SELECTION="$( { git -C "$ROOT" diff --name-only --no-renames "$BASE" 2>/dev/null;
-                        git -C "$ROOT" ls-files --others --exclude-standard 2>/dev/null; } |
-                      node lib/select.js )"
-        case "$SELECTION" in
-            "ALL "*)
-                echo "Affected: ${SELECTION#ALL }, so running the full suite." ;;
-            "")
-                echo "Affected: no case reads anything changed since $(git rev-parse --short "$BASE") -- nothing to run."
-                advance_base
-                exit $CACHE_FAIL ;;
-            *)
-                ONLY="$SELECTION"
-                ADVANCE_BASE=1 ;;
-        esac
-    fi
-fi
-FULL=0
-if [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then FULL=1; ADVANCE_BASE=1; fi
-# A shard is a slice, so it must not prune the map or move the base.
-if [ -n "$SHARD" ]; then FULL=0; ADVANCE_BASE=0; fi
 
 # Install puppeteer-core etc. on first run.
 if [ ! -d node_modules ]; then
@@ -159,9 +101,7 @@ TOTAL=${#NAMES[@]}
 if [ -n "$SHARD" ]; then
     echo "Shard $SHARD: every ${SHARD_N}th case, starting at #$SHARD_I"
 fi
-if [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
-    echo "Affected: only the cases that read something changed since $(git rev-parse --short "$BASE")"
-elif [ -n "$ONLY" ]; then
+if [ -n "$ONLY" ]; then
     echo "Selected: only the cases listed in TEST_CASES"
 elif [ -n "$PATTERN" ]; then
     echo "Filter: only cases matching \"$PATTERN\""
@@ -205,7 +145,7 @@ kill_tree() {
 run_case() {
     local slot pid start code
     slot=$(printf '%04d' "$1")
-    node -r "$PRELOAD" "${FILES[$1]}" > "$OUTDIR/$slot$2.log" 2>&1 &
+    node "${FILES[$1]}" > "$OUTDIR/$slot$2.log" 2>&1 &
     pid=$!
     start=$SECONDS
     while kill -0 "$pid" 2>/dev/null; do
@@ -238,8 +178,7 @@ wait
 # other Chromes competed for the machine -- and a quiet machine removes that
 # cause. A real bug fails the same way twice, and only a case that fails both
 # times turns the run red. A pass on retry is still reported as one, with the
-# first attempt's output, so a flake gets looked into rather than hidden. Its
-# coverage entry is the one the passing retry wrote, since that ran last.
+# first attempt's output, so a flake gets looked into rather than hidden.
 RETRY=()
 for i in "${!NAMES[@]}"; do
     [ "$(cat "$OUTDIR/$(printf '%04d' "$i").code" 2>/dev/null)" = "0" ] || RETRY+=("$i")
@@ -271,11 +210,6 @@ for i in "${!NAMES[@]}"; do
         echo "─────────────────────────────────────────────"
     else
         echo "FAIL"
-        # A failed case may have stopped before loading everything it
-        # normally reads, so its list cannot be trusted. Dropping it makes the
-        # case unknown to lib/select.js, which then runs it on every push until
-        # it passes again.
-        rm -f "$COVERAGE_DIR/${NAMES[$i]}.json"
         echo "─── first attempt's output ──────────────────"
         sed 's/^/    /' "$OUTDIR/$slot.log" 2>/dev/null
         echo "─── retry's output ──────────────────────────"
@@ -285,27 +219,10 @@ for i in "${!NAMES[@]}"; do
     fi
 done
 
-# A full run has just rewritten the entry of every case that exists, so any
-# other entry belongs to a deleted or renamed case.
-if [ "$FULL" = "1" ] && [ -d "$COVERAGE_DIR" ]; then
-    for entry in "$COVERAGE_DIR"/*.json; do
-        [ -e "$entry" ] || continue
-        [ -f "cases/$(basename "$entry" .json).js" ] || rm -f "$entry"
-    done
-fi
-
-# Every case the changes since the old base could affect has now rerun and
-# rewritten (or, on failure, dropped) its entry, so the map is verified up to
-# the commit this run started on. Uncommitted edits were run too; they show up
-# in the next diff anyway, which can only select more, never fewer.
-if [ "$ADVANCE_BASE" = "1" ]; then advance_base; fi
-
 echo
 echo "================================================"
 if [ -n "$SHARD" ]; then
     echo "  $PASSED / $TOTAL passed  (shard $SHARD)"
-elif [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
-    echo "  $PASSED / $TOTAL passed  (affected cases only; the other $(( $(ls cases/*.js | wc -l) - TOTAL )) cannot see these changes)"
 elif [ -n "$ONLY" ]; then
     echo "  $PASSED / $TOTAL passed  (selected cases only)"
 elif [ -n "$PATTERN" ]; then

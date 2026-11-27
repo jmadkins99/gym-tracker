@@ -49,9 +49,7 @@ jobs:
         with:
           node-version: 24
 
-      # The full suite, sliced -- never --affected: a fresh runner has no
-      # tests/.coverage map, and CI is the one place that should never trust
-      # a selection.
+      # The full suite, sliced four ways.
       - name: Run tests
         working-directory: tests
         env:
