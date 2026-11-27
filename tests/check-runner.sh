@@ -8,10 +8,9 @@
 # a temp folder.
 #
 # SEAMS for later tickets (see also the notes in run.sh):
-#   - machine-wide lock (#45): the runner should take its lock file path from
-#     an env var that runner() below points into $WORK, so the self-test never
-#     contends with a real suite. Add the "waits and reports the holder" and
-#     "stale lock is taken over" checks as new `section` blocks.
+#   - machine-wide lock (#45): done. runner() points TEST_LOCK_FILE into $WORK,
+#     so the self-test never contends with a real suite; the lock sections are
+#     at the end of this file.
 #   - one Chrome per slot (#46): add a second cases folder with two Chrome
 #     cases that write and read storage, and check they don't see each other's
 #     data. The cases here are plain node scripts, so this self-test needs no
@@ -32,13 +31,30 @@ section() { echo "$1"; }
 # Runs the command with the self-test env; output goes to $WORK/<label>.out and
 # the exit code is left in $CODE.
 CODE=0
+# TEST_LOCK_FILE points the runner's machine-wide lock into $WORK, so the
+# self-test never contends with (or leaves anything in) the real lock.
+LOCK="$WORK/test.lock"
 runner() {
     local label="$1"; shift
     env TEST_CASES_DIR=selftest-cases TEST_OUT_DIR="$WORK/out-$label" \
         TEST_JOBS=2 TEST_CASE_TIMEOUT=30 SELFTEST_MARKER="$WORK/marker-$label" \
+        TEST_LOCK_FILE="$LOCK" TEST_LOCK_POLL=0.2 \
         "$@" > "$WORK/$label.out" 2>&1
     CODE=$?
 }
+# runner_bg <label> ...: same, in the background; the runner's pid is in $BG_PID.
+# `exec` makes the background process the runner itself, so $BG_PID is the pid
+# the runner records in the lock as its own $$.
+BG_PID=0
+runner_bg() {
+    local label="$1"
+    ( exec env TEST_CASES_DIR=selftest-cases TEST_OUT_DIR="$WORK/out-$label" \
+        TEST_JOBS=2 TEST_CASE_TIMEOUT=30 SELFTEST_MARKER="$WORK/marker-$label" \
+        TEST_LOCK_FILE="$LOCK" TEST_LOCK_POLL=0.2 \
+        "${@:2}" > "$WORK/$label.out" 2>&1 ) &
+    BG_PID=$!
+}
+lock_pid() { sed -n 's/^pid=//p' "$LOCK" 2>/dev/null; }
 has() { grep -q -- "$2" "$WORK/$1.out"; }   # has <label> <fixed text>
 
 section "mixed run: pass, fail and a flaky case"
@@ -87,6 +103,66 @@ runner shard TEST_SHARD=1/2 bash run.sh
 [ "$CODE" = 0 ] && ok "shard 1/2 runs 01 and 03 and exits 0" || fail "shard 1/2 exit $CODE"
 runner badshard TEST_SHARD=3/2 bash run.sh
 [ "$CODE" != 0 ] && ok "bad TEST_SHARD rejected" || fail "bad TEST_SHARD accepted"
+
+# ── machine-wide lock (#45) ──────────────────────────────────────────────────
+# The holders below are made up: a lock file naming a live process (a sleep) or
+# one that has already exited. $LOCK is in $WORK (see runner()).
+# wait_for <label> <fixed text>: polls a background run's output for up to 15s.
+wait_for() { local n; for n in $(seq 1 75); do has "$1" "$2" && return 0; sleep 0.2; done; return 1; }
+write_lock() { printf 'repo=%s\npid=%s\nstarted=%s\n' "$1" "$2" "$3" > "$LOCK"; }   # write_lock <repo> <pid> <epoch>
+
+section "no lock is left behind after runs that passed or failed"
+[ ! -e "$LOCK" ] && ok "no lock file after the earlier runs, including failing ones" || fail "lock file left behind"
+
+section "a run holds the lock while it runs, and SIGTERM releases it"
+SLOW="$WORK/slow-cases"; mkdir -p "$SLOW"
+echo "setTimeout(() => console.log('slow done'), 15000);" > "$SLOW/01-slow.js"
+runner_bg holding TEST_CASES_DIR="$SLOW" bash run.sh
+for n in $(seq 1 50); do [ -s "$LOCK" ] && break; sleep 0.2; done
+if grep -q "^repo=$(basename "$(cd .. && pwd)")$" "$LOCK" && grep -q "^pid=$BG_PID$" "$LOCK" && grep -Eq "^started=[0-9]{9,}$" "$LOCK"; then
+    ok "lock names the repo, the runner's own pid and the start time"
+else
+    fail "lock contents wrong (runner pid $BG_PID): $(cat "$LOCK" 2>/dev/null)"
+fi
+kill -TERM "$BG_PID" 2>/dev/null
+for n in $(seq 1 50); do [ ! -e "$LOCK" ] && break; sleep 0.2; done
+[ ! -e "$LOCK" ] && ok "lock file removed after SIGTERM" || fail "lock file left after SIGTERM"
+wait "$BG_PID" 2>/dev/null
+sleep 1
+has holding "No such file" && fail "in-flight case kept running after SIGTERM (it wrote to the deleted scratch folder)" || ok "in-flight cases were stopped with the run"
+
+section "a held lock: the second run prints the holder once, waits, then runs"
+sleep 60 & HOLDER=$!
+write_lock kanban "$HOLDER" "$(( $(date +%s) - 90 ))"
+runner_bg waiter bash run.sh 01
+wait_for waiter "Waiting for it to finish" && ok "run announced that it is waiting" || fail "no waiting message"
+has waiter "kanban (pid $HOLDER)" && ok "message names the holder's repo and pid" || fail "holder not named"
+sleep 1
+[ ! -e "$WORK/out-waiter" ] && ok "no case started (no output folder yet) while the lock is held" || fail "run started while the lock was held"
+rm -f "$LOCK"      # the holder lets go
+wait "$BG_PID"; CODE=$?
+{ [ "$CODE" = 0 ] && [ -f "$WORK/out-waiter/summary.txt" ]; } && ok "run went ahead once the lock was free" || fail "waiter did not run after release (exit $CODE)"
+[ "$(grep -c "Waiting for it to finish" "$WORK/waiter.out")" = 1 ] && ok "holder was printed once" || fail "holder printed more than once"
+[ ! -e "$LOCK" ] && ok "waiter released the lock when done" || fail "waiter left the lock"
+kill "$HOLDER" 2>/dev/null
+
+section "a refused run does not wait for a held lock"
+sleep 60 & HOLDER=$!
+write_lock kanban "$HOLDER" "$(date +%s)"
+runner refused TEST_CASES= bash run.sh
+{ [ "$CODE" != 0 ] && ! has refused "Waiting"; } && ok "guard refuses at once, without waiting" || fail "refused run waited or exited 0"
+[ "$(lock_pid)" = "$HOLDER" ] && ok "the holder's lock is untouched" || fail "refused run changed the lock"
+kill "$HOLDER" 2>/dev/null; rm -f "$LOCK"
+
+section "a stale lock is taken over"
+sleep 0.1 & DEAD=$!; wait "$DEAD" 2>/dev/null
+write_lock kanban "$DEAD" "$(( $(date +%s) - 3600 ))"
+runner stale bash run.sh 01
+{ [ "$CODE" = 0 ] && has stale "stale test lock" && ! has stale "Waiting"; } && ok "stale lock taken over without waiting" || fail "stale lock not taken over (exit $CODE)"
+[ ! -e "$LOCK" ] && ok "no lock left after the takeover run" || fail "lock left after the takeover run"
+printf 'garbage\n' > "$LOCK"
+runner garbage bash run.sh 01
+{ [ "$CODE" = 0 ] && [ ! -e "$LOCK" ]; } && ok "a lock file with no pid counts as stale" || fail "garbage lock blocked the run (exit $CODE)"
 
 echo
 if [ "$FAILED" = 0 ]; then

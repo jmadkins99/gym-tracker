@@ -80,6 +80,36 @@ Subsequent runs skip the install and just execute.
 A failing test dumps its full output indented under the test name so
 you can read the assertion error and stack trace inline.
 
+### Machine-wide test lock
+
+Only one run at a time on the machine, across gym-tracker and kanban, so
+concurrent sessions stop slowing each other down. Full runs and pattern runs
+both take it; a run refused up front (bad `TEST_CASES`, bad `TEST_SHARD`, no
+cases matched) never waits for it. kanban's `run.sh` copies this convention
+exactly, so change both together:
+
+- **File:** `${TMPDIR:-/tmp}/machine-test-run.lock` (in Git Bash `/tmp` is the
+  Windows temp folder, so both repos see one file). `TEST_LOCK_FILE` overrides
+  the path; only `check-runner.sh` uses that.
+- **Contents:** three `key=value` lines: `repo=<repo folder name>`,
+  `pid=<the runner's own $$>`, `started=<epoch seconds>`.
+- **Taking it:** create the file with noclobber (`set -C`), which fails if it
+  exists, so two runs can never both win.
+- **Held:** the run prints once which repo and pid hold it and since when,
+  then polls every `TEST_LOCK_POLL` seconds (default 2).
+- **Stale:** if the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
+  missing), or the file has no readable pid, the run moves the file aside and
+  takes over.
+- **Release:** the `EXIT` trap removes the file if it still names this pid, on
+  a normal end, a failure, Ctrl+C or kill. It also stops cases still in flight.
+
+The pid is bash's own `$$`, which in Git Bash is the MSYS pid, not the Windows
+one. Every runner is a Git Bash process, so they all see the same pids and
+`kill -0` works across them. A crash can leave a pid that an unrelated process
+later reuses; delete the file by hand if a run waits on a holder that is not a
+test run. `check-runner.sh` covers waiting, reporting the holder, stale
+takeover and release on SIGTERM.
+
 ### Requirements
 
 - **Chrome or Chromium.** `puppeteer-core` never downloads a browser of

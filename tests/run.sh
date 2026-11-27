@@ -151,9 +151,103 @@ echo
 # deleted on exit. OUT_DIR (tests/.last-run/, git-ignored) is the record that
 # survives: replaced at the start of every run, one <case>.log per case run
 # plus summary.txt, written at the end. A failure is read with `cat`, never by
-# rerunning the suite.
+# rerunning the suite. The lock (below) is taken before OUT_DIR is replaced, so
+# a run that is still waiting never wipes the folder of the run holding it.
+
+# ── Machine-wide test lock ───────────────────────────────────────────────────
+# Only one test run at a time on the machine, across gym-tracker AND kanban, so
+# concurrent agent sessions stop slowing each other down (about 12 Chromes once
+# fought for the machine and every run got slower). Full runs and pattern runs
+# both take it. A run that is refused before it starts (bad TEST_CASES, bad
+# TEST_SHARD, no cases matched) never takes it or waits for it.
+#
+# THE CONVENTION (kanban's run.sh copies it; keep the two identical, and see
+# the "Machine-wide test lock" section of tests/README.md):
+#   File:     ${TMPDIR:-/tmp}/machine-test-run.lock   (in Git Bash, /tmp is the
+#             user's Windows temp folder, so every repo sees the same file).
+#             TEST_LOCK_FILE overrides the path; only check-runner.sh does.
+#   Contents: three lines, key=value:
+#               repo=<name of the repo's folder, e.g. gym-tracker>
+#               pid=<the runner's own $$ as Git Bash / Linux sees it>
+#               started=<epoch seconds>
+#   Take it:  create the file with noclobber (`set -C`), which fails if it
+#             exists; that is the atomic step, so two runs can never both win.
+#   Held:     print once who holds it (repo, pid, since when), then poll every
+#             TEST_LOCK_POLL seconds (default 2) until it is free.
+#   Stale:    the holder's pid is gone (`kill -0` fails and /proc/<pid> is
+#             missing) -> move the file aside and take over. The move is the
+#             atomic step: only one waiter's move succeeds.
+#   Release:  the EXIT trap removes the file if it still names this pid. EXIT
+#             runs on a normal end, on a failure and on Ctrl+C / kill (the INT
+#             and TERM traps turn into `exit`).
+# A pid can be reused by an unrelated process after a crash; the run then waits
+# for it until it ends. Delete the file by hand if that ever happens.
+LOCK_FILE="${TEST_LOCK_FILE:-${TMPDIR:-/tmp}/machine-test-run.lock}"
+LOCK_POLL="${TEST_LOCK_POLL:-2}"
+LOCK_HELD=0
+LOCK_REPO=$(basename "$(cd .. && pwd)")
+
+lock_field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1; }   # lock_field <file> <key>
+pid_alive() { [[ "$1" =~ ^[0-9]+$ ]] && { kill -0 "$1" 2>/dev/null || [ -e "/proc/$1" ]; }; }
+
+release_lock() {
+    if [ "$LOCK_HELD" = 1 ] && [ "$(lock_field "$LOCK_FILE" pid)" = "$$" ]; then
+        rm -f "$LOCK_FILE"
+    fi
+    LOCK_HELD=0
+}
+
+acquire_lock() {
+    local announced=0 pid repo started tries=0 aside
+    while :; do
+        if ( set -C; printf 'repo=%s\npid=%s\nstarted=%s\n' "$LOCK_REPO" "$$" "$(date +%s)" > "$LOCK_FILE" ) 2>/dev/null; then
+            LOCK_HELD=1
+            return
+        fi
+        if [ ! -e "$LOCK_FILE" ]; then continue; fi          # released just now: try again
+        pid=$(lock_field "$LOCK_FILE" pid)
+        if [ -z "$pid" ] && [ "$tries" -lt 5 ]; then         # holder is mid-write
+            tries=$((tries + 1)); sleep 0.2; continue
+        fi
+        if ! pid_alive "$pid"; then
+            # Stale (or unreadable): move it aside, then check we moved the
+            # lock we meant to, not a fresh one another waiter just took.
+            aside="$LOCK_FILE.stale.$$"
+            if mv "$LOCK_FILE" "$aside" 2>/dev/null; then
+                if [ "$(lock_field "$aside" pid)" = "$pid" ]; then
+                    echo "Taking over a stale test lock (pid ${pid:-?} is gone)."
+                    rm -f "$aside"
+                else
+                    mv -n "$aside" "$LOCK_FILE" 2>/dev/null; rm -f "$aside"
+                fi
+            fi
+            tries=0
+            continue
+        fi
+        if [ "$announced" = 0 ]; then
+            repo=$(lock_field "$LOCK_FILE" repo)
+            started=$(lock_field "$LOCK_FILE" started)
+            echo "Another test run holds the machine-wide test lock: ${repo:-?} (pid $pid), started $(date -d "@$started" +%H:%M:%S 2>/dev/null || echo '?'), $(( $(date +%s) - ${started:-0} ))s ago."
+            echo "Waiting for it to finish (lock file: $LOCK_FILE)..."
+            announced=1
+        fi
+        sleep "$LOCK_POLL"
+    done
+}
+
 STATE=$(mktemp -d)
-trap 'rm -rf "$STATE"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# On Ctrl+C / kill, cases still in flight (and their Chromes) are stopped too,
+# so the next run does not start on a machine still busy with this one.
+cleanup() {
+    local j
+    for j in $(jobs -rp); do kill_tree "$j"; done
+    release_lock
+    rm -rf "$STATE"
+}
+trap cleanup EXIT
+acquire_lock
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
