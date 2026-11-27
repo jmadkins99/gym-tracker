@@ -287,30 +287,32 @@
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div className="exercise-row-name" style={{ flex: 1, fontWeight: '600' }}>
+                                            <div className="exercise-row-line">
+                                                <div className="exercise-row-name" style={{ fontWeight: '600' }}>
                                                     {exercise.name}
                                                 </div>
-                                                <button
-                                                    onClick={() => moveExercise(exercise.id, 'up')}
-                                                    disabled={idx === 0}
-                                                    className="text-btn"
-                                                >
-                                                    ↑
-                                                </button>
-                                                <button
-                                                    onClick={() => moveExercise(exercise.id, 'down')}
-                                                    disabled={idx === dayExercises.length - 1}
-                                                    className="text-btn"
-                                                >
-                                                    ↓
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStartEdit(exercise)}
-                                                    className="text-btn"
-                                                >
-                                                    Edit
-                                                </button>
+                                                <div className="exercise-row-controls">
+                                                    <button
+                                                        onClick={() => moveExercise(exercise.id, 'up')}
+                                                        disabled={idx === 0}
+                                                        className="text-btn"
+                                                    >
+                                                        ↑
+                                                    </button>
+                                                    <button
+                                                        onClick={() => moveExercise(exercise.id, 'down')}
+                                                        disabled={idx === dayExercises.length - 1}
+                                                        className="text-btn"
+                                                    >
+                                                        ↓
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStartEdit(exercise)}
+                                                        className="text-btn"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
 

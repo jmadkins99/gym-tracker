@@ -125,6 +125,24 @@
         .exercise-row-name {
             min-width: 0;
             overflow-wrap: anywhere;
+            flex: 1 1 80px;
+        }
+
+        /* The name and its up / down / Edit controls share a line while they
+           fit. In a narrow window the controls drop together below the name,
+           so the name keeps a readable width instead of being squeezed to a
+           few pixels beside three 59px buttons. */
+        .exercise-row-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .exercise-row-controls {
+            display: flex;
+            gap: 8px;
+            flex: 0 0 auto;
         }
 
         .text-btn:active,

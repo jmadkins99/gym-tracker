@@ -131,6 +131,16 @@ async function tap(page, sel, text) {
     await el.click();
 }
 
+// Waits for a native dialog beyond the first `count` to be recorded, so the
+// next reload cannot cancel the one the page is about to raise.
+async function dialogCame(log, count, label) {
+    const end = Date.now() + 20000;
+    while (log.length <= count) {
+        if (Date.now() > end) throw new Error('timed out after 20s waiting for ' + label);
+        await sleep(50);
+    }
+}
+
 const modalHas = (src) => !!document.querySelector('.modal') &&
     new RegExp(src).test(document.querySelector('.modal').innerText);
 
@@ -200,7 +210,11 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await look('workout deck, logged card with PR pill',
             (a) => /Logged/.test(document.querySelector(a).innerText)
                 && /PR/.test(document.querySelector(a).innerText), ACTIVE);
-        await sleep(2500);
+        // The celebration holds the logged card, then the deck advances: wait
+        // for the active card to be a different exercise.
+        await waitFor(page, 'the deck to advance past Chest Flies',
+            (a, id) => { const el = document.querySelector(a + ' [data-exercise-id]');
+                return !!el && el.getAttribute('data-exercise-id') !== id; }, ACTIVE, FLIES);
         await look('workout deck, after the auto-advance', (a) => !!document.querySelector(a), ACTIVE);
 
         ok(await submitDay(page), 'pressed Submit Day');
@@ -251,8 +265,9 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await sleep(300);
         const input = await page.$('.modal input[type=file]');
         ok(input, 'Settings has a file input for Import Data');
+        const before = dialogs.length;
         await input.uploadFile(junk);
-        await sleep(500);
+        await dialogCame(dialogs, before, 'the workout bad-backup alert');
 
         // A device with no history: Submit Day with nothing logged alerts,
         // and History shows its empty state.
@@ -363,8 +378,9 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await sleep(300);
         const winput = await wpage.$('.modal input[type=file]');
         ok(winput, 'weight Settings has a file input for Import Data');
+        const wbefore = dialogs.length;
         await winput.uploadFile(junk);
-        await sleep(500);
+        await dialogCame(dialogs, wbefore, 'the weight bad-backup alert');
 
         await wpage.evaluate((ns) => localStorage.setItem(ns + 'gymWeightPlan', 'null'), NS);
         await wpage.evaluateOnNewDocument(() => {

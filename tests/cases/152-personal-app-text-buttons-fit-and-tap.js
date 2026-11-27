@@ -15,7 +15,9 @@
 // Fit. An unbroken custom exercise name must not push the up / down / Edit
 // buttons past the row at 390px and 320px of layout width (narrower than a
 // phone ever lays the page out at 0.75, so this is the strict case), and the
-// modal must not scroll sideways.
+// modal must not scroll sideways. When the row is too narrow the three buttons
+// wrap together below the name, so the name keeps at least 80 px (checked at
+// 320 and 390 CSS px on a desktop and on the 390px phone).
 //
 // Mutation check: set .text-btn's min-height back to 44px and the tap-target
 // check names the button; drop min-width:0 from .exercise-row-name and the fit
@@ -30,6 +32,7 @@ const { eq, ok } = require('../lib/assert');
 
 const NS = 'gym-local:';
 const MIN = 44;
+const MIN_NAME = 80; // rendered px the exercise name must keep beside its controls
 const LONG = 'Supercalifragilisticexpialidocious' + 'Pneumonoultramicroscopic'.repeat(2);
 const FLIES = 'pecs-transverse-shoulder-adduction';
 
@@ -108,6 +111,11 @@ const clickText = async (page, sel, text) => {
         await clickText(page, '.modal-btn', 'Manage Exercises');
         await waitFor(page, 'exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
         await check('Manage Exercises', '.exercise-row .text-btn', 3);
+        const phoneName = await page.evaluate((id) =>
+            document.querySelector('[data-exercise-id="' + id + '"] .exercise-row-name')
+                .getBoundingClientRect().width, FLIES);
+        ok(phoneName * (await ratio()) >= MIN_NAME,
+            'phone: the name keeps a usable width (' + Math.round(phoneName * (await ratio())) + ' rendered px)');
         await page.close();
 
         // Weight app, same phone.
@@ -116,20 +124,29 @@ const clickText = async (page, sel, text) => {
         const werrors = attachConsole(wpage);
         const wratio = () => wpage.evaluate(() => 390 / document.documentElement.clientWidth);
         await wpage.goto(server.url + '/weight/index.html', { waitUntil: 'networkidle0' });
-        await wpage.evaluate((ns) => {
-            const day = (n) => {
-                const d = new Date();
-                d.setDate(d.getDate() - n);
-                return d.toISOString().split('T')[0];
+        // Two completed weeks (the one before last Monday and the one before
+        // that), keyed by local day, so the result does not depend on the
+        // weekday, the time of day or the time zone the suite runs in. The
+        // later week skips Wednesday and Saturday so it has NA rows too; it is
+        // the one opened below, by its label.
+        const openLabel = await wpage.evaluate((ns) => {
+            const monday = getMondayOfWeek(new Date());
+            const at = (weeks, i) => {
+                const d = new Date(monday);
+                d.setDate(d.getDate() - 7 * weeks + i);
+                return d;
             };
             const log = [];
-            // Skip some days so the opened week has NA rows too.
-            for (let n = 21; n >= 1; n--) {
-                if (n % 3 === 0) continue;
-                log.push({ date: day(n), weight: 180 - n * 0.2, loggedAt: day(n) + 'T14:30:00.000Z' });
+            for (let weeks = 2; weeks >= 1; weeks--) {
+                for (let i = 0; i < 7; i++) {
+                    if (weeks === 1 && (i === 2 || i === 5)) continue;
+                    const key = localDayKey(at(weeks, i));
+                    log.push({ date: key, weight: 180 - (weeks * 7 - i) * 0.2, loggedAt: key + 'T14:30:00.000Z' });
+                }
             }
             localStorage.setItem(ns + 'weightHistorySeeded', 'true');
             localStorage.setItem(ns + 'gymWeightLog', JSON.stringify(log));
+            return 'Week of ' + formatShortDay(localDayKey(at(1, 0)));
         }, NS);
         await wpage.reload({ waitUntil: 'networkidle0' });
         await waitFor(wpage, 'check-in', () => !!document.querySelector('.weigh-card'));
@@ -149,7 +166,10 @@ const clickText = async (page, sel, text) => {
         await (await wpage.evaluateHandle(() => Array.from(document.querySelectorAll('.bottom-nav-btn'))
             .find((b) => b.textContent.includes('History')))).click();
         await waitFor(wpage, 'weekly ledger', () => !!document.querySelector('.weigh-week'));
-        await wpage.click('.weigh-week-head');
+        const head = await wpage.evaluateHandle((label) => Array.from(document.querySelectorAll('.weigh-week-head'))
+            .find((h) => h.textContent.includes(label)) || null, openLabel);
+        ok(head.asElement(), 'found the ledger row "' + openLabel + '"');
+        await head.asElement().click();
         await waitFor(wpage, 'opened week', () => document.querySelectorAll('.weigh-day-value').length > 0);
         await wcheck('weight History reading', '.weigh-day-value:not(.na)', 1);
         await wcheck('weight History NA', '.weigh-day-value.na', 1);
@@ -184,10 +204,12 @@ const clickText = async (page, sel, text) => {
                 const modal = row.closest('.modal');
                 const sideways = modal ? modal.scrollWidth - modal.clientWidth : 0;
                 const buttons = Array.from(row.querySelectorAll('button')).map((b) => b.textContent.trim());
-                return { out, sideways, buttons };
+                const nameW = row.querySelector('.exercise-row-name').getBoundingClientRect().width;
+                return { out, sideways, buttons, nameW };
             }, FLIES);
             eq(fit.buttons.slice(0, 3), ['↑', '↓', 'Edit'], width + 'px: the long-named row still has its three buttons');
             eq(fit.out, [], width + 'px: nothing in the long-named row spills out of it');
+            ok(fit.nameW >= MIN_NAME, width + 'px: the name keeps a usable width (' + Math.round(fit.nameW) + ')');
             ok(fit.sideways <= 0, width + 'px: the modal does not scroll sideways (' + fit.sideways + ')');
             await p.close();
         }
