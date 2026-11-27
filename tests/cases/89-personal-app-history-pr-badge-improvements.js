@@ -116,6 +116,8 @@ async function readHistoryRows(page, names) {
             rows[name.textContent.trim()] = {
                 badgeText: badge ? badge.textContent.trim() : null,
                 badgeClass: badge ? badge.className : null,
+                badgeFlame: badge ? !!badge.querySelector('svg[aria-hidden="true"]') : false,
+                badgeLabel: badge ? badge.getAttribute('aria-label') : null,
                 badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
                 badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 badgeRightOfName: badge ? name.nextElementSibling === badge : false,
@@ -164,6 +166,10 @@ async function readCardBadge(page, exerciseId) {
             ok(historyRows[name], `History includes ${name}`);
         }
 
+        ok(historyRows['Kelso Shrugs'].badgeFlame,
+            'a lone PR pill in History also carries the flame');
+        eq(historyRows['Kelso Shrugs'].badgeLabel, 'PR',
+            'a lone PR is labelled PR');
         eq(historyRows['Kelso Shrugs'].badgeText, 'PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
         eq(historyRows['Preacher Curls'].badgeText, 'PR',
@@ -205,7 +211,11 @@ async function readCardBadge(page, exerciseId) {
         // moment the set is logged, exactly as the lone-PR badge above is.
         // Case 100 owns that rule; what this line pins is that logging alone,
         // with no Submit Day, is enough to earn it.
-        eq(todayRows['Preacher Curls'].badgeText, 'PR ×2',
+        ok(todayRows['Preacher Curls'].badgeFlame,
+            'the History pill draws the flame as an aria-hidden SVG');
+        eq(todayRows['Preacher Curls'].badgeLabel, 'PR streak 2',
+            'the History pill is labelled for screen readers');
+        eq(todayRows['Preacher Curls'].badgeText, '×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
             'the pre-submit History badge is the same gold-outlined pill');

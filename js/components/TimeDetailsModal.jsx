@@ -37,10 +37,8 @@
                             <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
                                 <span>{row.name}</span>
                                 {isPR ? (
-                                    <span className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge
-                                          data-streak={prStreak > 1 ? prStreak : undefined}>
-                                        {formatPRPill(prStreak)}
-                                    </span>
+                                    <PRPill as="span" streak={prStreak} className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge
+                                            data-streak={prStreak > 1 ? prStreak : undefined} />
                                 ) : null}
                             </span>
                             <span style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>

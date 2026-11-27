@@ -13,11 +13,15 @@
         const PR_STREAK_TRACKING = true;
         const PR_STREAK_MIN = 1;   // fewest consecutive improvements that earn a badge
 
-        // What a streak pill says: "PR" for a lone PR, "PR ×3" once the run is
-        // three sessions long. Every pill (card, History, Day Breakdown, timing
-        // details) reads this one rule.
+        // What a streak pill says after its flame: "PR" for a lone PR, "×3" once
+        // the run is three sessions long. Every pill (card, History, Day
+        // Breakdown) reads this one rule; formatPRPillLabel is the same pill in
+        // words, for screen readers.
         function formatPRPill(streak) {
-            return streak > 1 ? 'PR ×' + streak : 'PR';
+            return streak > 1 ? '×' + streak : 'PR';
+        }
+        function formatPRPillLabel(streak) {
+            return streak > 1 ? 'PR streak ' + streak : 'PR';
         }
 
         // Gympin is shelved, not deleted: false hides its Settings form and

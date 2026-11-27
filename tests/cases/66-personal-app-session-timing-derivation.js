@@ -28,7 +28,7 @@
 //
 // The Day Breakdown's row-level PR badges ride along here, because this is the
 // case that already opens that modal. Since Sep 2026 they read the way History
-// and the logged card read: "PR" for a lone PR, "PR ×N" once the run is two
+// and the logged card read: "PR" for a lone PR, "×N" after a flame once the run is two
 // or more. Both branches are seeded below — Chest Press sits on a run of two,
 // Chest Flies improves off a single prior session — so a regression that always
 // prints one or the other fails here.
@@ -95,7 +95,7 @@ const EXPECTED_ROWS = [
 ];
 const EXPECTED_BADGES = [
     // 200x4 -> 200x5 -> 200x6: a run of two, so the row carries the count.
-    ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'PR ×2'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '×2'],
     ['pecs-shoulder-flexion', null],
     // 170x6 -> 175x6 off a single prior session: a lone PR, so the row keeps
     // the word.
@@ -177,6 +177,8 @@ const EXPECTED_TOTAL = '35m';
                     time: r.children[1].textContent.trim(),
                     badge: badge ? badge.textContent.trim() : null,
                     badgeClass: badge ? badge.className : null,
+                    badgeFlame: badge ? !!badge.querySelector('svg[aria-hidden="true"]') : false,
+                    badgeLabel: badge ? badge.getAttribute('aria-label') : null,
                     badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
                     badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 };
@@ -189,6 +191,10 @@ const EXPECTED_TOTAL = '35m';
             'only movements that counted toward PRs Smashed get a row-level PR badge');
         ok(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeClass.includes('streak-badge'),
             'Day Breakdown PR badge reuses the same flame badge container');
+        ok(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeFlame,
+            'Day Breakdown PR badge draws the flame as an aria-hidden SVG');
+        eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeLabel, 'PR streak 2',
+            'Day Breakdown PR badge is labelled for screen readers');
         eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBg, BADGE_BG,
             'Day Breakdown PR badge uses the shared transparent background');
         eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBorder, BADGE_BORDER,

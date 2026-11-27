@@ -267,6 +267,11 @@
             white-space: nowrap;
         }
 
+        .pr-flame {
+            flex: none;
+            display: block;
+        }
+
         .input-row {
             display: flex;
             gap: 10px;

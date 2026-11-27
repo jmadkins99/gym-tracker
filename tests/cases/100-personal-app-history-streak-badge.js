@@ -5,8 +5,8 @@
 // only about its text:
 //
 //   a lone PR                  PR   (unchanged, and that is the point)
-//   the second in a row        PR ×2
-//   the third in a row         PR ×3
+//   the second in a row        ×2
+//   the third in a row         ×3
 //
 // The number is the same flame pill the Workout card wears, so one streak is
 // never described two ways: the newest History row and the card for that lift
@@ -18,7 +18,7 @@
 //
 // The wrong answer worth naming is reading every row against TODAY. getPRStreak
 // walks back from the present, which is right for a card and wrong for a
-// ledger: borrow it here and all three Recline Curls rows read "PR ×3", because
+// ledger: borrow it here and all three Recline Curls rows read "×3", because
 // the run they are all part of is three long as of now. Each row has to be
 // counted as of its own day, which is what getPRStreakInWorkout does.
 //
@@ -71,8 +71,8 @@ const SESSIONS = [
 
 // Newest first, mirroring the History screen.
 const EXPECTED = [
-    { curls: 'PR ×3', shrugs: 'PR ×2' },
-    { curls: 'PR ×2', shrugs: 'PR' },
+    { curls: '×3', shrugs: '×2' },
+    { curls: '×2', shrugs: 'PR' },
     { curls: 'PR', shrugs: null },
     { curls: null,   shrugs: 'PR' },
     { curls: null,   shrugs: null },
@@ -136,9 +136,9 @@ async function readCardBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'posterior-2');
 
-        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-extension'), 'PR ×3',
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-extension'), '×3',
             'the card counts the Recline Curls run at three');
-        eq(await readCardBadge(page, 'traps-scapular-retraction'), 'PR ×2',
+        eq(await readCardBadge(page, 'traps-scapular-retraction'), '×2',
             'the card counts the Kelso Shrugs run at two, the repeat having ended the first');
         eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), null,
             'five flat sessions earn no card badge');

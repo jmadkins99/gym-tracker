@@ -120,10 +120,10 @@ async function readBadge(page, exerciseId) {
         eq(await readBadge(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension'), null,
             'a past unsubmitted session breaks the streak like any other session');
 
-        eq(await readBadge(page, 'pecs-shoulder-flexion'), 'PR ×2',
+        eq(await readBadge(page, 'pecs-shoulder-flexion'), '×2',
             'an NA session is skipped, not read as a change, so the run spans it');
 
-        eq(await readBadge(page, 'pecs-transverse-shoulder-adduction'), 'PR ×2',
+        eq(await readBadge(page, 'pecs-transverse-shoulder-adduction'), '×2',
             'a non-numeric weight ends the run rather than falling through to a reps comparison');
 
         // Six identical sessions: the plateau banner, and necessarily no streak.

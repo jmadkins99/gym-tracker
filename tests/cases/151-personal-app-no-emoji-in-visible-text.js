@@ -196,7 +196,7 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await look('workout deck, card front', (a) => !!document.querySelector(a), ACTIVE);
         await readDeckCard(page, 'Chest Flies');
         await look("workout deck, open card with PR streak pill",
-            (a) => /PR ×[0-9]/.test(document.querySelector(a).innerText), ACTIVE);
+            (a) => /×[0-9]/.test(document.querySelector(a).innerText), ACTIVE);
 
         // Swipe down on the open card: the Quick Edit form.
         await swipe(page, 0, 180, { settle: 400 });
@@ -209,7 +209,7 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         ok(await logCard(page, { settle: 300 }), 'logged Chest Flies');
         await look('workout deck, logged card with PR pill',
             (a) => /Logged/.test(document.querySelector(a).innerText)
-                && /PR/.test(document.querySelector(a).innerText), ACTIVE);
+                && !!document.querySelector(a + ' .logged-pr-badge svg'), ACTIVE);
         // The celebration holds the logged card, then the deck advances: wait
         // for the active card to be a different exercise.
         await waitFor(page, 'the deck to advance past Chest Flies',

@@ -110,10 +110,8 @@
                                                     <div className="history-exercise-title">
                                                         <div className="history-exercise-name">{expectedExercise.name}</div>
                                                         {isPR ? (
-                                                            <div className="streak-badge history-pr-badge" data-pr-badge
-                                                                 data-streak={prStreak > 1 ? prStreak : undefined}>
-                                                                {formatPRPill(prStreak)}
-                                                            </div>
+                                                            <PRPill streak={prStreak} className="streak-badge history-pr-badge" data-pr-badge
+                                                                    data-streak={prStreak > 1 ? prStreak : undefined} />
                                                         ) : null}
                                                     </div>
                                                     <div className="history-exercise-data">

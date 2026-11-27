@@ -5,7 +5,7 @@
 // and History, the review shows a gold-outlined pill beside the name.
 //
 // What the pill SAYS follows History's rule exactly (Sep 2026): "PR" for a
-// lone PR, "PR ×N" once the run is two or more. Both branches are exercised
+// lone PR, a flame and "×N" once the run is two or more. Both branches are exercised
 // below — Recline Curls lands on a run of two, Sagittal Pulldowns on a run of one —
 // and the number comes from getPRStreakInWorkout counted as of today's entry, so
 // the card shows what History will show for the same row after Submit Day.
@@ -103,6 +103,9 @@ async function readHeader(page, exerciseId) {
             loggedPR: loggedPR ? loggedPR.textContent.trim() : null,
             loggedPRStreak: loggedPR ? loggedPR.getAttribute('data-streak') : null,
             loggedPRClass: loggedPR ? loggedPR.className : null,
+            loggedPRFlame: loggedPR ? !!loggedPR.querySelector('svg[aria-hidden="true"]') : false,
+            loggedPRLabel: loggedPR ? loggedPR.getAttribute('aria-label') : null,
+            streakFlame: streak ? !!streak.querySelector('svg[aria-hidden="true"]') : false,
             loggedPRBg: loggedPR ? getComputedStyle(loggedPR).backgroundColor : null,
             loggedPRBorder: loggedPR ? getComputedStyle(loggedPR).borderTopColor : null,
             streak: streak ? streak.textContent.trim() : null,
@@ -156,6 +159,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await selectDayType(page, 'posterior-2');
 
         const before = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
+        ok(before.streakFlame, 'the pre-session card pill draws the flame as an aria-hidden SVG');
         eq(before.streak, 'PR',
             'before logging, the card shows the numeric submitted-history streak');
         eq(before.streakBg, BADGE_BG,
@@ -179,7 +183,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
             'the gold toast glows like the PR badge');
         // 100x4 -> 100x5 -> 100x6 is a run of two, so the pill carries the
         // count rather than the word, exactly as History's row does.
-        eq(celebrating.loggedPR, 'PR ×2',
+        eq(celebrating.loggedPR, '×2',
             'the held logged card shows the run count during the celebration');
 
         await new Promise(r => setTimeout(r, 1300));
@@ -204,7 +208,9 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
 
         const improved = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
         eq(improved.logged, 'logged', 'the PR row is in the logged review state');
-        eq(improved.loggedPR, 'PR ×2',
+        ok(improved.loggedPRFlame, 'the logged pill draws the flame as an aria-hidden SVG');
+        eq(improved.loggedPRLabel, 'PR streak 2', 'the logged pill is labelled for screen readers');
+        eq(improved.loggedPR, '×2',
             'a logged same-weight rep improvement shows the current-session run count');
         eq(improved.loggedPRStreak, '2',
             'the badge carries the run length as a data-streak attribute, like History');

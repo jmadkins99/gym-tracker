@@ -192,7 +192,7 @@ async function readHistoryBadges(page) {
             const badge = document.querySelector(sel + ' [data-logged-pr-badge]');
             return badge ? badge.textContent.trim() : null;
         }, ACTIVE);
-        eq(realPill, 'PR ×2', 'and does show one for the set that actually improved');
+        eq(realPill, '×2', 'and does show one for the set that actually improved');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: a set that bottoms out the rep range is a failed set, never a PR.');
