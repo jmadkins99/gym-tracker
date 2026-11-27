@@ -126,7 +126,7 @@ async function openEdit(page) {
     await bottomTo(page, 'History');
     await waitFor(page, 'History rows', () => document.querySelectorAll('.history-item').length > 0);
     await page.evaluate(() => Array.from(document.querySelector('.history-item').querySelectorAll('button'))
-        .find(b => b.textContent.includes('✏')).click());
+        .find(b => b.textContent.trim() === 'Edit').click());
     await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
     await page.evaluate(() => {
         const block = Array.from(document.querySelectorAll('.modal > div')).find(d =>
@@ -147,7 +147,7 @@ async function changeIncrement(page, step) {
     await waitFor(page, 'the exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
     const row = `.exercise-row[data-exercise-id="${TARGET}"]`;
     await page.evaluate((row) => Array.from(document.querySelector(row).querySelectorAll('button'))
-        .find(b => b.textContent.includes('✏')).click(), row);
+        .find(b => b.textContent.trim() === 'Edit').click(), row);
     await waitFor(page, 'the increment field', (row) => !!document.querySelector(row + ' select[data-field="increment"]'), row);
     await page.evaluate((row, step) => {
         const s = document.querySelector(row + ' select[data-field="increment"]');

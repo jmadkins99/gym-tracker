@@ -74,7 +74,7 @@ async function clickNav(page, label) {
 
         // Edit modal: opens on the cardio workout and renders its own cards.
         await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('✏️'));
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit');
             if (btn) btn.click();
         });
         await new Promise(r => setTimeout(r, 200));

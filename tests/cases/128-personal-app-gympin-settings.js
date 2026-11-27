@@ -175,14 +175,14 @@ async function readSaved(page) {
         await openManageExercises(page);
         let back = await readGympinForm(page, 'erectors-spinal-extension');
         eq(back.hasForm, false, 'no form outside edit mode');
-        eq(back.status, '📌 Gympin past 260 lbs', 'Stiff Legged Deadlift says where the Gympin takes over');
+        eq(back.status, 'Gympin past 260 lbs', 'Stiff Legged Deadlift says where the Gympin takes over');
         eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, null,
             'Chest Flies, a stack with no ceiling, says nothing');
         eq((await readGympinForm(page, 'quads-knee-extension-during-hip-flexion')).status, null,
             'Squats, plate-loaded, says nothing');
 
         // === 2. A seeded machine opens ON with its seed ====================
-        await rowButton(page, 'erectors-spinal-extension', '✏️');
+        await rowButton(page, 'erectors-spinal-extension', 'Edit');
         back = await readGympinForm(page, 'erectors-spinal-extension');
         eq(back.hasForm, true, 'the form appears on a pin-loaded row in edit mode');
         eq(back.on, true, 'the switch is on for a seeded machine');
@@ -191,13 +191,13 @@ async function readSaved(page) {
         await rowButton(page, 'erectors-spinal-extension', 'Cancel');
 
         // === 3. A plate-loaded machine gets no form =========================
-        await rowButton(page, 'quads-knee-extension-during-hip-flexion', '✏️');
+        await rowButton(page, 'quads-knee-extension-during-hip-flexion', 'Edit');
         const legPress = await readGympinForm(page, 'quads-knee-extension-during-hip-flexion');
         eq(legPress.hasForm, false, 'Squats (plate-two-sided) offers no Gympin controls');
         await rowButton(page, 'quads-knee-extension-during-hip-flexion', 'Cancel');
 
         // === 4. Turn it on for Chest Flies at 150 ===========================
-        await rowButton(page, 'pecs-transverse-shoulder-adduction', '✏️');
+        await rowButton(page, 'pecs-transverse-shoulder-adduction', 'Edit');
         let flies = await readGympinForm(page, 'pecs-transverse-shoulder-adduction');
         eq(flies.on, false, 'Chest Flies opens off');
         eq(flies.hasMaxInput, false, 'and the number is folded away while off');
@@ -219,11 +219,11 @@ async function readSaved(page) {
             .filter(([id, e]) => id !== 'pecs-transverse-shoulder-adduction' && !(id in PRESET) && (e.hasGympin || e.hasStackMax))
             .map(([id]) => id);
         eq(touched, [], 'no other exercise gained a Gympin field');
-        eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, '📌 Gympin past 150 lbs',
+        eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, 'Gympin past 150 lbs',
             'the list now says so');
 
         // === 5. Turn a seeded one off ======================================
-        await rowButton(page, 'erectors-spinal-extension', '✏️');
+        await rowButton(page, 'erectors-spinal-extension', 'Edit');
         await setSwitch(page, 'erectors-spinal-extension', false);
         eq((await readGympinForm(page, 'erectors-spinal-extension')).hasMaxInput, false,
             'switching off folds the number away');
@@ -235,13 +235,13 @@ async function readSaved(page) {
         eq((await readGympinForm(page, 'erectors-spinal-extension')).status, null, 'the list line is gone');
 
         // === 6. Cancel writes nothing ======================================
-        await rowButton(page, 'delts-shoulder-abduction-above-90-degrees', '✏️');
+        await rowButton(page, 'delts-shoulder-abduction-above-90-degrees', 'Edit');
         await setSwitch(page, 'delts-shoulder-abduction-above-90-degrees', false);
         await rowButton(page, 'delts-shoulder-abduction-above-90-degrees', 'Cancel');
         saved = await readSaved(page);
         eq(saved.byId['delts-shoulder-abduction-above-90-degrees'], { hasGympin: true, gympin: true, hasStackMax: true, stackMax: 250 },
             'Cancel left Lu Raises on at 250');
-        eq((await readGympinForm(page, 'delts-shoulder-abduction-above-90-degrees')).status, '📌 Gympin past 250 lbs',
+        eq((await readGympinForm(page, 'delts-shoulder-abduction-above-90-degrees')).status, 'Gympin past 250 lbs',
             'and the list still says so');
 
         // === 7. The card reads the setting, across a reload ================
@@ -265,7 +265,7 @@ async function readSaved(page) {
         await setValue(page, rowSel('pecs-transverse-shoulder-adduction') + ' select[data-field="loadType"]', 'plate-two-sided');
         eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, null,
             'a plate-loaded Chest Flies shows no Gympin line');
-        await rowButton(page, 'pecs-transverse-shoulder-adduction', '✏️');
+        await rowButton(page, 'pecs-transverse-shoulder-adduction', 'Edit');
         eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).hasForm, false, 'and no form');
         await rowButton(page, 'pecs-transverse-shoulder-adduction', 'Cancel');
         saved = await readSaved(page);
@@ -279,7 +279,7 @@ async function readSaved(page) {
 
         await openManageExercises(page);
         await setValue(page, rowSel('pecs-transverse-shoulder-adduction') + ' select[data-field="loadType"]', 'pin');
-        eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, '📌 Gympin past 150 lbs',
+        eq((await readGympinForm(page, 'pecs-transverse-shoulder-adduction')).status, 'Gympin past 150 lbs',
             'switching back to Pin-loaded brings the line back from the kept fields');
         await closeSettings(page);
         contains(await setWeightAndOpen(page, 'Chest Flies', 165), 'pin 150', 'and the overflow with it');

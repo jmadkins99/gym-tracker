@@ -4,8 +4,8 @@
 // saved row. If that saved row is a PR under the same rule as Day Breakdown
 // and History, the review shows a gold-outlined pill beside the name.
 //
-// What the pill SAYS follows History's rule exactly (Sep 2026): "🔥 PR" for a
-// lone PR, "🔥 N" once the run is two or more. Both branches are exercised
+// What the pill SAYS follows History's rule exactly (Sep 2026): "PR" for a
+// lone PR, "PR ×N" once the run is two or more. Both branches are exercised
 // below — Recline Curls lands on a run of two, Sagittal Pulldowns on a run of one —
 // and the number comes from getPRStreakInWorkout counted as of today's entry, so
 // the card shows what History will show for the same row after Submit Day.
@@ -59,7 +59,7 @@ const PREVIOUS = workoutEntry({
         { id: 'biceps-elbow-flexion-with-shoulder-flexion', name: 'Preacher Curls', weight: '100', reps: '5' },
         { id: 'lats-frontal-shoulder-adduction', name: 'Frontal Pulldowns', weight: '120', reps: '5' },
         // Only in PREVIOUS, deliberately: one prior session means an
-        // improvement today is a run of ONE, which is the "🔥 PR" branch.
+        // improvement today is a run of ONE, which is the "PR" branch.
         { id: 'lats-sagittal-shoulder-extension', name: 'Sagittal Pulldowns', weight: '150', reps: '4' },
     ],
 });
@@ -156,7 +156,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await selectDayType(page, 'posterior-2');
 
         const before = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
-        eq(before.streak, '🔥 1',
+        eq(before.streak, 'PR',
             'before logging, the card shows the numeric submitted-history streak');
         eq(before.streakBg, BADGE_BG,
             'numeric streak badge uses the shared transparent background');
@@ -179,7 +179,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
             'the gold toast glows like the PR badge');
         // 100x4 -> 100x5 -> 100x6 is a run of two, so the pill carries the
         // count rather than the word, exactly as History's row does.
-        eq(celebrating.loggedPR, '🔥 2',
+        eq(celebrating.loggedPR, 'PR ×2',
             'the held logged card shows the run count during the celebration');
 
         await new Promise(r => setTimeout(r, 1300));
@@ -204,7 +204,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
 
         const improved = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
         eq(improved.logged, 'logged', 'the PR row is in the logged review state');
-        eq(improved.loggedPR, '🔥 2',
+        eq(improved.loggedPR, 'PR ×2',
             'a logged same-weight rep improvement shows the current-session run count');
         eq(improved.loggedPRStreak, '2',
             'the badge carries the run length as a data-streak attribute, like History');
@@ -232,10 +232,10 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         // A run of ONE: Sagittal Pulldowns has a single prior session, so today's
         // improvement is a lone PR and the pill reads the word, not a number.
         // Losing this probe would let a regression that always prints a count
-        // (including a meaningless "🔥 1") pass unnoticed.
+        // (including a meaningless "PR") pass unnoticed.
         await logSet(page, 'lats-sagittal-shoulder-extension', '150', '5');
         const lonePR = await readHeader(page, 'lats-sagittal-shoulder-extension');
-        eq(lonePR.loggedPR, '🔥 PR',
+        eq(lonePR.loggedPR, 'PR',
             'a lone PR still reads "PR" — the count starts at a run of two');
         eq(lonePR.loggedPRStreak, null,
             'a lone PR carries no data-streak attribute, matching History');

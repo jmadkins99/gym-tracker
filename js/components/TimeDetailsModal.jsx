@@ -39,7 +39,7 @@
                                 {isPR ? (
                                     <span className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge
                                           data-streak={prStreak > 1 ? prStreak : undefined}>
-                                        {prStreak > 1 ? '🔥 ' + prStreak : '🔥 PR'}
+                                        {formatPRPill(prStreak)}
                                     </span>
                                 ) : null}
                             </span>

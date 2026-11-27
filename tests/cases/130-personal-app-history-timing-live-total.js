@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// That the History ⏱️ on TODAY'S UNSUBMITTED day reports time at the gym so
+// That the History Time button on TODAY'S UNSUBMITTED day reports time at the gym so
 // far — first Weight Breakdown tap to now, ticking while the modal is open —
 // until 30 minutes pass with no log, and that every other day, including a
 // submitted one from today, still ends at its last log.
@@ -70,7 +70,7 @@ async function openTiming(page, itemIndex) {
     await page.evaluate((i) => {
         const item = document.querySelectorAll('.history-item')[i];
         const btn = Array.from(item.querySelectorAll('.history-date button'))
-            .find(b => b.textContent.includes('⏱️'));
+            .find(b => b.textContent.trim() === 'Time');
         btn.click();
     }, itemIndex);
     await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
@@ -180,7 +180,7 @@ async function closeTiming(page) {
         await closeTiming(page);
 
         eq(errors.length, 0, `no console errors (got: ${JSON.stringify(errors)})`);
-        console.log('PASS: History ⏱️ reads time so far mid-workout and the last log once submitted.');
+        console.log('PASS: History Time button reads time so far mid-workout and the last log once submitted.');
     } finally {
         await browser.close();
         await server.stop();

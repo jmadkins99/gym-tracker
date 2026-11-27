@@ -13,6 +13,13 @@
         const PR_STREAK_TRACKING = true;
         const PR_STREAK_MIN = 1;   // fewest consecutive improvements that earn a badge
 
+        // What a streak pill says: "PR" for a lone PR, "PR ×3" once the run is
+        // three sessions long. Every pill (card, History, Day Breakdown, timing
+        // details) reads this one rule.
+        function formatPRPill(streak) {
+            return streak > 1 ? 'PR ×' + streak : 'PR';
+        }
+
         // Gympin is shelved, not deleted: false hides its Settings form and
         // makes resolveGympin answer off. Flip to true to bring it back; the
         // saved `gympin`/`stackMax` fields are never touched while it is off.

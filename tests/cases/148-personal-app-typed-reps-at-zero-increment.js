@@ -72,7 +72,7 @@ async function openManageExercises(page) {
 async function clickPencil(page, id) {
     await page.evaluate((id) => {
         Array.from(document.querySelector(`.exercise-row[data-exercise-id="${id}"]`).querySelectorAll('button'))
-            .find(b => b.textContent.includes('✏')).click();
+            .find(b => b.textContent.trim() === 'Edit').click();
     }, id);
     await waitFor(page, `the increment field on ${id}`, (id) => !!document.querySelector(
         `.exercise-row[data-exercise-id="${id}"] select[data-field="increment"]`), id);
@@ -295,7 +295,7 @@ const readStore = (page) => page.evaluate((ns) =>
         await page.evaluate(() => {
             const item = Array.from(document.querySelectorAll('.history-item'))
                 .find(i => i.textContent.includes('Low to High Flies'));
-            Array.from(item.querySelectorAll('button')).find(b => b.textContent.includes('✏')).click();
+            Array.from(item.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit').click();
         });
         await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
         const editBoxes = await page.evaluate(() =>

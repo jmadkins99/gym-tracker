@@ -156,7 +156,7 @@ async function readHistoryBadges(page) {
         // === 2. The card's streak pill ==================================
         eq(await readCardBadge(page, 'traps-scapular-retraction'), null,
             'no streak pill for a weight bump that ended at three reps');
-        eq(await readCardBadge(page, 'lats-sagittal-shoulder-extension'), '🔥 1',
+        eq(await readCardBadge(page, 'lats-sagittal-shoulder-extension'), 'PR',
             'the same weight bump at four reps still gets one');
         eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), null,
             'and dropping to three at the same weight breaks the streak');
@@ -168,7 +168,7 @@ async function readHistoryBadges(page) {
 
         eq(badges[NAMES['traps-scapular-retraction']], null,
             'History shows no PR badge for the failed set');
-        eq(badges[NAMES['lats-sagittal-shoulder-extension']], '🔥 PR',
+        eq(badges[NAMES['lats-sagittal-shoulder-extension']], 'PR',
             'History does badge the real improvement beside it');
         eq(badges[NAMES['biceps-elbow-flexion-with-shoulder-flexion']], null,
             'History shows no PR badge for the drop to three reps');
@@ -192,7 +192,7 @@ async function readHistoryBadges(page) {
             const badge = document.querySelector(sel + ' [data-logged-pr-badge]');
             return badge ? badge.textContent.trim() : null;
         }, ACTIVE);
-        eq(realPill, '🔥 2', 'and does show one for the set that actually improved');
+        eq(realPill, 'PR ×2', 'and does show one for the set that actually improved');
 
         eq(errors, [], 'no console errors');
         console.log('PASS: a set that bottoms out the rep range is a failed set, never a PR.');

@@ -73,7 +73,7 @@ async function typeHint(page, id, text) {
 }
 
 async function saveHint(page, id, text) {
-    await rowButton(page, id, '✏️');
+    await rowButton(page, id, 'Edit');
     await typeHint(page, id, text);
     await rowButton(page, id, 'Save');
 }
@@ -122,7 +122,7 @@ async function readCardHint(page, name) {
 
         // === 1. The field ===================================================
         await openManageExercises(page);
-        await rowButton(page, LATERAL, '✏️');
+        await rowButton(page, LATERAL, 'Edit');
         const field = await page.evaluate((sel) => {
             const row = document.querySelector(sel);
             const inputs = Array.from(row.querySelectorAll('input'));
@@ -163,7 +163,7 @@ async function readCardHint(page, name) {
         eq(await savedHint(page, 'triceps-elbow-extension'), '(absent)', 'a whitespace-only hint saves as none');
         await saveHint(page, 'traps-scapular-retraction', 'x'.repeat(70));
         eq(await savedHint(page, 'traps-scapular-retraction'), 'x'.repeat(60), 'typing stops at 60 characters');
-        await rowButton(page, LATERAL, '✏️');
+        await rowButton(page, LATERAL, 'Edit');
         eq(await page.evaluate((s) => document.querySelector(s).value, hintSel(LATERAL)), HINT,
             'the field reopens on the saved hint');
         await rowButton(page, LATERAL, 'Cancel');

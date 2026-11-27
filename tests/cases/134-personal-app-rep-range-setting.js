@@ -62,7 +62,7 @@ async function clickPencil(page, id) {
     await page.evaluate((id) => {
         const row = document.querySelector(`.exercise-row[data-exercise-id="${id}"]`);
         Array.from(row.querySelectorAll('button'))
-            .find(b => b.textContent.includes('✏')).click();
+            .find(b => b.textContent.trim() === 'Edit').click();
     }, id);
     await waitFor(page, `the rep range fields on ${id}`,
         (id) => !!document.querySelector(

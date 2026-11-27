@@ -259,7 +259,7 @@
                                     <div className="weigh-setting-note">No plan set.</div>
                                 )}
                                 <button className="modal-btn" onClick={() => setEditingPlan(true)}>
-                                    {saved ? '✏️ Edit plan' : '➕ Set a plan'}
+                                    {saved ? 'Edit plan' : 'Set a plan'}
                                 </button>
                                 {saved && (
                                     <button className="modal-btn" onClick={onClearPlan}>
@@ -353,7 +353,7 @@
                                     fontSize: '14px'
                                 }}>
                                     <div style={{ marginBottom: '8px' }}>
-                                        ☁️ Syncing as <strong>{window.repo.status().email}</strong>
+                                        Syncing as <strong>{window.repo.status().email}</strong>
                                         {window.repo.status().pendingWrites > 0 &&
                                             <span style={{ color: '#8a8aa0' }}> ({window.repo.status().pendingWrites} pending)</span>}
                                     </div>
@@ -363,16 +363,16 @@
                                 </div>
                             ) : (
                                 <button className="modal-btn" onClick={() => window.repoSignIn()}>
-                                    ☁️ Sign in with Google to sync
+                                    Sign in with Google to sync
                                 </button>
                             )
                         )}
 
-                        <button className="modal-btn" onClick={onExport}>📥 Export Data</button>
+                        <button className="modal-btn" onClick={onExport}>Export Data</button>
                         <button className="modal-btn" onClick={() => fileInputRef.current.click()}>
-                            📤 Import Data
+                            Import Data
                         </button>
-                        <button className="modal-btn danger" onClick={onReset}>🗑️ Reset All Data</button>
+                        <button className="modal-btn danger" onClick={onReset}>Reset All Data</button>
                         <input
                             ref={fileInputRef}
                             type="file"

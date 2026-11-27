@@ -93,13 +93,38 @@
             margin-bottom: 15px;
         }
 
+        /* A small text button: the same dark fill, border, radius, size and
+           weight as .week-nav-btn and .modal-btn, but sized to its words and
+           never below a 44px tap target. Header Settings, History's Time and
+           Edit, and Manage Exercises' Edit / up / down all share it. */
+        .text-btn,
         .settings-btn {
-            background: none;
-            border: none;
-            color: var(--accent-muted);
-            font-size: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            min-width: 44px;
+            padding: 0 14px;
+            background: #1a1a2a;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            color: #8a8aa0;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
             cursor: pointer;
-            padding: 4px;
+            transition: all 0.3s;
+        }
+
+        .text-btn:active,
+        .settings-btn:active {
+            transform: scale(0.98);
+        }
+
+        .text-btn:disabled {
+            background: #0d0d1a;
+            color: #555;
+            cursor: not-allowed;
         }
 
         .nav {
@@ -387,11 +412,6 @@
             text-align: center;
             padding: 60px 20px;
             color: #666;
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
         }
 
         .success-message {

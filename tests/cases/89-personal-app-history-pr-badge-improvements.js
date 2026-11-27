@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// History's "🔥 PR" badge mirrors the "PRs Smashed" count from Day Breakdown.
+// History's "PR" badge mirrors the "PRs Smashed" count from Day Breakdown.
 // It is not a range-top marker: it appears when a standard row improves on that
 // exercise's previous valid row.
 //
@@ -148,9 +148,9 @@ async function readCardBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'posterior-2');
 
-        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), '🔥 1',
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), 'PR',
             'card streak counts mid-range rep progress (4 -> 5) as an improvement');
-        eq(await readCardBadge(page, 'traps-scapular-retraction'), '🔥 1',
+        eq(await readCardBadge(page, 'traps-scapular-retraction'), 'PR',
             'normal 3-6 exercise still gets the same card streak behavior');
         eq(await readCardBadge(page, 'lats-sagittal-shoulder-extension'), null,
             'card streak does not count a weight drop, even at top reps');
@@ -164,9 +164,9 @@ async function readCardBadge(page, exerciseId) {
             ok(historyRows[name], `History includes ${name}`);
         }
 
-        eq(historyRows['Kelso Shrugs'].badgeText, '🔥 PR',
+        eq(historyRows['Kelso Shrugs'].badgeText, 'PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
-        eq(historyRows['Preacher Curls'].badgeText, '🔥 PR',
+        eq(historyRows['Preacher Curls'].badgeText, 'PR',
             'History shows PR at 5 reps — mid-range, so not a range-top marker');
         eq(historyRows['Sagittal Pulldowns'].badgeText, null,
             'History does not show PR for top reps after a weight drop');
@@ -205,7 +205,7 @@ async function readCardBadge(page, exerciseId) {
         // moment the set is logged, exactly as the lone-PR badge above is.
         // Case 100 owns that rule; what this line pins is that logging alone,
         // with no Submit Day, is enough to earn it.
-        eq(todayRows['Preacher Curls'].badgeText, '🔥 2',
+        eq(todayRows['Preacher Curls'].badgeText, 'PR ×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
             'the pre-submit History badge is the same gold-outlined pill');

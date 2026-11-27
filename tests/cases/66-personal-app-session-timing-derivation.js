@@ -28,7 +28,7 @@
 //
 // The Day Breakdown's row-level PR badges ride along here, because this is the
 // case that already opens that modal. Since Sep 2026 they read the way History
-// and the logged card read: "🔥 PR" for a lone PR, "🔥 N" once the run is two
+// and the logged card read: "PR" for a lone PR, "PR ×N" once the run is two
 // or more. Both branches are seeded below — Chest Press sits on a run of two,
 // Chest Flies improves off a single prior session — so a regression that always
 // prints one or the other fails here.
@@ -95,11 +95,11 @@ const EXPECTED_ROWS = [
 ];
 const EXPECTED_BADGES = [
     // 200x4 -> 200x5 -> 200x6: a run of two, so the row carries the count.
-    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '🔥 2'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', 'PR ×2'],
     ['pecs-shoulder-flexion', null],
     // 170x6 -> 175x6 off a single prior session: a lone PR, so the row keeps
     // the word.
-    ['pecs-transverse-shoulder-adduction', '🔥 PR'],
+    ['pecs-transverse-shoulder-adduction', 'PR'],
     ['delts-shoulder-abduction-above-90-degrees', null],
     ['delts-shoulder-abduction-stop-at-90-degrees', null],
 ];

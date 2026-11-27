@@ -400,12 +400,12 @@
                         {loggedPR ? (
                             <div className="streak-badge logged-pr-badge" data-logged-pr-badge
                                  data-streak={loggedPRStreak > 1 ? loggedPRStreak : undefined}>
-                                {loggedPRStreak > 1 ? '🔥 ' + loggedPRStreak : '🔥 PR'}
+                                {formatPRPill(loggedPRStreak)}
                             </div>
                         ) : null}
                         {isLogged ? <div className="logged-chip">logged</div> : null}
                         {!isLogged && prStreak ? (
-                            <div className="streak-badge" data-streak={prStreak}>🔥 {prStreak}</div>
+                            <div className="streak-badge" data-streak={prStreak}>{formatPRPill(prStreak)}</div>
                         ) : null}
                     </div>
                     {/* The user's own note for this exercise (Settings). Open
@@ -450,7 +450,7 @@
                     <button className={'log-btn' + (isLogged ? ' logged' : '')}
                             onClick={() => onLog(exercise.id)}
                             disabled={isLogged}>
-                        {isLogged ? '✓ Logged' : 'LOG'}
+                        {isLogged ? 'Logged' : 'LOG'}
                     </button>
                 </div>
             );

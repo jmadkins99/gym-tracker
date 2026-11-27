@@ -1,13 +1,6 @@
-        // Both buttons in a history entry's header row are bare emoji at the
-        // same weight, so the styling lives in one place.
-        const iconBtnStyle = {
-            background: 'none',
-            border: 'none',
-            color: 'var(--accent-muted)',
-            cursor: 'pointer',
-            fontSize: '18px',
-            padding: '4px 8px'
-        };
+        // Time and Edit sit side by side in the row header; the gap keeps the
+        // two 44px targets from touching.
+        const headerBtnsStyle = { display: 'flex', alignItems: 'center', gap: '8px' };
 
         function WeeklyView({ workoutHistory, viewingWeek, setViewingWeek, currentWeek, exercises, onEditWorkout, onViewTiming, foregroundAt }) {
             const weekWorkouts = workoutHistory
@@ -39,7 +32,6 @@
 
                     {weekWorkouts.length === 0 ? (
                         <div className="empty-state">
-                            <div className="empty-state-icon">📊</div>
                             <div>No workouts in Week {viewingWeek}</div>
                         </div>
                     ) : (
@@ -75,20 +67,20 @@
                                     <div key={idx} className="history-item">
                                         <div className="history-date" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <span>Day {dayNumber} - {formattedDate}</span>
-                                            <span>
+                                            <span style={headerBtnsStyle}>
                                                 {timing && (
                                                     <button
                                                         onClick={() => onViewTiming(workout)}
-                                                        style={iconBtnStyle}
+                                                        className="text-btn"
                                                     >
-                                                        ⏱️
+                                                        Time
                                                     </button>
                                                 )}
                                                 <button
                                                     onClick={() => onEditWorkout(workout)}
-                                                    style={iconBtnStyle}
+                                                    className="text-btn"
                                                 >
-                                                    ✏️
+                                                    Edit
                                                 </button>
                                             </span>
                                         </div>
@@ -120,7 +112,7 @@
                                                         {isPR ? (
                                                             <div className="streak-badge history-pr-badge" data-pr-badge
                                                                  data-streak={prStreak > 1 ? prStreak : undefined}>
-                                                                {prStreak > 1 ? '🔥 ' + prStreak : '🔥 PR'}
+                                                                {formatPRPill(prStreak)}
                                                             </div>
                                                         ) : null}
                                                     </div>
