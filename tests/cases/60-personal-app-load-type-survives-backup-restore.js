@@ -31,7 +31,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, tap, waitFor } = require('../lib/browser');
 const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
@@ -58,8 +58,9 @@ function currentConfigVersion(src) {
 // with DataTransfer so the backup lives next to the assertions that read it
 // rather than in a committed fixture.
 async function importBackup(page, backup) {
-    await page.click('.settings-btn');
-    await new Promise(r => setTimeout(r, 250));
+    await tap(page, '.settings-btn');
+    await waitFor(page, 'the Settings modal to open',
+        () => !!document.querySelector('.modal .modal-title'));
     const fed = await page.evaluate((json) => {
         const input = document.querySelector('input.file-input');
         if (!input) return 'no file input';
@@ -72,14 +73,10 @@ async function importBackup(page, backup) {
     }, JSON.stringify(backup));
     eq(fed, 'ok', 'fed the backup to the Settings file input');
     // importData reads the file through FileReader.onload, so the state update
-    // lands a tick or two after the event.
-    await new Promise(r => setTimeout(r, 600));
-    // Dismiss the modal if it is still up.
-    await page.evaluate(() => {
-        const overlay = document.querySelector('.modal-overlay');
-        if (overlay) overlay.click();
-    });
-    await new Promise(r => setTimeout(r, 250));
+    // lands a tick or two after the event. The same callback closes Settings,
+    // so the modal going away is the sign that the import has landed.
+    await waitFor(page, 'the import to land and close Settings',
+        () => !document.querySelector('.modal'));
 }
 
 // Navigate to a card, open it, set the weight, and return its warmup rows.

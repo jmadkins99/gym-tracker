@@ -43,7 +43,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, waitForPageTime } = require('../lib/browser');
 const { goToCardById, revealCard, isRevealed, logCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -108,12 +108,14 @@ async function savedExercise(page, id) {
         const firstOpen = (await anchors(page))['pecs-transverse-shoulder-adduction-with-elbow-extension'];
         ok(firstOpen, 'the first open of Chest Press is anchored');
 
-        await new Promise(r => setTimeout(r, GAP_MS));
+        await waitForPageTime(page, `${GAP_MS}ms to pass since Chest Press opened`,
+            Date.parse(firstOpen) + GAP_MS);
 
         // The machine was taken, so something else got done first. This is what
         // closes the Chest Press panel.
         await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
-        await new Promise(r => setTimeout(r, GAP_MS));
+        await waitForPageTime(page, `${GAP_MS}ms to pass since Chest Flies opened`,
+            Date.parse((await anchors(page))['pecs-transverse-shoulder-adduction']) + GAP_MS);
 
         // Back to Chest Press. THIS is when the set actually starts.
         await clickCardButton(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension', 'Weight Breakdown');
@@ -185,7 +187,8 @@ async function savedExercise(page, id) {
         const fliesOpen = (await anchors(page))['pecs-transverse-shoulder-adduction'];
         ok(fliesOpen, 'Chest Flies is anchored');
 
-        await new Promise(r => setTimeout(r, GAP_MS));
+        await waitForPageTime(page, `${GAP_MS}ms to pass since Chest Flies reopened`,
+            Date.parse(fliesOpen) + GAP_MS);
         await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
         eq((await anchors(page))['pecs-transverse-shoulder-adduction'], fliesOpen,
             'tapping the button on the ALREADY-OPEN card changes nothing, clock included');

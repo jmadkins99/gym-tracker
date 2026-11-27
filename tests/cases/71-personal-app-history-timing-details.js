@@ -34,7 +34,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -96,16 +96,13 @@ async function historyItems(page) {
 }
 
 async function clickIcon(page, itemIndex, icon) {
-    const clicked = await page.evaluate((i, ic) => {
+    const btn = await page.evaluateHandle((i, ic) => {
         const item = document.querySelectorAll('.history-item')[i];
-        if (!item) return false;
-        const btn = Array.from(item.querySelectorAll('.history-date button'))
-            .find(b => b.textContent.includes(ic));
-        if (!btn) return false;
-        btn.click();
-        return true;
+        return (item && Array.from(item.querySelectorAll('.history-date button'))
+            .find(b => b.textContent.includes(ic))) || null;
     }, itemIndex, icon);
-    ok(clicked, `history item ${itemIndex} offers a ${icon} button to click`);
+    ok(btn.asElement(), `history item ${itemIndex} offers a ${icon} button to click`);
+    await tap(page, btn);
 }
 
 (async () => {
@@ -127,11 +124,7 @@ async function clickIcon(page, itemIndex, icon) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find(b => b.textContent.indexOf('History') !== -1);
-            if (btn) btn.click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await page.waitForSelector('.history-item', { timeout: 8000 });
 
         // === 1. Which entries offer a stopwatch =========================
@@ -171,11 +164,7 @@ async function clickIcon(page, itemIndex, icon) {
             /estimated/.test(document.querySelector('[data-timing-details]').textContent)),
             'the asterisk footnote renders alongside an estimated row');
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.modal-btn'))
-                .find(b => b.textContent.trim() === 'Close');
-            if (btn) btn.click();
-        });
+        await tap(page, '.modal-btn', { text: 'Close' });
         await page.waitForFunction(() => !document.querySelector('[data-timing-total]'),
             { timeout: 8000 });
 

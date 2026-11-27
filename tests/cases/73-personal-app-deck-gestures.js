@@ -35,7 +35,7 @@ const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const {
     ACTIVE, DEFAULT_NS, swipe, swipeFrom, revealCard, activeName,
-    deckIndex, selectDeckDay, todayWorkout,
+    deckIndex, selectDeckDay, todayWorkout, waitForDeckToSettle,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -72,13 +72,13 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             }).length;
         });
         await page.mouse.up();
-        await new Promise((r) => setTimeout(r, 520));
+        await waitForDeckToSettle(page);
         eq(sharing, 2, 'two cards share the stage mid-drag — the peek, not one card over black');
 
         // === 2. Fast swipes are not dropped ============================
         const before = await deckIndex(page);
         for (let i = 0; i < 4; i++) await swipe(page, -170, 0, { settle: 90 });
-        await new Promise((r) => setTimeout(r, 600));
+        await waitForDeckToSettle(page);
         eq(await deckIndex(page) - before, 4,
             'four swipes 90ms apart all count — the index commits before the animation, ' +
             'so there is no window in which input is locked out');

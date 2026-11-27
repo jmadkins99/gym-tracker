@@ -30,7 +30,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const { ACTIVE, DEFAULT_NS, revealCard, selectDeckDay, bottomNav } = require('../lib/deck');
@@ -39,6 +39,22 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const VW = 390, VH = 844;
 const KEYBOARD = 336;   // roughly what iOS takes
 const PAN = 120;        // how far Safari shoves the visible area down
+
+// The card scales .card-fit to whatever height .card-body has left
+// (ExerciseCard's ResizeObserver) and eases there over 180ms, so after the
+// space changes its geometry is final only once the scale on the node is the
+// one that space calls for and no transition is still running. The scale is
+// worked out the way ExerciseCard does it, floor at 0.6 included.
+const waitForCardToFit = (page) =>
+    waitFor(page, 'the active card to refit the space it has', (sel) => {
+        const box = document.querySelector(sel + ' .card-body');
+        const inner = document.querySelector(sel + ' .card-fit');
+        if (!box || !inner) return false;
+        const needed = inner.scrollHeight, avail = box.clientHeight;
+        const want = needed > avail ? Math.max(0.6, avail / needed) : 1;
+        const m = /scale\(([\d.]+)\)/.exec(inner.style.transform);
+        return !!m && Math.abs(Number(m[1]) - want) < 0.005 && inner.getAnimations().length === 0;
+    }, ACTIVE);
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -129,14 +145,10 @@ const PAN = 120;        // how far Safari shoves the visible area down
         // === 2. Settings must still reach its bottom ==================
         // It is taller than a phone and used to lean on the page scroll that no
         // longer exists. Manage Exercises is the pane that actually overflows.
-        await page.evaluate(() => document.querySelector('.settings-btn').click());
-        await page.waitForSelector('.modal', { timeout: 8000 });
-        await page.evaluate(() => {
-            const b = Array.from(document.querySelectorAll('.modal button'))
-                .find((x) => /Manage Exercises/i.test(x.textContent));
-            if (b) b.click();
-        });
-        await new Promise((r) => setTimeout(r, 400));
+        await tap(page, '.settings-btn');
+        await tap(page, '.modal button', { text: /Manage Exercises/i });
+        await waitFor(page, 'the Manage Exercises rows to render',
+            () => document.querySelectorAll('.modal .exercise-row').length > 0);
         const modal = await page.evaluate(() => {
             const m = document.querySelector('.modal');
             m.scrollTop = 999999;
@@ -155,12 +167,9 @@ const PAN = 120;        // how far Safari shoves the visible area down
             'case is not exercising the scroll it claims to');
         eq(modal.atBottom, true, 'and it can be scrolled to the bottom');
         eq((await overflow()).scrolled, 0, 'opening it still does not scroll the page');
-        await page.evaluate(() => {
-            const b = Array.from(document.querySelectorAll('.modal-btn'))
-                .find((x) => /close|done|cancel/i.test(x.textContent));
-            if (b) b.click(); else document.querySelector('.modal-overlay').click();
-        });
-        await new Promise((r) => setTimeout(r, 400));
+        await tap(page, '.modal-btn', { text: /Back to Settings/ });
+        await tap(page, '.modal-btn', { text: 'Close' });
+        await waitFor(page, 'the Settings modal to close', () => !document.querySelector('.modal'));
 
         // === 3. The keyboard =========================================
         await revealCard(page);
@@ -170,7 +179,7 @@ const PAN = 120;        // how far Safari shoves the visible area down
 
         await page.focus(ACTIVE + ' input[type="number"]');
         await page.evaluate((h, p) => window.__keyboard(h, p), VH - KEYBOARD, PAN);
-        await new Promise((r) => setTimeout(r, 400));
+        await waitForCardToFit(page);
 
         const visibleTop = PAN;
         const visibleBottom = PAN + (VH - KEYBOARD);
@@ -197,7 +206,9 @@ const PAN = 120;        // how far Safari shoves the visible area down
         // === 4. A dropdown is NOT a keyboard ==========================
         await page.evaluate(() => document.activeElement && document.activeElement.blur());
         await page.evaluate((h) => window.__keyboard(h, 0), VH);
-        await new Promise((r) => setTimeout(r, 350));
+        await waitFor(page, 'the keyboard state to clear after the blur',
+            () => !document.documentElement.classList.contains('kb-open'));
+        await waitForCardToFit(page);
 
         const restPositions = await page.evaluate((sel) => {
             const t = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top) : null; };
@@ -205,7 +216,10 @@ const PAN = 120;        // how far Safari shoves the visible area down
                      foot: t('.deck-foot'), log: t(sel + ' .log-btn') };
         }, ACTIVE);
         await page.focus(ACTIVE + ' select[data-field="reps"]');
-        await new Promise((r) => setTimeout(r, 350));
+        await waitFor(page, 'the reps dropdown to take focus',
+            (sel) => document.activeElement === document.querySelector(sel + ' select[data-field="reps"]'),
+            ACTIVE);
+        await waitForCardToFit(page);
         const afterSelect = await page.evaluate((sel) => {
             const t = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top) : null; };
             return { hero: t(sel + ' .hero-weight'), toggle: t('.day-toggle'),
@@ -219,7 +233,10 @@ const PAN = 120;        // how far Safari shoves the visible area down
 
         // === 5. Dismissing puts everything back =======================
         await page.evaluate(() => document.activeElement && document.activeElement.blur());
-        await new Promise((r) => setTimeout(r, 300));
+        await waitFor(page, 'the reps dropdown to lose focus',
+            (sel) => document.activeElement !== document.querySelector(sel + ' select[data-field="reps"]'),
+            ACTIVE);
+        await waitForCardToFit(page);
         const back = await geom();
         eq(back.app.top, 0, 'dismissing the keyboard puts the app back at the top');
         eq(back.app.height, VH, 'and back to full height');

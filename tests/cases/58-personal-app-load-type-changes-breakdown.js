@@ -30,7 +30,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, tap, waitFor } = require('../lib/browser');
 const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
@@ -43,17 +43,10 @@ const EXERCISE_NAME = 'Chest Flies';
 // installs its own value setter on the select, so assigning `.value` directly
 // is invisible to it — go through the prototype descriptor and fire `change`.
 async function setLoadType(page, exerciseId, loadType) {
-    await page.click('.settings-btn');
-    await new Promise(r => setTimeout(r, 200));
-    const opened = await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises'));
-        if (!btn) return false;
-        btn.click();
-        return true;
-    });
-    ok(opened, 'opened Manage Exercises');
-    await new Promise(r => setTimeout(r, 300));
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the Manage Exercises rows to render',
+        () => document.querySelectorAll('.exercise-row').length > 0);
 
     const set = await page.evaluate((id, value) => {
         const row = document.querySelector(`.exercise-row[data-exercise-id="${id}"]`);
@@ -67,20 +60,14 @@ async function setLoadType(page, exerciseId, loadType) {
         return 'ok';
     }, exerciseId, loadType);
     eq(set, 'ok', `set ${exerciseId} to ${loadType} in Manage Exercises`);
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(page, `${exerciseId}'s new load type to be saved`, (ns, id, value) =>
+        (JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig') || '{}').exercises || [])
+            .some(e => e.id === id && e.loadType === value), 'gym-local:', exerciseId, loadType);
 
     // Back out of the modal entirely so the workout view is interactive again.
-    await page.evaluate(() => {
-        const back = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Back to Settings'));
-        if (back) back.click();
-    });
-    await new Promise(r => setTimeout(r, 200));
-    await page.evaluate(() => {
-        const overlay = document.querySelector('.modal-overlay');
-        if (overlay) overlay.click();
-    });
-    await new Promise(r => setTimeout(r, 250));
+    await tap(page, '.modal-btn', { text: /Back to Settings/ });
+    await tap(page, '.modal-btn', { text: 'Close' });
+    await waitFor(page, 'the Settings modal to close', () => !document.querySelector('.modal'));
 }
 
 // Navigate to a card, open it, set the weight, and return its warmup rows.
