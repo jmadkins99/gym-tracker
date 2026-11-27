@@ -95,15 +95,18 @@
 
         /* A small text button: the same dark fill, border, radius, size and
            weight as .week-nav-btn and .modal-btn, but sized to its words and
-           never below a 44px tap target. Header Settings, History's Time and
-           Edit, and Manage Exercises' Edit / up / down all share it. */
+           never below a 44px tap target AS RENDERED. Both pages open at
+           initial-scale 0.75, so 44 rendered px is 44 / 0.75 = 59 CSS px; a
+           plain 44px here lands at 33px under the thumb. Header Settings,
+           History's Time and Edit, and Manage Exercises' Edit / up / down all
+           share it. */
         .text-btn,
         .settings-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 44px;
-            min-width: 44px;
+            min-height: 59px;
+            min-width: 59px;
             padding: 0 14px;
             background: #1a1a2a;
             border: 1px solid #2a2a3a;
@@ -114,6 +117,14 @@
             white-space: nowrap;
             cursor: pointer;
             transition: all 0.3s;
+        }
+
+        /* The name beside the up / down / Edit buttons in Manage Exercises:
+           free to shrink below its text width and to break an unbroken word,
+           so a long custom name wraps instead of pushing Edit off the row. */
+        .exercise-row-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         .text-btn:active,

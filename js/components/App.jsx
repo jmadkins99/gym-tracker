@@ -37,7 +37,7 @@
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
-            // The history entry whose ⏱️ was tapped, or null. Distinct from
+            // The history entry whose Time button was tapped, or null. Distinct from
             // showDayBreakdown, which is always today's session.
             const [timingWorkout, setTimingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);

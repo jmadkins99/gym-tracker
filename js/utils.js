@@ -317,7 +317,7 @@
         // the caller renders nothing rather than a zero.
         //
         // `liveAt` moves the end of the session total from the last log to that
-        // moment — the History ⏱️ passes the current time while today's day is
+        // moment — the History Time button passes the current time while today's day is
         // still unsubmitted, so a glance mid-workout reads "how long have I been
         // here" rather than "how long until my last set". It never touches the
         // per-movement rows, and a moment before the last log is ignored. So is

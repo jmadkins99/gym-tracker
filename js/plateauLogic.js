@@ -124,7 +124,7 @@
 
         // Did `newer` move this lift forward on `older`? The single definition of
         // "an improvement" in this app, and deliberately the only one: it backs
-        // both the flame streak badge and the "PRs Smashed" count in the Day
+        // both the PR streak badge and the "PRs Smashed" count in the Day
         // Breakdown modal. Those disagreed until August 2026 — the modal carried
         // its own looser rule, `weight up OR reps up`, which scored a weight DROP
         // as a PR whenever the reps rose. That is not an edge case: a plateau
@@ -172,7 +172,7 @@
         // under the default range, so that is its bottom, not today's setting.
         // Loading more weight and then failing on it is a failed attempt at a PR,
         // not a PR, so isImprovement refuses it before the weight comparison — the
-        // one place that decision has to live, or the flame pill and the "PRs
+        // one place that decision has to live, or the PR pill and the "PRs
         // Smashed" count will disagree about the same set.
         //
         // Only the NEW session is judged. A failed set still stands as a baseline
@@ -253,7 +253,7 @@
 
         // The mirror image of getStagnationWarning: how many consecutive times
         // this lift has moved *forward*. Same history walk, no slice — a streak
-        // has no ceiling. Surfaces as the gold-outline flame pill in the exercise header.
+        // has no ceiling. Surfaces as the gold-outline PR pill in the exercise header.
         //
         // It counts improvements, not sessions: the oldest session in the run is
         // the baseline you improved *from*, so a flat stretch capped by one better

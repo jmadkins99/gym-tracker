@@ -30,7 +30,7 @@
             const prStreaksById = {};
             currentDayWorkoutExercises.forEach(exercise => {
                 // Day Breakdown's PR count, History's PR badge, and the
-                // workout-card flame streak all use the same "lift moved
+                // workout-card PR streak all use the same "lift moved
                 // forward" definition: weight up, or same weight with more
                 // reps. A separate copy of that rule already drifted once.
                 if (isExercisePRInWorkout(exercise, todayWorkout, workoutHistory)) {

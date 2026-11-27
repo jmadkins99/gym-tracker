@@ -59,7 +59,7 @@
 
                                 // Null for anything logged before August 2026,
                                 // which carries no per-exercise timestamps —
-                                // and that is what hides the ⏱️ on those
+                                // and that is what hides the Time button on those
                                 // entries rather than offering an empty modal.
                                 const timing = getSessionTiming(workout, foregroundAt);
 
