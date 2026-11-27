@@ -8,16 +8,18 @@
 #
 #   - Each case starts its own HTTP server on an OS-assigned free port
 #     (lib/server.js passes port 0), so no two cases can contend for one.
-#   - Each case launches its own Chrome, and puppeteer gives every launch a
-#     fresh temp profile, so localStorage cannot leak between them. They are
-#     also on different ports, hence different origins, so the isolation holds
-#     twice over. See the note in lib/browser.js — that isolation must not be
-#     "optimized" away with a shared userDataDir.
+#   - Each job slot has one Chrome for the whole run (a Chrome exit costs
+#     seconds on Windows; a fresh browser context costs milliseconds), and each
+#     case works in a context of its own, which has its own localStorage. The
+#     cases are also on different ports, hence different origins, so the
+#     isolation holds twice over. A case run by hand with `node` launches its
+#     own Chrome instead. See lib/browser.js; the isolation must not be
+#     "optimized" away with a shared userDataDir or a shared context.
 #   - No case writes to disk, and none depends on another having run first;
 #     every case seeds its own state and tears down in a finally block.
 #
-# Concurrency is capped rather than unbounded: each case costs a Chrome
-# (~200 MB) plus a node process, so 57 at once would thrash. Override with
+# Concurrency is capped rather than unbounded: each slot costs a Chrome
+# (~200 MB) plus a node process per case, so 57 at once would thrash. Override with
 # TEST_JOBS=n. TEST_JOBS=1 restores the old strictly-sequential behaviour,
 # which is worth reaching for when a failure looks timing-dependent.
 
@@ -46,7 +48,7 @@ ONLY="${TEST_CASES:-}"
 # That is the case the guard below refuses: a broken filter (an alias or a
 # pipeline that produced nothing) must never quietly become a full run.
 ONLY_SET="${TEST_CASES+x}"
-JOBS="${TEST_JOBS:-6}"
+JOBS="${TEST_JOBS:-8}"   # also the number of slot Chromes
 CASE_TIMEOUT="${TEST_CASE_TIMEOUT:-120}"
 
 # TEST_SHARD=i/n runs every n-th case starting at the i-th (1-based), so n
@@ -93,9 +95,13 @@ if [ -z "$PATTERN" ] && [ -z "$ONLY_SET" ] && [ -z "$SHARD" ] && [ -z "${TEST_CA
     echo
 fi
 
+# Slot Chromes: on for the real suite, off for the self-test's made-up cases
+# (plain node scripts) unless TEST_SLOT_CHROME=1 asks for them.
+if [ -n "${TEST_CASES_DIR:-}" ] && [ "${TEST_SLOT_CHROME:-}" != 1 ]; then SLOT_CHROME=0; else SLOT_CHROME=1; fi
+
 # Install puppeteer-core etc. on first run. Not for the self-test's made-up
-# cases, which are plain node scripts.
-if [ ! -d node_modules ] && [ -z "${TEST_CASES_DIR:-}" ]; then
+# cases, which are plain node scripts unless they use Chrome.
+if [ ! -d node_modules ] && [ "$SLOT_CHROME" = 1 ] && [ -z "${TEST_CASES_DIR:-}" ]; then
     echo "Installing test dependencies..."
     npm install --silent --no-audit --no-fund
 fi
@@ -243,6 +249,7 @@ trap 'exit 143' TERM
 cleanup() {
     local j
     for j in $(jobs -rp); do kill_tree "$j"; done
+    slot_stop
     release_lock
     rm -rf "$STATE"
 }
@@ -275,25 +282,67 @@ kill_tree() {
 # Milliseconds since the epoch (bash 5's $EPOCHREALTIME is microseconds).
 now_ms() { local t="${EPOCHREALTIME/./}"; echo $(( t / 1000 )); }
 
-# run_case <index> <suffix>: runs one case into $STATE/<slot><suffix>.log and
-# writes 0 (pass) or 1 (fail or timeout) to the matching .code file and its
-# duration in ms to .ms.
-#
-# SEAM (#46, one Chrome per slot): this is where a case is started. The
-# runner would pass the slot's Chrome endpoint to `node` through an env var
-# here, and restart the slot's Chrome when a case reports it died.
+# ── Slot Chromes ─────────────────────────────────────────────────────────────
+# Each job slot is a worker (below) with one long-lived Chrome, held by a small
+# node process (lib/slot-chrome.js) that writes the Chrome's DevTools endpoint
+# to a file and exits if the Chrome dies. The worker checks that process before
+# every case and starts a fresh Chrome if it is gone, so a killed Chrome costs
+# the case that was on it (which then goes through the one-retry path below),
+# not the rest of the slot. SLOT_* belong to whichever shell is running the
+# slot: a worker subshell, or the main shell for the retry pass.
+SLOT_PID=""
+SLOT_WS=""
+
+slot_stop() {
+    if [ -n "$SLOT_PID" ] && kill -0 "$SLOT_PID" 2>/dev/null; then kill_tree "$SLOT_PID"; fi
+    SLOT_PID=""; SLOT_WS=""
+}
+
+# slot_ensure <name> <case log>: leaves SLOT_WS naming a live Chrome, starting
+# (or replacing) it if needed. Returns 1 and writes why to the case log if it
+# cannot.
+slot_ensure() {
+    [ "$SLOT_CHROME" = 1 ] || return 0
+    local f="$STATE/chrome-$1.ws" n
+    if [ -n "$SLOT_PID" ] && kill -0 "$SLOT_PID" 2>/dev/null; then return 0; fi
+    slot_stop
+    rm -f "$f"
+    node lib/slot-chrome.js "$f" > "$STATE/chrome-$1.log" 2>&1 &
+    SLOT_PID=$!
+    for n in $(seq 1 300); do                       # up to 60 s
+        if [ -s "$f" ]; then SLOT_WS=$(cat "$f"); return 0; fi
+        kill -0 "$SLOT_PID" 2>/dev/null || break
+        sleep 0.2
+    done
+    { echo "Could not start Chrome for slot $1:"; cat "$STATE/chrome-$1.log"; } >> "$2"
+    slot_stop
+    return 1
+}
+
+# run_case <index> <suffix> <slot name>: runs one case into
+# $STATE/<index><suffix>.log on that slot's Chrome and writes 0 (pass) or 1
+# (fail or timeout) to the matching .code file and its duration in ms to .ms.
 run_case() {
     local slot pid start code t0
     slot=$(printf '%04d' "$1")
     t0=$(now_ms)
-    node "${FILES[$1]}" > "$STATE/$slot$2.log" 2>&1 &
+    : > "$STATE/$slot$2.log"
+    if ! slot_ensure "$3" "$STATE/$slot$2.log"; then
+        echo 1 > "$STATE/$slot$2.code"
+        echo $(( $(now_ms) - t0 )) > "$STATE/$slot$2.ms"
+        return
+    fi
+    TEST_CHROME_WS="$SLOT_WS" node "${FILES[$1]}" >> "$STATE/$slot$2.log" 2>&1 &
     pid=$!
     start=$SECONDS
     while kill -0 "$pid" 2>/dev/null; do
         if [ $(( SECONDS - start )) -ge "$CASE_TIMEOUT" ]; then
             kill_tree "$pid"
             wait "$pid" 2>/dev/null
-            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its Chrome. Its output up to then is above." >> "$STATE/$slot$2.log"
+            # A hung case may have left a page (or a wedged Chrome) behind, so
+            # the slot gets a fresh Chrome for its next case.
+            slot_stop
+            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its slot's Chrome. Its output up to then is above." >> "$STATE/$slot$2.log"
             echo 1 > "$STATE/$slot$2.code"
             echo $(( $(now_ms) - t0 )) > "$STATE/$slot$2.ms"
             return
@@ -305,13 +354,20 @@ run_case() {
     echo $(( $(now_ms) - t0 )) > "$STATE/$slot$2.ms"
 }
 
-for i in "${!NAMES[@]}"; do
-    run_case "$i" "" &
-    # Cap in-flight jobs. `wait -n` returns as soon as any one finishes, so a
-    # slow case never blocks the queue behind it.
-    while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do
-        wait -n
+# One worker per slot. Workers take the next unclaimed case in filename order;
+# the claim is a mkdir, which is atomic, so no case runs twice, and a slow case
+# never holds up the queue behind it.
+worker() {
+    local i
+    for i in "${!NAMES[@]}"; do
+        mkdir "$STATE/claim.$i" 2>/dev/null || continue
+        run_case "$i" "" "$1"
     done
+    slot_stop
+}
+
+for ((w = 1; w <= JOBS; w++)); do
+    worker "$w" &
 done
 wait
 
@@ -329,7 +385,8 @@ done
 if [ "${#RETRY[@]}" -gt 0 ]; then
     echo "Retrying ${#RETRY[@]} failed case(s) one at a time..."
     echo
-    for i in "${RETRY[@]}"; do run_case "$i" .retry; done
+    for i in "${RETRY[@]}"; do run_case "$i" .retry retry; done
+    slot_stop
 fi
 
 # Report in filename order regardless of the order they finished, so two runs

@@ -11,10 +11,10 @@
 #   - machine-wide lock (#45): done. runner() points TEST_LOCK_FILE into $WORK,
 #     so the self-test never contends with a real suite; the lock sections are
 #     at the end of this file.
-#   - one Chrome per slot (#46): add a second cases folder with two Chrome
-#     cases that write and read storage, and check they don't see each other's
-#     data. The cases here are plain node scripts, so this self-test needs no
-#     Chrome (and the runner skips `npm install` for a custom cases folder).
+#   - one Chrome per slot (#46): done, in the last section. The cases in
+#     selftest-cases are plain node scripts and run without slot Chromes; the
+#     ones in selftest-chrome-cases need Chrome and puppeteer-core (the runner
+#     skips `npm install` for a custom cases folder, so install it first).
 
 set -u
 cd "$(dirname "$0")"
@@ -163,6 +163,27 @@ runner stale bash run.sh 01
 printf 'garbage\n' > "$LOCK"
 runner garbage bash run.sh 01
 { [ "$CODE" = 0 ] && [ ! -e "$LOCK" ]; } && ok "a lock file with no pid counts as stale" || fail "garbage lock blocked the run (exit $CODE)"
+
+# ── one Chrome per slot (#46) ────────────────────────────────────────────────
+# Real Chrome cases (selftest-chrome-cases/), so this part needs puppeteer-core
+# (npm install in tests/) and a Chrome; CI's guardrails job has both. One slot
+# (TEST_JOBS=1) puts every case on the same Chrome, in order:
+#   01 and 02: same origin, same Chrome, must not see each other's storage
+#   03: crashes the slot's Chrome on its first attempt
+#   04: runs next on the slot, and needs the replacement Chrome
+section "cases on one slot's Chrome: separate storage, and a killed Chrome is replaced"
+PORT=$(node -e "const s=require('net').createServer().listen(0,()=>{console.log(s.address().port);s.close()})")
+runner chrome TEST_CASES_DIR=selftest-chrome-cases TEST_SLOT_CHROME=1 TEST_JOBS=1 SELFTEST_PORT="$PORT" bash run.sh
+[ "$CODE" = 0 ] && ok "run with a crashed Chrome exits 0" || fail "chrome run exit $CODE"
+WS="$WORK/marker-chrome-ws"
+W1=$(sed -n 's/^01-storage-a //p' "$WS"); W2=$(sed -n 's/^02-storage-b //p' "$WS"); W4=$(sed -n 's/^04-after-crash //p' "$WS")
+{ [ -n "$W1" ] && [ "$W1" = "$W2" ]; } && ok "01 and 02 ran on the same slot Chrome" || fail "01 and 02 did not share a Chrome ($W1 / $W2)"
+grep -q "storage was empty" "$WORK/out-chrome/01-storage-a.log" && grep -q "storage was empty" "$WORK/out-chrome/02-storage-b.log" \
+    && ok "each case found the storage empty (the other's was in another context)" || fail "storage leaked between cases on one Chrome"
+grep -q "^RESULT: PASS" "$WORK/out-chrome/02-storage-b.log" && ok "02 passed" || fail "02 did not pass"
+grep -q "^FLAKY" "$WORK/out-chrome/summary.txt" && grep -q "03-crash" "$WORK/out-chrome/summary.txt" && ok "the case on the crashed Chrome failed once and was retried (FLAKY)" || fail "03-crash was not retried to a pass"
+{ [ -n "$W4" ] && [ "$W4" != "$W1" ]; } && ok "the slot got a fresh Chrome after the crash" || fail "04 did not run on a replacement Chrome ($W1 / $W4)"
+grep -q "^RESULT: PASS" "$WORK/out-chrome/04-after-crash.log" && ok "the next case on the slot passed" || fail "04 did not pass after the crash"
 
 echo
 if [ "$FAILED" = 0 ]; then

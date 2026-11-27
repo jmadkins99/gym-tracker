@@ -71,12 +71,16 @@ jobs:
       - run: bash tests/check-cache-bust.sh
       - run: bash tests/check-no-sync-waits.sh
       # The runner self-test: run.sh as a whole process against made-up cases
-      # (tests/selftest-cases). Plain node scripts, so it needs Node and no
-      # Chrome or npm install. #46 (Chrome per slot) adds Chrome cases to it
-      # and will need a Chrome here (ubuntu-latest already has one).
+      # (tests/selftest-cases), plus real Chrome cases (tests/selftest-chrome-cases)
+      # that check two cases on one slot's Chrome don't share storage and that a
+      # crashed slot Chrome is replaced. Those need puppeteer-core and a Chrome
+      # (ubuntu-latest ships one at /usr/bin/google-chrome).
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm install --silent --no-audit --no-fund
       - run: bash tests/check-runner.sh
 
   # The one check the "protect main" ruleset requires, so the shard count can

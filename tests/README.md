@@ -21,20 +21,28 @@ TEST_JOBS=1 bash run.sh 50 # one at a time (see below)
 TEST_SHARD=2/4 bash run.sh # every 4th case from the 2nd: one of CI's four slices
 ```
 
-Cases run **6 at a time**. The full suite takes about **110 seconds**;
-sequentially it took 8m34s. Results are reported in filename order however
-they finish, so two runs are diffable, and each case's output is buffered
-and printed whole so a failure's diagnostics never interleave with another
-case's.
+Cases run **8 at a time**, one per job slot, and each slot keeps **one
+Chrome for the whole run**. A case connects to its slot's Chrome (the runner
+passes the endpoint in `TEST_CHROME_WS`) and works in a fresh browser context
+of its own: own localStorage and cookies, closed when the case ends. A Chrome
+exit costs 2.6 to 19.5 seconds on Windows and a context 0.03 to 0.3, which is
+why. A case run by hand (`node cases/<case>.js`) has no slot, so `launch()`
+starts and closes a Chrome of its own, as it always did. If a slot's Chrome
+dies, the runner starts a new one for the slot, and the case that was on it
+goes through the retry described below. Results are reported in filename
+order however they finish, so two runs are diffable, and each case's output
+is buffered and printed whole so a failure's diagnostics never interleave
+with another case's.
 
-`TEST_JOBS=n` changes the concurrency, but 6 is close to optimal on a
-16-core box and raising it does not help. Measured: 6 jobs 107-110s, 10
-jobs 113s, and 14 jobs both slower *and* failing a case with
-`net::ERR_NO_BUFFER_SPACE` — socket exhaustion from that many concurrent
-Chromes, not a test bug. Past a handful of jobs the bottleneck is Chrome
-startup rather than anything the runner controls. `TEST_JOBS=1` restores
-strictly sequential behaviour, which is what to reach for if a failure
-looks timing-dependent and you want to rule concurrency out.
+`TEST_JOBS=n` changes the number of slots. Measured on the maintainer's
+Windows PC, full suite, nothing else running: 527 s before slot Chromes (6
+jobs); with them 4 jobs 362 s, 6 jobs 266 s, 8 jobs 236 s, 10 jobs 235 s,
+12 jobs 250 s with one FLAKY case. Past 8 there is no gain, so 8 is the
+default. (Older figures here, about 110 s at 6 jobs, were from another
+machine; and 14 Chromes at once once failed a case with
+`net::ERR_NO_BUFFER_SPACE`, socket exhaustion and not a test bug.)
+`TEST_JOBS=1` restores strictly sequential behaviour, which is what to reach
+for if a failure looks timing-dependent and you want to rule concurrency out.
 
 **Timeouts and retries.** A case that runs longer than 120 seconds
 (`TEST_CASE_TIMEOUT=n` to change it) is killed along with its Chrome and
