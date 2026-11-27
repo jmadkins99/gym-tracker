@@ -1225,7 +1225,7 @@
                                 <h1>Gym Tracker</h1>
                                 <div className="week-indicator">Week {currentWeek}</div>
                             </div>
-                            <button className="settings-btn" onClick={() => setShowSettings(true)}>Settings</button>
+                            <SettingsButton onClick={() => setShowSettings(true)} />
                         </div>
                     </div>
 

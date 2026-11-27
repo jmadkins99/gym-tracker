@@ -278,8 +278,7 @@
                                 <h1>Weight</h1>
                                 <div className="week-indicator">Cut</div>
                             </div>
-                            <button className="settings-btn"
-                                    onClick={() => { setSettingsOnPlan(false); setShowSettings(true); }}>Settings</button>
+                            <SettingsButton onClick={() => { setSettingsOnPlan(false); setShowSettings(true); }} />
                         </div>
                     </div>
 
