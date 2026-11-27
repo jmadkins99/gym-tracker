@@ -314,6 +314,16 @@ async function findTapTarget(page, selector, text, timeout) {
     }
 }
 
+// Wait until the page's own clock reads `ms` or later (epoch ms, what Date.now()
+// returns in the page). For a case whose subject is elapsed time, such as two
+// stamps a known gap apart or a timer that must have had its chance to fire,
+// this is the condition a fixed sleep stood in for. It reads the clock the app
+// stamps with, so a gap asserted between two page timestamps really is there.
+async function waitForPageTime(page, label, ms) {
+    if (!Number.isFinite(ms)) throw new Error(`waitForPageTime: no valid instant to wait for (${label}): ${ms}`);
+    await waitFor(page, label, (t) => Date.now() >= t, ms);
+}
+
 // The two conditions almost every case waits on.
 const waitForStorageKey = (page, ns, key) =>
     waitFor(page, `${key} to appear in localStorage`,
@@ -325,4 +335,4 @@ const waitForCards = (page) =>
 
 module.exports = { launch, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
                    openSettings, closeSettings,
-                   waitFor, tap, waitForStorageKey, waitForCards };
+                   waitFor, waitForPageTime, tap, waitForStorageKey, waitForCards };

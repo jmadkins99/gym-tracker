@@ -124,7 +124,6 @@ async function readSavedConfig(page) {
         // is proving.
         const text = await setWeightAndOpen(page, 'My Renamed Flies', 200);
         ok(text.length > 0, 'found the renamed card on Anterior and opened it');
-        await new Promise(r => setTimeout(r, 300));
         contains(text, '70/side',
             'the preserved setting reaches the render, not just localStorage — a ' +
             'per-side figure only appears for a two-sided machine');

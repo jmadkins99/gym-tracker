@@ -24,12 +24,12 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitForPageTime } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const {
     ACTIVE, DEFAULT_NS, swipe, revealCard, isRevealed, activeName,
-    selectDeckDay, startAnchors,
+    selectDeckDay, startAnchors, waitForDeckToSettle,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -67,13 +67,12 @@ const anchorOf = async (page) => {
         // === 2. Arrows do it too =======================================
         await revealCard(page);
         eq(await isRevealed(page), true, 'reopened');
-        await page.evaluate(() => {
-            const a = document.querySelectorAll('.deck-arrow');
-            a[a.length - 1].click();
-        });
-        await new Promise((r) => setTimeout(r, 520));
-        await page.evaluate(() => document.querySelectorAll('.deck-arrow')[0].click());
-        await new Promise((r) => setTimeout(r, 520));
+        const reopened = await activeName(page);
+        await tap(page, '.deck-arrow[aria-label="Next exercise"]');
+        await waitForDeckToSettle(page);
+        await tap(page, '.deck-arrow[aria-label="Previous exercise"]');
+        await waitForDeckToSettle(page);
+        eq(await activeName(page), reopened, 'the arrows brought us back to the same card');
         eq(await isRevealed(page), false, 'arrow navigation closes it as well');
 
         // === 3. An immediate return still finds it shut ================
@@ -89,7 +88,8 @@ const anchorOf = async (page) => {
         await revealCard(page);
         const first = await anchorOf(page);
         ok(first, 'reopening stamps an anchor');
-        await new Promise((r) => setTimeout(r, 1100));
+        await waitForPageTime(page, 'the page clock to pass the first stamp',
+            Date.parse(first.at) + 1);
         await swipe(page, -180, 0);
         await swipe(page, 180, 0);
         await revealCard(page);
