@@ -3,7 +3,10 @@
 // The harness itself: every page runs in America/Phoenix whatever the machine's
 // zone is, setNow() pins the page's starting clock before any script runs
 // (and keeps it across a reload), and tap() is a real, hit-tested click that
-// an overlay can block.
+// an overlay can block. tap() also finds its target the ways cases need: by
+// label (an exact string, or a RegExp with its flags honoured), by a plain
+// Puppeteer selector, or as an ElementHandle; it waits for a target that
+// appears late, and a miss names what it was looking for.
 
 const { start } = require('../lib/server');
 const { launch, setNow, tap } = require('../lib/browser');
@@ -55,19 +58,20 @@ const { eq } = require('../lib/assert');
         await tap(page, '#b');
         eq(await page.evaluate(() => window.hits), 1, 'tap() is blocked by an overlay, as a thumb would be');
 
-        // tap(page, selector, { text, nth }): most cases find a button by its
+        // tap(page, selector, { text }): most cases find a button by its
         // label, so tap() can too. A string matches the trimmed text exactly,
-        // a RegExp tests it, and nth picks among the matches (default 0).
-        await page.setContent(['Edit Plan', 'Edit', 'Save', 'Edit'].map((t, i) =>
+        // a RegExp tests it, and the first match is tapped.
+        await page.setContent(['Re-Edit', 'Edit', 'Save', 'Edit Plan'].map((t, i) =>
             `<button onclick="window.hit=${i}"> ${t} </button>`).join(''));
         await tap(page, 'button', { text: 'Edit' });
-        eq(await page.evaluate(() => window.hit), 1, 'a string matches the whole trimmed label, not a prefix');
-        await tap(page, 'button', { text: 'Edit', nth: 1 });
-        eq(await page.evaluate(() => window.hit), 3, 'nth counts among the matches only');
-        await tap(page, 'button', { text: /^Sa/ });
-        eq(await page.evaluate(() => window.hit), 2, 'a RegExp tests the label');
-        await tap(page, 'button', { nth: 0 });
-        eq(await page.evaluate(() => window.hit), 0, 'nth works without text');
+        eq(await page.evaluate(() => window.hit), 1, 'a string matches the whole trimmed label, not a part of it');
+        await tap(page, 'button', { text: /Plan/ });
+        eq(await page.evaluate(() => window.hit), 3, 'a RegExp tests the label');
+        await tap(page, 'button', { text: /Edit/y });
+        eq(await page.evaluate(() => window.hit), 1, 'a sticky RegExp keeps its meaning: anchored at the start');
+        // Without text the selector is Puppeteer's, so its own syntax works.
+        await tap(page, '::-p-text(Save)');
+        eq(await page.evaluate(() => window.hit), 2, 'a Puppeteer selector still works when there is no text');
         // A button that appears later is waited for, not missed.
         await page.evaluate(() => setTimeout(() => { // allow-sync-wait: the late button under test
             document.body.insertAdjacentHTML('beforeend', '<button onclick="window.hit=9">Late</button>');
@@ -76,8 +80,8 @@ const { eq } = require('../lib/assert');
         eq(await page.evaluate(() => window.hit), 9, 'tap() waits for a matching button to appear');
         // A button only a case can pick out (the arrow in one named row) is
         // found with evaluateHandle and handed over as an ElementHandle.
-        await tap(page, await page.evaluateHandle(() => document.querySelectorAll('button')[2]));
-        eq(await page.evaluate(() => window.hit), 2, 'tap() takes an ElementHandle');
+        await tap(page, await page.evaluateHandle(() => document.querySelectorAll('button')[0]));
+        eq(await page.evaluate(() => window.hit), 0, 'tap() takes an ElementHandle');
         let msg = '';
         try { await tap(page, 'button', { text: 'Nope', timeout: 200 }); } catch (err) { msg = err.message; }
         eq(/button with text "Nope"/.test(msg), true, 'a miss names the selector and the text: ' + msg);

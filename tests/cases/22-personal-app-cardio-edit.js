@@ -58,7 +58,7 @@ async function setNumber(page, selector, value) {
 
         await clickNav(page, 'History');
         await tap(page, 'button', { text: 'Edit' });
-        await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal select[data-field="level"]'));
+        await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
 
         // Level must be an editable dropdown (the bug: it was a disabled input).
         const levelInfo = await page.evaluate(() => {

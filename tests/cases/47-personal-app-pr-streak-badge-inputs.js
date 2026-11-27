@@ -52,18 +52,16 @@ async function enterSet(page, exerciseId, weight, reps) {
         selectSetter.call(select, r);
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }, ACTIVE, weight, reps);
-    // Both fields are controlled, so they read back the typed values only once
-    // React has taken them into state.
-    await waitFor(page, `the card to hold ${weight} x ${reps}`, (sel, w, r) => {
-        const card = document.querySelector(sel);
-        return card.querySelector('input[type="number"]').value === w &&
-            card.querySelector('select[data-field="reps"]').value === r;
-    }, ACTIVE, weight, reps);
+    // No wait here. React 18 handles input and change as discrete events and
+    // commits their state before dispatchEvent returns, and the DOM values just
+    // written cannot tell whether it did. What can is the saved set: logCard
+    // below waits for exactly these values to reach storage.
 }
 
-// Tap LOG and wait for the set to land in today's (not yet backdated) entry.
+// Tap LOG on the active card and wait for the set to land in today's (not
+// yet backdated) entry.
 async function logCard(page, exerciseId, weight, reps) {
-    await tap(page, `[data-exercise-id="${exerciseId}"] button`, { text: /LOG/i });
+    await tap(page, `${ACTIVE} [data-exercise-id="${exerciseId}"] button`, { text: /LOG/i });
     await waitFor(page, `the ${weight} x ${reps} set to be saved`, (ns, id, w, r) =>
         JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]').some(e => !e.backdated &&
             (e.exercises || []).some(x => x.id === id && x.weight === w && x.reps === r)),

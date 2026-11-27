@@ -93,16 +93,16 @@ const readRows = (page) => page.evaluate(() =>
 
         // And an arrow actually moves a row: Kelso Shrugs down one swaps it
         // with whatever follows it. Derived, so a reorder does not rot it.
-        const k = EXPECTED.indexOf('Kelso Shrugs');
+        const kelsoIndex = EXPECTED.indexOf('Kelso Shrugs');
         await tap(page, await page.evaluateHandle(() => {
             const row = Array.from(document.querySelectorAll('.modal .exercise-row'))
                 .find(r => r.querySelector('.exercise-row-name')?.textContent.trim() === 'Kelso Shrugs');
             return Array.from(row.querySelectorAll('button')).find(b => b.textContent.trim() === '↓');
         }));
         await waitFor(page, 'Kelso Shrugs to move down a row', (want) =>
-            document.querySelectorAll('.modal .exercise-row-name')[want]?.textContent.trim() === 'Kelso Shrugs', k + 1);
+            document.querySelectorAll('.modal .exercise-row-name')[want]?.textContent.trim() === 'Kelso Shrugs', kelsoIndex + 1);
         const moved = await readRows(page);
-        eq(moved.slice(k, k + 2), [EXPECTED[k + 1], 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
+        eq(moved.slice(kelsoIndex, kelsoIndex + 2), [EXPECTED[kelsoIndex + 1], 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
 
         eq(errors, [], 'no console errors during load');
         console.log('PASS: Manage Exercises lists Anterior then Posterior in order, arrows stopping at each day\'s ends.');

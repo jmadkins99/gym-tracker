@@ -271,44 +271,43 @@ async function waitFor(page, label, fn, ...args) {
 //
 // Most buttons in the app have no id, so `text` narrows the selector's matches
 // by label: a string must equal the trimmed textContent ('Edit' does not match
-// 'Edit Plan'), a RegExp is tested against it. `nth` then picks among what is
-// left, counting from 0, so `tap(page, '.modal button', { text: 'Edit', nth: 1 })`
-// is the second Edit button in the modal.
+// 'Edit Plan'), a RegExp is tested against it, and the first match is tapped.
+// Without `text` the selector goes to Puppeteer as it is, so its own selector
+// syntax (`::-p-text(...)`, `aria/...`) still works; with it, the selector must
+// be plain CSS.
 //
 // A button only the case can pick out, such as the arrow in one named row,
 // can be passed as an ElementHandle instead of a selector (from
 // page.evaluateHandle); it is tapped as it is, with no waiting.
-async function tap(page, selector, { text, nth = 0, timeout = 20000 } = {}) {
+async function tap(page, selector, { text, timeout = 20000 } = {}) {
     let el;
     if (typeof selector !== 'string') {
         el = selector && selector.asElement && selector.asElement();
         if (!el) throw new Error('tap: expected a selector or an ElementHandle, got ' + selector);
     } else {
-        el = await findTapTarget(page, selector, { text, nth, timeout });
+        el = await findTapTarget(page, selector, text, timeout);
     }
     await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
     await el.click();
 }
 
-async function findTapTarget(page, selector, { text, nth, timeout }) {
-    const label = selector + (text === undefined ? '' : ` with text ${text instanceof RegExp ? text : JSON.stringify(text)}`) +
-        (nth ? ` (match ${nth})` : '');
-    // A RegExp cannot cross into the page, so it goes as source and flags; g
-    // and y are dropped because they make test() stateful across elements.
-    const want = text instanceof RegExp ? { re: text.source, flags: text.flags.replace(/[gy]/g, '') }
+async function findTapTarget(page, selector, text, timeout) {
+    const label = selector +
+        (text === undefined ? '' : ` with text ${text instanceof RegExp ? text : JSON.stringify(text)}`);
+    // A RegExp cannot cross into the page, so it goes as source and flags.
+    const want = text instanceof RegExp ? { re: text.source, flags: text.flags }
         : text === undefined ? null : { eq: String(text) };
     try {
-        const handle = await page.waitForFunction((sel, want, n) => {
-            let els = Array.from(document.querySelectorAll(sel));
-            if (want) {
-                const re = want.re !== undefined && new RegExp(want.re, want.flags);
-                els = els.filter((e) => {
-                    const t = e.textContent.trim();
-                    return re ? re.test(t) : t === want.eq;
-                });
-            }
-            return els[n] || false;
-        }, { timeout, polling: 50 }, selector, want, nth);
+        if (!want) return await page.waitForSelector(selector, { timeout });
+        const handle = await page.waitForFunction((sel, want) => {
+            const re = want.re !== undefined && new RegExp(want.re, want.flags);
+            return Array.from(document.querySelectorAll(sel)).find((e) => {
+                const t = e.textContent.trim();
+                if (!re) return t === want.eq;
+                re.lastIndex = 0; // g and y make test() resume where the last element left off
+                return re.test(t);
+            }) || false;
+        }, { timeout, polling: 50 }, selector, want);
         return handle.asElement();
     } catch (err) {
         throw new Error(`timed out after ${timeout / 1000}s waiting for ${label} to exist`);
