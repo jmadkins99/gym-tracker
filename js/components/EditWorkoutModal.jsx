@@ -23,13 +23,12 @@
                         if (exerciseDef) {
                             // Stamped like logExercise does, so isFailedSet
                             // judges an added set by the range in force.
-                            const range = getStandardRepRange(exerciseDef.id);
                             updated.push({
                                 id: exerciseDef.id,
                                 name: exerciseDef.name,
                                 category: exerciseDef.category,
                                 type: exerciseDef.type,
-                                ...(exerciseDef.type === 'standard' ? { repMin: range.min + 1, repMax: range.max } : {}),
+                                ...(exerciseDef.type === 'standard' ? stampRepRange(exerciseDef.id) : {}),
                                 [field]: value
                             });
                         }
@@ -213,6 +212,26 @@
                                                     color: '#b8b8d0'
                                                 }}
                                             />
+                                            {usesTypedReps(exercise.id) ? (
+                                                <input
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    min="1"
+                                                    step="1"
+                                                    data-field="reps"
+                                                    placeholder="Reps"
+                                                    value={editedExercise?.reps || ''}
+                                                    onChange={(e) => handleExerciseChange(exercise.id, 'reps', sanitizeTypedReps(e.target.value))}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '8px',
+                                                        background: '#0d0d1a',
+                                                        border: '1px solid var(--accent)',
+                                                        borderRadius: '4px',
+                                                        color: '#b8b8d0'
+                                                    }}
+                                                />
+                                            ) : (
                                             <select
                                                 data-field="reps"
                                                 value={editedExercise?.reps || ''}
@@ -231,6 +250,7 @@
                                                     .sort((a, b) => parseInt(a) - parseInt(b))
                                                     .map(r => <option key={r} value={r}>{r}</option>)}
                                             </select>
+                                            )}
                                         </div>
                                     )}
                                 </div>

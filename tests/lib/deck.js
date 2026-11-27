@@ -274,7 +274,7 @@ async function readDeckCard(page, name, { reveal = true } = {}) {
                     breakdown: Array.from(slot.querySelectorAll('.breakdown-row'))
                         .map((r) => r.innerText.split(String.fromCharCode(10)).join(' | ')),
                     repsValue: (() => {
-                        const sel2 = slot.querySelector('select[data-field="reps"]');
+                        const sel2 = slot.querySelector('[data-field="reps"]');
                         return sel2 ? sel2.value : '';
                     })(),
                 };

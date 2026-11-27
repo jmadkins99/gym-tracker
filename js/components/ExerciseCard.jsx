@@ -57,14 +57,18 @@
 
             // After a weight bump reset to the exercise's start reps, otherwise
             // carry last session reps clamped into that exercise's range.
-            const repsDefault = simplePR ? repStart
+            // A typed-reps exercise has no range to clamp into or reset to: the
+            // box just carries last session's reps, or starts empty.
+            const typedReps = usesTypedReps(exercise.id);
+            const repsDefault = typedReps ? (previous?.reps || '')
+                : simplePR ? repStart
                 : (prWeightRecovery?.reps
                     || failedPlateauBusterRetry?.targetReps
                     || (prAutoRegulation ? repStart
                         : plateauBusterDecrement ? String(repRange.max)
                         : (clampStandardReps(exercise.id, previous?.reps) || repStart)));
 
-            return { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault, repOptions };
+            return { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault, repOptions, typedReps };
         }
 
         // The warmup table. Same arithmetic as before — calculatePinStackBreakdown
@@ -153,7 +157,7 @@
         // default still log.
         function CardInputs({ exercise, data, model, previous, isLogged, handleInputChange, workoutHistory }) {
             const change = (field, value) => handleInputChange(exercise.id, field, value);
-            const { simplePR, stagnation, repsDefault, repOptions, targetWeight } = model;
+            const { simplePR, stagnation, repsDefault, repOptions, targetWeight, typedReps } = model;
 
             if (exercise.type === 'assault-bike') {
                 const last = getAssaultBikeLast(workoutHistory);
@@ -250,16 +254,31 @@
                     </div>
                     <div className="input-group">
                         <label className="input-label">Reps</label>
-                        <select
-                            className="input-field"
-                            data-field="reps"
-                            value={data.reps !== undefined ? data.reps : repsDefault}
-                            onChange={(e) => change('reps', e.target.value)}
-                            disabled={isLogged}
-                            style={stagnation ? { borderColor: HINT_ORANGE } : {}}
-                        >
-                            {repOptions.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
+                        {typedReps ? (
+                            <input
+                                type="number"
+                                inputMode="numeric"
+                                min="1"
+                                step="1"
+                                className="input-field"
+                                data-field="reps"
+                                value={data.reps !== undefined ? data.reps : repsDefault}
+                                onChange={(e) => change('reps', sanitizeTypedReps(e.target.value))}
+                                placeholder="Reps"
+                                disabled={isLogged}
+                            />
+                        ) : (
+                            <select
+                                className="input-field"
+                                data-field="reps"
+                                value={data.reps !== undefined ? data.reps : repsDefault}
+                                onChange={(e) => change('reps', e.target.value)}
+                                disabled={isLogged}
+                                style={stagnation ? { borderColor: HINT_ORANGE } : {}}
+                            >
+                                {repOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        )}
                     </div>
                 </div>
             );

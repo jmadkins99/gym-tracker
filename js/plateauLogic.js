@@ -188,6 +188,8 @@
             if (entry.type === 'assault-bike' || entry.type === 'stairmaster' || entry.type === 'bodyweight') {
                 return false;
             }
+            // Logged with no rep range (increment 0): nothing to fail.
+            if (entry.noRange === true) return false;
             const reps = parseInt(entry.reps);
             if (isNaN(reps)) return false;
             const bottom = isValidRepRange(entry.repMin, entry.repMax)

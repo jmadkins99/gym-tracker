@@ -389,16 +389,11 @@
                                                         {tempIncrement === '' ? <option value="">—</option> : null}
                                                         {PR_INCREMENT_OPTIONS.map(step => (
                                                             <option key={step} value={String(step)}>
-                                                                {step === 0 ? '0 — never bump' : step}
+                                                                {step}
                                                             </option>
                                                         ))}
                                                     </select>
-                                                    {chosen === 0 ? (
-                                                        <div data-field="increment-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
-                                                            Never bumps: max reps still counts as a PR, but
-                                                            the card keeps last session's weight and reps.
-                                                        </div>
-                                                    ) : chosen !== null && effective !== chosen ? (
+                                                    {chosen !== null && chosen !== 0 && effective !== chosen ? (
                                                         <div data-field="increment-hint" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '4px' }}>
                                                             Two-sided: suggests +{effective} lbs
                                                         </div>
@@ -407,11 +402,13 @@
                                             );
                                         })() : null}
 
-                                        {/* The rep range. Edit-mode only and committed
+                                        {/* The rep range. Hidden while 0 is chosen (an exercise
+                                            that never bumps has no rep range; the saved values
+                                            are kept). Edit-mode only and committed
                                             by Save, like the increment. Max never offers
                                             less than min, and raising min past max drags
                                             max up with it, so the pair is always valid. */}
-                                        {editingExercise === exercise.id ? (() => {
+                                        {editingExercise === exercise.id && tempIncrement !== '0' ? (() => {
                                             const range = (from) => Array.from(
                                                 { length: REP_RANGE_CEILING - from + 1 }, (_, i) => from + i);
                                             const selectStyle = { padding: '8px', fontSize: '14px', background: '#0d0d1a' };
@@ -518,7 +515,7 @@
 
                                         {/* The Dutch cable stack switch, Pin-loaded rows
                                             only, saved by Save like the Gympin. */}
-                                        {editingExercise === exercise.id && resolveLoadType(exercise) === 'pin' ? (
+                                        {editingExercise === exercise.id && tempIncrement !== '0' && resolveLoadType(exercise) === 'pin' ? (
                                             <div data-field="cable-stack-form" style={{ marginTop: '12px' }}>
                                                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', cursor: 'pointer' }}>
                                                     <span style={{ fontSize: '12px', color: '#8a8aa0' }}>
