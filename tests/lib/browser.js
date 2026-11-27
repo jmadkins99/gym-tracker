@@ -12,6 +12,12 @@ const { setNow } = require('./clock');
 // (Case 152 once failed at 8 p.m. Monday there, because the app sliced a UTC
 // date and Sunday's check-in landed on Monday.)
 const TIME_ZONE = 'America/Phoenix';
+// The Node process running a case (fixtures built from `new Date()`) and the
+// Chrome it launches use the same zone, so they agree on what day it is.
+// run.sh exports it too; this covers a case run by hand. Chrome's launch
+// environment also carries it, which closes the first-script race of a popup
+// that the CDP override below cannot win.
+process.env.TZ = TIME_ZONE;
 
 async function pinTimeZone(page) {
     const cdp = await page.createCDPSession();
@@ -60,6 +66,7 @@ async function launch() {
     const browser = await puppeteer.launch({
         executablePath: findChrome(),
         headless: 'new',
+        env: { ...process.env, TZ: TIME_ZONE },
         // --disable-dev-shm-usage: containers default /dev/shm to 64 MB SHARED
         // across every concurrent Chrome, and renderers crash in ways that read
         // as random flakes. Costs nothing outside a container.
@@ -262,8 +269,12 @@ async function waitFor(page, label, fn, ...args) {
 // (tests/check-no-sync-waits.sh flags new ones). To wait for a condition, use
 // waitFor above, which polls rather than sleeping.
 async function tap(page, selector) {
-    await waitFor(page, `${selector} to exist`, (s) => !!document.querySelector(s), selector);
-    const el = await page.$(selector);
+    let el;
+    try {
+        el = await page.waitForSelector(selector, { timeout: 20000 });
+    } catch (err) {
+        throw new Error(`timed out after 20s waiting for ${selector} to exist`);
+    }
     await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
     await el.click();
 }

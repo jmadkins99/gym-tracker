@@ -24,6 +24,11 @@
 set -u
 cd "$(dirname "$0")"
 
+# Node (fixtures built from `new Date()`) and Chrome run in one zone, so they
+# agree on the day. lib/browser.js pins the same zone; exporting it here covers
+# every process the runner starts. Phoenix has no DST.
+export TZ=America/Phoenix
+
 # Optional filter: `bash run.sh 42` runs just case 42, `bash run.sh personal-app`
 # runs every personal-app case. Matched as a substring of the case name.
 #

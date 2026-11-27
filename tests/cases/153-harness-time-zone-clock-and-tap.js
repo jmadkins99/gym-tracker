@@ -31,6 +31,10 @@ const { eq } = require('../lib/assert');
             };
         });
         const got = await read();
+        // The case's own process must agree with the page, or a fixture built
+        // from Node's Date lands on another day than the app's (04:00 UTC).
+        eq(new Date().getTimezoneOffset(), 420, 'the Node process runs in Phoenix time too');
+        eq(Intl.DateTimeFormat().resolvedOptions().timeZone, 'America/Phoenix', 'Node reports Phoenix');
         eq(got.zone, 'America/Phoenix', 'pages run in Phoenix time');
         eq(got.offset, 420, 'Phoenix is UTC-7');
         eq([got.localDay, got.localHour, got.utcDay], [1, 20, 2], 'the clock says 8 p.m. Monday locally, Tuesday in UTC');

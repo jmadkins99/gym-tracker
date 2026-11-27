@@ -10,7 +10,7 @@
 // only 33px under the thumb. The test therefore emulates a 390px-wide touch
 // phone, checks the page really did land on 0.75, and measures each button with
 // getBoundingClientRect multiplied by that scale. Each must be at least 44
-// rendered px tall and wide (with 1px of slack for rounding).
+// rendered px tall and wide: 59 CSS px at 0.75, with no slack for rounding.
 //
 // Fit. An unbroken custom exercise name must not push the up / down / Edit
 // buttons past the row at 390px and 320px of layout width (narrower than a
@@ -40,40 +40,55 @@ const LONG = 'Supercalifragilisticexpialidocious' + 'Pneumonoultramicroscopic'.r
 const NOW = '2026-11-23T20:00:00-07:00';
 const FLIES = 'pecs-transverse-shoulder-adduction';
 
-// Evaluated in the page: rendered size (CSS px times the page's real scale) of
-// every element matching `sel` that is on screen.
-function measure(sel, ratio) {
+// Evaluated in the page: size in CSS px of every element matching `sel` that
+// is on screen.
+function measure(sel) {
     return Array.from(document.querySelectorAll(sel))
         .filter((el) => el.getClientRects().length > 0)
         .map((el) => {
             const r = el.getBoundingClientRect();
-            return { text: el.textContent.trim().slice(0, 16), w: r.width * ratio, h: r.height * ratio };
+            return { text: el.textContent.trim().slice(0, 16), w: r.width, h: r.height };
         });
 }
 
-// Buttons the scan below does not hold to MIN yet. They are outside the text-button
-// work (#30): the bottom nav, the deck's steppers and the like were never
-// restyled for thumbs. Listed so the scan can run on every other button;
-// Josh decides which of these to enlarge. An entry is a CSS selector; delete it
-// once the button passes.
+// A button passes when it is at least MIN rendered px each way. At scale
+// 0.75 that is 44 / 0.75 = 58.67 CSS px, so the bar is 59 CSS px: a 58 CSS px
+// button renders 43.5 and must fail, so there is no slack for rounding.
+const minCss = (scale) => Math.ceil(MIN / scale);
+const tooSmall = (b, scale) => b.w < minCss(scale) || b.h < minCss(scale);
+const rendered = (b, scale) => (b.w * scale).toFixed(1) + 'x' + (b.h * scale).toFixed(1);
+
+// Buttons the scan below does not hold to MIN yet, each only on the screens
+// ("stops", as named in the scan calls) where it exists today. They are outside
+// the text-button work (#30): the bottom nav, the deck's steppers and the like
+// were never restyled for thumbs. Scoped to a screen so a NEW undersized button
+// that happens to reuse one of these classes on another screen still fails.
+// Josh decides which of these to enlarge; delete an entry once it passes.
 const ALLOWLIST = [
-    '.bottom-nav-btn', // both apps' bottom bar: ~182x34 rendered, wide but short
-    '.deck-arrow',     // the swipe deck's next / previous arrows: ~28x28 rendered
-    '.day-pill',       // Settings' Anterior / Posterior toggle and weight History's 7d / 30d / 6mo / All: ~25 rendered tall
-    '.modal-btn',      // Settings and Manage Exercises' full-width modal buttons: ~31 rendered tall
+    // both apps' bottom bar: ~182x34 rendered, wide but short
+    { sel: '.bottom-nav-btn', stops: ['workout', 'workout History', 'Settings', 'Manage Exercises (all)', 'weight check-in', 'weight History'] },
+    // the swipe deck's next / previous arrows: ~28x28 rendered
+    { sel: '.deck-arrow', stops: ['workout', 'Settings', 'Manage Exercises (all)'] },
+    // Settings' Anterior / Posterior toggle and weight History's 7d / 30d / 6mo / All: ~25 rendered tall
+    { sel: '.day-pill', stops: ['Settings', 'weight History'] },
+    // Settings and Manage Exercises' full-width modal buttons: ~31 rendered tall
+    { sel: '.modal-btn', stops: ['Settings', 'Manage Exercises (all)'] },
 ];
 
-// Evaluated in the page: rendered size of EVERY visible, enabled button on the
-// screen (<button>, role=button, input buttons), not a hand-picked list, so a
-// new button cannot dodge the check by being absent from it.
-function measureAll(ratio, allow) {
-    return Array.from(document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]'))
-        .filter((el) => el.getClientRects().length > 0 && !el.disabled && el.getAttribute('aria-disabled') !== 'true')
+// Evaluated in the page: size in CSS px of EVERY visible, enabled button on
+// the screen (<button>, role=button, input buttons), not a hand-picked list, so
+// a new button cannot dodge the check by being absent from it. Computed
+// style, because getClientRects() still has boxes for visibility:hidden.
+function measureAll(allow) {
+    return Array.from(document.querySelectorAll('button, [role="button"], input[type="button"], ' +
+            'input[type="submit"], input[type="reset"], input[type="image"]'))
+        .filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden' &&
+            !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true')
         .filter((el) => !allow.some((sel) => el.matches(sel)))
         .map((el) => {
             const r = el.getBoundingClientRect();
             const label = el.textContent.trim().slice(0, 16) || el.getAttribute('aria-label') || '';
-            return { text: label, cls: String(el.className).slice(0, 40), w: r.width * ratio, h: r.height * ratio };
+            return { text: label, cls: String(el.className).slice(0, 40), w: r.width, h: r.height };
         });
 }
 
@@ -98,23 +113,24 @@ const clickText = async (page, sel, text) => {
         const errors = attachConsole(page);
         const ratio = () => page.evaluate(() => 390 / document.documentElement.clientWidth);
         const check = async (stop, sel, expectCount) => {
-            const boxes = await page.evaluate(measure, sel, await ratio());
+            const scale = await ratio();
+            const boxes = await page.evaluate(measure, sel);
             ok(boxes.length >= expectCount, stop + ': found ' + boxes.length + ' x ' + sel + ', wanted ' + expectCount);
             for (const b of boxes) {
-                if (b.w < MIN - 1 || b.h < MIN - 1) {
-                    problems.push(stop + ' ' + sel + ' "' + b.text + '" renders ' +
-                        b.w.toFixed(1) + 'x' + b.h.toFixed(1));
+                if (tooSmall(b, scale)) {
+                    problems.push(stop + ' ' + sel + ' "' + b.text + '" renders ' + rendered(b, scale));
                 }
             }
         };
 
         const scan = async (pg, stop, ratioFn) => {
-            const boxes = await pg.evaluate(measureAll, await ratioFn(), ALLOWLIST);
+            const scale = await ratioFn();
+            const allow = ALLOWLIST.filter((a) => a.stops.includes(stop)).map((a) => a.sel);
+            const boxes = await pg.evaluate(measureAll, allow);
             ok(boxes.length > 0, stop + ': the scan found buttons');
             for (const b of boxes) {
-                if (b.w < MIN - 1 || b.h < MIN - 1) {
-                    problems.push(stop + ' button "' + b.text + '" (.' + b.cls + ') renders ' +
-                        b.w.toFixed(1) + 'x' + b.h.toFixed(1));
+                if (tooSmall(b, scale)) {
+                    problems.push(stop + ' button "' + b.text + '" (.' + b.cls + ') renders ' + rendered(b, scale));
                 }
             }
         };
@@ -122,9 +138,10 @@ const clickText = async (page, sel, text) => {
         await setNow(page, NOW);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         const version = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
-        // Monday of this week, so the entry is on History's default page whatever
-        // day the suite runs. startedAt and loggedAt are what make the Time button appear.
-        const day = new Date();
+        // Monday of the pinned week (not Node's real date), so the entry is on
+        // History's default page. startedAt and loggedAt are what make the Time
+        // button appear. Node runs in Phoenix time too (lib/browser.js).
+        const day = new Date(NOW);
         day.setHours(0, 0, 0, 0);
         const dow = day.getDay();
         day.setDate(day.getDate() + (dow === 0 ? -6 : 1 - dow));
@@ -200,12 +217,12 @@ const clickText = async (page, sel, text) => {
         const wscale = await wratio();
         ok(Math.abs(wscale - 0.75) < 0.02, 'the phone lays the weight page out at 0.75 (got ' + wscale.toFixed(3) + ')');
         const wcheck = async (stop, sel, expectCount) => {
-            const boxes = await wpage.evaluate(measure, sel, await wratio());
+            const scale = await wratio();
+            const boxes = await wpage.evaluate(measure, sel);
             ok(boxes.length >= expectCount, stop + ': found ' + boxes.length + ' x ' + sel + ', wanted ' + expectCount);
             for (const b of boxes) {
-                if (b.w < MIN - 1 || b.h < MIN - 1) {
-                    problems.push(stop + ' ' + sel + ' "' + b.text + '" renders ' +
-                        b.w.toFixed(1) + 'x' + b.h.toFixed(1));
+                if (tooSmall(b, scale)) {
+                    problems.push(stop + ' ' + sel + ' "' + b.text + '" renders ' + rendered(b, scale));
                 }
             }
         };
