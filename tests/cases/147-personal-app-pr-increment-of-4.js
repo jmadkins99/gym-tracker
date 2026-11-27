@@ -64,7 +64,7 @@ async function openManageExercises(page) {
 async function clickPencil(page, id) {
     await page.evaluate((sel) => {
         Array.from(document.querySelector(sel).querySelectorAll('button'))
-            .find(b => b.textContent.includes('✏')).click();
+            .find(b => b.textContent.trim() === 'Edit').click();
     }, rowSel(id));
     await waitFor(page, `the increment field on ${id}`,
         (sel) => !!document.querySelector(sel + ' select[data-field="increment"]'), rowSel(id));

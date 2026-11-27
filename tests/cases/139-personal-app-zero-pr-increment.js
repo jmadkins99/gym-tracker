@@ -84,7 +84,7 @@ async function clickPencil(page, id) {
     await page.evaluate((id) => {
         const row = document.querySelector(`.exercise-row[data-exercise-id="${id}"]`);
         Array.from(row.querySelectorAll('button'))
-            .find(b => b.textContent.includes('✏')).click();
+            .find(b => b.textContent.trim() === 'Edit').click();
     }, id);
     await waitFor(page, `the increment field on ${id}`,
         (id) => !!document.querySelector(
@@ -134,7 +134,7 @@ const cardExtras = (page) => page.evaluate((sel) => {
     const streak = slot.querySelector('.streak-badge');
     return {
         heroTag: tag ? tag.textContent.trim() : null,
-        streak: streak ? streak.textContent.trim() : null,
+        streak: streak ? window.pillView(streak).visible : null,
     };
 }, ACTIVE);
 
@@ -187,7 +187,7 @@ async function reload(page) {
         let flies = await readDeckCard(page, 'Chest Flies');
         eq(flies.weightValue, '202.5', 'on the 2.5 seed, 6 reps bumps the weight: 200 + 2.5');
         eq(flies.repsValue, '4', 'and the reps reset to the bottom of the rep range');
-        eq(await cardExtras(page), { heroTag: '+2.5 lbs', streak: '🔥 1' },
+        eq(await cardExtras(page), { heroTag: '+2.5 lbs', streak: 'PR' },
             'the green hero tag and the flame streak both show');
         await reload(page);
 
@@ -235,7 +235,7 @@ async function reload(page) {
         eq(flies.weightValue, '200', 'a max-reps session no longer bumps the weight');
         eq(flies.repsValue, '6', "and last session's 6 reps carry over, no reset to the range bottom");
         eq(flies.heroWeight, '200', 'the hero number is last session\'s weight');
-        eq(await cardExtras(page), { heroTag: null, streak: '🔥 1' },
+        eq(await cardExtras(page), { heroTag: null, streak: 'PR' },
             'the green hero tag is gone, but the PR streak still counts the session');
 
         // The control proves 0 is per-exercise, not a global switch.

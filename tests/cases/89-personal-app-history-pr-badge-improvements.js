@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// History's "🔥 PR" badge mirrors the "PRs Smashed" count from Day Breakdown.
+// History's "PR" badge mirrors the "PRs Smashed" count from Day Breakdown.
 // It is not a range-top marker: it appears when a standard row improves on that
 // exercise's previous valid row.
 //
@@ -114,8 +114,9 @@ async function readHistoryRows(page, names) {
 
             const badge = row.querySelector('[data-pr-badge]');
             rows[name.textContent.trim()] = {
-                badgeText: badge ? badge.textContent.trim() : null,
+                badgeText: badge ? window.pillView(badge).visible : null,
                 badgeClass: badge ? badge.className : null,
+                badgeView: badge ? window.pillView(badge) : null,
                 badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
                 badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 badgeRightOfName: badge ? name.nextElementSibling === badge : false,
@@ -131,7 +132,7 @@ async function readCardBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const badge = document.querySelector(sel + ' .streak-badge');
-        return badge ? badge.textContent.trim() : null;
+        return badge ? window.pillView(badge).visible : null;
     }, ACTIVE);
 }
 
@@ -148,9 +149,9 @@ async function readCardBadge(page, exerciseId) {
         await waitForApp(page);
         await selectDayType(page, 'posterior-2');
 
-        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), '🔥 1',
+        eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), 'PR',
             'card streak counts mid-range rep progress (4 -> 5) as an improvement');
-        eq(await readCardBadge(page, 'traps-scapular-retraction'), '🔥 1',
+        eq(await readCardBadge(page, 'traps-scapular-retraction'), 'PR',
             'normal 3-6 exercise still gets the same card streak behavior');
         eq(await readCardBadge(page, 'lats-sagittal-shoulder-extension'), null,
             'card streak does not count a weight drop, even at top reps');
@@ -164,9 +165,15 @@ async function readCardBadge(page, exerciseId) {
             ok(historyRows[name], `History includes ${name}`);
         }
 
-        eq(historyRows['Kelso Shrugs'].badgeText, '🔥 PR',
+        eq(historyRows['Kelso Shrugs'].badgeView.flame,
+            { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'a lone PR pill in History draws a real flame');
+        eq(historyRows['Kelso Shrugs'].badgeView.exposed, 'PR',
+            'a lone PR exposes its visible "PR" as text');
+        eq(historyRows['Kelso Shrugs'].badgeView.role, null, 'the pill is plain text, not a role=img');
+        eq(historyRows['Kelso Shrugs'].badgeText, 'PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
-        eq(historyRows['Preacher Curls'].badgeText, '🔥 PR',
+        eq(historyRows['Preacher Curls'].badgeText, 'PR',
             'History shows PR at 5 reps — mid-range, so not a range-top marker');
         eq(historyRows['Sagittal Pulldowns'].badgeText, null,
             'History does not show PR for top reps after a weight drop');
@@ -205,7 +212,15 @@ async function readCardBadge(page, exerciseId) {
         // moment the set is logged, exactly as the lone-PR badge above is.
         // Case 100 owns that rule; what this line pins is that logging alone,
         // with no Submit Day, is enough to earn it.
-        eq(todayRows['Preacher Curls'].badgeText, '🔥 2',
+        eq(todayRows['Preacher Curls'].badgeView.flame,
+            { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'the History streak pill draws a real flame');
+        eq(todayRows['Preacher Curls'].badgeView.exposed, 'PR streak 2',
+            'the History streak pill exposes "PR streak 2" as text');
+        const flames = await page.evaluate(() => window.allFlames());
+        ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
+            'every History flame draws and no two share a gradient id: ' + JSON.stringify(flames));
+        eq(todayRows['Preacher Curls'].badgeText, '×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,
             'the pre-submit History badge is the same gold-outlined pill');

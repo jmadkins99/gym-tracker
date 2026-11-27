@@ -121,7 +121,7 @@ async function changeIncrement(page, step) {
     await waitFor(page, 'the exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
     const row = `.exercise-row[data-exercise-id="${TARGET}"]`;
     await page.evaluate((row) => Array.from(document.querySelector(row).querySelectorAll('button'))
-        .find(b => b.textContent.includes('✏')).click(), row);
+        .find(b => b.textContent.trim() === 'Edit').click(), row);
     await waitFor(page, 'the increment field', (row) => !!document.querySelector(row + ' select[data-field="increment"]'), row);
     await page.evaluate((row, step) => {
         const s = document.querySelector(row + ' select[data-field="increment"]');

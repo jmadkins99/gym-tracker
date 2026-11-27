@@ -37,7 +37,7 @@
             const [showDayBreakdown, setShowDayBreakdown] = useState(false);
             const [showEditWorkout, setShowEditWorkout] = useState(false);
             const [editingWorkout, setEditingWorkout] = useState(null);
-            // The history entry whose ⏱️ was tapped, or null. Distinct from
+            // The history entry whose Time button was tapped, or null. Distinct from
             // showDayBreakdown, which is always today's session.
             const [timingWorkout, setTimingWorkout] = useState(null);
             const [viewingWeek, setViewingWeek] = useState(1);
@@ -1137,11 +1137,11 @@
                             gap: '10px',
                             fontSize: '14px'
                         }}>
-                            <span style={{ flex: 1 }}>☁️ Sign in to sync your workouts across devices</span>
+                            <span style={{ flex: 1 }}>Sign in to sync your workouts across devices</span>
                             <button
                                 onClick={() => window.repoSignIn()}
                                 style={{
-                                    padding: '6px 10px', background: 'var(--accent)', border: 'none',
+                                    padding: '6px 14px', minHeight: '44px', background: 'var(--accent)', border: 'none',
                                     borderRadius: '4px', color: '#b8b8d0', cursor: 'pointer'
                                 }}
                             >
@@ -1153,12 +1153,12 @@
                                     setShowSyncPrompt(false);
                                 }}
                                 style={{
-                                    padding: '6px 10px', background: 'transparent',
+                                    padding: '6px 14px', minHeight: '44px', background: 'transparent',
                                     border: '1px solid #2a2a3a', borderRadius: '4px',
                                     color: '#8a8aa0', cursor: 'pointer'
                                 }}
                             >
-                                ✕
+                                Dismiss
                             </button>
                         </div>
                     )}
@@ -1225,7 +1225,7 @@
                                 <h1>Gym Tracker</h1>
                                 <div className="week-indicator">Week {currentWeek}</div>
                             </div>
-                            <button className="settings-btn" onClick={() => setShowSettings(true)}>⚙️</button>
+                            <button className="settings-btn" onClick={() => setShowSettings(true)}>Settings</button>
                         </div>
                     </div>
 

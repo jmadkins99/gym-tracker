@@ -7,11 +7,22 @@
 
         // Streaks: the positive counterpart to the "Plateau Detected" hint. Counts
         // consecutive improvements — sessions that moved a lift forward, not
-        // counting the baseline you improved from — and shows a gold-outline flame pill
+        // counting the baseline you improved from — and shows a gold-outline PR pill
         // in the exercise header. Independent of the tracking mode above, since
         // it only reads history and suggests nothing.
         const PR_STREAK_TRACKING = true;
         const PR_STREAK_MIN = 1;   // fewest consecutive improvements that earn a badge
+
+        // What a streak pill says after its flame: "PR" for a lone PR, "×3" once
+        // the run is three sessions long. Every pill (card, History, Day
+        // Breakdown) reads this one rule; formatPRPillLabel is the same pill in
+        // words, for screen readers.
+        function formatPRPill(streak) {
+            return streak > 1 ? '×' + streak : 'PR';
+        }
+        function formatPRPillLabel(streak) {
+            return streak > 1 ? 'PR streak ' + streak : 'PR';
+        }
 
         // Gympin is shelved, not deleted: false hides its Settings form and
         // makes resolveGympin answer off. Flip to true to bring it back; the
@@ -26,7 +37,7 @@
         // machine that only moves in 4 lb steps and takes no micro-plates.
         //
         // The default for every exercise as of Oct 2026 (v25). The increment is
-        // a user setting, editable from the pencil in Settings > Manage
+        // a user setting, editable from Edit in Settings > Manage
         // Exercises and saved as `increment` on the exercise; this is only read
         // for an exercise that has no saved value (see resolveIncrement below).
         // It replaced a per-id seed table when every movement took a new id.
@@ -165,7 +176,7 @@
         // Where a pin stack runs out, and whether a Gympin takes over from
         // there. Both are USER settings as of Sep 2026: every pin-loaded
         // exercise carries `gympin` (on/off) and `stackMax` (the stack's top
-        // weight in lb) in the saved config, set from the pencil form in
+        // weight in lb) in the saved config, set from the Edit form in
         // Settings > Manage Exercises. Above stackMax the breakdown renders
         // "pin at max + loose plates" for the excess — the *overflow* shape,
         // which is the plate list to hang on the Gympin. With the Gympin off

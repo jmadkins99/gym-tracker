@@ -279,7 +279,7 @@
                                 <div className="week-indicator">Cut</div>
                             </div>
                             <button className="settings-btn"
-                                    onClick={() => { setSettingsOnPlan(false); setShowSettings(true); }}>⚙️</button>
+                                    onClick={() => { setSettingsOnPlan(false); setShowSettings(true); }}>Settings</button>
                         </div>
                     </div>
 

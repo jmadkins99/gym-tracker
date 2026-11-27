@@ -792,7 +792,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 6px 0;
+    padding: 0;
     border-bottom: 1px solid #14141f;
 }
 
@@ -820,11 +820,18 @@
 }
 
 /* The reading itself is the edit control — same "tap the number to change it"
-   the check-in card uses, so there is no separate pencil button to hunt for.
-   The glyph is a hint, not the target. */
+   the check-in card uses, so there is no separate edit button to hunt for.
+   The whole button is the target: 59 CSS px each way, which the page's 0.75
+   initial-scale renders as 44 (the row has no padding of its own, so the
+   button sets the row's height). The figure stays right-aligned inside it. */
 .weigh-day-value {
     margin-left: auto;
-    padding: 4px 0 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 59px;
+    min-width: 59px;
+    padding: 0 0 0 8px;
     background: none;
     border: none;
     font-size: 15px;
@@ -856,12 +863,6 @@
 
 .weigh-day.empty .weigh-day-date {
     color: #6e6e86;
-}
-
-.weigh-day-pencil {
-    margin-left: 8px;
-    font-size: 12px;
-    color: #4e4e63;
 }
 
 .weigh-day-edit {
@@ -1051,8 +1052,15 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Rows whose figure is not a button keep a little vertical padding of their
+   own: the editor, and the forecast days below. */
+.weigh-day.editing,
+.weigh-day.forecast {
+    padding: 6px 0;
+}
+
 /* A forecast day sits in the same list as the weighed ones and must never be
-   mistaken for one. Dashed leading rule, muted number, no pencil — there is
+   mistaken for one. Dashed leading rule, muted number, no button — there is
    nothing here to tap, because nothing here happened. */
 .weigh-day.forecast .weigh-day-date,
 .weigh-day.forecast .weigh-day-value {
@@ -1060,6 +1068,10 @@
 }
 
 .weigh-day.forecast .weigh-day-value {
+    display: block;
+    min-height: 0;
+    min-width: 0;
+    padding: 4px 0 4px 8px;
     font-weight: 600;
     cursor: default;
 }

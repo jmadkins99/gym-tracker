@@ -2,7 +2,7 @@
 // ----------------------
 // The write path end-to-end: logging an exercise through the UI persists an
 // unsubmitted entry to storage, and a full page reload restores it — the card
-// comes back in its "✓ Logged" state with today's entry still unsubmitted.
+// comes back in its "Logged" state with today's entry still unsubmitted.
 // This is what a user relies on when they close the tab mid-workout.
 //
 // Written as a pin-down BEFORE the async storage-repo refactor: it guards
@@ -71,7 +71,7 @@ const NS = 'gym-local:';
         }, ACTIVE);
         ok(restored.logged, 'card restored in logged state after reload');
         ok(restored.review, 'and opens itself as a review');
-        eq(restored.btnText, '✓ Logged', 'LOG button shows logged after reload');
+        eq(restored.btnText, 'Logged', 'LOG button shows logged after reload');
 
         saved = await page.evaluate((ns) =>
             JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]'), NS);

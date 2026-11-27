@@ -4,6 +4,7 @@
 const path = require('path');
 const puppeteer = require(path.join(__dirname, '..', 'node_modules', 'puppeteer-core'));
 const { installCdnShim } = require('./cdn');
+const { PILL_JS } = require('./pill');
 
 // Try a few common chrome locations so this works on different boxes.
 // puppeteer-core (unlike puppeteer) never downloads a browser of its own, so
@@ -58,6 +59,7 @@ async function launch() {
     browser.newPage = async (...args) => {
         const page = await newPage(...args);
         await installCdnShim(page);
+        await page.evaluateOnNewDocument(PILL_JS);
         return page;
     };
     return browser;

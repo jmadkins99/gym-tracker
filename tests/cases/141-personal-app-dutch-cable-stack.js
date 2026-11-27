@@ -139,11 +139,11 @@ async function reload(page) {
         // --- The switch in Settings -----------------------------------------
         await openManageExercises(page);
         eq((await readForm(page, TARGET)).hasForm, false, 'no switch outside edit mode');
-        await clickRowButton(page, PLATE, '✏️');
+        await clickRowButton(page, PLATE, 'Edit');
         eq((await readForm(page, PLATE)).hasForm, false, 'a plate-loaded row offers no switch');
         await clickRowButton(page, PLATE, 'Cancel');
 
-        await clickRowButton(page, TARGET, '✏️');
+        await clickRowButton(page, TARGET, 'Edit');
         const form = await readForm(page, TARGET);
         eq(form.label, 'Dutch gym cable stack PR adjustment', 'the switch is labelled');
         eq(form.on, false, 'and opens off');

@@ -28,7 +28,7 @@
 //
 // The Day Breakdown's row-level PR badges ride along here, because this is the
 // case that already opens that modal. Since Sep 2026 they read the way History
-// and the logged card read: "🔥 PR" for a lone PR, "🔥 N" once the run is two
+// and the logged card read: "PR" for a lone PR, "×N" after a flame once the run is two
 // or more. Both branches are seeded below — Chest Press sits on a run of two,
 // Chest Flies improves off a single prior session — so a regression that always
 // prints one or the other fails here.
@@ -95,11 +95,11 @@ const EXPECTED_ROWS = [
 ];
 const EXPECTED_BADGES = [
     // 200x4 -> 200x5 -> 200x6: a run of two, so the row carries the count.
-    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '🔥 2'],
+    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '×2'],
     ['pecs-shoulder-flexion', null],
     // 170x6 -> 175x6 off a single prior session: a lone PR, so the row keeps
     // the word.
-    ['pecs-transverse-shoulder-adduction', '🔥 PR'],
+    ['pecs-transverse-shoulder-adduction', 'PR'],
     ['delts-shoulder-abduction-above-90-degrees', null],
     ['delts-shoulder-abduction-stop-at-90-degrees', null],
 ];
@@ -175,8 +175,9 @@ const EXPECTED_TOTAL = '35m';
                 return {
                     id: r.getAttribute('data-timing-row'),
                     time: r.children[1].textContent.trim(),
-                    badge: badge ? badge.textContent.trim() : null,
+                    badge: badge ? window.pillView(badge).visible : null,
                     badgeClass: badge ? badge.className : null,
+                    badgeView: badge ? window.pillView(badge) : null,
                     badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
                     badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 };
@@ -189,6 +190,17 @@ const EXPECTED_TOTAL = '35m';
             'only movements that counted toward PRs Smashed get a row-level PR badge');
         ok(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeClass.includes('streak-badge'),
             'Day Breakdown PR badge reuses the same flame badge container');
+        const streakView = rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeView;
+        eq(streakView.exposed, 'PR streak 2',
+            'Day Breakdown streak pill exposes "PR streak 2" as text, not just "x2"');
+        eq(streakView.role, null, 'the pill is plain text, not a role=img');
+        eq(streakView.flame, { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'Day Breakdown pill draws a real flame: path, a gradient that resolves, a non-empty box, hidden from assistive tech');
+        const loneView = rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction').badgeView;
+        eq(loneView.exposed, 'PR', 'a lone PR pill exposes its visible "PR" text');
+        const flames = await page.evaluate(() => window.allFlames());
+        ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
+            'every flame in the modal draws and no two share a gradient id: ' + JSON.stringify(flames));
         eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBg, BADGE_BG,
             'Day Breakdown PR badge uses the shared transparent background');
         eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBorder, BADGE_BORDER,

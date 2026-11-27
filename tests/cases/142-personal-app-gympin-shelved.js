@@ -59,7 +59,7 @@ const has = (page, field) =>
         await waitFor(page, 'the exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
 
         eq(await has(page, 'gympin-status'), false, 'no "Gympin past 260" line in the list');
-        await clickRowButton(page, '✏️');
+        await clickRowButton(page, 'Edit');
         eq(await has(page, 'gympin-form'), false, 'no Gympin form in the pencil form');
         eq(await has(page, 'cable-stack-form'), true, 'while the cable stack switch, also pin-only, is there');
 

@@ -287,51 +287,32 @@
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div className="exercise-row-name" style={{ flex: 1, fontWeight: '600' }}>
+                                            <div className="exercise-row-line">
+                                                <div className="exercise-row-name" style={{ fontWeight: '600' }}>
                                                     {exercise.name}
                                                 </div>
-                                                <button
-                                                    onClick={() => moveExercise(exercise.id, 'up')}
-                                                    disabled={idx === 0}
-                                                    style={{
-                                                        padding: '4px 8px',
-                                                        background: idx === 0 ? '#0d0d1a' : '#1a1a2a',
-                                                        border: '1px solid #2a2a3a',
-                                                        borderRadius: '4px',
-                                                        color: idx === 0 ? '#555' : '#8a8aa0',
-                                                        cursor: idx === 0 ? 'not-allowed' : 'pointer'
-                                                    }}
-                                                >
-                                                    ↑
-                                                </button>
-                                                <button
-                                                    onClick={() => moveExercise(exercise.id, 'down')}
-                                                    disabled={idx === dayExercises.length - 1}
-                                                    style={{
-                                                        padding: '4px 8px',
-                                                        background: idx === dayExercises.length - 1 ? '#0d0d1a' : '#1a1a2a',
-                                                        border: '1px solid #2a2a3a',
-                                                        borderRadius: '4px',
-                                                        color: idx === dayExercises.length - 1 ? '#555' : '#8a8aa0',
-                                                        cursor: idx === dayExercises.length - 1 ? 'not-allowed' : 'pointer'
-                                                    }}
-                                                >
-                                                    ↓
-                                                </button>
-                                                <button
-                                                    onClick={() => handleStartEdit(exercise)}
-                                                    style={{
-                                                        padding: '4px 8px',
-                                                        background: '#1a1a2a',
-                                                        border: '1px solid #2a2a3a',
-                                                        borderRadius: '4px',
-                                                        color: '#8a8aa0',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    ✏️
-                                                </button>
+                                                <div className="exercise-row-controls">
+                                                    <button
+                                                        onClick={() => moveExercise(exercise.id, 'up')}
+                                                        disabled={idx === 0}
+                                                        className="text-btn"
+                                                    >
+                                                        ↑
+                                                    </button>
+                                                    <button
+                                                        onClick={() => moveExercise(exercise.id, 'down')}
+                                                        disabled={idx === dayExercises.length - 1}
+                                                        className="text-btn"
+                                                    >
+                                                        ↓
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStartEdit(exercise)}
+                                                        className="text-btn"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
 
@@ -567,7 +548,7 @@
                                             the overflow row can never disagree. */}
                                         {editingExercise !== exercise.id && resolveGympin(exercise).on ? (
                                             <div data-field="gympin-status" style={{ color: '#8a8aa0', fontSize: '12px', marginTop: '6px' }}>
-                                                📌 Gympin past {resolveGympin(exercise).max} lbs
+                                                Gympin past {resolveGympin(exercise).max} lbs
                                             </div>
                                         ) : null}
                                     </div>
@@ -621,7 +602,7 @@
                         )}
 
                         <button className="modal-btn" onClick={() => setSettingsView('exercises')}>
-                            ✏️ Manage Exercises
+                            Manage Exercises
                         </button>
 
                         <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>
@@ -637,7 +618,7 @@
                                     fontSize: '14px'
                                 }}>
                                     <div style={{ marginBottom: '8px' }}>
-                                        ☁️ Syncing as <strong>{window.repo.status().email}</strong>
+                                        Syncing as <strong>{window.repo.status().email}</strong>
                                         {window.repo.status().pendingWrites > 0 &&
                                             <span style={{ color: '#8a8aa0' }}> ({window.repo.status().pendingWrites} pending)</span>}
                                     </div>
@@ -647,20 +628,20 @@
                                 </div>
                             ) : (
                                 <button className="modal-btn" onClick={() => window.repoSignIn()}>
-                                    ☁️ Sign in with Google to sync
+                                    Sign in with Google to sync
                                 </button>
                             )
                         )}
                         {window.FIREBASE_READY && <div style={{ height: '1px', background: '#2a2a3a', margin: '12px 0' }}></div>}
 
                         <button className="modal-btn" onClick={onExport}>
-                            📥 Export Data
+                            Export Data
                         </button>
                         <button className="modal-btn" onClick={() => fileInputRef.current.click()}>
-                            📤 Import Data
+                            Import Data
                         </button>
                         <button className="modal-btn danger" onClick={onReset}>
-                            🗑️ Reset All Data
+                            Reset All Data
                         </button>
                         <input
                             ref={fileInputRef}

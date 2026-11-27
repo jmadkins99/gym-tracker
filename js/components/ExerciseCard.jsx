@@ -398,14 +398,12 @@
                     <div className="card-open-head">
                         <div className="card-open-name">{exercise.name}</div>
                         {loggedPR ? (
-                            <div className="streak-badge logged-pr-badge" data-logged-pr-badge
-                                 data-streak={loggedPRStreak > 1 ? loggedPRStreak : undefined}>
-                                {loggedPRStreak > 1 ? '🔥 ' + loggedPRStreak : '🔥 PR'}
-                            </div>
+                            <PRPill streak={loggedPRStreak} className="streak-badge logged-pr-badge" data-logged-pr-badge
+                                    data-streak={loggedPRStreak > 1 ? loggedPRStreak : undefined} />
                         ) : null}
                         {isLogged ? <div className="logged-chip">logged</div> : null}
                         {!isLogged && prStreak ? (
-                            <div className="streak-badge" data-streak={prStreak}>🔥 {prStreak}</div>
+                            <PRPill streak={prStreak} className="streak-badge" data-streak={prStreak} />
                         ) : null}
                     </div>
                     {/* The user's own note for this exercise (Settings). Open
@@ -450,7 +448,7 @@
                     <button className={'log-btn' + (isLogged ? ' logged' : '')}
                             onClick={() => onLog(exercise.id)}
                             disabled={isLogged}>
-                        {isLogged ? '✓ Logged' : 'LOG'}
+                        {isLogged ? 'Logged' : 'LOG'}
                     </button>
                 </div>
             );

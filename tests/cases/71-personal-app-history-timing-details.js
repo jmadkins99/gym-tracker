@@ -7,24 +7,24 @@
 // Firestore before Complete Day is ever tapped (65 and 69 pin that). What was
 // missing was any way to read them back. DayBreakdownModal finds the workout
 // whose date is today and returns null for anything else, so the moment the day
-// rolled over the numbers were invisible — saved, and unreadable. The ⏱️ beside
+// rolled over the numbers were invisible — saved, and unreadable. The Time button beside
 // each History entry's pencil is the second reader, and this case is what says
 // it reads the workout that was TAPPED rather than today's.
 //
 // Three things, none of which the other timing cases can catch:
 //
-//   1. The ⏱️ opens the timing of ITS OWN entry. Both fixtures below are
+//   1. The Time button opens the timing of ITS OWN entry. Both fixtures below are
 //      submitted and neither is guaranteed to be today, so a modal that reached
 //      for today's workout — the way the Day Breakdown does — renders nothing at
 //      all here. That is the regression this case exists for.
 //
-//   2. A workout with no timestamps shows NO ⏱️. Every one of the ~124 real
+//   2. A workout with no timestamps shows NO Time button. Every one of the ~124 real
 //      pre-August-2026 workouts is in that state; history is never migrated, so
 //      they will be forever. Offering a button that opens an empty modal on the
 //      overwhelming majority of the user's history is the wrong failure.
 //
-//   3. The ✏️ still works from a header row that now holds two buttons. 21 and
-//      22 find the pencil by `textContent.includes('✏️')`, which a ⏱️ sibling
+//   3. The Edit button still works from a header row that now holds two buttons. 21 and
+//      22 find the pencil by `textContent.trim() === 'Edit'`, which a Time sibling
 //      does not disturb — but the assertion belongs somewhere explicit.
 //
 // The rows themselves are asserted against exact seeded timestamps, as in 66,
@@ -84,8 +84,8 @@ const UNTIMED = [
 ];
 
 // One entry per workout, newest first, with which icon buttons its header row
-// offers. The buttons are bare emoji with no class or data attribute, so they
-// are read the same way cases 21 and 22 read the pencil.
+// offers. The buttons are read by their words
+// (Time, Edit), the way cases 21 and 22 read Edit.
 async function historyItems(page) {
     return page.evaluate(() =>
         Array.from(document.querySelectorAll('.history-item')).map(item => ({
@@ -138,13 +138,13 @@ async function clickIcon(page, itemIndex, icon) {
         const items = await historyItems(page);
         eq(items.length, 2, 'both workouts render in the current week');
 
-        eq(items[0].icons, ['⏱️', '✏️'],
+        eq(items[0].icons, ['Time', 'Edit'],
             'the timed workout offers a stopwatch before its pencil');
-        eq(items[1].icons, ['✏️'],
+        eq(items[1].icons, ['Edit'],
             'a workout with no timestamps offers only a pencil — no stopwatch onto an empty modal');
 
         // === 2. The stopwatch reports the tapped workout's own session ===
-        await clickIcon(page, 0, '⏱️');
+        await clickIcon(page, 0, 'Time');
         await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
 
         eq(await page.evaluate(() =>
@@ -180,7 +180,7 @@ async function clickIcon(page, itemIndex, icon) {
             { timeout: 8000 });
 
         // === 3. The pencil still works beside its new sibling ============
-        await clickIcon(page, 0, '✏️');
+        await clickIcon(page, 0, 'Edit');
         await page.waitForSelector('.modal input[data-field], .modal select[data-field]',
             { timeout: 8000 });
         ok(await page.evaluate(() =>

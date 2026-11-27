@@ -95,7 +95,7 @@ async function setEnabled(page, id, on) {
 
 // Toggle through the real form: pencil, switch, Save.
 async function saveEnabled(page, id, on) {
-    await rowButton(page, id, '✏️');
+    await rowButton(page, id, 'Edit');
     await setEnabled(page, id, on);
     await rowButton(page, id, 'Save');
 }
@@ -146,7 +146,7 @@ const listNames = (page) => page.evaluate(() =>
         // === 1. The form ====================================================
         await openManageExercises(page);
         eq(await readSwitch(page, JM), null, 'no switch outside edit mode');
-        await rowButton(page, JM, '✏️');
+        await rowButton(page, JM, 'Edit');
         eq(await readSwitch(page, JM), true, 'the switch opens on');
         await setEnabled(page, JM, false);
         await rowButton(page, JM, 'Cancel');
@@ -162,7 +162,7 @@ const listNames = (page) => page.evaluate(() =>
         ok(await rowOpacity(page, JM) < 1, 'a disabled row is dimmed');
         eq(await rowOpacity(page, TRICEPS), 1, 'an enabled row is not');
         eq(await listNames(page), allNames, 'Manage Exercises still lists every exercise, in place');
-        await rowButton(page, JM, '✏️');
+        await rowButton(page, JM, 'Edit');
         eq(await readSwitch(page, JM), false, 'and the form reopens off');
         await rowButton(page, JM, 'Cancel');
         await closeSettings(page);

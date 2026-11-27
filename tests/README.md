@@ -173,11 +173,11 @@ can catch:
 | `129-…-gympin-survives-version-bump.js` | The `gympin` / `stackMax` lines in `migrateExerciseConfig`, 59's twin: a saved pair — a saved `false` included — comes through a version bump and an unversioned import, and a config with neither field gets nothing written in and still renders the seed. |
 | `65-…-exercise-timing-capture.js` | That opening a card's Weight Breakdown stamps `startedAt` and LOG stamps `loggedAt`, that a card logged without its panel opened carries no `startedAt`, and that the panel button is one-way. |
 | `66-…-session-timing-derivation.js` | `getSessionTiming`'s arithmetic against fixed timestamps: logged-order sorting, the two-minute fallback and its floor at zero, and the 30-minute ceiling above which a movement reports NA and is kept out of the session total. |
-| `67-…-pr-count-weight-drop.js` | That "PRs Smashed" refuses a weight drop, and reads the same `isImprovement` the flame badge does. |
+| `67-…-pr-count-weight-drop.js` | That "PRs Smashed" refuses a weight drop, and reads the same `isImprovement` the PR badge does. |
 | `68-…-revisited-machine-restarts-clock.js` | That the LAST Weight Breakdown tap before a log starts the clock, so walking back to a machine measures the set rather than everything done while away. Also the two anchor resets. |
 | `69-…-timing-survives-cloud-sync.js` | That `startedAt`/`loggedAt` reach Firestore, come back, and survive the one-time first-sign-in import. The only case that drives the cloud repo at all. |
 | `70-…-thirty-minute-ceiling.js` | The 30-minute per-movement ceiling, table-driven over 13 scenarios: the exclusive boundary, all three anchor sources, and that a refused first row is kept out of the session total. |
-| `71-…-history-timing-details.js` | That a session's timing is readable after the day it was logged — the ⏱️ beside a History entry's pencil opens the workout that was TAPPED, not today's, and is absent entirely on a workout carrying no stamps. |
+| `71-…-history-timing-details.js` | That a session's timing is readable after the day it was logged — the Time button beside a History entry's Edit opens the workout that was TAPPED, not today's, and is absent entirely on a workout carrying no stamps. |
 | `72-…-deck-renders.js` | What the swipe deck shows and — the strong one — what it does not: no digit of any kind on a card's front face. Leaking last session's weight would remove every reason to swipe up, and the damage would surface weeks later as asterisked timings. |
 | `73-…-deck-gestures.js` | The four gesture rules: neighbours mounted so a drag peeks, no swipe dropped mid-animation, commit on distance OR speed, and a drag that starts on the weight box / reps dropdown / LOG still swipes (and dragging off LOG does not log). |
 | `74-…-deck-timing-capture.js` | That the swipe up reaches openWeightBreakdown and both stamps reach the record. Replaces `65`. |
@@ -215,7 +215,7 @@ the case pass or fail depending on the hour it ran at.
 `71` is the one that says the stamps are readable at all after midnight. They
 were always *saved* — persistence happens at LOG time, not on Complete Day — but
 `DayBreakdownModal` keys off today's date and returns null for anything else, so
-until the History tab grew a ⏱️ the numbers were written and then never shown
+until the History tab grew a Time button the numbers were written and then never shown
 again. Its fixture is two submitted workouts, one stamped and one not: a modal
 that reached for today's workout renders nothing for either, and a button that
 ignored `getSessionTiming` returning null would offer an empty modal on all ~124
@@ -262,8 +262,8 @@ its second argument is the resolved ceiling or null — which is why `80` passes
 one that types a ceiling in and watches the card change, and `129` is the one
 that carries the answer across a version bump.
 
-**The PR pill, three surfaces, one rule.** A PR badge says "🔥 PR" for a lone
-improvement and "🔥 N" once the run is two or more, and it says it identically
+**The PR pill, three surfaces, one rule.** A PR badge says "PR" for a lone
+improvement and "PR ×N" once the run is two or more, and it says it identically
 on the logged card (`90`), in History (`89`, `100`) and on the Day Breakdown
 that Submit Day opens (`66`). All three count through `getPRStreakInWorkout`,
 as of the entry being badged rather than as of today — the pre-log pill on a
@@ -271,7 +271,7 @@ card is the one exception, and deliberately so: `getPRStreak` holds back
 today's unsubmitted row because that pill is about the set you are walking up
 to, not the one you just finished. History took the count in Sep 2026 and the
 other two followed a few days later; each surface has both branches seeded, so
-a regression that always prints the word (or always prints a count, "🔥 1"
+a regression that always prints the word (or always prints a count, "PR ×1"
 included) reddens all three. If you add a fourth surface, read `WeeklyView.jsx`
 and copy the `> 1` test rather than inventing a rule.
 

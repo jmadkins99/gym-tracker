@@ -61,7 +61,7 @@ async function setNumber(page, selector, value) {
 
         await clickNav(page, 'History');
         await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('✏️'));
+            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit');
             if (btn) btn.click();
         });
         await new Promise(r => setTimeout(r, 200));

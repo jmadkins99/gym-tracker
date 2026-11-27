@@ -90,7 +90,7 @@ async function readBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const el = document.querySelector(sel + ' .streak-badge');
-        return el ? el.textContent.trim() : null;
+        return el ? window.pillView(el).visible : null;
     }, ACTIVE);
 }
 
@@ -111,10 +111,10 @@ async function readStored(page, exerciseId, daysAgo) {
 // weight, reps, days-ago to backdate to, expected badge after the reload.
 const ROUNDS = [
     { weight: '140', reps: '4', daysAgo: 13, badge: null,   why: 'the first session is a baseline, not an improvement' },
-    { weight: '140', reps: '5', daysAgo: 11, badge: '🔥 1', why: 'reps up at the same weight is the first improvement; the badge turns on at 1' },
-    { weight: '140', reps: '6', daysAgo: 9,  badge: '🔥 2', why: 'reps up again keeps it climbing' },
-    { weight: '145', reps: '4', daysAgo: 7,  badge: '🔥 3', why: 'weight up with reps down STILL extends (the whole rule)' },
-    { weight: '145', reps: '5', daysAgo: 5,  badge: '🔥 4', why: 'climbing resumes after the bump' },
+    { weight: '140', reps: '5', daysAgo: 11, badge: 'PR', why: 'reps up at the same weight is the first improvement; the badge turns on at 1' },
+    { weight: '140', reps: '6', daysAgo: 9,  badge: '×2', why: 'reps up again keeps it climbing' },
+    { weight: '145', reps: '4', daysAgo: 7,  badge: '×3', why: 'weight up with reps down STILL extends (the whole rule)' },
+    { weight: '145', reps: '5', daysAgo: 5,  badge: '×4', why: 'climbing resumes after the bump' },
     { weight: '145', reps: '5', daysAgo: 3,  badge: null,   why: 'an identical session breaks the streak' },
     { weight: '135', reps: '6', daysAgo: 1,  badge: null,   why: 'a weight drop breaks it even though reps rose' },
 ];
@@ -156,7 +156,7 @@ const ROUNDS = [
                 // of the name, never a child, so this reads the bare name.
                 const name = await page.evaluate((sel) => {
                     const el = document.querySelector(sel + ' .card-open-name');
-                    return el ? el.textContent.trim() : null;
+                    return el ? window.pillView(el).visible : null;
                 }, ACTIVE);
                 eq(name, 'Chest Press',
                     `${label}: .exercise-name is still the bare name with a badge showing`);

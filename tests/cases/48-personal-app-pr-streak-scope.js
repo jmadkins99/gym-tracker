@@ -65,7 +65,7 @@ const TIMELINE = [
     // Never submitted, and counted anyway since September 2026: Submit Day is a
     // ceremony, not a property of the training. Chest Press regresses here, so
     // the run ends and the badge below is gone. Before that change this read
-    // '🔥 1' — see getPreviousExerciseForPR for the session that forced it.
+    // 'PR' — see getPreviousExerciseForPR for the session that forced it.
     { offset: 2,  submitted: false, sets: {
         'pecs-transverse-shoulder-adduction-with-elbow-extension':         { weight: '100', reps: '4' },
     } },
@@ -100,7 +100,7 @@ async function readBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const el = document.querySelector(sel + ' .streak-badge');
-        return el ? el.textContent.trim() : null;
+        return el ? window.pillView(el).visible : null;
     }, ACTIVE);
 }
 
@@ -120,10 +120,10 @@ async function readBadge(page, exerciseId) {
         eq(await readBadge(page, 'pecs-transverse-shoulder-adduction-with-elbow-extension'), null,
             'a past unsubmitted session breaks the streak like any other session');
 
-        eq(await readBadge(page, 'pecs-shoulder-flexion'), '🔥 2',
+        eq(await readBadge(page, 'pecs-shoulder-flexion'), '×2',
             'an NA session is skipped, not read as a change, so the run spans it');
 
-        eq(await readBadge(page, 'pecs-transverse-shoulder-adduction'), '🔥 2',
+        eq(await readBadge(page, 'pecs-transverse-shoulder-adduction'), '×2',
             'a non-numeric weight ends the run rather than falling through to a reps comparison');
 
         // Six identical sessions: the plateau banner, and necessarily no streak.
@@ -150,7 +150,7 @@ async function readBadge(page, exerciseId) {
             await revealCard(page);
             names.push(await page.evaluate((sel) => {
                 const el = document.querySelector(sel + ' .card-open-name');
-                return el ? el.textContent.trim() : null;
+                return el ? window.pillView(el).visible : null;
             }, ACTIVE));
         }
         eq(names, ['Chest Press', 'Low to High Flies', 'Chest Flies'],

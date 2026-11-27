@@ -160,11 +160,20 @@ async function selectDeckDay(page, type) {
 
 // Switch tabs from the bottom bar.
 async function bottomNav(page, label) {
-    await page.evaluate((l) => {
-        const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((b) => b.textContent.indexOf(l) !== -1);
-        if (btn) btn.click();
-    }, label);
+    const handle = await page.evaluateHandle((l) =>
+        Array.from(document.querySelectorAll('.bottom-nav-btn'))
+            .find((b) => b.textContent.indexOf(l) !== -1) || null, label);
+    const btn = handle.asElement();
+    if (!btn) throw new Error('bottomNav: no bottom-bar button reading "' + label + '"');
+    await btn.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+    // A real, hit-tested click: an overlay covering the button would eat it.
+    await btn.click();
+    // Wait for the button to turn active, i.e. for the destination view.
+    await page.waitForFunction((l) => {
+        const b = Array.from(document.querySelectorAll('.bottom-nav-btn'))
+            .find((x) => x.textContent.indexOf(l) !== -1);
+        return !!b && b.classList.contains('active');
+    }, { timeout: 8000, polling: 50 }, label);
     await new Promise((r) => setTimeout(r, 400));
 }
 

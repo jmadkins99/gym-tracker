@@ -1,11 +1,11 @@
         // The per-movement rows of a session's timing, shared by the two places
         // that show them: the Day Breakdown that pops on Complete Day, and the
-        // History tab's ⏱️ button, which is the only way to see them again once
+        // History tab's Time button, which is the only way to see them again once
         // the day has rolled over. One copy so the timing display cannot drift;
         // Day Breakdown can pass PR ids to annotate the rows it just counted,
         // plus `prStreaksById` for how long each of those runs is. The badge
-        // then reads the way it does in History and on the logged card: "🔥 PR"
-        // for a lone PR, "🔥 N" once the run is two or more. History's own ⏱️
+        // then reads the way it does in History and on the logged card: "PR"
+        // for a lone PR, "PR ×N" once the run is two or more. History's own Time
         // modal below passes neither, so its rows stay unannotated.
         //
         // `timing` is a getSessionTiming result and is never null here — both
@@ -37,10 +37,8 @@
                             <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
                                 <span>{row.name}</span>
                                 {isPR ? (
-                                    <span className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge
-                                          data-streak={prStreak > 1 ? prStreak : undefined}>
-                                        {prStreak > 1 ? '🔥 ' + prStreak : '🔥 PR'}
-                                    </span>
+                                    <PRPill as="span" streak={prStreak} className="streak-badge day-breakdown-pr-badge" data-day-breakdown-pr-badge
+                                            data-streak={prStreak > 1 ? prStreak : undefined} />
                                 ) : null}
                             </span>
                             <span style={{ fontWeight: '600', whiteSpace: 'nowrap' }}>
@@ -61,8 +59,8 @@
             );
         }
 
-        // Timing for one workout out of history, opened from the ⏱️ beside a
-        // History entry's pencil. Seeing the breakdown is the whole reason the
+        // Timing for one workout out of history, opened from the Time button beside a
+        // History entry's Edit button. Seeing the breakdown is the whole reason the
         // button was pressed, so it opens expanded; unlike Day Breakdown it
         // does not annotate rows with current-session PR badges.
         //

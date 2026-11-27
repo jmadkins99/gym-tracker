@@ -93,13 +93,67 @@
             margin-bottom: 15px;
         }
 
+        /* A small text button: the same dark fill, border, radius, size and
+           weight as .week-nav-btn and .modal-btn, but sized to its words and
+           never below a 44px tap target AS RENDERED. Both pages open at
+           initial-scale 0.75, so 44 rendered px is 44 / 0.75 = 59 CSS px; a
+           plain 44px here lands at 33px under the thumb. Header Settings,
+           History's Time and Edit, and Manage Exercises' Edit / up / down all
+           share it. */
+        .text-btn,
         .settings-btn {
-            background: none;
-            border: none;
-            color: var(--accent-muted);
-            font-size: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 59px;
+            min-width: 59px;
+            padding: 0 14px;
+            background: #1a1a2a;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            color: #8a8aa0;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
             cursor: pointer;
-            padding: 4px;
+            transition: all 0.3s;
+        }
+
+        /* The name beside the up / down / Edit buttons in Manage Exercises:
+           free to shrink below its text width and to break an unbroken word,
+           so a long custom name wraps instead of pushing Edit off the row. */
+        .exercise-row-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            flex: 1 1 80px;
+        }
+
+        /* The name and its up / down / Edit controls share a line while they
+           fit. In a narrow window the controls drop together below the name,
+           so the name keeps a readable width instead of being squeezed to a
+           few pixels beside three 59px buttons. */
+        .exercise-row-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .exercise-row-controls {
+            display: flex;
+            gap: 8px;
+            flex: 0 0 auto;
+        }
+
+        .text-btn:active,
+        .settings-btn:active {
+            transform: scale(0.98);
+        }
+
+        .text-btn:disabled {
+            background: #0d0d1a;
+            color: #555;
+            cursor: not-allowed;
         }
 
         .nav {
@@ -211,6 +265,26 @@
             letter-spacing: 0.02em;
             line-height: 1;
             white-space: nowrap;
+        }
+
+        .pr-flame {
+            flex: none;
+            display: block;
+        }
+
+        /* Text for screen readers only: a 1px clipped box, out of the flex flow
+           so it adds no gap beside the visible "×N". */
+        .pr-sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            clip-path: inset(50%);
+            white-space: nowrap;
+            border: 0;
         }
 
         .input-row {
@@ -387,11 +461,6 @@
             text-align: center;
             padding: 60px 20px;
             color: #666;
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
         }
 
         .success-message {

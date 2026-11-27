@@ -509,12 +509,11 @@
                             ) : slot.entry ? (
                                 <button className="weigh-day-value" onClick={() => begin(slot)}>
                                     {formatWeight(slot.entry.weight)}<span className="weigh-day-unit">lbs</span>
-                                    <span className="weigh-day-pencil">✎</span>
                                 </button>
                             ) : (
                                 <button className="weigh-day-value na" onClick={() => begin(slot)}
                                         aria-label={'Add a weight for ' + formatWeekdayDay(slot.date)}>
-                                    NA<span className="weigh-day-pencil">✎</span>
+                                    NA
                                 </button>
                             )}
                         </div>
@@ -574,7 +573,6 @@
                     <>
                         <PlanSummary progress={progress} onEdit={onEditPlan} />
                         <div className="empty-state">
-                            <div className="empty-state-icon">📉</div>
                             <div>No check-ins yet</div>
                         </div>
                     </>

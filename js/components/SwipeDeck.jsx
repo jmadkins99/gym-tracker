@@ -38,7 +38,7 @@
         const RAIL_MS = 300;
         const PR_CELEBRATION_MS = 2000;
 
-        // The History ⏱️'s live total, pinned above the card for the whole of
+        // The History Time button's live total, pinned above the card for the whole of
         // an unsubmitted day. getSessionTiming returns null until something is
         // logged, so opening cards alone shows nothing — but the first LOG
         // reveals a clock that already counts from that card's opening swipe.
