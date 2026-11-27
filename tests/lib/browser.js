@@ -5,6 +5,18 @@ const path = require('path');
 const puppeteer = require(path.join(__dirname, '..', 'node_modules', 'puppeteer-core'));
 const { installCdnShim } = require('./cdn');
 const { PILL_JS } = require('./pill');
+const { setNow } = require('./clock');
+
+// Every page the harness opens runs in this time zone, whatever the machine's,
+// so a case sees the same local date and hour everywhere. Phoenix has no DST.
+// (Case 152 once failed at 8 p.m. Monday there, because the app sliced a UTC
+// date and Sunday's check-in landed on Monday.)
+const TIME_ZONE = 'America/Phoenix';
+
+async function pinTimeZone(page) {
+    const cdp = await page.createCDPSession();
+    await cdp.send('Emulation.setTimezoneOverride', { timezoneId: TIME_ZONE });
+}
 
 // Try a few common chrome locations so this works on different boxes.
 // puppeteer-core (unlike puppeteer) never downloads a browser of its own, so
@@ -58,10 +70,19 @@ async function launch() {
     const newPage = browser.newPage.bind(browser);
     browser.newPage = async (...args) => {
         const page = await newPage(...args);
+        await pinTimeZone(page);
         await installCdnShim(page);
         await page.evaluateOnNewDocument(PILL_JS);
         return page;
     };
+    // Tabs the app opens itself (window.open, target=_blank) never pass through
+    // newPage, so pin them as they appear. Best effort: unlike newPage this
+    // cannot finish before the new tab's first script, so a case that
+    // depends on a popup's time zone should open it with newPage instead.
+    browser.on('targetcreated', async (target) => {
+        if (target.type() !== 'page') return;
+        try { await pinTimeZone(await target.page()); } catch (_) {}
+    });
     return browser;
 }
 
@@ -234,6 +255,19 @@ async function waitFor(page, label, fn, ...args) {
     }
 }
 
+// A real tap: waits for the element, scrolls it to the middle of the screen
+// and clicks its center through the browser's input pipeline, so hit-testing
+// applies and an overlay covering it eats the tap, as it would for a thumb.
+// Prefer it to `el.click()` inside page.evaluate, which skips hit-testing
+// (tests/check-no-sync-waits.sh flags new ones). To wait for a condition, use
+// waitFor above, which polls rather than sleeping.
+async function tap(page, selector) {
+    await waitFor(page, `${selector} to exist`, (s) => !!document.querySelector(s), selector);
+    const el = await page.$(selector);
+    await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+    await el.click();
+}
+
 // The two conditions almost every case waits on.
 const waitForStorageKey = (page, ns, key) =>
     waitFor(page, `${key} to appear in localStorage`,
@@ -243,6 +277,6 @@ const waitForCards = (page) =>
     waitFor(page, 'exercise cards to render',
         () => document.querySelectorAll('.exercise-card').length > 0);
 
-module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
+module.exports = { launch, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
                    openSettings, closeSettings,
-                   waitFor, waitForStorageKey, waitForCards };
+                   waitFor, tap, waitForStorageKey, waitForCards };
