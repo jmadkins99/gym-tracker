@@ -24,7 +24,7 @@
 // check names the width.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor, setNow } = require('../lib/browser');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { bottomNav } = require('../lib/deck');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
@@ -34,6 +34,10 @@ const NS = 'gym-local:';
 const MIN = 44;
 const MIN_NAME = 80; // rendered px the exercise name must keep beside its controls
 const LONG = 'Supercalifragilisticexpialidocious' + 'Pneumonoultramicroscopic'.repeat(2);
+// 8 p.m. on a Monday in Phoenix: the moment a UTC date slice put Sunday's
+// check-in into Monday and failed this case. Pinned so the case never depends
+// on the day or hour it runs.
+const NOW = '2026-11-23T20:00:00-07:00';
 const FLIES = 'pecs-transverse-shoulder-adduction';
 
 // Evaluated in the page: rendered size (CSS px times the page's real scale) of
@@ -44,6 +48,32 @@ function measure(sel, ratio) {
         .map((el) => {
             const r = el.getBoundingClientRect();
             return { text: el.textContent.trim().slice(0, 16), w: r.width * ratio, h: r.height * ratio };
+        });
+}
+
+// Buttons the scan below does not hold to MIN yet. They are outside the text-button
+// work (#30): the bottom nav, the deck's steppers and the like were never
+// restyled for thumbs. Listed so the scan can run on every other button;
+// Josh decides which of these to enlarge. An entry is a CSS selector; delete it
+// once the button passes.
+const ALLOWLIST = [
+    '.bottom-nav-btn', // both apps' bottom bar: ~182x34 rendered, wide but short
+    '.deck-arrow',     // the swipe deck's next / previous arrows: ~28x28 rendered
+    '.day-pill',       // Settings' Anterior / Posterior toggle and weight History's 7d / 30d / 6mo / All: ~25 rendered tall
+    '.modal-btn',      // Settings and Manage Exercises' full-width modal buttons: ~31 rendered tall
+];
+
+// Evaluated in the page: rendered size of EVERY visible, enabled button on the
+// screen (<button>, role=button, input buttons), not a hand-picked list, so a
+// new button cannot dodge the check by being absent from it.
+function measureAll(ratio, allow) {
+    return Array.from(document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]'))
+        .filter((el) => el.getClientRects().length > 0 && !el.disabled && el.getAttribute('aria-disabled') !== 'true')
+        .filter((el) => !allow.some((sel) => el.matches(sel)))
+        .map((el) => {
+            const r = el.getBoundingClientRect();
+            const label = el.textContent.trim().slice(0, 16) || el.getAttribute('aria-label') || '';
+            return { text: label, cls: String(el.className).slice(0, 40), w: r.width * ratio, h: r.height * ratio };
         });
 }
 
@@ -78,6 +108,18 @@ const clickText = async (page, sel, text) => {
             }
         };
 
+        const scan = async (pg, stop, ratioFn) => {
+            const boxes = await pg.evaluate(measureAll, await ratioFn(), ALLOWLIST);
+            ok(boxes.length > 0, stop + ': the scan found buttons');
+            for (const b of boxes) {
+                if (b.w < MIN - 1 || b.h < MIN - 1) {
+                    problems.push(stop + ' button "' + b.text + '" (.' + b.cls + ') renders ' +
+                        b.w.toFixed(1) + 'x' + b.h.toFixed(1));
+                }
+            }
+        };
+
+        await setNow(page, NOW);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         const version = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
         // Monday of this week, so the entry is on History's default page whatever
@@ -102,14 +144,18 @@ const clickText = async (page, sel, text) => {
         ok(Math.abs(scale - 0.75) < 0.02, 'the phone lays the workout page out at 0.75 (got ' + scale.toFixed(3) + ')');
 
         await check('workout header', '.settings-btn', 1);
+        await scan(page, 'workout', ratio);
         await bottomNav(page, 'History');
         await page.waitForSelector('.history-item', { timeout: 8000 });
         await check('workout History', '.history-date .text-btn', 2);
+        await scan(page, 'workout History', ratio);
         await bottomNav(page, 'Workout');
         await page.click('.settings-btn');
         await waitFor(page, 'Settings', () => !!document.querySelector('.modal .modal-title'));
+        await scan(page, 'Settings', ratio);
         await clickText(page, '.modal-btn', 'Manage Exercises');
         await waitFor(page, 'exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
+        await scan(page, 'Manage Exercises (all)', ratio);
         await check('Manage Exercises', '.exercise-row .text-btn', 3);
         const phoneName = await page.evaluate((id) =>
             document.querySelector('[data-exercise-id="' + id + '"] .exercise-row-name')
@@ -121,6 +167,7 @@ const clickText = async (page, sel, text) => {
         // Weight app, same phone.
         const wpage = await browser.newPage();
         await wpage.setViewport(phone);
+        await setNow(wpage, NOW);
         const werrors = attachConsole(wpage);
         const wratio = () => wpage.evaluate(() => 390 / document.documentElement.clientWidth);
         await wpage.goto(server.url + '/weight/index.html', { waitUntil: 'networkidle0' });
@@ -163,6 +210,7 @@ const clickText = async (page, sel, text) => {
             }
         };
         await wcheck('weight header', '.settings-btn', 1);
+        await scan(wpage, 'weight check-in', wratio);
         await (await wpage.evaluateHandle(() => Array.from(document.querySelectorAll('.bottom-nav-btn'))
             .find((b) => b.textContent.includes('History')))).click();
         await waitFor(wpage, 'weekly ledger', () => !!document.querySelector('.weigh-week'));
@@ -173,6 +221,7 @@ const clickText = async (page, sel, text) => {
         await waitFor(wpage, 'opened week', () => document.querySelectorAll('.weigh-day-value').length > 0);
         await wcheck('weight History reading', '.weigh-day-value:not(.na)', 1);
         await wcheck('weight History NA', '.weigh-day-value.na', 1);
+        await scan(wpage, 'weight History', wratio);
         await wpage.close();
 
         eq(Array.from(new Set(problems)), [], 'every text button is at least ' + MIN + ' rendered px each way');
