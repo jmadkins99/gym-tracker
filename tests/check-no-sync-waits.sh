@@ -53,11 +53,15 @@ const added = new Map();
 try {
     const diff = git('diff', '-U0', '--no-color', '--no-ext-diff', '--no-textconv', '-M',
         '--ignore-cr-at-eol', BASE, '--', PATHSPEC);
-    let file = null;
+    // `+++ ` names the file only in a file header (after `diff --git`, before
+    // the first hunk); inside a hunk it is an added line such as `++ counter;`.
+    let file = null, header = false;
     for (const row of diff.split('\n')) {
         let m;
-        if (row.startsWith('+++ ')) file = row === '+++ /dev/null' ? null : row.replace(/^\+\+\+ b\//, '');
+        if (row.startsWith('diff --git ')) { header = true; file = null; }
+        else if (header && row.startsWith('+++ ')) file = row === '+++ /dev/null' ? null : row.replace(/^\+\+\+ b\//, '');
         else if (file && (m = row.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/))) {
+            header = false;
             const start = +m[1], n = m[2] === undefined ? 1 : +m[2];
             if (!added.has(file)) added.set(file, new Set());
             for (let i = 0; i < n; i++) added.get(file).add(start + i);
@@ -72,7 +76,8 @@ try {
     die('git failed (' + String(err.message).split('\n')[0] + ')');
 }
 
-const BROWSER_CALLS = new Set(['evaluate', '$eval', '$$eval', 'evaluateHandle', 'waitForFunction', 'evaluateOnNewDocument']);
+const BROWSER_CALLS = new Set(['evaluate', '$eval', '$$eval', 'evaluateHandle', 'waitForFunction', 'evaluateOnNewDocument',
+    'waitFor']); // the harness's waitFor(page, label, fn) runs fn in the page
 const SLEEPS = new Set(['sleep', 'setTimeout', 'waitForTimeout']);
 const nameOf = (callee) => callee.type === 'Identifier' ? callee.name
     : (callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed &&
@@ -86,7 +91,7 @@ function scan(src) {
     const browserFns = new Set();
     const markFn = (p) => { if (p && p.node && /Function/.test(p.node.type)) browserFns.add(p.node); };
     traverse(ast, {
-        CallExpression(path) {
+        'CallExpression|OptionalCallExpression'(path) {
             if (!BROWSER_CALLS.has(nameOf(path.node.callee))) return;
             for (const arg of path.get('arguments')) {
                 if (arg.isIdentifier()) { // a named function: page.evaluate(measure, ...)
@@ -102,7 +107,7 @@ function scan(src) {
     for (const c of ast.comments || []) if (/allow-sync-wait:\s*\S/.test(c.value)) allowed.add(c.loc.start.line);
     const out = [];
     traverse(ast, {
-        CallExpression(path) {
+        'CallExpression|OptionalCallExpression'(path) {
             const name = nameOf(path.node.callee);
             let what = null;
             if (SLEEPS.has(name)) what = 'fixed wait ' + name + '() (use waitFor)';

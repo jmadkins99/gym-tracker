@@ -37,9 +37,10 @@ const gitOrNull = (...a) => { try { return git(...a); } catch (_) { return null;
 // [{ asset: repo-relative path, v: string|null }] for every local src/href.
 function refs(html, dir) {
     const out = [];
+    html = html.replace(/<!--[\s\S]*?-->/g, ''); // a commented-out tag loads nothing
     for (const tag of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
-        for (const m of tag[0].matchAll(/\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
-            const url = (m[1] ?? m[2]).trim();
+        for (const m of tag[0].matchAll(/\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)) {
+            const url = (m[1] ?? m[2] ?? m[3]).trim();
             if (!url || /^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url)) continue; // remote, data:, anchor
             const [pathPart, query = ''] = url.split('#')[0].split('?');
             const v = (query.match(/(?:^|&)v=(\d+)(?:&|$)/) || [])[1] || null;
