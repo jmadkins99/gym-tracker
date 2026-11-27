@@ -25,7 +25,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, tap, waitFor } = require('../lib/browser');
 const { readDeckNames } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -147,29 +147,26 @@ const EXPECTED_POSTERIOR = [
         // this also covers App.jsx stamping EXERCISE_CONFIG_VERSION on save.
         // Drop that stamp and the migration reads the config as stale and
         // resets the user's arrangement on the next load.
-        await page.click('.settings-btn');
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.modal-btn'))
-                .find(b => b.textContent.includes('Manage Exercises'));
-            btn.click();
-        });
+        await tap(page, '.settings-btn');
+        await tap(page, '.modal-btn', { text: /Manage Exercises/ });
+        await waitFor(page, 'the Manage Exercises rows to render',
+            () => document.querySelectorAll('.exercise-row').length > 0);
         // Move the last Posterior row up one. The probe has to be a row with
         // something above it on its own day (the arrows stop at a day's
         // boundary), and the tail of a day is the stable place to find one.
         // It was Hip Adduction at the end of Full Body until v28 (Nov 2026).
-        const moved = await page.evaluate(() => {
-            // Match on the name element, not the row's textContent: the row
-            // also holds a <select> whose textContent is every option label.
-            const rows = Array.from(document.querySelectorAll('.exercise-row'));
-            const row = rows.find(r =>
-                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Stiff Legged Deadlift');
-            const up = Array.from(row.querySelectorAll('button'))
-                .find(b => b.textContent.trim() === '↑');
-            if (!up) return false;
-            up.click();
-            return true;
-        });
-        ok(moved, 'clicked the up arrow on Stiff Legged Deadlift in Manage Exercises');
+        // Match on the name element, not the row's textContent: the row also
+        // holds a <select> whose textContent is every option label.
+        const rowIndex = () => page.evaluate(() => Array.from(document.querySelectorAll('.exercise-row'))
+            .findIndex(r => r.querySelector('.exercise-row-name')?.textContent.trim() === 'Stiff Legged Deadlift'));
+        const before = await rowIndex();
+        const up = (await page.evaluateHandle((i) => Array.from(document.querySelectorAll('.exercise-row')[i]
+            .querySelectorAll('button')).find(b => b.textContent.trim() === '↑') || null, before)).asElement();
+        ok(up, 'Stiff Legged Deadlift has an up arrow in Manage Exercises');
+        await tap(page, up);
+        await waitFor(page, 'Stiff Legged Deadlift to move up a row', (i) =>
+            Array.from(document.querySelectorAll('.exercise-row')).findIndex(r =>
+                r.querySelector('.exercise-row-name')?.textContent.trim() === 'Stiff Legged Deadlift') === i - 1, before);
 
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);

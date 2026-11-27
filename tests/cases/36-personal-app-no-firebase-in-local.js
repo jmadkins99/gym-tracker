@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -44,11 +44,8 @@ const NS = 'gym-local:';
         eq(state.repoMode, 'local', 'repo resolves to the localStorage implementation');
 
         // Settings modal must not offer cloud sync in local mode.
-        await page.evaluate(() => {
-            const btn = document.querySelector('.settings-btn');
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 250));
+        await tap(page, '.settings-btn');
+        await waitFor(page, 'the Settings modal to open', () => !!document.querySelector('.modal .modal-title'));
         const settingsText = await page.evaluate(() =>
             document.querySelector('.modal, .settings-modal, .modal-content')?.textContent || document.body.textContent);
         ok(!/sign in with google/i.test(settingsText), 'no Google sign-in offered in local mode');
