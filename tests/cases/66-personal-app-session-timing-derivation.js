@@ -42,7 +42,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitForPageTime } = require('../lib/browser');
 const { submitDay } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -305,7 +305,10 @@ const EXPECTED_TOTAL = '35m';
         eq(await page.evaluate(() => window.lastForegroundAt), beforeHide,
             'going to the background does NOT move the anchor');
 
-        await new Promise(r => setTimeout(r, 50));
+        // The return must be stamped later than the hide, so let the page's
+        // clock move past it first.
+        await waitForPageTime(page, 'the page clock to pass the foreground stamp',
+            Date.parse(beforeHide) + 1);
         await page.evaluate(() => {
             Object.defineProperty(document, 'visibilityState',
                 { configurable: true, get: () => 'visible' });

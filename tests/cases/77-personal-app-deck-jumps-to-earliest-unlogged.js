@@ -26,12 +26,12 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const {
     ACTIVE, DEFAULT_NS, revealCard, logCard, deckIndex, deckPosition,
-    onFinishCard, stepTo, selectDeckDay, isRevealed,
+    onFinishCard, stepTo, selectDeckDay, isRevealed, waitForDeckToSettle,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -82,11 +82,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await stepTo(page, 3);
         eq(await deckIndex(page), 3, 'the arrows can still reach a logged card');
         eq(await isRevealed(page), true, 'which shows as a review');
-        await page.evaluate(() => {
-            const a = document.querySelectorAll('.deck-arrow');
-            a[a.length - 1].click();
-        });
-        await new Promise((r) => setTimeout(r, 420));
+        await tap(page, '.deck-arrow[aria-label="Next exercise"]');
+        await waitForDeckToSettle(page);
         eq(await deckIndex(page), 4,
             'and stepping forward moves exactly one card, over the logged one — only the ' +
             'post-log jump skips');
@@ -103,8 +100,8 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         ok(await page.$(ACTIVE + ' .save-btn'), 'which is where Submit Day lives');
 
         // === 6. Stepping back off the finish card ======================
-        await page.evaluate(() => document.querySelectorAll('.deck-arrow')[0].click());
-        await new Promise((r) => setTimeout(r, 420));
+        await tap(page, '.deck-arrow[aria-label="Previous exercise"]');
+        await waitForDeckToSettle(page);
         eq(await deckIndex(page), total, 'stepping back from finish lands on the last card');
 
         eq(errors.length, 0, `no console errors (got: ${JSON.stringify(errors)})`);

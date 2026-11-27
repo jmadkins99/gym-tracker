@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitForPageTime } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const {
@@ -74,12 +74,15 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // === 3. Leaving and returning must NOT close it ================
         await swipe(page, -180, 0);
         await swipe(page, 180, 0);
+        const backAt = await page.evaluate(() => Date.now());
         eq(await activeName(page), logged, 'still the same card');
         eq(await isRevealed(page), true, 'the review survived leaving and returning');
 
         // Wait past the close-on-leave timer, which is where a broken
-        // exemption would show up.
-        await new Promise((r) => setTimeout(r, 800));
+        // exemption would show up. Counted from the return, so it covers a
+        // timer started by either swipe.
+        await waitForPageTime(page, 'the close-on-leave timer (300ms) to have had its chance',
+            backAt + 800);
         eq(await isRevealed(page), true,
             'and it is STILL open once the close timer would have fired — the exemption ' +
             'holds because a logged card never holds the anchor that rule targets');

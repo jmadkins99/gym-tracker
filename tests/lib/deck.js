@@ -20,7 +20,7 @@ const ACTIVE = '.deck-slot:not([aria-hidden="true"])';
 // `gym-local:`. Case 36 pins that on purpose — it is what keeps the
 // tests off the real data and off Firebase.
 const { DEFAULT_NS } = require('./state');
-const { selectDayType } = require('./browser');
+const { selectDayType, waitFor } = require('./browser');
 
 // Long enough for the rail transition (300ms) plus a render. Swipes commit the
 // index immediately, so this is about the animation settling visually, not
@@ -157,6 +157,18 @@ async function selectDeckDay(page, type) {
     await selectDayType(page, type);
     await new Promise((r) => setTimeout(r, 250));
 }
+
+// Wait for the deck to come to rest: the rail back at its resting position and
+// the active card back on it. A swipe or an arrow commits the index at once and
+// then animates (RAIL_MS in SwipeDeck), so this is for a case that next reads
+// the deck or starts another gesture from a still deck. A computed transform
+// reports the in-flight value, so an identity transform means the motion is over.
+const waitForDeckToSettle = (page) =>
+    waitFor(page, 'the deck to come to rest', (sel) => {
+        const still = (el) => !el ||
+            ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform);
+        return still(document.querySelector('.deck-rail')) && still(document.querySelector(sel));
+    }, ACTIVE);
 
 // Switch tabs from the bottom bar.
 async function bottomNav(page, label) {
@@ -391,6 +403,6 @@ module.exports = {
     ACTIVE, SETTLE, DEFAULT_NS,
     swipe, swipeFrom, revealCard, isRevealed, logCard,
     activeName, deckPosition, deckIndex, onFinishCard,
-    stepTo, selectDeckDay, bottomNav,
+    stepTo, selectDeckDay, bottomNav, waitForDeckToSettle,
     startAnchors, todayWorkout, readDeckNames, readDeckCard, goToCard, goToCardAndLog, setWeightAndOpen, goToCardById, logCardById, submitDay,
 };
