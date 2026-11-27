@@ -145,6 +145,17 @@
             flex: 0 0 auto;
         }
 
+        /* The header gear (SettingsButton.jsx) strokes in currentColor, so this
+           is what tints it with the day's accent. */
+        .settings-btn {
+            color: var(--accent-hi);
+        }
+
+        .settings-gear {
+            display: block;
+            flex: none;
+        }
+
         .text-btn:active,
         .settings-btn:active {
             transform: scale(0.98);
