@@ -690,10 +690,21 @@
                             data = { ...data, weight: weightInput.value };
                         }
                     }
-                    if (!data.reps) {
-                        const repsSelect = exerciseCard?.querySelector('select[data-field="reps"]');
-                        if (repsSelect && repsSelect.value) {
-                            data = { ...data, reps: repsSelect.value };
+                    // The reps shown in the box or dropdown. A typed-reps exercise
+                    // reads its box (a pre-filled, untouched value counts);
+                    // a ranged one only saves a value its dropdown offers, so a
+                    // draft left over from a typed-reps spell is dropped.
+                    const typed = usesTypedReps(exerciseId);
+                    const repsControl = exerciseCard?.querySelector('[data-field="reps"]');
+                    if (typed) {
+                        const shown = data.reps !== undefined ? data.reps : (repsControl ? repsControl.value : '');
+                        if (!isValidTypedReps(shown)) return { logged: false, isPR: false };
+                        data = { ...data, reps: String(shown).trim() };
+                    } else if (!data.reps || !getStandardRepOptions(exerciseId).includes(String(data.reps))) {
+                        if (repsControl && repsControl.value) {
+                            data = { ...data, reps: repsControl.value };
+                        } else {
+                            data = { ...data, reps: '' };
                         }
                     }
                 }

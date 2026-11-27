@@ -113,10 +113,11 @@
             return { repMin: range.min + 1, repMax: range.max };
         }
 
-        // Typed reps are whole numbers from 1 up: keep the digits, drop leading
-        // zeros. Blank is allowed so the box can be cleared while typing.
-        function sanitizeTypedReps(text) {
-            return String(text).replace(/\D/g, '').replace(/^0+/, '');
+        // Typed reps are whole numbers from 1 up. The box shows whatever was
+        // typed (a "3.5" is never rewritten into a different number); LOG and
+        // History Save only accept a value that passes this.
+        function isValidTypedReps(text) {
+            return /^[1-9]\d*$/.test(String(text ?? '').trim());
         }
 
         function getStandardRepOptions(exerciseId) {

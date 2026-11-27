@@ -83,7 +83,10 @@ async function clickRowButton(page, id, label) {
         Array.from(document.querySelector(`.exercise-row[data-exercise-id="${id}"]`).querySelectorAll('button'))
             .find(b => b.textContent.trim() === label).click();
     }, id, label);
-    await new Promise(r => setTimeout(r, 100));
+    // Save and Cancel both close the form, so the increment field going away
+    // is the sign the click landed.
+    await waitFor(page, `the ${label} click on ${id} to close the form`, (id) => !document.querySelector(
+        `.exercise-row[data-exercise-id="${id}"] select[data-field="increment"]`), id);
 }
 
 async function setSelect(page, id, field, value) {
@@ -92,7 +95,10 @@ async function setSelect(page, id, field, value) {
         Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set.call(s, value);
         s.dispatchEvent(new Event('change', { bubbles: true }));
     }, id, field, value);
-    await new Promise(r => setTimeout(r, 50));
+    await waitFor(page, `${field} on ${id} to show ${value}`, (id, field, value) => {
+        const s = document.querySelector(`.exercise-row[data-exercise-id="${id}"] select[data-field="${field}"]`);
+        return !!s && s.value === value;
+    }, id, field, value);
 }
 
 const readForm = (page, id) => page.evaluate((id) => {
@@ -123,13 +129,17 @@ const readReps = (page, scope) => page.evaluate((scope) => {
     } : null;
 }, scope);
 
-async function typeReps(page, scope, value) {
-    await page.evaluate((scope, value) => {
-        const el = document.querySelector(scope + ' input[data-field="reps"]');
-        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(el, value);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    }, scope, value);
-    await new Promise(r => setTimeout(r, 100));
+// Real keystrokes: focus the box, clear it, type, then wait for the box to
+// show what was typed (a controlled input shows what the app kept).
+async function typeReps(page, scope, text) {
+    await page.focus(scope + ' input[data-field="reps"]');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('a');
+    await page.keyboard.up('Control');
+    await page.keyboard.press('Backspace');
+    if (text) await page.keyboard.type(text);
+    await waitFor(page, `the reps box to show "${text}"`, (scope, text) =>
+        document.querySelector(scope + ' input[data-field="reps"]').value === text, scope, text);
 }
 
 const readStore = (page) => page.evaluate((ns) =>
@@ -172,6 +182,24 @@ const readStore = (page) => page.evaluate((ns) =>
         eq([form.repMin, form.repMax, form.cable], ['6', '9', true],
             'picking another step before saving brings them back with their values');
 
+        await clickRowButton(page, TARGET, 'Cancel');
+
+        // Edits made earlier in the same form session are not saved at 0.
+        await clickPencil(page, TARGET);
+        await setSelect(page, TARGET, 'repMin', '8');
+        await page.evaluate((id) => document.querySelector(
+            `.exercise-row[data-exercise-id="${id}"] input[data-field="cableStack"]`).click(), TARGET);
+        await setSelect(page, TARGET, 'increment', '0');
+        await clickRowButton(page, TARGET, 'Save');
+        const kept = (await page.evaluate((ns) => JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig')), NS))
+            .exercises.find(e => e.id === TARGET);
+        eq([kept.increment, kept.repMin, kept.repMax, kept.cableStack], [0, 6, 9, true],
+            'Min, Max and Dutch edits made in the same form session are not saved at 0');
+        await clickPencil(page, TARGET);
+        await setSelect(page, TARGET, 'increment', '5');
+        await clickRowButton(page, TARGET, 'Save');
+
+        await clickPencil(page, TARGET);
         await setSelect(page, TARGET, 'increment', '0');
         await clickRowButton(page, TARGET, 'Cancel');
         await clickPencil(page, TARGET);
@@ -205,10 +233,11 @@ const readStore = (page) => page.evaluate((ns) =>
         eq(await page.evaluate((sel) => !!document.querySelector(sel + ' .hero-tag.up'), ACTIVE), false,
             'no green bump tag');
 
-        await typeReps(page, ACTIVE, '0');
-        eq((await readReps(page, ACTIVE)).value, '', 'a 0 is not accepted');
-        await typeReps(page, ACTIVE, '3.5');
-        eq((await readReps(page, ACTIVE)).value, '35', 'only whole numbers are kept');
+        // Invalid input is shown as typed, never rewritten into another number.
+        for (const bad of ['3.5', '-5', '1e2', '0']) {
+            await typeReps(page, ACTIVE, bad);
+            eq((await readReps(page, ACTIVE)).value, bad, `"${bad}" is not turned into a different number`);
+        }
 
         // Other exercises keep the dropdown.
         await goToCardById(page, CONTROL);
@@ -245,6 +274,8 @@ const readStore = (page) => page.evaluate((ns) =>
             .map(rows => rows[0]));
         const badges = await readFlies();
         for (;;) {
+            const beforeText = await page.evaluate(() =>
+                Array.from(document.querySelectorAll('.history-item')).map(i => i.textContent).join('|'));
             const more = await page.evaluate(() => {
                 const btn = document.querySelector('.week-nav-btn');
                 if (btn.disabled) return false;
@@ -252,7 +283,9 @@ const readStore = (page) => page.evaluate((ns) =>
                 return true;
             });
             if (!more) break;
-            await new Promise(r => setTimeout(r, 100));
+            await waitFor(page, 'the previous week to show', (prev) =>
+                Array.from(document.querySelectorAll('.history-item')).map(i => i.textContent).join('|') !== prev,
+                beforeText);
             badges.push(...await readFlies());
         }
         eq(badges, [true, false, false, false],

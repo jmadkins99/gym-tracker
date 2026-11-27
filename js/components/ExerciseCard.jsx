@@ -263,7 +263,7 @@
                                 className="input-field"
                                 data-field="reps"
                                 value={data.reps !== undefined ? data.reps : repsDefault}
-                                onChange={(e) => change('reps', sanitizeTypedReps(e.target.value))}
+                                onChange={(e) => change('reps', e.target.value)}
                                 placeholder="Reps"
                                 disabled={isLogged}
                             />
@@ -271,7 +271,7 @@
                             <select
                                 className="input-field"
                                 data-field="reps"
-                                value={data.reps !== undefined ? data.reps : repsDefault}
+                                value={data.reps !== undefined && repOptions.includes(String(data.reps)) ? data.reps : repsDefault}
                                 onChange={(e) => change('reps', e.target.value)}
                                 disabled={isLogged}
                                 style={stagnation ? { borderColor: HINT_ORANGE } : {}}

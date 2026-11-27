@@ -37,8 +37,26 @@
                 });
             };
 
+            // What Save writes. A typed-reps set only takes valid reps: a blank
+            // or invalid box leaves the saved count as it was. A set that
+            // becomes logged at increment 0 is stamped noRange; one that was
+            // already logged keeps the stamp it has.
             const handleSave = () => {
-                onSave(workout.date, editedExercises);
+                const toSave = editedExercises.map(edited => {
+                    if (edited.type !== 'standard' || !usesTypedReps(edited.id)) return edited;
+                    const original = workout.exercises.find(e => e.id === edited.id);
+                    let next = edited;
+                    if (!isValidTypedReps(edited.reps)) {
+                        next = { ...next, reps: original?.reps || '' };
+                    }
+                    const wasLogged = !!original && hasLoggedData(original);
+                    if (!wasLogged && hasLoggedData(next) && next.noRange !== true) {
+                        const { repMin, repMax, ...rest } = next;
+                        next = { ...rest, ...stampRepRange(next.id) };
+                    }
+                    return next;
+                });
+                onSave(workout.date, toSave);
                 onClose();
             };
 
@@ -221,7 +239,7 @@
                                                     data-field="reps"
                                                     placeholder="Reps"
                                                     value={editedExercise?.reps || ''}
-                                                    onChange={(e) => handleExerciseChange(exercise.id, 'reps', sanitizeTypedReps(e.target.value))}
+                                                    onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
                                                     style={{
                                                         flex: 1,
                                                         padding: '8px',
@@ -232,24 +250,24 @@
                                                     }}
                                                 />
                                             ) : (
-                                            <select
-                                                data-field="reps"
-                                                value={editedExercise?.reps || ''}
-                                                onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '8px',
-                                                    background: '#0d0d1a',
-                                                    border: '1px solid var(--accent)',
-                                                    borderRadius: '4px',
-                                                    color: '#b8b8d0'
-                                                }}
-                                            >
-                                                <option value="">Reps</option>
-                                                {[...new Set([...getStandardRepOptions(exercise.id), editedExercise?.reps].filter(Boolean))]
-                                                    .sort((a, b) => parseInt(a) - parseInt(b))
-                                                    .map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
+                                                <select
+                                                    data-field="reps"
+                                                    value={editedExercise?.reps || ''}
+                                                    onChange={(e) => handleExerciseChange(exercise.id, 'reps', e.target.value)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '8px',
+                                                        background: '#0d0d1a',
+                                                        border: '1px solid var(--accent)',
+                                                        borderRadius: '4px',
+                                                        color: '#b8b8d0'
+                                                    }}
+                                                >
+                                                    <option value="">Reps</option>
+                                                    {[...new Set([...getStandardRepOptions(exercise.id), editedExercise?.reps].filter(Boolean))]
+                                                        .sort((a, b) => parseInt(a) - parseInt(b))
+                                                        .map(r => <option key={r} value={r}>{r}</option>)}
+                                                </select>
                                             )}
                                         </div>
                                     )}

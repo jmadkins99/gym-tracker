@@ -99,13 +99,17 @@
                     }
                 }
                 // Pin-loaded only, like the Gympin pair, and only on a change.
-                if (resolveLoadType(exercise) === 'pin' && tempCableStack !== (exercise.cableStack === true)) {
+                // At 0 the Dutch switch and rep range are hidden, so edits made
+                // to them earlier in this form are not saved: the saved values
+                // stay as they were.
+                const hiddenAtZero = tempIncrement === '0';
+                if (!hiddenAtZero && resolveLoadType(exercise) === 'pin' && tempCableStack !== (exercise.cableStack === true)) {
                     updateExerciseCableStack(exercise.id, tempCableStack);
                 }
                 // Only an explicit change is saved, so an untouched exercise
                 // keeps following the default range.
                 const wasRange = repRangeFormValues(exercise);
-                if (tempRepMin !== wasRange.repMin || tempRepMax !== wasRange.repMax) {
+                if (!hiddenAtZero && (tempRepMin !== wasRange.repMin || tempRepMax !== wasRange.repMax)) {
                     updateExerciseRepRange(exercise.id, { repMin: tempRepMin, repMax: tempRepMax });
                 }
                 if (tempEnabled !== (exercise.enabled !== false)) {
