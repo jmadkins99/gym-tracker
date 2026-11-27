@@ -17,6 +17,17 @@
         // here is the single source for the hero number, the breakdown, and the
         // input value — upstream kept three copies of it, which is exactly how a
         // breakdown comes to disagree with the number printed above it.
+        // The one rep value an unlogged standard card shows, offers in the
+        // dropdown and logs. A typed-reps box shows its draft or default; a
+        // ranged card only honours a draft its dropdown offers, so a draft left
+        // over from an earlier 0 increment cannot show as a count LOG won't
+        // save. A logged card keeps showing the saved count.
+        function shownReps(model, data, isLogged) {
+            if (data.reps === undefined) return model.repsDefault;
+            if (isLogged || model.typedReps || model.repOptions.includes(String(data.reps))) return data.reps;
+            return model.repsDefault;
+        }
+
         function computeCardModel(exercise, { previous, workoutHistory, data }) {
             const loadType = resolveLoadType(exercise);
             const showPlateauBuster = ADVANCED_PR_TRACKING ? isPlateauBuster(exercise.id, workoutHistory) : false;
@@ -57,14 +68,18 @@
 
             // After a weight bump reset to the exercise's start reps, otherwise
             // carry last session reps clamped into that exercise's range.
-            const repsDefault = simplePR ? repStart
+            // A typed-reps exercise has no range to clamp into or reset to: the
+            // box just carries last session's reps, or starts empty.
+            const typedReps = usesTypedReps(exercise.id);
+            const repsDefault = typedReps ? (previous?.reps || '')
+                : simplePR ? repStart
                 : (prWeightRecovery?.reps
                     || failedPlateauBusterRetry?.targetReps
                     || (prAutoRegulation ? repStart
                         : plateauBusterDecrement ? String(repRange.max)
                         : (clampStandardReps(exercise.id, previous?.reps) || repStart)));
 
-            return { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault, repOptions };
+            return { loadType, simplePR, stagnation, prStreak, targetWeight, repsDefault, repOptions, typedReps };
         }
 
         // The warmup table. Same arithmetic as before — calculatePinStackBreakdown
@@ -153,7 +168,7 @@
         // default still log.
         function CardInputs({ exercise, data, model, previous, isLogged, handleInputChange, workoutHistory }) {
             const change = (field, value) => handleInputChange(exercise.id, field, value);
-            const { simplePR, stagnation, repsDefault, repOptions, targetWeight } = model;
+            const { simplePR, stagnation, repsDefault, repOptions, targetWeight, typedReps } = model;
 
             if (exercise.type === 'assault-bike') {
                 const last = getAssaultBikeLast(workoutHistory);
@@ -250,16 +265,31 @@
                     </div>
                     <div className="input-group">
                         <label className="input-label">Reps</label>
-                        <select
-                            className="input-field"
-                            data-field="reps"
-                            value={data.reps !== undefined ? data.reps : repsDefault}
-                            onChange={(e) => change('reps', e.target.value)}
-                            disabled={isLogged}
-                            style={stagnation ? { borderColor: HINT_ORANGE } : {}}
-                        >
-                            {repOptions.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
+                        {typedReps ? (
+                            <input
+                                type="number"
+                                inputMode="numeric"
+                                min="1"
+                                step="1"
+                                className="input-field"
+                                data-field="reps"
+                                value={shownReps(model, data, isLogged)}
+                                onChange={(e) => change('reps', e.target.value)}
+                                placeholder="Reps"
+                                disabled={isLogged}
+                            />
+                        ) : (
+                            <select
+                                className="input-field"
+                                data-field="reps"
+                                value={shownReps(model, data, isLogged)}
+                                onChange={(e) => change('reps', e.target.value)}
+                                disabled={isLogged}
+                                style={stagnation ? { borderColor: HINT_ORANGE } : {}}
+                            >
+                                {repOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        )}
                     </div>
                 </div>
             );
@@ -392,7 +422,7 @@
                                     {targetWeight || '—'}<span className="hero-unit">lbs</span>
                                 </div>
                                 <div className="hero-reps">
-                                    × {data.reps !== undefined ? data.reps : repsDefault}
+                                    × {shownReps(model, data, isLogged)}
                                 </div>
                                 {simplePR ? <div className="hero-tag up">+{simplePR.increment} lbs</div> : null}
                                 {stagnation ? <div className="hero-tag flat">Plateau detected</div> : null}

@@ -93,6 +93,39 @@
             return DEFAULT_STANDARD_REP_RANGE;
         }
 
+        // An exercise at a PR increment of 0 has no rep range (Nov 2026): its
+        // weight never goes up, so its reps are typed in. This is the one place
+        // that decision lives — the workout card and History's edit session both
+        // read it, so they cannot disagree about which control an exercise gets.
+        // Lookup is by id through activeExercises, like getStandardRepRange; an
+        // id App has not listed gets the dropdown.
+        function usesTypedReps(exerciseId) {
+            const exercise = activeExercises.find(e => e.id === exerciseId);
+            return !!exercise && resolveIncrement(exercise) === 0;
+        }
+
+        // What a set records about the range it was logged under: the range
+        // itself, or `noRange` for a typed-reps exercise. isFailedSet reads
+        // either, so later range or increment changes never rewrite a verdict.
+        function stampRepRange(exerciseId) {
+            if (usesTypedReps(exerciseId)) return { noRange: true };
+            const range = getStandardRepRange(exerciseId);
+            return { repMin: range.min + 1, repMax: range.max };
+        }
+
+        // Typed reps are whole numbers from 1 up. The box shows whatever was
+        // typed (a "3.5" is never rewritten into a different number); LOG and
+        // History Save only accept a value that passes this (digits only, 1 or
+        // more; a leading zero is fine).
+        function isValidTypedReps(text) {
+            return /^\d+$/.test(String(text ?? '').trim()) && parseInt(text, 10) >= 1;
+        }
+
+        // The saved form of valid typed reps: "05" is 5.
+        function normalizeTypedReps(text) {
+            return String(parseInt(String(text).trim(), 10));
+        }
+
         function getStandardRepOptions(exerciseId) {
             const range = getStandardRepRange(exerciseId);
             const options = [];

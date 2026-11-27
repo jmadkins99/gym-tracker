@@ -3,8 +3,8 @@
 // A PR increment of 0 — "never bump this exercise". The step is a user setting
 // (case 110 covers the field itself), and 0 is the one value that turns the
 // suggestion off rather than resizing it:
-//   - the dropdown offers it, labelled rather than a bare "0", and explains
-//     itself in the hint under the field;
+//   - the dropdown offers it, labelled plainly "0" with no hint under it
+//     (case 148 covers the rest of what 0 changes: typed reps, hidden fields);
 //   - Save writes a literal 0 for that one exercise and it survives a reload —
 //     the thing a `saved || DEFAULT` in resolveIncrement would silently undo;
 //   - the card then carries last session's weight AND reps forward after a
@@ -197,14 +197,13 @@ async function reload(page) {
         let row = await readRow(page, TARGET);
         eq(row.value, '2.5', 'the field opens on the 2.5 seed');
         eq(row.options, ['0', '1.25', '2.5', '4', '5', '10'], '0 is offered alongside the other steps');
-        eq(row.labels[0], '0 — never bump', 'and reads as words, not a bare 0');
+        eq(row.labels[0], '0', 'and reads as a plain 0');
         eq(row.hint, null, 'a plain 2.5 on a pin stack needs no hint');
 
         await chooseIncrement(page, TARGET, '0');
         row = await readRow(page, TARGET);
         eq(row.value, '0', 'the dropdown holds the 0');
-        eq(row.hint, "Never bumps: max reps still counts as a PR, but the card keeps last session's weight and reps.",
-            'and the hint under it says what 0 does');
+        eq(row.hint, null, 'and there is no hint under it');
 
         // --- Cancel discards, then Save writes a literal 0 -------------------
         await clickRowButton(page, TARGET, 'Cancel');

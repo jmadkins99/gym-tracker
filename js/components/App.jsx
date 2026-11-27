@@ -690,10 +690,21 @@
                             data = { ...data, weight: weightInput.value };
                         }
                     }
-                    if (!data.reps) {
-                        const repsSelect = exerciseCard?.querySelector('select[data-field="reps"]');
-                        if (repsSelect && repsSelect.value) {
-                            data = { ...data, reps: repsSelect.value };
+                    // The reps shown in the box or dropdown. A typed-reps exercise
+                    // reads its box (a pre-filled, untouched value counts);
+                    // a ranged one only saves a value its dropdown offers, so a
+                    // draft left over from a typed-reps spell is dropped.
+                    const typed = usesTypedReps(exerciseId);
+                    const repsControl = exerciseCard?.querySelector('[data-field="reps"]');
+                    if (typed) {
+                        const shown = data.reps !== undefined ? data.reps : (repsControl ? repsControl.value : '');
+                        if (!isValidTypedReps(shown)) return { logged: false, isPR: false };
+                        data = { ...data, reps: normalizeTypedReps(shown) };
+                    } else if (!data.reps || !getStandardRepOptions(exerciseId).includes(String(data.reps))) {
+                        if (repsControl && repsControl.value) {
+                            data = { ...data, reps: repsControl.value };
+                        } else {
+                            data = { ...data, reps: '' };
                         }
                     }
                 }
@@ -801,7 +812,6 @@
                 } else {
                     // The rep range the set was done under, so isFailedSet judges
                     // it by that range even after the setting changes.
-                    const range = getStandardRepRange(exercise.id);
                     exerciseToSave = {
                         id: exercise.id,
                         name: exercise.name,
@@ -809,8 +819,7 @@
                         type: exercise.type,
                         weight: finalData.weight || '',
                         reps: finalData.reps || '',
-                        repMin: range.min + 1,
-                        repMax: range.max,
+                        ...stampRepRange(exercise.id),
                         ...stamps
                     };
                 }
@@ -932,6 +941,8 @@
                         console.log('[completeDay] Exercise:', exercise.name, 'Reps:', reps);
 
                         if (isNaN(reps)) return;
+                        // No rep range, so nothing to fall below or fall short of.
+                        if (exercise.type === 'standard' && exercise.noRange === true) return;
 
                         const startReps = exercise.type === 'standard'
                             ? parseInt(getStandardRepStart(exercise.id), 10) : 4;
