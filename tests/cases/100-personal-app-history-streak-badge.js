@@ -104,7 +104,7 @@ async function readHistory(page) {
             if (!name) return;
             const badge = row.querySelector('[data-pr-badge]');
             rows[name.textContent.trim()] = {
-                text: badge ? badge.textContent.trim() : null,
+                text: badge ? window.pillView(badge).visible : null,
                 streakAttr: badge ? badge.getAttribute('data-streak') : null,
                 border: badge ? getComputedStyle(badge).borderTopColor : null,
                 className: badge ? badge.className : null,
@@ -119,7 +119,7 @@ async function readCardBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const badge = document.querySelector(sel + ' .streak-badge');
-        return badge ? badge.textContent.trim() : null;
+        return badge ? window.pillView(badge).visible : null;
     }, ACTIVE);
 }
 

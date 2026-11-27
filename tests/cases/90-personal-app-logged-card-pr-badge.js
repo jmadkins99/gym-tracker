@@ -100,15 +100,14 @@ async function readHeader(page, exerciseId) {
         const streak = head?.querySelector('[data-streak]:not([data-logged-pr-badge])');
         return {
             logged: logged ? logged.textContent.trim() : null,
-            loggedPR: loggedPR ? loggedPR.textContent.trim() : null,
+            loggedPR: loggedPR ? window.pillView(loggedPR).visible : null,
             loggedPRStreak: loggedPR ? loggedPR.getAttribute('data-streak') : null,
             loggedPRClass: loggedPR ? loggedPR.className : null,
-            loggedPRFlame: loggedPR ? !!loggedPR.querySelector('svg[aria-hidden="true"]') : false,
-            loggedPRLabel: loggedPR ? loggedPR.getAttribute('aria-label') : null,
-            streakFlame: streak ? !!streak.querySelector('svg[aria-hidden="true"]') : false,
+            loggedPRView: loggedPR ? window.pillView(loggedPR) : null,
+            streakView: streak ? window.pillView(streak) : null,
             loggedPRBg: loggedPR ? getComputedStyle(loggedPR).backgroundColor : null,
             loggedPRBorder: loggedPR ? getComputedStyle(loggedPR).borderTopColor : null,
-            streak: streak ? streak.textContent.trim() : null,
+            streak: streak ? window.pillView(streak).visible : null,
             streakBg: streak ? getComputedStyle(streak).backgroundColor : null,
             streakBorder: streak ? getComputedStyle(streak).borderTopColor : null,
         };
@@ -131,7 +130,7 @@ async function readActiveReview(page) {
             className: card ? card.className : null,
             celebrating: !!card?.classList.contains('pr-celebrating'),
             cardAnimation: card ? getComputedStyle(card).animationName : null,
-            loggedPR: loggedPR ? loggedPR.textContent.trim() : null,
+            loggedPR: loggedPR ? window.pillView(loggedPR).visible : null,
         };
     }, ACTIVE);
 }
@@ -159,7 +158,9 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         await selectDayType(page, 'posterior-2');
 
         const before = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
-        ok(before.streakFlame, 'the pre-session card pill draws the flame as an aria-hidden SVG');
+        eq(before.streakView.flame, { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'the pre-session card pill draws a real flame');
+        eq(before.streakView.exposed, 'PR', 'a lone PR on the card exposes its visible "PR" as text');
         eq(before.streak, 'PR',
             'before logging, the card shows the numeric submitted-history streak');
         eq(before.streakBg, BADGE_BG,
@@ -186,6 +187,9 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(celebrating.loggedPR, '×2',
             'the held logged card shows the run count during the celebration');
 
+        const flamesHeld = await page.evaluate(() => window.allFlames());
+        ok(flamesHeld.count >= 1 && flamesHeld.allDrawn && flamesHeld.uniqueIds,
+            'with several pills mounted, every flame draws and none shares a gradient id: ' + JSON.stringify(flamesHeld));
         await new Promise(r => setTimeout(r, 1300));
         const lingering = await readActiveReview(page);
         eq(lingering.id, 'biceps-elbow-flexion-with-shoulder-extension',
@@ -208,8 +212,13 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
 
         const improved = await readHeader(page, 'biceps-elbow-flexion-with-shoulder-extension');
         eq(improved.logged, 'logged', 'the PR row is in the logged review state');
-        ok(improved.loggedPRFlame, 'the logged pill draws the flame as an aria-hidden SVG');
-        eq(improved.loggedPRLabel, 'PR streak 2', 'the logged pill is labelled for screen readers');
+        eq(improved.loggedPRView.flame, { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'the logged pill draws a real flame');
+        eq(improved.loggedPRView.exposed, 'PR streak 2', 'the logged streak pill exposes "PR streak 2" as text');
+        eq(improved.loggedPRView.role, null, 'the pill is plain text, not a role=img');
+        const flamesAfter = await page.evaluate(() => window.allFlames());
+        ok(flamesAfter.count >= 1 && flamesAfter.allDrawn && flamesAfter.uniqueIds,
+            'after the deck advanced and a pill unmounted, every remaining flame still draws: ' + JSON.stringify(flamesAfter));
         eq(improved.loggedPR, '×2',
             'a logged same-weight rep improvement shows the current-session run count');
         eq(improved.loggedPRStreak, '2',

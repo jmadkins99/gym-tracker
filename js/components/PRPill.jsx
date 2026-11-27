@@ -25,11 +25,19 @@
         // The pill for a PR: the flame, then "PR" for a lone PR or "×N" once the
         // run is N >= 2 sessions long. Every pill (card, History, Day Breakdown)
         // is this one component; `as` picks the element, the rest passes through.
+        // Screen readers get words, not a graphic: a lone PR is plain "PR" text,
+        // and a streak carries visually hidden "PR streak N" beside an
+        // aria-hidden "×N", so "×" is never read aloud as a symbol.
         function PRPill({ streak, as: Tag = 'div', ...rest }) {
             return (
-                <Tag role="img" aria-label={formatPRPillLabel(streak)} {...rest}>
+                <Tag {...rest}>
                     <FlameIcon />
-                    {formatPRPill(streak)}
+                    {streak > 1 ? (
+                        <>
+                            <span className="pr-sr-only">{formatPRPillLabel(streak)}</span>
+                            <span aria-hidden="true">{formatPRPill(streak)}</span>
+                        </>
+                    ) : formatPRPill(streak)}
                 </Tag>
             );
         }

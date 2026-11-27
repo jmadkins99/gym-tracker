@@ -257,7 +257,7 @@ const readStore = (page) => page.evaluate((ns) =>
         await goToCardById(page, TARGET);
         const pill = await page.evaluate((sel) => {
             const b = document.querySelector(sel + ' .streak-badge');
-            return b ? b.textContent.trim() : null;
+            return b ? window.pillView(b).visible : null;
         }, ACTIVE);
         ok(pill && /PR/.test(pill), '3 reps beating 2 at the same weight is a PR on the logged card: ' + pill);
 

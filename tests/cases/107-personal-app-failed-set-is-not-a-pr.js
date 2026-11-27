@@ -96,7 +96,7 @@ async function readCardBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const badge = document.querySelector(sel + ' .streak-badge');
-        return badge ? badge.textContent.trim() : null;
+        return badge ? window.pillView(badge).visible : null;
     }, ACTIVE);
 }
 
@@ -110,7 +110,7 @@ async function readHistoryBadges(page) {
             const name = row.querySelector('.history-exercise-name');
             if (!name) return;
             const badge = row.querySelector('[data-pr-badge]');
-            out[name.textContent.trim()] = badge ? badge.textContent.trim() : null;
+            out[name.textContent.trim()] = badge ? window.pillView(badge).visible : null;
         });
         return out;
     });
@@ -190,7 +190,7 @@ async function readHistoryBadges(page) {
             'lats-sagittal-shoulder-extension: LOG button clicked');
         const realPill = await page.evaluate((sel) => {
             const badge = document.querySelector(sel + ' [data-logged-pr-badge]');
-            return badge ? badge.textContent.trim() : null;
+            return badge ? window.pillView(badge).visible : null;
         }, ACTIVE);
         eq(realPill, '×2', 'and does show one for the set that actually improved');
 

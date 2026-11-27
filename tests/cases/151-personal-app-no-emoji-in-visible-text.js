@@ -209,7 +209,8 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         ok(await logCard(page, { settle: 300 }), 'logged Chest Flies');
         await look('workout deck, logged card with PR pill',
             (a) => /Logged/.test(document.querySelector(a).innerText)
-                && !!document.querySelector(a + ' .logged-pr-badge svg'), ACTIVE);
+                && !!document.querySelector(a + ' .logged-pr-badge')
+                && window.pillView(document.querySelector(a + ' .logged-pr-badge')).visible === '×3', ACTIVE);
         // The celebration holds the logged card, then the deck advances: wait
         // for the active card to be a different exercise.
         await waitFor(page, 'the deck to advance past Chest Flies',

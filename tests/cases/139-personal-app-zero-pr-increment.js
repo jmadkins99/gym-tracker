@@ -134,7 +134,7 @@ const cardExtras = (page) => page.evaluate((sel) => {
     const streak = slot.querySelector('.streak-badge');
     return {
         heroTag: tag ? tag.textContent.trim() : null,
-        streak: streak ? streak.textContent.trim() : null,
+        streak: streak ? window.pillView(streak).visible : null,
     };
 }, ACTIVE);
 

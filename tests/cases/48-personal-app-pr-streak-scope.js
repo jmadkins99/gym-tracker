@@ -100,7 +100,7 @@ async function readBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const el = document.querySelector(sel + ' .streak-badge');
-        return el ? el.textContent.trim() : null;
+        return el ? window.pillView(el).visible : null;
     }, ACTIVE);
 }
 
@@ -150,7 +150,7 @@ async function readBadge(page, exerciseId) {
             await revealCard(page);
             names.push(await page.evaluate((sel) => {
                 const el = document.querySelector(sel + ' .card-open-name');
-                return el ? el.textContent.trim() : null;
+                return el ? window.pillView(el).visible : null;
             }, ACTIVE));
         }
         eq(names, ['Chest Press', 'Low to High Flies', 'Chest Flies'],

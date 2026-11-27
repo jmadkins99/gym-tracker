@@ -175,10 +175,9 @@ const EXPECTED_TOTAL = '35m';
                 return {
                     id: r.getAttribute('data-timing-row'),
                     time: r.children[1].textContent.trim(),
-                    badge: badge ? badge.textContent.trim() : null,
+                    badge: badge ? window.pillView(badge).visible : null,
                     badgeClass: badge ? badge.className : null,
-                    badgeFlame: badge ? !!badge.querySelector('svg[aria-hidden="true"]') : false,
-                    badgeLabel: badge ? badge.getAttribute('aria-label') : null,
+                    badgeView: badge ? window.pillView(badge) : null,
                     badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
                     badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 };
@@ -191,10 +190,17 @@ const EXPECTED_TOTAL = '35m';
             'only movements that counted toward PRs Smashed get a row-level PR badge');
         ok(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeClass.includes('streak-badge'),
             'Day Breakdown PR badge reuses the same flame badge container');
-        ok(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeFlame,
-            'Day Breakdown PR badge draws the flame as an aria-hidden SVG');
-        eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeLabel, 'PR streak 2',
-            'Day Breakdown PR badge is labelled for screen readers');
+        const streakView = rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeView;
+        eq(streakView.exposed, 'PR streak 2',
+            'Day Breakdown streak pill exposes "PR streak 2" as text, not just "x2"');
+        eq(streakView.role, null, 'the pill is plain text, not a role=img');
+        eq(streakView.flame, { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'Day Breakdown pill draws a real flame: path, a gradient that resolves, a non-empty box, hidden from assistive tech');
+        const loneView = rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction').badgeView;
+        eq(loneView.exposed, 'PR', 'a lone PR pill exposes its visible "PR" text');
+        const flames = await page.evaluate(() => window.allFlames());
+        ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
+            'every flame in the modal draws and no two share a gradient id: ' + JSON.stringify(flames));
         eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBg, BADGE_BG,
             'Day Breakdown PR badge uses the shared transparent background');
         eq(rowDetails.find(r => r.id === 'pecs-transverse-shoulder-adduction-with-elbow-extension').badgeBorder, BADGE_BORDER,

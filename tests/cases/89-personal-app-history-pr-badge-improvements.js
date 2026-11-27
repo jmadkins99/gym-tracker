@@ -114,10 +114,9 @@ async function readHistoryRows(page, names) {
 
             const badge = row.querySelector('[data-pr-badge]');
             rows[name.textContent.trim()] = {
-                badgeText: badge ? badge.textContent.trim() : null,
+                badgeText: badge ? window.pillView(badge).visible : null,
                 badgeClass: badge ? badge.className : null,
-                badgeFlame: badge ? !!badge.querySelector('svg[aria-hidden="true"]') : false,
-                badgeLabel: badge ? badge.getAttribute('aria-label') : null,
+                badgeView: badge ? window.pillView(badge) : null,
                 badgeBg: badge ? getComputedStyle(badge).backgroundColor : null,
                 badgeBorder: badge ? getComputedStyle(badge).borderTopColor : null,
                 badgeRightOfName: badge ? name.nextElementSibling === badge : false,
@@ -133,7 +132,7 @@ async function readCardBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const badge = document.querySelector(sel + ' .streak-badge');
-        return badge ? badge.textContent.trim() : null;
+        return badge ? window.pillView(badge).visible : null;
     }, ACTIVE);
 }
 
@@ -166,10 +165,12 @@ async function readCardBadge(page, exerciseId) {
             ok(historyRows[name], `History includes ${name}`);
         }
 
-        ok(historyRows['Kelso Shrugs'].badgeFlame,
-            'a lone PR pill in History also carries the flame');
-        eq(historyRows['Kelso Shrugs'].badgeLabel, 'PR',
-            'a lone PR is labelled PR');
+        eq(historyRows['Kelso Shrugs'].badgeView.flame,
+            { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'a lone PR pill in History draws a real flame');
+        eq(historyRows['Kelso Shrugs'].badgeView.exposed, 'PR',
+            'a lone PR exposes its visible "PR" as text');
+        eq(historyRows['Kelso Shrugs'].badgeView.role, null, 'the pill is plain text, not a role=img');
         eq(historyRows['Kelso Shrugs'].badgeText, 'PR',
             'History shows PR at 6 reps when a normal 3-6 exercise improved');
         eq(historyRows['Preacher Curls'].badgeText, 'PR',
@@ -211,10 +212,14 @@ async function readCardBadge(page, exerciseId) {
         // moment the set is logged, exactly as the lone-PR badge above is.
         // Case 100 owns that rule; what this line pins is that logging alone,
         // with no Submit Day, is enough to earn it.
-        ok(todayRows['Preacher Curls'].badgeFlame,
-            'the History pill draws the flame as an aria-hidden SVG');
-        eq(todayRows['Preacher Curls'].badgeLabel, 'PR streak 2',
-            'the History pill is labelled for screen readers');
+        eq(todayRows['Preacher Curls'].badgeView.flame,
+            { hidden: true, hasPath: true, gradientResolves: true, drawn: true },
+            'the History streak pill draws a real flame');
+        eq(todayRows['Preacher Curls'].badgeView.exposed, 'PR streak 2',
+            'the History streak pill exposes "PR streak 2" as text');
+        const flames = await page.evaluate(() => window.allFlames());
+        ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
+            'every History flame draws and no two share a gradient id: ' + JSON.stringify(flames));
         eq(todayRows['Preacher Curls'].badgeText, '×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,

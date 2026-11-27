@@ -90,7 +90,7 @@ async function readBadge(page, exerciseId) {
     await revealCard(page);
     return page.evaluate((sel) => {
         const el = document.querySelector(sel + ' .streak-badge');
-        return el ? el.textContent.trim() : null;
+        return el ? window.pillView(el).visible : null;
     }, ACTIVE);
 }
 
@@ -156,7 +156,7 @@ const ROUNDS = [
                 // of the name, never a child, so this reads the bare name.
                 const name = await page.evaluate((sel) => {
                     const el = document.querySelector(sel + ' .card-open-name');
-                    return el ? el.textContent.trim() : null;
+                    return el ? window.pillView(el).visible : null;
                 }, ACTIVE);
                 eq(name, 'Chest Press',
                     `${label}: .exercise-name is still the bare name with a badge showing`);
