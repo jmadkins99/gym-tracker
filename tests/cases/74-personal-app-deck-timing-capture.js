@@ -86,8 +86,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // openWeightBreakdown returns early on the card already open. That is
         // what stops "which tap counted?" being ambiguous, and it has to
         // survive being driven by a gesture rather than a button.
-        await waitForPageTime(page, 'a second to pass since the card was opened',
-            Date.parse(firstStamp) + 1100);
+        // A restamp now would read later than the first stamp.
+        await waitForPageTime(page, 'the page clock to pass the first stamp',
+            Date.parse(firstStamp) + 1);
         await swipe(page, 0, -180);
         const again = await startAnchors(page);
         eq(again[Object.keys(again)[0]], firstStamp,

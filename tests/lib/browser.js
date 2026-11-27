@@ -320,6 +320,7 @@ async function findTapTarget(page, selector, text, timeout) {
 // this is the condition a fixed sleep stood in for. It reads the clock the app
 // stamps with, so a gap asserted between two page timestamps really is there.
 async function waitForPageTime(page, label, ms) {
+    if (!Number.isFinite(ms)) throw new Error(`waitForPageTime: no valid instant to wait for (${label}): ${ms}`);
     await waitFor(page, label, (t) => Date.now() >= t, ms);
 }
 

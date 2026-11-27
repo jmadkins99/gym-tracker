@@ -165,7 +165,7 @@ async function selectDeckDay(page, type) {
 // reports the in-flight value, so an identity transform means the motion is over.
 const waitForDeckToSettle = (page) =>
     waitFor(page, 'the deck to come to rest', (sel) => {
-        const still = (el) => !el ||
+        const still = (el) => !!el &&
             ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform);
         return still(document.querySelector('.deck-rail')) && still(document.querySelector(sel));
     }, ACTIVE);

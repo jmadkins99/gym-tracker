@@ -40,19 +40,21 @@ const VW = 390, VH = 844;
 const KEYBOARD = 336;   // roughly what iOS takes
 const PAN = 120;        // how far Safari shoves the visible area down
 
-// The app copies visualViewport into --vvh and --vvo on <html>, and the shell
-// is laid out from them. Once both read the stub's new values, the app has
-// seen the change; layout is synchronous from there, so geometry can be read.
-const waitForViewportVars = (page, height, pan) =>
-    waitFor(page, `--vvh ${height}px and --vvo ${pan}px on <html>`, (h, p) => {
-        const st = document.documentElement.style;
-        return st.getPropertyValue('--vvh') === h + 'px' && st.getPropertyValue('--vvo') === p + 'px';
-    }, height, pan);
-
-// Two animation frames: long enough for anything a focus handler schedules to
-// render, which is what an assertion that nothing changed has to wait out.
-const nextFrames = (page) =>
-    page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+// The card scales .card-fit to whatever height .card-body has left
+// (ExerciseCard's ResizeObserver) and eases there over 180ms, so after the
+// space changes its geometry is final only once the scale on the node is the
+// one that space calls for and no transition is still running. The scale is
+// worked out the way ExerciseCard does it, floor at 0.6 included.
+const waitForCardToFit = (page) =>
+    waitFor(page, 'the active card to refit the space it has', (sel) => {
+        const box = document.querySelector(sel + ' .card-body');
+        const inner = document.querySelector(sel + ' .card-fit');
+        if (!box || !inner) return false;
+        const needed = inner.scrollHeight, avail = box.clientHeight;
+        const want = needed > avail ? Math.max(0.6, avail / needed) : 1;
+        const m = /scale\(([\d.]+)\)/.exec(inner.style.transform);
+        return !!m && Math.abs(Number(m[1]) - want) < 0.005 && inner.getAnimations().length === 0;
+    }, ACTIVE);
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -177,7 +179,7 @@ const nextFrames = (page) =>
 
         await page.focus(ACTIVE + ' input[type="number"]');
         await page.evaluate((h, p) => window.__keyboard(h, p), VH - KEYBOARD, PAN);
-        await waitForViewportVars(page, VH - KEYBOARD, PAN);
+        await waitForCardToFit(page);
 
         const visibleTop = PAN;
         const visibleBottom = PAN + (VH - KEYBOARD);
@@ -204,9 +206,9 @@ const nextFrames = (page) =>
         // === 4. A dropdown is NOT a keyboard ==========================
         await page.evaluate(() => document.activeElement && document.activeElement.blur());
         await page.evaluate((h) => window.__keyboard(h, 0), VH);
-        await waitForViewportVars(page, VH, 0);
         await waitFor(page, 'the keyboard state to clear after the blur',
             () => !document.documentElement.classList.contains('kb-open'));
+        await waitForCardToFit(page);
 
         const restPositions = await page.evaluate((sel) => {
             const t = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top) : null; };
@@ -217,7 +219,7 @@ const nextFrames = (page) =>
         await waitFor(page, 'the reps dropdown to take focus',
             (sel) => document.activeElement === document.querySelector(sel + ' select[data-field="reps"]'),
             ACTIVE);
-        await nextFrames(page);
+        await waitForCardToFit(page);
         const afterSelect = await page.evaluate((sel) => {
             const t = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().top) : null; };
             return { hero: t(sel + ' .hero-weight'), toggle: t('.day-toggle'),
@@ -231,8 +233,10 @@ const nextFrames = (page) =>
 
         // === 5. Dismissing puts everything back =======================
         await page.evaluate(() => document.activeElement && document.activeElement.blur());
-        await waitFor(page, 'the keyboard state to clear after the blur',
-            () => !document.documentElement.classList.contains('kb-open'));
+        await waitFor(page, 'the reps dropdown to lose focus',
+            (sel) => document.activeElement !== document.querySelector(sel + ' select[data-field="reps"]'),
+            ACTIVE);
+        await waitForCardToFit(page);
         const back = await geom();
         eq(back.app.top, 0, 'dismissing the keyboard puts the app back at the top');
         eq(back.app.height, VH, 'and back to full height');

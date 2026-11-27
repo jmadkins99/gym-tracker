@@ -67,10 +67,12 @@ const anchorOf = async (page) => {
         // === 2. Arrows do it too =======================================
         await revealCard(page);
         eq(await isRevealed(page), true, 'reopened');
+        const reopened = await activeName(page);
         await tap(page, '.deck-arrow[aria-label="Next exercise"]');
         await waitForDeckToSettle(page);
         await tap(page, '.deck-arrow[aria-label="Previous exercise"]');
         await waitForDeckToSettle(page);
+        eq(await activeName(page), reopened, 'the arrows brought us back to the same card');
         eq(await isRevealed(page), false, 'arrow navigation closes it as well');
 
         // === 3. An immediate return still finds it shut ================
@@ -86,8 +88,8 @@ const anchorOf = async (page) => {
         await revealCard(page);
         const first = await anchorOf(page);
         ok(first, 'reopening stamps an anchor');
-        await waitForPageTime(page, 'a second to pass since the card was reopened',
-            Date.parse(first.at) + 1100);
+        await waitForPageTime(page, 'the page clock to pass the first stamp',
+            Date.parse(first.at) + 1);
         await swipe(page, -180, 0);
         await swipe(page, 180, 0);
         await revealCard(page);

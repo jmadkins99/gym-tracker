@@ -59,8 +59,8 @@ function currentConfigVersion(src) {
 // rather than in a committed fixture.
 async function importBackup(page, backup) {
     await tap(page, '.settings-btn');
-    await waitFor(page, 'the Settings file input to render',
-        () => !!document.querySelector('input.file-input'));
+    await waitFor(page, 'the Settings modal to open',
+        () => !!document.querySelector('.modal .modal-title'));
     const fed = await page.evaluate((json) => {
         const input = document.querySelector('input.file-input');
         if (!input) return 'no file input';

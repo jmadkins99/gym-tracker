@@ -108,13 +108,13 @@ async function savedExercise(page, id) {
         const firstOpen = (await anchors(page))['pecs-transverse-shoulder-adduction-with-elbow-extension'];
         ok(firstOpen, 'the first open of Chest Press is anchored');
 
-        await waitForPageTime(page, 'GAP_MS to pass since Chest Press opened',
+        await waitForPageTime(page, `${GAP_MS}ms to pass since Chest Press opened`,
             Date.parse(firstOpen) + GAP_MS);
 
         // The machine was taken, so something else got done first. This is what
         // closes the Chest Press panel.
         await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
-        await waitForPageTime(page, 'GAP_MS to pass since Chest Flies opened',
+        await waitForPageTime(page, `${GAP_MS}ms to pass since Chest Flies opened`,
             Date.parse((await anchors(page))['pecs-transverse-shoulder-adduction']) + GAP_MS);
 
         // Back to Chest Press. THIS is when the set actually starts.
@@ -187,7 +187,7 @@ async function savedExercise(page, id) {
         const fliesOpen = (await anchors(page))['pecs-transverse-shoulder-adduction'];
         ok(fliesOpen, 'Chest Flies is anchored');
 
-        await waitForPageTime(page, 'GAP_MS to pass since Chest Flies reopened',
+        await waitForPageTime(page, `${GAP_MS}ms to pass since Chest Flies reopened`,
             Date.parse(fliesOpen) + GAP_MS);
         await clickCardButton(page, 'pecs-transverse-shoulder-adduction', 'Weight Breakdown');
         eq((await anchors(page))['pecs-transverse-shoulder-adduction'], fliesOpen,
