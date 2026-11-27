@@ -40,8 +40,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { ACTIVE, goToCard, revealCard, isRevealed } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -56,11 +56,16 @@ async function clickBreakdown(page, exerciseName) {
 }
 
 // The card's breakdown, as one string per row: "WARMUP 1 70% | 450 lbs | pin 405 · 45".
+// Read straight off the open card rather than through readDeckCard, which
+// walks the deck from card 1 and reopens the card, so a wait here would guard
+// a render other than the one read.
 async function readCard(page, exerciseName) {
     await goToCard(page, exerciseName);
     await revealCard(page);
-    const card = await readDeckCard(page, exerciseName);
-    return card.breakdown.join(' ~ ');
+    await waitFor(page, `the ${exerciseName} breakdown rows`,
+        (sel) => document.querySelectorAll(sel + ' .breakdown-row').length > 0, ACTIVE);
+    return page.evaluate((sel) => Array.from(document.querySelectorAll(sel + ' .breakdown-row'))
+        .map((r) => r.innerText.split('\n').join(' | ')).join(' ~ '), ACTIVE);
 }
 
 (async () => {
@@ -97,7 +102,6 @@ async function readCard(page, exerciseName) {
         // --- Capped stack: Calf Raises at 500 over a 405 cap ---
         const clickedCalf = await clickBreakdown(page, 'Calf Raises');
         ok(clickedCalf, 'Calf Raises card has a Weight Breakdown button');
-        await new Promise(r => setTimeout(r, 250));
 
         const calfRaises = await readCard(page, 'Calf Raises');
 
@@ -148,7 +152,6 @@ async function readCard(page, exerciseName) {
 
         const clickedControl = await clickBreakdown(page, 'Frontal Pulldowns');
         ok(clickedControl, 'Frontal Pulldowns card has a Weight Breakdown button');
-        await new Promise(r => setTimeout(r, 250));
 
         const cable = await readCard(page, 'Frontal Pulldowns');
 

@@ -11,22 +11,19 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
+// A real tap on the bottom-bar button, then a wait for it to turn active,
+// which happens in the same render as the destination view. Each button once
+// carried an icon glyph beside its label, so this matches on containment.
 async function clickNav(page, label) {
-    await page.evaluate((l) => {
-        // The nav moved to a bottom bar, and each button now carries an icon
-        // glyph beside its label, so this matches on containment rather than
-        // an exact trim.
-        const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find(b => b.textContent.indexOf(l) !== -1);
-        if (btn) btn.click();
-    }, label);
-    await new Promise(r => setTimeout(r, 200));
+    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
+    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
+        .some(b => b.textContent.indexOf(l) !== -1), label);
 }
 
 async function setNumber(page, selector, value) {
@@ -60,11 +57,8 @@ async function setNumber(page, selector, value) {
         await waitForApp(page);
 
         await clickNav(page, 'History');
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit');
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 200));
+        await tap(page, 'button', { text: 'Edit' });
+        await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
 
         // Level must be an editable dropdown (the bug: it was a disabled input).
         const levelInfo = await page.evaluate(() => {
@@ -90,11 +84,8 @@ async function setNumber(page, selector, value) {
         await page.select('.modal select[data-field="reps"]', '75');
         await page.select('.modal select[data-field="watts"]', '35');
         await page.select('.modal select[data-field="intensity"]', '32/28');
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.modal button')).find(b => /save/i.test(b.textContent));
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 300));
+        await tap(page, '.modal button', { text: /save/i });
+        await waitFor(page, 'the edit modal to close', () => !document.querySelector('.modal'));
 
         // Weekly view should now reflect all of the edits.
         const weeklyText = await page.evaluate(() => document.querySelector('.content')?.textContent || '');

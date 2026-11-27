@@ -268,15 +268,50 @@ async function waitFor(page, label, fn, ...args) {
 // Prefer it to `el.click()` inside page.evaluate, which skips hit-testing
 // (tests/check-no-sync-waits.sh flags new ones). To wait for a condition, use
 // waitFor above, which polls rather than sleeping.
-async function tap(page, selector) {
+//
+// Most buttons in the app have no id, so `text` narrows the selector's matches
+// by label: a string must equal the trimmed textContent ('Edit' does not match
+// 'Edit Plan'), a RegExp is tested against it, and the first match is tapped.
+// Without `text` the selector goes to Puppeteer as it is, so its own selector
+// syntax (`::-p-text(...)`, `aria/...`) still works; with it, the selector must
+// be plain CSS.
+//
+// A button only the case can pick out, such as the arrow in one named row,
+// can be passed as an ElementHandle instead of a selector (from
+// page.evaluateHandle); it is tapped as it is, with no waiting.
+async function tap(page, selector, { text, timeout = 20000 } = {}) {
     let el;
-    try {
-        el = await page.waitForSelector(selector, { timeout: 20000 });
-    } catch (err) {
-        throw new Error(`timed out after 20s waiting for ${selector} to exist`);
+    if (typeof selector !== 'string') {
+        el = selector && selector.asElement && selector.asElement();
+        if (!el) throw new Error('tap: expected a selector or an ElementHandle, got ' + selector);
+    } else {
+        el = await findTapTarget(page, selector, text, timeout);
     }
     await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
     await el.click();
+}
+
+async function findTapTarget(page, selector, text, timeout) {
+    const label = selector +
+        (text === undefined ? '' : ` with text ${text instanceof RegExp ? text : JSON.stringify(text)}`);
+    // A RegExp cannot cross into the page, so it goes as source and flags.
+    const want = text instanceof RegExp ? { re: text.source, flags: text.flags }
+        : text === undefined ? null : { eq: String(text) };
+    try {
+        if (!want) return await page.waitForSelector(selector, { timeout });
+        const handle = await page.waitForFunction((sel, want) => {
+            const re = want.re !== undefined && new RegExp(want.re, want.flags);
+            return Array.from(document.querySelectorAll(sel)).find((e) => {
+                const t = e.textContent.trim();
+                if (!re) return t === want.eq;
+                re.lastIndex = 0; // g and y make test() resume where the last element left off
+                return re.test(t);
+            }) || false;
+        }, { timeout, polling: 50 }, selector, want);
+        return handle.asElement();
+    } catch (err) {
+        throw new Error(`timed out after ${timeout / 1000}s waiting for ${label} to exist`);
+    }
 }
 
 // The two conditions almost every case waits on.

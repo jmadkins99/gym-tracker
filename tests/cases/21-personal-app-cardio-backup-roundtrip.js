@@ -14,22 +14,19 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
+// A real tap on the bottom-bar button, then a wait for it to turn active,
+// which happens in the same render as the destination view. Each button once
+// carried an icon glyph beside its label, so this matches on containment.
 async function clickNav(page, label) {
-    await page.evaluate((l) => {
-        // The nav moved to a bottom bar, and each button now carries an icon
-        // glyph beside its label, so this matches on containment rather than
-        // an exact trim.
-        const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find(b => b.textContent.indexOf(l) !== -1);
-        if (btn) btn.click();
-    }, label);
-    await new Promise(r => setTimeout(r, 200));
+    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
+    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
+        .some(b => b.textContent.indexOf(l) !== -1), label);
 }
 
 (async () => {
@@ -73,11 +70,8 @@ async function clickNav(page, label) {
         contains(weeklyText, '30/30 @ 25W', 'weekly shows assault bike intensity + watts');
 
         // Edit modal: opens on the cardio workout and renders its own cards.
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit');
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 200));
+        await tap(page, 'button', { text: 'Edit' });
+        await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
         const modalText = await page.evaluate(() =>
             document.querySelector('.modal')?.textContent || '');
         ok(modalText, 'edit modal opened');

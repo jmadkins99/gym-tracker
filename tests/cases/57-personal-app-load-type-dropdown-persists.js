@@ -32,7 +32,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, seedExerciseConfig } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -55,17 +55,10 @@ function currentConfigVersion(src) {
 }
 
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await new Promise(r => setTimeout(r, 200));
-    const opened = await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises'));
-        if (!btn) return false;
-        btn.click();
-        return true;
-    });
-    ok(opened, 'opened Manage Exercises');
-    await new Promise(r => setTimeout(r, 300));
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the Manage Exercises rows to render',
+        () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
 // id -> { value, options } for every row's load-type select.
@@ -162,7 +155,9 @@ async function readSavedLoadTypes(page) {
             return true;
         }, TARGET);
         ok(set, `set ${TARGET} to plate-two-sided`);
-        await new Promise(r => setTimeout(r, 250));
+        await waitFor(page, `${TARGET}'s new load type to be saved`, (ns, id) =>
+            (JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig') || '{}').exercises || [])
+                .some(e => e.id === id && e.loadType === 'plate-two-sided'), NS, TARGET);
 
         const saved = await readSavedLoadTypes(page);
         ok(saved, 'a config was written to localStorage');
