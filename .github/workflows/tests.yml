@@ -58,20 +58,35 @@ jobs:
           TEST_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
         run: bash run.sh
 
+  # Changed assets must carry a new ?v= in the HTML that loads them (see
+  # tests/check-cache-bust.sh), and new test lines must not add a DOM click or
+  # fixed sleep (tests/check-no-sync-waits.sh). Both need the whole history to find the merge-base
+  # with origin/main, hence fetch-depth 0. Skipped on the merge push to main,
+  # like the shards.
+  guardrails:
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - run: bash tests/check-cache-bust.sh
+      - run: bash tests/check-no-sync-waits.sh
+
   # The one check the "protect main" ruleset requires, so the shard count can
   # change without touching the ruleset. `always()` because a job skipped
   # after a failed shard would count as passing; this one has to fail instead.
-  # The one skip it accepts is the merge push to main, where the shards are
-  # skipped on purpose.
+  # The one skip it accepts is the merge push to main, where the shards and
+  # the guardrails job are skipped on purpose.
   test:
-    needs: shard
+    needs: [shard, guardrails]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - run: |
-          result="${{ needs.shard.result }}"
           merge_push="${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}"
-          [ "$result" = success ] || { [ "$merge_push" = true ] && [ "$result" = skipped ]; }
+          ok() { [ "$1" = success ] || { [ "$merge_push" = true ] && [ "$1" = skipped ]; }; }
+          ok "${{ needs.shard.result }}" && ok "${{ needs.guardrails.result }}"
 
   # Upload and deploy are separate jobs, as in GitHub's starter Pages
   # workflow. In one job, deploy-pages looked the artifact up half a second

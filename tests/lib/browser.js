@@ -5,6 +5,24 @@ const path = require('path');
 const puppeteer = require(path.join(__dirname, '..', 'node_modules', 'puppeteer-core'));
 const { installCdnShim } = require('./cdn');
 const { PILL_JS } = require('./pill');
+const { setNow } = require('./clock');
+
+// Every page the harness opens runs in this time zone, whatever the machine's,
+// so a case sees the same local date and hour everywhere. Phoenix has no DST.
+// (Case 152 once failed at 8 p.m. Monday there, because the app sliced a UTC
+// date and Sunday's check-in landed on Monday.)
+const TIME_ZONE = 'America/Phoenix';
+// The Node process running a case (fixtures built from `new Date()`) and the
+// Chrome it launches use the same zone, so they agree on what day it is.
+// run.sh exports it too; this covers a case run by hand. Chrome's launch
+// environment also carries it, which closes the first-script race of a popup
+// that the CDP override below cannot win.
+process.env.TZ = TIME_ZONE;
+
+async function pinTimeZone(page) {
+    const cdp = await page.createCDPSession();
+    await cdp.send('Emulation.setTimezoneOverride', { timezoneId: TIME_ZONE });
+}
 
 // Try a few common chrome locations so this works on different boxes.
 // puppeteer-core (unlike puppeteer) never downloads a browser of its own, so
@@ -48,6 +66,7 @@ async function launch() {
     const browser = await puppeteer.launch({
         executablePath: findChrome(),
         headless: 'new',
+        env: { ...process.env, TZ: TIME_ZONE },
         // --disable-dev-shm-usage: containers default /dev/shm to 64 MB SHARED
         // across every concurrent Chrome, and renderers crash in ways that read
         // as random flakes. Costs nothing outside a container.
@@ -58,10 +77,19 @@ async function launch() {
     const newPage = browser.newPage.bind(browser);
     browser.newPage = async (...args) => {
         const page = await newPage(...args);
+        await pinTimeZone(page);
         await installCdnShim(page);
         await page.evaluateOnNewDocument(PILL_JS);
         return page;
     };
+    // Tabs the app opens itself (window.open, target=_blank) never pass through
+    // newPage, so pin them as they appear. Best effort: unlike newPage this
+    // cannot finish before the new tab's first script, so a case that
+    // depends on a popup's time zone should open it with newPage instead.
+    browser.on('targetcreated', async (target) => {
+        if (target.type() !== 'page') return;
+        try { await pinTimeZone(await target.page()); } catch (_) {}
+    });
     return browser;
 }
 
@@ -234,6 +262,23 @@ async function waitFor(page, label, fn, ...args) {
     }
 }
 
+// A real tap: waits for the element, scrolls it to the middle of the screen
+// and clicks its center through the browser's input pipeline, so hit-testing
+// applies and an overlay covering it eats the tap, as it would for a thumb.
+// Prefer it to `el.click()` inside page.evaluate, which skips hit-testing
+// (tests/check-no-sync-waits.sh flags new ones). To wait for a condition, use
+// waitFor above, which polls rather than sleeping.
+async function tap(page, selector) {
+    let el;
+    try {
+        el = await page.waitForSelector(selector, { timeout: 20000 });
+    } catch (err) {
+        throw new Error(`timed out after 20s waiting for ${selector} to exist`);
+    }
+    await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+    await el.click();
+}
+
 // The two conditions almost every case waits on.
 const waitForStorageKey = (page, ns, key) =>
     waitFor(page, `${key} to appear in localStorage`,
@@ -243,6 +288,6 @@ const waitForCards = (page) =>
     waitFor(page, 'exercise cards to render',
         () => document.querySelectorAll('.exercise-card').length > 0);
 
-module.exports = { launch, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
+module.exports = { launch, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
                    openSettings, closeSettings,
-                   waitFor, waitForStorageKey, waitForCards };
+                   waitFor, tap, waitForStorageKey, waitForCards };
