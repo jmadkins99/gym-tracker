@@ -9,10 +9,11 @@ const fs = require('fs');
 const { launchChrome } = require('./browser');
 
 const file = process.argv[2];
+const profile = process.argv[3];   // optional userDataDir, so run.sh can delete it after the kill
 if (!file) { console.error('usage: node slot-chrome.js <endpoint file>'); process.exit(2); }
 
 (async () => {
-    const browser = await launchChrome();
+    const browser = await launchChrome(profile);
     browser.on('disconnected', () => process.exit(1));
     for (const sig of ['SIGINT', 'SIGTERM']) {
         process.on(sig, () => browser.close().finally(() => process.exit(0)));

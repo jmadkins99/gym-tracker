@@ -67,7 +67,11 @@ to run without a list.
 **Runner self-test.** `bash check-runner.sh` runs `run.sh` as a whole process
 against the made-up cases in `selftest-cases/`, using `TEST_CASES_DIR` (the
 cases folder) and `TEST_OUT_DIR` (the last-run folder), which exist only for
-it. CI's `guardrails` job runs it.
+it. Because the runner deletes the output folder at the start of a run, an
+explicit `TEST_OUT_DIR` is refused unless it is missing, empty, or holds the
+`.runner-last-run` marker an earlier run wrote. CI's `guardrails` job runs it.
+An interrupted run (Ctrl+C, kill) still publishes a log for every case that
+had started and a `summary.txt` marked `INTERRUPTED`.
 
 **Waiting.** Cases wait for conditions, not clocks — `waitForApp`,
 `waitForStorageKey` and `waitFor` in `lib/browser.js`. A fixed
@@ -93,30 +97,40 @@ you can read the assertion error and stack trace inline.
 Only one run at a time on the machine, across gym-tracker and kanban, so
 concurrent sessions stop slowing each other down. Full runs and pattern runs
 both take it; a run refused up front (bad `TEST_CASES`, bad `TEST_SHARD`, no
-cases matched) never waits for it. kanban's `run.sh` copies this convention
-exactly, so change both together:
+cases matched, an unsafe `TEST_OUT_DIR`) never waits for it. kanban's `run.sh`
+copies this convention exactly, so change both together:
 
-- **File:** `${TMPDIR:-/tmp}/machine-test-run.lock` (in Git Bash `/tmp` is the
-  Windows temp folder, so both repos see one file). `TEST_LOCK_FILE` overrides
-  the path; only `check-runner.sh` uses that.
-- **Contents:** three `key=value` lines: `repo=<repo folder name>`,
-  `pid=<the runner's own $$>`, `started=<epoch seconds>`.
-- **Taking it:** create the file with noclobber (`set -C`), which fails if it
-  exists, so two runs can never both win.
+- **Where:** a directory `machine-test-run.lock` in the user's temp folder,
+  found the same way in every session whatever `TMPDIR` a session sets: in Git
+  Bash on Windows `$LOCALAPPDATA/Temp` (through `cygpath`), otherwise `/tmp`.
+  `TEST_LOCK_FILE` overrides the path; only `check-runner.sh` uses that.
+- **Contents:** one file, `<lock>/info`, three `key=value` lines:
+  `repo=<repo folder name>`, `pid=<the runner's own $$>`,
+  `started=<epoch seconds>`.
+- **Taking it:** `mkdir <lock>`, which fails if it exists, so two runs can
+  never both win; then write `<lock>/info`.
 - **Held:** the run prints once which repo and pid hold it and since when,
   then polls every `TEST_LOCK_POLL` seconds (default 2).
-- **Stale:** if the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
-  missing), or the file has no readable pid, the run moves the file aside and
-  takes over.
-- **Release:** the `EXIT` trap removes the file if it still names this pid, on
-  a normal end, a failure, Ctrl+C or kill. It also stops cases still in flight.
+- **Stale:** the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
+  missing), or `info` stays unreadable for 5 seconds. Taking over runs under a
+  second mutex, `mkdir <lock>.guard`: with the guard held, re-read `info`, and
+  only if it still names the same dead pid, `rm -rf <lock>`; then drop the
+  guard and go round the normal `mkdir` again. While the guard is held nobody
+  else can remove or replace the lock, so a lock another run has just taken is
+  never removed. A guard older than a minute was left by a killed run and is
+  removed.
+- **Release:** the `EXIT` trap removes the directory if `info` still names this
+  pid, on a normal end, a failure, Ctrl+C or kill. It also stops cases still in
+  flight, and an interrupted run first publishes the logs it has and a summary
+  marked `INTERRUPTED` into the last-run folder.
 
 The pid is bash's own `$$`, which in Git Bash is the MSYS pid, not the Windows
 one. Every runner is a Git Bash process, so they all see the same pids and
 `kill -0` works across them. A crash can leave a pid that an unrelated process
-later reuses; delete the file by hand if a run waits on a holder that is not a
-test run. `check-runner.sh` covers waiting, reporting the holder, stale
-takeover and release on SIGTERM.
+later reuses; delete the directory by hand if a run waits on a holder that is
+not a test run. `check-runner.sh` covers the default path, waiting, reporting
+the holder, stale takeover (including several runs racing for one stale lock)
+and release on SIGTERM.
 
 ### Requirements
 

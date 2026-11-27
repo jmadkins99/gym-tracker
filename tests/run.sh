@@ -34,8 +34,10 @@ export TZ=America/Phoenix
 # Where the cases live, and where this run's output goes. Both exist for the
 # runner self-test (check-runner.sh), which points the runner at a folder of
 # made-up cases and a temp output folder. Nobody else needs to set them.
+# (The runner deletes the output folder, so see the TEST_OUT_DIR guard below.)
 CASES_DIR="${TEST_CASES_DIR:-cases}"
 OUT_DIR="${TEST_OUT_DIR:-.last-run}"
+OUT_MARKER=.runner-last-run
 
 # Optional filter: `bash run.sh 42` runs just case 42, `bash run.sh personal-app`
 # runs every personal-app case. Matched as a substring of the case name.
@@ -79,6 +81,18 @@ if [ -n "$ONLY_SET" ]; then
     done
     if [ "${#UNKNOWN[@]}" -gt 0 ]; then
         echo "TEST_CASES names case(s) that do not exist in $CASES_DIR/: ${UNKNOWN[*]}"
+        echo "Nothing was run."
+        exit 1
+    fi
+fi
+
+# TEST_OUT_DIR guard (self-test only): the runner deletes the output folder at
+# the start of a run, so an explicit TEST_OUT_DIR is only accepted if it is
+# missing, empty, or carries the marker file an earlier run wrote there. The
+# default folder (.last-run) is the runner's own and is always replaced.
+if [ -n "${TEST_OUT_DIR:-}" ] && [ -e "$OUT_DIR" ]; then
+    if [ ! -d "$OUT_DIR" ] || { [ -n "$(ls -A "$OUT_DIR")" ] && [ ! -e "$OUT_DIR/$OUT_MARKER" ]; }; then
+        echo "TEST_OUT_DIR ($OUT_DIR) exists, is not empty and is not a last-run folder (no $OUT_MARKER marker). Refusing to delete it."
         echo "Nothing was run."
         exit 1
     fi
@@ -165,30 +179,46 @@ echo
 # concurrent agent sessions stop slowing each other down (about 12 Chromes once
 # fought for the machine and every run got slower). Full runs and pattern runs
 # both take it. A run that is refused before it starts (bad TEST_CASES, bad
-# TEST_SHARD, no cases matched) never takes it or waits for it.
+# TEST_SHARD, no cases matched, an unsafe TEST_OUT_DIR) never takes it or waits
+# for it.
 #
 # THE CONVENTION (kanban's run.sh copies it; keep the two identical, and see
 # the "Machine-wide test lock" section of tests/README.md):
-#   File:     ${TMPDIR:-/tmp}/machine-test-run.lock   (in Git Bash, /tmp is the
-#             user's Windows temp folder, so every repo sees the same file).
-#             TEST_LOCK_FILE overrides the path; only check-runner.sh does.
-#   Contents: three lines, key=value:
+#   Where:    a DIRECTORY named machine-test-run.lock in the user's temp
+#             folder, found the same way in every session, whatever TMPDIR the
+#             session sets: on Git Bash/Windows $LOCALAPPDATA/Temp (through
+#             cygpath), otherwise /tmp. TEST_LOCK_FILE overrides the path; only
+#             check-runner.sh does.
+#   Contents: one file, <lock>/info, three lines, key=value:
 #               repo=<name of the repo's folder, e.g. gym-tracker>
 #               pid=<the runner's own $$ as Git Bash / Linux sees it>
 #               started=<epoch seconds>
-#   Take it:  create the file with noclobber (`set -C`), which fails if it
-#             exists; that is the atomic step, so two runs can never both win.
+#   Take it:  `mkdir <lock>`, which fails if it exists; that is the atomic
+#             step, so two runs can never both win. Then write <lock>/info.
 #   Held:     print once who holds it (repo, pid, since when), then poll every
 #             TEST_LOCK_POLL seconds (default 2) until it is free.
 #   Stale:    the holder's pid is gone (`kill -0` fails and /proc/<pid> is
-#             missing) -> move the file aside and take over. The move is the
-#             atomic step: only one waiter's move succeeds.
-#   Release:  the EXIT trap removes the file if it still names this pid. EXIT
-#             runs on a normal end, on a failure and on Ctrl+C / kill (the INT
-#             and TERM traps turn into `exit`).
+#             missing), or <lock>/info stays unreadable for 5 s. Taking over is
+#             done under a second mutex, `mkdir <lock>.guard`: with the guard
+#             held, re-read the info, and only if it still names the same dead
+#             pid `rm -rf <lock>`, then drop the guard and go round the normal
+#             `mkdir` again. Nobody else can remove or replace the lock while
+#             the guard is held, so a lock that was just taken fresh is never
+#             removed. A guard older than a minute was left by a killed run and
+#             is removed.
+#   Release:  the EXIT trap removes the directory if its info still names this
+#             pid. EXIT runs on a normal end, on a failure and on Ctrl+C / kill
+#             (the INT and TERM traps turn into `exit`).
 # A pid can be reused by an unrelated process after a crash; the run then waits
-# for it until it ends. Delete the file by hand if that ever happens.
-LOCK_FILE="${TEST_LOCK_FILE:-${TMPDIR:-/tmp}/machine-test-run.lock}"
+# for it until it ends. Delete the directory by hand if that ever happens.
+if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath > /dev/null 2>&1; then
+    LOCK_TMP="$(cygpath -u "$LOCALAPPDATA")/Temp"
+else
+    LOCK_TMP=/tmp
+fi
+LOCK_DIR="${TEST_LOCK_FILE:-$LOCK_TMP/machine-test-run.lock}"
+LOCK_INFO="$LOCK_DIR/info"
+LOCK_GUARD="$LOCK_DIR.guard"
 LOCK_POLL="${TEST_LOCK_POLL:-2}"
 LOCK_HELD=0
 LOCK_REPO=$(basename "$(cd .. && pwd)")
@@ -197,66 +227,107 @@ lock_field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1; }   # lock_field
 pid_alive() { [[ "$1" =~ ^[0-9]+$ ]] && { kill -0 "$1" 2>/dev/null || [ -e "/proc/$1" ]; }; }
 
 release_lock() {
-    if [ "$LOCK_HELD" = 1 ] && [ "$(lock_field "$LOCK_FILE" pid)" = "$$" ]; then
-        rm -f "$LOCK_FILE"
+    if [ "$LOCK_HELD" = 1 ] && [ "$(lock_field "$LOCK_INFO" pid)" = "$$" ]; then
+        rm -rf "$LOCK_DIR"
     fi
     LOCK_HELD=0
 }
 
+# takeover_stale <pid seen>: removes the lock directory if, with the guard
+# held, it still names that same pid and the pid is still gone.
+takeover_stale() {
+    if [ -d "$LOCK_GUARD" ] && [ -n "$(find "$LOCK_GUARD" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
+        rmdir "$LOCK_GUARD" 2>/dev/null
+    fi
+    mkdir "$LOCK_GUARD" 2>/dev/null || return 1
+    if [ "$(lock_field "$LOCK_INFO" pid)" = "$1" ] && ! pid_alive "$1"; then
+        echo "Taking over a stale test lock (pid ${1:-?} is gone)."
+        rm -rf "$LOCK_DIR"
+    fi
+    rmdir "$LOCK_GUARD" 2>/dev/null
+    return 0
+}
+
 acquire_lock() {
-    local announced=0 pid repo started tries=0 aside
+    local announced=0 pid repo started tries=0
     while :; do
-        if ( set -C; printf 'repo=%s\npid=%s\nstarted=%s\n' "$LOCK_REPO" "$$" "$(date +%s)" > "$LOCK_FILE" ) 2>/dev/null; then
+        if mkdir "$LOCK_DIR" 2>/dev/null; then
+            printf 'repo=%s\npid=%s\nstarted=%s\n' "$LOCK_REPO" "$$" "$(date +%s)" > "$LOCK_INFO"
             LOCK_HELD=1
             return
         fi
-        if [ ! -e "$LOCK_FILE" ]; then continue; fi          # released just now: try again
-        pid=$(lock_field "$LOCK_FILE" pid)
-        if [ -z "$pid" ] && [ "$tries" -lt 5 ]; then         # holder is mid-write
+        if [ ! -d "$LOCK_DIR" ]; then continue; fi           # released just now: try again
+        pid=$(lock_field "$LOCK_INFO" pid)
+        if [ -z "$pid" ] && [ "$tries" -lt 25 ]; then        # holder is mid-write
             tries=$((tries + 1)); sleep 0.2; continue
         fi
         if ! pid_alive "$pid"; then
-            # Stale (or unreadable): move it aside, then check we moved the
-            # lock we meant to, not a fresh one another waiter just took.
-            aside="$LOCK_FILE.stale.$$"
-            if mv "$LOCK_FILE" "$aside" 2>/dev/null; then
-                if [ "$(lock_field "$aside" pid)" = "$pid" ]; then
-                    echo "Taking over a stale test lock (pid ${pid:-?} is gone)."
-                    rm -f "$aside"
-                else
-                    mv -n "$aside" "$LOCK_FILE" 2>/dev/null; rm -f "$aside"
-                fi
-            fi
+            takeover_stale "$pid" || sleep 0.2
             tries=0
             continue
         fi
+        tries=0
         if [ "$announced" = 0 ]; then
-            repo=$(lock_field "$LOCK_FILE" repo)
-            started=$(lock_field "$LOCK_FILE" started)
+            repo=$(lock_field "$LOCK_INFO" repo)
+            started=$(lock_field "$LOCK_INFO" started)
             echo "Another test run holds the machine-wide test lock: ${repo:-?} (pid $pid), started $(date -d "@$started" +%H:%M:%S 2>/dev/null || echo '?'), $(( $(date +%s) - ${started:-0} ))s ago."
-            echo "Waiting for it to finish (lock file: $LOCK_FILE)..."
+            echo "Waiting for it to finish (lock: $LOCK_DIR)..."
             announced=1
         fi
         sleep "$LOCK_POLL"
     done
 }
 
+# ── Interrupted runs ─────────────────────────────────────────────────────────
+# Ctrl+C or kill stops the cases still in flight, then publishes what was
+# collected so far (a log per case that started, a summary marked INTERRUPTED)
+# into OUT_DIR before the scratch folder is deleted, then releases the lock.
+INTERRUPTED=0
+FINISHED=0
+OUT_READY=0
+
+publish_interrupted() {
+    local i s name result finished_n=0
+    for i in "${!NAMES[@]}"; do
+        s=$(printf '%04d' "$i")
+        [ -f "$STATE/$s.log" ] || continue
+        name="${NAMES[$i]}"
+        if [ -f "$STATE/$s.code" ]; then
+            finished_n=$((finished_n + 1))
+            if [ "$(cat "$STATE/$s.code")" = 0 ]; then result="PASS"; else result="FAIL (first attempt)"; fi
+        else
+            result="INTERRUPTED (the run was stopped while this case was running)"
+        fi
+        { echo "RESULT: $result"; cat "$STATE/$s.log"; } > "$OUT_DIR/$name.log" 2>/dev/null
+    done
+    {
+        echo "================================================"
+        echo "  INTERRUPTED: the run was stopped before it finished."
+        echo "  $finished_n / $TOTAL case(s) had finished their first attempt."
+        echo "Per-case output (cases that had started): $OUT_DIR/<case>.log"
+        echo "================================================"
+    } > "$OUT_DIR/summary.txt" 2>/dev/null
+}
+
 STATE=$(mktemp -d)
-trap 'exit 130' INT
-trap 'exit 143' TERM
+trap 'INTERRUPTED=1; exit 130' INT
+trap 'INTERRUPTED=1; exit 143' TERM
 # On Ctrl+C / kill, cases still in flight (and their Chromes) are stopped too,
 # so the next run does not start on a machine still busy with this one.
 cleanup() {
     local j
     for j in $(jobs -rp); do kill_tree "$j"; done
     slot_stop
+    if [ "$INTERRUPTED" = 1 ] && [ "$FINISHED" = 0 ] && [ "$OUT_READY" = 1 ]; then publish_interrupted; fi
     release_lock
-    rm -rf "$STATE"
+    rm -rf "$STATE" 2>/dev/null
 }
 trap cleanup EXIT
 acquire_lock
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
+: > "$OUT_DIR/$OUT_MARKER"
+OUT_READY=1
 
 # A case gets TEST_CASE_TIMEOUT seconds (default 120, about ten times the
 # slowest case) and is then killed. Without a limit, one hung case -- a Chrome
@@ -293,9 +364,17 @@ now_ms() { local t="${EPOCHREALTIME/./}"; echo $(( t / 1000 )); }
 SLOT_PID=""
 SLOT_WS=""
 
+SLOT_PROFILE=""
+
+# The Chrome is force-killed (a graceful exit is the 2.6 to 19.5 s this design
+# removes), which skips Puppeteer's own cleanup of its temp profile. So each
+# slot Chrome gets a profile folder of a known name under $STATE, removed here
+# best effort: Windows may hold a file for a moment, and a leftover is picked up
+# by the final `rm -rf $STATE` and never fails the run.
 slot_stop() {
     if [ -n "$SLOT_PID" ] && kill -0 "$SLOT_PID" 2>/dev/null; then kill_tree "$SLOT_PID"; fi
-    SLOT_PID=""; SLOT_WS=""
+    if [ -n "$SLOT_PROFILE" ]; then rm -rf "$SLOT_PROFILE" 2>/dev/null || true; fi
+    SLOT_PID=""; SLOT_WS=""; SLOT_PROFILE=""
 }
 
 # slot_ensure <name> <case log>: leaves SLOT_WS naming a live Chrome, starting
@@ -307,7 +386,8 @@ slot_ensure() {
     if [ -n "$SLOT_PID" ] && kill -0 "$SLOT_PID" 2>/dev/null; then return 0; fi
     slot_stop
     rm -f "$f"
-    node lib/slot-chrome.js "$f" > "$STATE/chrome-$1.log" 2>&1 &
+    SLOT_PROFILE="$STATE/profile-$1-$RANDOM$RANDOM"
+    node lib/slot-chrome.js "$f" "$SLOT_PROFILE" > "$STATE/chrome-$1.log" 2>&1 &
     SLOT_PID=$!
     for n in $(seq 1 300); do                       # up to 60 s
         if [ -s "$f" ]; then SLOT_WS=$(cat "$f"); return 0; fi
@@ -323,16 +403,16 @@ slot_ensure() {
 # $STATE/<index><suffix>.log on that slot's Chrome and writes 0 (pass) or 1
 # (fail or timeout) to the matching .code file and its duration in ms to .ms.
 run_case() {
-    local slot pid start code t0
-    slot=$(printf '%04d' "$1")
+    local key pid start code t0
+    key=$(printf '%04d' "$1")
     t0=$(now_ms)
-    : > "$STATE/$slot$2.log"
-    if ! slot_ensure "$3" "$STATE/$slot$2.log"; then
-        echo 1 > "$STATE/$slot$2.code"
-        echo $(( $(now_ms) - t0 )) > "$STATE/$slot$2.ms"
+    : > "$STATE/$key$2.log"
+    if ! slot_ensure "$3" "$STATE/$key$2.log"; then
+        echo 1 > "$STATE/$key$2.code"
+        echo $(( $(now_ms) - t0 )) > "$STATE/$key$2.ms"
         return
     fi
-    TEST_CHROME_WS="$SLOT_WS" node "${FILES[$1]}" >> "$STATE/$slot$2.log" 2>&1 &
+    TEST_CHROME_WS="$SLOT_WS" node "${FILES[$1]}" >> "$STATE/$key$2.log" 2>&1 &
     pid=$!
     start=$SECONDS
     while kill -0 "$pid" 2>/dev/null; do
@@ -342,16 +422,16 @@ run_case() {
             # A hung case may have left a page (or a wedged Chrome) behind, so
             # the slot gets a fresh Chrome for its next case.
             slot_stop
-            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its slot's Chrome. Its output up to then is above." >> "$STATE/$slot$2.log"
-            echo 1 > "$STATE/$slot$2.code"
-            echo $(( $(now_ms) - t0 )) > "$STATE/$slot$2.ms"
+            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its slot's Chrome. Its output up to then is above." >> "$STATE/$key$2.log"
+            echo 1 > "$STATE/$key$2.code"
+            echo $(( $(now_ms) - t0 )) > "$STATE/$key$2.ms"
             return
         fi
         sleep 0.5
     done
     wait "$pid"; code=$?
-    [ "$code" = 0 ] && echo 0 > "$STATE/$slot$2.code" || echo 1 > "$STATE/$slot$2.code"
-    echo $(( $(now_ms) - t0 )) > "$STATE/$slot$2.ms"
+    [ "$code" = 0 ] && echo 0 > "$STATE/$key$2.code" || echo 1 > "$STATE/$key$2.code"
+    echo $(( $(now_ms) - t0 )) > "$STATE/$key$2.ms"
 }
 
 # One worker per slot. Workers take the next unclaimed case in filename order;
@@ -385,7 +465,13 @@ done
 if [ "${#RETRY[@]}" -gt 0 ]; then
     echo "Retrying ${#RETRY[@]} failed case(s) one at a time..."
     echo
-    for i in "${RETRY[@]}"; do run_case "$i" .retry retry; done
+    # "Retried once on a fresh Chrome": each retry gets a Chrome started for it,
+    # never one left over from the previous retry (which may be the one that
+    # just crashed, or one a hung case wedged).
+    for i in "${RETRY[@]}"; do
+        slot_stop
+        run_case "$i" .retry retry
+    done
     slot_stop
 fi
 
@@ -395,55 +481,48 @@ fi
 # retried, the retry's output. Cases that failed then passed are FLAKY.
 secs() { awk -v ms="$1" 'BEGIN { printf "%.1fs", ms / 1000 }'; }
 
+# attempt_logs <key> <indent>: the first attempt's output, then the retry's.
+# <indent> is prefixed to every line of the output (empty for the file in
+# OUT_DIR, four spaces for the console).
+attempt_logs() {
+    echo "─── first attempt's output ──────────────────"
+    sed "s/^/$2/" "$STATE/$1.log" 2>/dev/null
+    echo "─── retry's output ──────────────────────────"
+    sed "s/^/$2/" "$STATE/$1.retry.log" 2>/dev/null
+}
+
 FAIL=0
 PASSED=0
-P_LIST=(); F_LIST=(); FLAKY_LIST=()
+PASSED_LIST=(); FAILED_LIST=(); FLAKY_LIST=()
 for i in "${!NAMES[@]}"; do
-    slot=$(printf '%04d' "$i")
+    key=$(printf '%04d' "$i")
     name="${NAMES[$i]}"
-    code=$(cat "$STATE/$slot.code" 2>/dev/null || echo 1)
-    t1=$(secs "$(cat "$STATE/$slot.ms" 2>/dev/null || echo 0)")
+    code=$(cat "$STATE/$key.code" 2>/dev/null || echo 1)
+    t1=$(secs "$(cat "$STATE/$key.ms" 2>/dev/null || echo 0)")
+    t2=$(secs "$(cat "$STATE/$key.retry.ms" 2>/dev/null || echo 0)")
     out="$OUT_DIR/$name.log"
     printf "▶ %s ... " "$name"
     if [ "$code" = "0" ]; then
         echo "PASS ($t1)"
         PASSED=$((PASSED + 1))
-        P_LIST+=("$name  $t1")
-        { echo "RESULT: PASS ($t1)"; cat "$STATE/$slot.log"; } > "$out"
-    elif [ "$(cat "$STATE/$slot.retry.code" 2>/dev/null)" = "0" ]; then
-        t2=$(secs "$(cat "$STATE/$slot.retry.ms" 2>/dev/null || echo 0)")
-        echo "FLAKY: failed ($t1), passed on retry ($t2)"
-        PASSED=$((PASSED + 1))
-        FLAKY_LIST+=("$name  first attempt failed ($t1), retry passed ($t2)")
-        {
-            echo "RESULT: FLAKY (first attempt failed in $t1, retry passed in $t2)"
-            echo "─── first attempt's output ──────────────────"
-            cat "$STATE/$slot.log"
-            echo "─── retry's output ──────────────────────────"
-            cat "$STATE/$slot.retry.log"
-        } > "$out"
-        echo "─── first attempt's output ──────────────────"
-        sed 's/^/    /' "$STATE/$slot.log" 2>/dev/null
-        echo "─────────────────────────────────────────────"
-        # A GitHub Actions annotation puts the flake on the run's summary page.
-        if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning title=FLAKY test::$name failed once and passed on retry"; fi
+        PASSED_LIST+=("$name  $t1")
+        { echo "RESULT: PASS ($t1)"; cat "$STATE/$key.log"; } > "$out"
     else
-        t2=$(secs "$(cat "$STATE/$slot.retry.ms" 2>/dev/null || echo 0)")
-        echo "FAIL ($t1, retry $t2)"
-        F_LIST+=("$name  failed twice ($t1, retry $t2)")
-        {
-            echo "RESULT: FAIL (first attempt $t1, retry $t2)"
-            echo "─── first attempt's output ──────────────────"
-            cat "$STATE/$slot.log"
-            echo "─── retry's output ──────────────────────────"
-            cat "$STATE/$slot.retry.log"
-        } > "$out"
-        echo "─── first attempt's output ──────────────────"
-        sed 's/^/    /' "$STATE/$slot.log" 2>/dev/null
-        echo "─── retry's output ──────────────────────────"
-        sed 's/^/    /' "$STATE/$slot.retry.log" 2>/dev/null
+        if [ "$(cat "$STATE/$key.retry.code" 2>/dev/null)" = "0" ]; then
+            echo "FLAKY: failed ($t1), passed on retry ($t2)"
+            PASSED=$((PASSED + 1))
+            FLAKY_LIST+=("$name  first attempt failed ($t1), retry passed ($t2)")
+            { echo "RESULT: FLAKY (first attempt failed in $t1, retry passed in $t2)"; attempt_logs "$key" ""; } > "$out"
+            # A GitHub Actions annotation puts the flake on the run's summary page.
+            if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning title=FLAKY test::$name failed once and passed on retry"; fi
+        else
+            echo "FAIL ($t1, retry $t2)"
+            FAILED_LIST+=("$name  failed twice ($t1, retry $t2)")
+            { echo "RESULT: FAIL (first attempt $t1, retry $t2)"; attempt_logs "$key" ""; } > "$out"
+            FAIL=1
+        fi
+        attempt_logs "$key" "    "
         echo "─────────────────────────────────────────────"
-        FAIL=1
     fi
 done
 
@@ -460,20 +539,21 @@ write_summary() {
     else
         echo "  $PASSED / $TOTAL passed"
     fi
-    if [ "${#F_LIST[@]}" -gt 0 ]; then
-        echo "FAILED (${#F_LIST[@]}):"; printf '  %s\n' "${F_LIST[@]}"
+    if [ "${#FAILED_LIST[@]}" -gt 0 ]; then
+        echo "FAILED (${#FAILED_LIST[@]}):"; printf '  %s\n' "${FAILED_LIST[@]}"
     fi
     if [ "${#FLAKY_LIST[@]}" -gt 0 ]; then
         echo "FLAKY (${#FLAKY_LIST[@]}), passed only on retry, look into these:"; printf '  %s\n' "${FLAKY_LIST[@]}"
     fi
-    if [ "${#P_LIST[@]}" -gt 0 ]; then
-        echo "PASSED (${#P_LIST[@]}):"; printf '  %s\n' "${P_LIST[@]}"
+    if [ "${#PASSED_LIST[@]}" -gt 0 ]; then
+        echo "PASSED (${#PASSED_LIST[@]}):"; printf '  %s\n' "${PASSED_LIST[@]}"
     fi
     if [ "$CACHE_FAIL" = "1" ]; then echo "guardrail check FAILED (see the top of this output)"; fi
     echo "Per-case output: $OUT_DIR/<case>.log (read it with cat)"
     echo "================================================"
 }
 write_summary > "$OUT_DIR/summary.txt"
+FINISHED=1
 
 echo
 cat "$OUT_DIR/summary.txt"

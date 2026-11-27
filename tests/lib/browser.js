@@ -58,9 +58,11 @@ function findChrome() {
 // One Chrome, started the way every test Chrome is started. Used by launch()
 // for a case run by hand, and by lib/slot-chrome.js for the runner's slot
 // Chromes.
-function launchChrome() {
-    // Deliberately NO userDataDir. Puppeteer then creates a fresh temp profile
-    // per launch, so two Chromes never share the `gym-local:` localStorage
+function launchChrome(userDataDir) {
+    // Deliberately no FIXED userDataDir. Without one, Puppeteer creates a fresh
+    // temp profile per launch (the only caller that passes one is run.sh, via
+    // slot-chrome.js, with a folder unique to that one Chrome so that it can
+    // delete it after force-killing the Chrome), so two Chromes never share the `gym-local:` localStorage
     // namespace. (Cases sharing ONE slot Chrome are isolated by a fresh browser
     // context each, which has storage of its own; see launch() below.) Setting
     // a fixed userDataDir here (a tempting way to shave launch time) would make
@@ -68,6 +70,7 @@ function launchChrome() {
     // Cases also land on different ports, so they are different origins too;
     // that is a second layer, not the one to rely on.
     return puppeteer.launch({
+        ...(userDataDir ? { userDataDir } : {}),
         executablePath: findChrome(),
         headless: 'new',
         env: { ...process.env, TZ: TIME_ZONE },
