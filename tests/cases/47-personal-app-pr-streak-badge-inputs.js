@@ -23,7 +23,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, tap, waitFor } = require('../lib/browser');
 const { ACTIVE, goToCardById, revealCard, logCardById, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -52,16 +52,22 @@ async function enterSet(page, exerciseId, weight, reps) {
         selectSetter.call(select, r);
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }, ACTIVE, weight, reps);
-    await new Promise(r => setTimeout(r, 100));
+    // Both fields are controlled, so they read back the typed values only once
+    // React has taken them into state.
+    await waitFor(page, `the card to hold ${weight} x ${reps}`, (sel, w, r) => {
+        const card = document.querySelector(sel);
+        return card.querySelector('input[type="number"]').value === w &&
+            card.querySelector('select[data-field="reps"]').value === r;
+    }, ACTIVE, weight, reps);
 }
 
-async function logCard(page, exerciseId) {
-    await page.evaluate((id) => {
-        const card = document.querySelector(`[data-exercise-id="${id}"]`);
-        const btn = Array.from(card.querySelectorAll('button')).find(b => /LOG/i.test(b.textContent));
-        if (btn) btn.click();
-    }, exerciseId);
-    await new Promise(r => setTimeout(r, 150));
+// Tap LOG and wait for the set to land in today's (not yet backdated) entry.
+async function logCard(page, exerciseId, weight, reps) {
+    await tap(page, `[data-exercise-id="${exerciseId}"] button`, { text: /LOG/i });
+    await waitFor(page, `the ${weight} x ${reps} set to be saved`, (ns, id, w, r) =>
+        JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory') || '[]').some(e => !e.backdated &&
+            (e.exercises || []).some(x => x.id === id && x.weight === w && x.reps === r)),
+    NS, exerciseId, weight, reps);
 }
 
 // completeDay only ever submits *today's* workout, and logExercise rewrites
@@ -137,7 +143,7 @@ const ROUNDS = [
             const label = `round ${i + 1} (${round.weight}x${round.reps})`;
 
             await enterSet(page, EXERCISE, round.weight, round.reps);
-            await logCard(page, EXERCISE);
+            await logCard(page, EXERCISE, round.weight, round.reps);
             await submitDay(page);
             await backdateAndReload(page, round.daysAgo);
 

@@ -54,6 +54,33 @@ const { eq } = require('../lib/assert');
         });
         await tap(page, '#b');
         eq(await page.evaluate(() => window.hits), 1, 'tap() is blocked by an overlay, as a thumb would be');
+
+        // tap(page, selector, { text, nth }): most cases find a button by its
+        // label, so tap() can too. A string matches the trimmed text exactly,
+        // a RegExp tests it, and nth picks among the matches (default 0).
+        await page.setContent(['Edit Plan', 'Edit', 'Save', 'Edit'].map((t, i) =>
+            `<button onclick="window.hit=${i}"> ${t} </button>`).join(''));
+        await tap(page, 'button', { text: 'Edit' });
+        eq(await page.evaluate(() => window.hit), 1, 'a string matches the whole trimmed label, not a prefix');
+        await tap(page, 'button', { text: 'Edit', nth: 1 });
+        eq(await page.evaluate(() => window.hit), 3, 'nth counts among the matches only');
+        await tap(page, 'button', { text: /^Sa/ });
+        eq(await page.evaluate(() => window.hit), 2, 'a RegExp tests the label');
+        await tap(page, 'button', { nth: 0 });
+        eq(await page.evaluate(() => window.hit), 0, 'nth works without text');
+        // A button that appears later is waited for, not missed.
+        await page.evaluate(() => setTimeout(() => { // allow-sync-wait: the late button under test
+            document.body.insertAdjacentHTML('beforeend', '<button onclick="window.hit=9">Late</button>');
+        }, 300));
+        await tap(page, 'button', { text: 'Late' });
+        eq(await page.evaluate(() => window.hit), 9, 'tap() waits for a matching button to appear');
+        // A button only a case can pick out (the arrow in one named row) is
+        // found with evaluateHandle and handed over as an ElementHandle.
+        await tap(page, await page.evaluateHandle(() => document.querySelectorAll('button')[2]));
+        eq(await page.evaluate(() => window.hit), 2, 'tap() takes an ElementHandle');
+        let msg = '';
+        try { await tap(page, 'button', { text: 'Nope', timeout: 200 }); } catch (err) { msg = err.message; }
+        eq(/button with text "Nope"/.test(msg), true, 'a miss names the selector and the text: ' + msg);
         console.log('PASS: harness pins the time zone and clock, and tap() is a real click.');
     } finally {
         await browser.close();

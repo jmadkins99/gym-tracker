@@ -20,7 +20,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -40,13 +40,10 @@ const POSTERIOR = [
 const EXPECTED = [...ANTERIOR, ...POSTERIOR];
 
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises'));
-        btn.click();
-    });
-    await new Promise(r => setTimeout(r, 300));
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the Manage Exercises rows to render',
+        () => document.querySelectorAll('.modal .exercise-row').length > 0);
 }
 
 // Read the name off its own element rather than stripping control glyphs off
@@ -96,14 +93,15 @@ const readRows = (page) => page.evaluate(() =>
 
         // And an arrow actually moves a row: Kelso Shrugs down one swaps it
         // with whatever follows it. Derived, so a reorder does not rot it.
-        await page.evaluate(() => {
+        const k = EXPECTED.indexOf('Kelso Shrugs');
+        await tap(page, await page.evaluateHandle(() => {
             const row = Array.from(document.querySelectorAll('.modal .exercise-row'))
                 .find(r => r.querySelector('.exercise-row-name')?.textContent.trim() === 'Kelso Shrugs');
-            Array.from(row.querySelectorAll('button')).find(b => b.textContent.trim() === '↓').click();
-        });
-        await new Promise(r => setTimeout(r, 200));
+            return Array.from(row.querySelectorAll('button')).find(b => b.textContent.trim() === '↓');
+        }));
+        await waitFor(page, 'Kelso Shrugs to move down a row', (want) =>
+            document.querySelectorAll('.modal .exercise-row-name')[want]?.textContent.trim() === 'Kelso Shrugs', k + 1);
         const moved = await readRows(page);
-        const k = EXPECTED.indexOf('Kelso Shrugs');
         eq(moved.slice(k, k + 2), [EXPECTED[k + 1], 'Kelso Shrugs'], 'the down arrow moved Kelso Shrugs one place');
 
         eq(errors, [], 'no console errors during load');

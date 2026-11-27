@@ -9,7 +9,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -48,11 +48,9 @@ const NS = 'gym-local:';
         eq(bike.intensity, 'NA', 'entry reset to NA so progression restarts fresh');
 
         // And it renders as NA (not a stale rounds value) in the Weekly view.
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.bottom-nav-btn')).find(b => b.textContent.indexOf('History') !== -1);
-            if (btn) btn.click();
-        });
-        await new Promise(r => setTimeout(r, 200));
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
+        await waitFor(page, 'the History tab to open', () => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
+            .some(b => b.textContent.indexOf('History') !== -1));
         const weeklyText = await page.evaluate(() => document.querySelector('.content')?.textContent || '');
         ok(!/\d+ rounds/.test(weeklyText), 'weekly no longer shows a rounds value');
 

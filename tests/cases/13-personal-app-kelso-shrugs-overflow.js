@@ -24,8 +24,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { ACTIVE, goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
 const { seedExerciseConfig, seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -70,7 +70,8 @@ async function readCard(page, name) {
 
         const clicked = await clickBreakdown(page, 'Kelso Shrugs');
         ok(clicked, 'Kelso Shrugs opens to show its breakdown');
-        await new Promise(r => setTimeout(r, 250));
+        await waitFor(page, 'the open card to show its breakdown rows',
+            (sel) => document.querySelectorAll(sel + ' .breakdown-row').length > 0, ACTIVE);
 
         const text = await readCard(page, 'Kelso Shrugs');
 

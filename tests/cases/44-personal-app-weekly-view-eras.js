@@ -38,7 +38,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -155,16 +155,13 @@ const MIXED_DAY_IDS = [
     ['kelso-shrugs', 'Kelso Shrugs'],
 ];
 
+// A real tap on the bottom-bar button, then a wait for it to turn active,
+// which happens in the same render as the destination view. Each button once
+// carried an icon glyph beside its label, so this matches on containment.
 async function clickNav(page, label) {
-    await page.evaluate((l) => {
-        // The nav moved to a bottom bar, and each button now carries an icon
-        // glyph beside its label, so this matches on containment rather than
-        // an exact trim.
-        const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find(b => b.textContent.indexOf(l) !== -1);
-        if (btn) btn.click();
-    }, label);
-    await new Promise(r => setTimeout(r, 300));
+    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
+    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
+        .some(b => b.textContent.indexOf(l) !== -1), label);
 }
 
 // Weekly renders one .history-item per workout, newest first. Returns the
@@ -295,21 +292,15 @@ async function weeklyItems(page) {
 
         // The Edit modal shares the rule, on both branches.
         const openEditRows = async (index) => {
-            await page.evaluate((i) => {
-                const item = document.querySelectorAll('.history-item')[i];
-                item.querySelector('.history-date button').click();
-            }, index);
-            await new Promise(r => setTimeout(r, 400));
+            await tap(page, await page.evaluateHandle((i) =>
+                document.querySelectorAll('.history-item')[i].querySelector('.history-date button'), index));
+            await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
             const rows = await page.evaluate(() =>
                 Array.from(document.querySelectorAll('.modal > div > div'))
                     .map(d => d.firstChild?.textContent?.trim())
                     .filter(Boolean));
-            await page.evaluate(() => {
-                const btn = Array.from(document.querySelectorAll('.modal button'))
-                    .find(b => /Cancel|Close|×/i.test(b.textContent));
-                if (btn) btn.click();
-            });
-            await new Promise(r => setTimeout(r, 300));
+            await tap(page, '.modal button', { text: /Cancel|Close|×/i });
+            await waitFor(page, 'the edit modal to close', () => !document.querySelector('.modal'));
             return rows;
         };
 

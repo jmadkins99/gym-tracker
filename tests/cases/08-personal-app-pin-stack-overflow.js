@@ -40,8 +40,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { ACTIVE, goToCard, revealCard, isRevealed, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -97,7 +97,8 @@ async function readCard(page, exerciseName) {
         // --- Capped stack: Calf Raises at 500 over a 405 cap ---
         const clickedCalf = await clickBreakdown(page, 'Calf Raises');
         ok(clickedCalf, 'Calf Raises card has a Weight Breakdown button');
-        await new Promise(r => setTimeout(r, 250));
+        await waitFor(page, 'the open card to show its breakdown rows',
+            (sel) => document.querySelectorAll(sel + ' .breakdown-row').length > 0, ACTIVE);
 
         const calfRaises = await readCard(page, 'Calf Raises');
 
@@ -148,7 +149,8 @@ async function readCard(page, exerciseName) {
 
         const clickedControl = await clickBreakdown(page, 'Frontal Pulldowns');
         ok(clickedControl, 'Frontal Pulldowns card has a Weight Breakdown button');
-        await new Promise(r => setTimeout(r, 250));
+        await waitFor(page, 'the open card to show its breakdown rows',
+            (sel) => document.querySelectorAll(sel + ' .breakdown-row').length > 0, ACTIVE);
 
         const cable = await readCard(page, 'Frontal Pulldowns');
 
