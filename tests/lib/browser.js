@@ -159,43 +159,94 @@ function attachConsole(page) {
     return errors;
 }
 
-// Waits for the workout screen to render, which is our signal that React has
-// finished hydrating.
+// Waits for the workout screen to render and for today's saved session to show
+// on it, which is our signal that React has finished hydrating.
 //
 // Two selectors because the workout screen has been both: a scrolling list of
 // `.exercise-card`s and the swipe deck whose cards live inside `.deck-stage`.
 // The list half dates from when this suite also covered the public app (until
 // Oct 2026); asking for either costs nothing, and "the workout screen exists"
 // is the same question whichever element answers it.
+//
+// Existing is not enough when a session was already logged today. App.jsx
+// hydrates in one batch (history, active day, open card, `hydrated`), which
+// mounts the deck, but the logged cards come from a separate effect on
+// `[workoutHistory, today]` that runs after that commit and renders again. So
+// a case reading right after the deck appears could see today's cards still
+// unlogged. To see that restore from outside, we ask the app's own rule in
+// the page: `storage` and `hasLoggedData` are top-level bindings of
+// js/utils.js, so they are reachable by name, and `storage` reads the app's
+// own namespace. The rule mirrors App's effect: the first workout dated
+// today, and only when it is not submitted. If it has an exercise with
+// logged data, the deck's progress bar (`.deck-bar-fill`, always rendered,
+// its width is the share of the deck's cards in `loggedExercises`) must rise
+// above 0%. That sees the restore for the whole deck, not just the three
+// mounted cards. Without such a session, only the deck is awaited, and the
+// bar is not required when there is no `.deck-stage` (the list screen).
+//
+// Known limit: a session whose logged rows are all off this day's deck keeps
+// the bar at 0% and so times out, loudly, with the error below.
+//
+// The day lock needs no wait of its own: the start day is already the locked
+// day (pickStartDay), so `showDay(lockedDayType)` only does anything when
+// another synced device logged on the other day.
 async function waitForApp(page, timeoutMs = 8000) {
     try {
-        await page.waitForFunction(
-            () => !!(document.querySelector('.deck-stage') || document.querySelector('.exercise-card')),
-            { timeout: timeoutMs, polling: 50 });
+        await page.waitForFunction(() => {
+            const stage = document.querySelector('.deck-stage');
+            if (!(stage || document.querySelector('.exercise-card'))) return false;
+            if (!stage) return true;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let history = [];
+            try { history = JSON.parse(storage.getItem('gymWorkoutHistory') || '[]'); } catch (e) { /* unreadable: nothing to restore */ }
+            const session = (Array.isArray(history) ? history : []).find(w => {
+                const d = new Date(w.date);
+                d.setHours(0, 0, 0, 0);
+                return d.getTime() === today.getTime();
+            });
+            if (!session || session.submitted || !(session.exercises || []).some(hasLoggedData)) {
+                return true;
+            }
+            const fill = document.querySelector('.deck-bar-fill');
+            return !!fill && parseFloat(fill.style.width) > 0;
+        }, { timeout: timeoutMs, polling: 50 });
     } catch (err) {
         throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for the workout ' +
-            'screen (neither .deck-stage nor .exercise-card appeared)');
+            'screen (no .deck-stage or .exercise-card, or the logged exercises of today not restored)');
     }
-    // Give React one more tick so derived state (PR helpers, defaults) settles.
-    await new Promise(r => setTimeout(r, 250));
 }
 
 // The day toggle lives in Settings (Nov 2026), above Manage Exercises. These
 // open the gear, act, and close it again, so a case is left exactly where it
 // was — on the deck, or on History — with only the day changed.
 async function openSettings(page) {
-    await page.evaluate(() => document.querySelector('.settings-btn').click());
-    await waitFor(page, 'the Settings modal to open',
-        () => !!document.querySelector('.modal .modal-title'));
+    // An overlay already open would swallow the gear tap, and its own title
+    // would then satisfy the wait below, so refuse up front.
+    if (await page.evaluate(() => !!document.querySelector('.modal'))) {
+        throw new Error('openSettings: a modal is already open, so the gear tap would land on it');
+    }
+    await tap(page, '.settings-btn');
+    // The gear opens the modal with `editOnly`, titled "Settings"; the
+    // "Exercises" title belongs to the Manage Exercises sub-view.
+    await waitFor(page, 'the Settings modal to open', () => {
+        const t = document.querySelector('.modal .modal-title');
+        return !!t && t.textContent.trim() === 'Settings';
+    });
 }
 
 async function closeSettings(page) {
-    await page.evaluate(() => {
-        const close = Array.from(document.querySelectorAll('.modal .modal-btn'))
-            .find(b => b.textContent.trim() === 'Close');
-        if (close) close.click();
-    });
+    await tap(page, '.modal .modal-btn', { text: 'Close' });
     await waitFor(page, 'the Settings modal to close', () => !document.querySelector('.modal'));
+}
+
+// Settings > Manage Exercises, waiting for its rows. To leave it, tap Back to
+// Settings, then closeSettings.
+async function openManageExercises(page) {
+    await openSettings(page);
+    await tap(page, '.modal .modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the Manage Exercises rows to render',
+        () => document.querySelectorAll('.modal .exercise-row').length > 0);
 }
 
 // What the Settings day toggle shows: every day it offers, which one is
@@ -239,23 +290,27 @@ async function selectDayType(page, type, { optional = false } = {}) {
         const pills = Array.from(document.querySelectorAll('.modal [data-day-type]'));
         const available = pills.map(b => b.getAttribute('data-day-type'));
         const btn = pills.find(b => b.getAttribute('data-day-type') === t);
-        if (!btn) return { clicked: false, available };
-        if (btn.classList.contains('active')) return { clicked: false, already: true, available };
-        if (toggle.hasAttribute('data-locked')) return { clicked: false, locked: true, available };
-        btn.click();
-        return { clicked: true, available };
+        if (!btn) return { canChoose: false, available };
+        if (btn.classList.contains('active')) return { canChoose: false, already: true, available };
+        if (toggle.hasAttribute('data-locked')) return { canChoose: false, locked: true, available };
+        return { canChoose: true, available };
     }, type);
+    if (result.canChoose) {
+        const pill = `.modal [data-day-type="${type}"]`;
+        await tap(page, pill);
+        await waitFor(page, `the "${type}" pill to turn active`,
+            (sel) => !!document.querySelector(sel + '.active'), pill);
+    }
     await closeSettings(page);
     if (result.already) return true;
 
-    if (!result.clicked && !optional) {
+    if (!result.canChoose && !optional) {
         throw new Error(result.locked
             ? `the day toggle is locked, so "${type}" cannot be chosen (something was logged today)`
             : `no day-type toggle for "${type}" ` +
               `(available: ${result.available.length ? result.available.join(', ') : 'none'})`);
     }
-    if (result.clicked) await new Promise(r => setTimeout(r, 150));
-    return result.clicked;
+    return result.canChoose;
 }
 
 // Reads exercise cards from the current view. Each card describes what
@@ -370,5 +425,5 @@ const waitForCards = (page) =>
         () => document.querySelectorAll('.exercise-card').length > 0);
 
 module.exports = { launch, launchChrome, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
-                   openSettings, closeSettings,
+                   openSettings, closeSettings, openManageExercises,
                    waitFor, waitForPageTime, tap, waitForStorageKey, waitForCards };

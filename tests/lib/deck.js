@@ -3,9 +3,9 @@
 // The workout screen is one card at a time, moved by pointer gestures, so
 // almost every case needs the same handful of verbs: reveal a card, swipe it,
 // log it, ask where the deck is. Those live here rather than being copied into
-// each case, because unlike `clickNav` they are not three lines — a swipe is a
-// pointer sequence whose step count and settle time both matter, and eleven
-// private copies would drift.
+// each case, because they are not three lines — a swipe is a pointer
+// sequence whose step count and timing both matter, and eleven private copies
+// would drift.
 //
 // THE ACTIVE SLOT. Three cards are mounted at once so the neighbours can peek
 // in during a drag. `document.querySelector('.card-name')` therefore finds the
@@ -20,38 +20,78 @@ const ACTIVE = '.deck-slot:not([aria-hidden="true"])';
 // `gym-local:`. Case 36 pins that on purpose — it is what keeps the
 // tests off the real data and off Firebase.
 const { DEFAULT_NS } = require('./state');
-const { selectDayType, waitFor } = require('./browser');
+const { selectDayType, tap, waitFor } = require('./browser');
 
-// Long enough for the rail transition (300ms) plus a render. Swipes commit the
-// index immediately, so this is about the animation settling visually, not
-// about the deck being ready.
-const SETTLE = 520;
+// A pointer drag across the card stage, sent as raw CDP mouse events that
+// carry their own timestamps. The deck reads a gesture's speed from the event
+// `timeStamp`s (e.timeStamp in SwipeRail), and the commit rule is distance OR
+// velocity, so a short flick and a slow short drag are meant to behave
+// differently. With real timing that speed was whatever the machine managed: on
+// a busy runner the round trip between two moves could stretch a 3-step flick
+// past FLICK_SPEED (0.45 px/ms) and read it as slow (case 73's known flake).
+// Stamping each move `stepDelay` ms after the last makes the speed exactly
+// dx / steps / stepDelay, whatever the load, and costs no real waiting.
+//
+// After the release the swipe waits for the deck to come to rest, unless
+// `settle: false` (a case that acts inside the rail's 300 ms, or opens a form).
+// `release: false` holds the drag; the returned `release()` lets go.
+const STEP_MS = 8;
+const gestureClock = new WeakMap(); // page -> last stamp sent, so stamps never run backwards
 
-// A pointer drag across the card stage. `steps` and `stepDelay` control speed,
-// which matters: the deck commits on distance OR velocity, so a fast short
-// flick and a slow short drag are meant to behave differently.
-async function swipe(page, dx, dy, { steps = 6, stepDelay = 0, settle = SETTLE, release = true } = {}) {
+async function pointer(page) {
+    let state = gestureClock.get(page);
+    if (!state) {
+        state = { cdp: await page.createCDPSession(), last: 0 };
+        gestureClock.set(page, state);
+    }
+    return state;
+}
+
+async function drag(page, from, dx, dy, { steps, stepDelay, settle, release }) {
+    if (typeof settle !== 'boolean') {
+        throw new Error('swipe: settle is true (wait for the deck to rest) or false, not ' + settle);
+    }
+    const state = await pointer(page);
+    let t = Math.max(Date.now(), state.last + 1);
+    // The positioning move before the press sends `button: 'none'`: Chromium ORs
+    // a left-button-down modifier in from `button`, so a move that named 'left'
+    // could arrive as the start of a drag even with `buttons: 0`.
+    const send = (type, x, y, buttons, button = 'left') => {
+        state.last = t;
+        return state.cdp.send('Input.dispatchMouseEvent', {
+            type, x, y, button, buttons, timestamp: t / 1000,
+            ...(type === 'mouseMoved' ? {} : { clickCount: 1 }),
+        });
+    };
+    await send('mouseMoved', from.x, from.y, 0, 'none');
+    await send('mousePressed', from.x, from.y, 1);
+    let at = from;
+    for (let i = 1; i <= steps; i++) {
+        t += stepDelay;
+        at = { x: from.x + (dx * i) / steps, y: from.y + (dy * i) / steps };
+        await send('mouseMoved', at.x, at.y, 1);
+    }
+    const letGo = async () => {
+        t = Math.max(t + 1, state.last + 1);
+        await send('mouseReleased', at.x, at.y, 0);
+        if (settle) await waitForDeckToSettle(page);
+    };
+    if (release) await letGo();
+    return { ...from, release: letGo };
+}
+
+async function swipe(page, dx, dy, { steps = 6, stepDelay = STEP_MS, settle = true, release = true } = {}) {
     const from = await page.evaluate(() => {
         const r = document.querySelector('.deck-stage').getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
     });
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    for (let i = 1; i <= steps; i++) {
-        await page.mouse.move(from.x + (dx * i) / steps, from.y + (dy * i) / steps);
-        if (stepDelay) await new Promise((r) => setTimeout(r, stepDelay));
-    }
-    if (release) {
-        await page.mouse.up();
-        await new Promise((r) => setTimeout(r, settle));
-    }
-    return from;
+    return drag(page, from, dx, dy, { steps, stepDelay, settle, release });
 }
 
 // A drag that starts on a specific element rather than the middle of the stage
 // — used to prove a swipe still works when it begins on the weight box, the
 // reps dropdown or LOG.
-async function swipeFrom(page, selector, dx, dy, { steps = 8, settle = SETTLE } = {}) {
+async function swipeFrom(page, selector, dx, dy, { steps = 8, stepDelay = STEP_MS, settle = true } = {}) {
     const from = await page.evaluate((sel) => {
         const el = document.querySelector(sel);
         if (!el) return null;
@@ -59,13 +99,7 @@ async function swipeFrom(page, selector, dx, dy, { steps = 8, settle = SETTLE } 
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
     }, selector);
     if (!from) throw new Error('swipeFrom: no element for ' + selector);
-    await page.mouse.move(from.x, from.y);
-    await page.mouse.down();
-    for (let i = 1; i <= steps; i++) {
-        await page.mouse.move(from.x + (dx * i) / steps, from.y + (dy * i) / steps);
-    }
-    await page.mouse.up();
-    await new Promise((r) => setTimeout(r, settle));
+    await drag(page, from, dx, dy, { steps, stepDelay, settle, release: true });
 }
 
 // Swipe up to open the card. This is the gesture the whole screen exists for:
@@ -81,31 +115,88 @@ async function revealCard(page) {
 const isRevealed = (page) =>
     page.evaluate((sel) => !!document.querySelector(sel + ' .card-open'), ACTIVE);
 
-// Tap LOG on the open card. The deck jumps to the earliest unlogged card
-// afterwards, so the caller is somewhere new when this resolves. PR logs hold
-// on the logged review for their celebration first; by default callers wait for
-// that auto-advance, but cases can opt out when they need to inspect the
-// in-progress shimmer.
-async function logCard(page, opts = {}) {
-    const { settle = 750, waitForAutoAdvance = opts.settle === undefined } = opts;
-    const clicked = await page.evaluate((sel) => {
-        const btn = document.querySelector(sel + ' .log-btn');
-        if (!btn || btn.disabled) return false;
-        btn.click();
-        return true;
-    }, ACTIVE);
-    await new Promise((r) => setTimeout(r, settle));
-    if (clicked && waitForAutoAdvance) {
-        const celebrating = await page.evaluate((sel) =>
-            !!document.querySelector(sel + ' .card.pr-celebrating'), ACTIVE);
-        if (celebrating) {
-            await page.waitForFunction((sel) =>
-                !document.querySelector(sel + ' .card.pr-celebrating'),
-                { timeout: 4000 }, ACTIVE);
-            await new Promise((r) => setTimeout(r, SETTLE));
+// Every `loggedAt` saved for one exercise, as one sorted string, across all
+// saved workout histories. It reads every localStorage key ending in
+// `gymWorkoutHistory` rather than one namespace, so it works for a case that
+// runs under another namespace or mirrors the history to the cloud. A fresh ISO
+// stamp is written on every successful log (logExercise in App.jsx), so a change
+// here is proof of a save. It runs in the page: with `was` undefined it hands
+// back the stamps, and given the stamps read before a tap it says whether they
+// have changed, so logCard reads and polls with the same code.
+function loggedStamps(exerciseId, was) {
+    const stamps = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key.endsWith('gymWorkoutHistory')) continue;
+        let hist;
+        try { hist = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { continue; }
+        if (!Array.isArray(hist)) continue;
+        for (const w of hist || []) {
+            for (const e of (w && w.exercises) || []) {
+                if (e && e.id === exerciseId && e.loggedAt) stamps.push(e.loggedAt);
+            }
         }
     }
-    return clicked;
+    const now = stamps.sort().join('|');
+    return was === undefined ? now : now !== was;
+}
+
+const activeExerciseId = (page) =>
+    page.evaluate((sel) => {
+        const card = document.querySelector(sel + ' .card[data-exercise-id]');
+        return card ? card.getAttribute('data-exercise-id') : null;
+    }, ACTIVE);
+
+// Tap LOG on the open card. The deck jumps to the earliest unlogged card
+// afterwards, so the caller is somewhere new when this resolves. A tap does not
+// hit-test, so one that an overlay covers lands on the overlay and does
+// nothing; this therefore waits until the card's saved `loggedAt` changes, and
+// throws if it never does. The log commits and saves in the click's own render,
+// so that wait is short. PR logs hold on the logged review for their
+// celebration (2 s) afterwards; by default this then waits for that
+// auto-advance and for the deck to come to rest. Pass `waitForAutoAdvance:
+// false` to inspect the logged card or the celebration itself. A LOG button
+// that is missing or disabled returns false.
+//
+// Pass `expectRejected: true` for a press the app is meant to refuse (blank or
+// invalid reps on an enabled button). The log is decided synchronously in the
+// click, so one read of the stamps right after the tap is the whole condition
+// and there is nothing to wait for. It returns false, and throws if the set
+// was saved anyway. A refused tap changes nothing, so it also leaves no
+// evidence that the tap landed; a caller that needs that proof asserts the
+// card's own state, as case 149 does with the logged chip.
+async function logCard(page, opts = {}) {
+    if ('settle' in opts) throw new Error('logCard: settle is gone; pass waitForAutoAdvance: false instead');
+    const { waitForAutoAdvance = true, expectRejected = false } = opts;
+    const ready = await page.evaluate((sel) => {
+        const btn = document.querySelector(sel + ' .log-btn');
+        return !!btn && !btn.disabled;
+    }, ACTIVE);
+    if (!ready) return false;
+    const id = await activeExerciseId(page);
+    const before = await page.evaluate(loggedStamps, id);
+    await tap(page, ACTIVE + ' .log-btn');
+    if (expectRejected) {
+        if (await page.evaluate(loggedStamps, id, before)) {
+            throw new Error('logCard: ' + id + ' was saved, but the LOG press was expected to be rejected');
+        }
+        return false;
+    }
+    await waitFor(page, 'the LOG tap to save ' + id + ' (its loggedAt to change)',
+        loggedStamps, id, before);
+    if (waitForAutoAdvance) {
+        await waitFor(page, 'the PR celebration to end', (sel) =>
+            !document.querySelector(sel + ' .card.pr-celebrating'), ACTIVE);
+        // The deck jumps to another unlogged card, or to the finish card when
+        // none is left, so the active card must no longer be the logged one.
+        await waitFor(page, 'the deck to move on from ' + id, (sel, loggedId) => {
+            if (document.querySelector(sel + ' .card-finish')) return true;
+            const card = document.querySelector(sel + ' .card[data-exercise-id]');
+            return !!card && card.getAttribute('data-exercise-id') !== loggedId;
+        }, ACTIVE, id);
+        await waitForDeckToSettle(page);
+    }
+    return true;
 }
 
 // The name on the active card, from whichever face is showing.
@@ -133,29 +224,56 @@ const deckIndex = async (page) => {
 const onFinishCard = (page) =>
     page.evaluate((sel) => !!document.querySelector(sel + ' .card-finish'), ACTIVE);
 
-// Step one card at a time with the footer arrows. Deliberately NOT a swipe:
+// One tap on a footer arrow, then a wait for the counter to change. The index
+// commits in the tap's own render, so this does not wait for the rail
+// animation; callers that go on to gesture or read styles wait for
+// waitForDeckToSettle themselves.
+//
+// A focused weight or reps box puts `kb-open` on the page, which hides the
+// footer (the arrows) to make room for the keyboard. A person closes the
+// keyboard before reaching for an arrow, and the page sees that as a blur, so
+// this blurs the field and waits for the footer to come back first.
+async function stepOnce(page, forward) {
+    await page.evaluate(() => {
+        const el = document.activeElement;
+        if (el && el.matches('input, textarea')) el.blur();
+    });
+    await waitFor(page, 'the keyboard layout to close so the deck arrows show',
+        () => !document.documentElement.classList.contains('kb-open'));
+    const before = await deckPosition(page);
+    await tap(page, '.deck-arrow[aria-label="' + (forward ? 'Next' : 'Previous') + ' exercise"]');
+    await waitFor(page, 'the deck to step ' + (forward ? 'forward' : 'back') + ' from "' + before + '"', (b) => {
+        const el = document.querySelector('.deck-count');
+        return !!el && el.textContent.trim() !== b;
+    }, before);
+}
+
+// Step one card at a time with the footer arrows. Arriving waits for the rail
+// to stop: the next step is usually a tap or a swipe on that card, and a real
+// tap on a card still sliding in can land beside its target. Deliberately NOT a swipe:
 // arrows are the one navigation that never skips, so a case can position
 // itself without depending on gesture behaviour it might be testing.
 async function stepTo(page, target, { max = 40 } = {}) {
     for (let guard = 0; guard < max; guard++) {
         const at = await deckIndex(page);
-        if (at === target) return true;
-        const forward = at === null ? false : at < target;
-        await page.evaluate((f) => {
-            const arrows = document.querySelectorAll('.deck-arrow');
-            (f ? arrows[arrows.length - 1] : arrows[0]).click();
-        }, forward);
-        await new Promise((r) => setTimeout(r, 400));
+        if (at === target) {
+            await waitForDeckToSettle(page);
+            return true;
+        }
+        await stepOnce(page, at === null ? false : at < target);
     }
     throw new Error('stepTo: could not reach card ' + target);
 }
 
-// Choose the day, then wait for the deck to rebuild around the new roster.
+// Choose the day, then wait for the deck to come to rest on the new roster.
 // The toggle moved from the deck into Settings in Nov 2026; this is
-// selectDayType plus the rebuild wait.
+// selectDayType plus that wait. The deck's reset to card one runs in the pill
+// tap's own commit (a discrete event flushes its effects synchronously), so by
+// the time Settings has closed only the deck's motion can be left.
 async function selectDeckDay(page, type) {
     await selectDayType(page, type);
-    await new Promise((r) => setTimeout(r, 250));
+    await waitFor(page, 'the deck to be on screen', () => !!document.querySelector('.deck-stage'));
+    await waitForDeckToSettle(page);
 }
 
 // Wait for the deck to come to rest: the rail back at its resting position and
@@ -170,23 +288,16 @@ const waitForDeckToSettle = (page) =>
         return still(document.querySelector('.deck-rail')) && still(document.querySelector(sel));
     }, ACTIVE);
 
-// Switch tabs from the bottom bar.
+// Switch tabs from the bottom bar: a real tap, then a wait for the button to
+// turn active, which happens in the same render as the destination view (the
+// views do not animate in). Each button once carried an icon glyph beside its
+// label, so this matches on containment.
 async function bottomNav(page, label) {
-    const handle = await page.evaluateHandle((l) =>
-        Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((b) => b.textContent.indexOf(l) !== -1) || null, label);
-    const btn = handle.asElement();
-    if (!btn) throw new Error('bottomNav: no bottom-bar button reading "' + label + '"');
-    await btn.evaluate((e) => e.scrollIntoView({ block: 'center' }));
-    // A real, hit-tested click: an overlay covering the button would eat it.
-    await btn.click();
-    // Wait for the button to turn active, i.e. for the destination view.
-    await page.waitForFunction((l) => {
-        const b = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((x) => x.textContent.indexOf(l) !== -1);
-        return !!b && b.classList.contains('active');
-    }, { timeout: 8000, polling: 50 }, label);
-    await new Promise((r) => setTimeout(r, 400));
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await tap(page, '.bottom-nav-btn', { text: new RegExp(escaped) });
+    await waitFor(page, 'the ' + label + ' tab to open', (l) =>
+        Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
+            .some((b) => b.textContent.indexOf(l) !== -1), label);
 }
 
 // The start-time anchors the app is holding, keyed by exercise id. This is the
@@ -198,6 +309,19 @@ const startAnchors = (page, ns = DEFAULT_NS) =>
     }, ns);
 
 // Today's workout out of saved history, or null.
+// Real page-clock instants of each pointer press and release, so a case can
+// prove its back-to-back swipes really fell inside the app's 300 ms rail window
+// rather than trusting the run to be fast. The drag's event timestamps are
+// synthetic; Date.now() is the clock the app's own setTimeout runs on.
+const RAIL_MS = 300; // SwipeRail's rail transition, and the card-close delay
+const recordGestures = (page) => page.evaluate(() => {
+    window.__gestures = { down: [], up: [] };
+    document.addEventListener('pointerdown', () => window.__gestures.down.push(Date.now()), true);
+    document.addEventListener('pointerup', () => window.__gestures.up.push(Date.now()), true);
+});
+const gestures = (page) => page.evaluate(() => window.__gestures);
+const resetGestures = (page) => page.evaluate(() => { window.__gestures.down = []; window.__gestures.up = []; });
+
 const todayWorkout = (page, ns = DEFAULT_NS) =>
     page.evaluate((n) => {
         const hist = JSON.parse(localStorage.getItem(n + 'gymWorkoutHistory') || '[]');
@@ -211,28 +335,42 @@ const todayWorkout = (page, ns = DEFAULT_NS) =>
     }, ns);
 
 
-// Walk the whole deck and read each card's NAME. Cheap: the index commits
-// synchronously on an arrow click, so this does not wait for the rail
-// animation, only for the render.
+// Walk the deck from card 1, calling `visit(i, total)` on each card (the index
+// commits synchronously on an arrow click, so this waits for the render, not for
+// the rail animation). It stops at the first card whose visit returns truthy and
+// hands that value back; null means the walk ran off the end.
+async function walkDeck(page, visit) {
+    await stepTo(page, 1);
+    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
+    for (let i = 1; i <= total; i++) {
+        const found = await visit(i, total);
+        if (found) return found;
+        if (i < total) await stepOnce(page, true);
+    }
+    return null;
+}
+
+// Walk from card 1 to the first card satisfying `isIt` (a Node-side async
+// predicate over the page), then wait for the rail to stop before handing back,
+// for the reason stepTo gives. Throws `<caller>: no card <what> in this day`.
+async function findCard(page, caller, what, isIt) {
+    const found = await walkDeck(page, isIt);
+    if (!found) throw new Error(caller + ': no card ' + what + ' in this day');
+    await waitForDeckToSettle(page);
+}
+
+// Walk the whole deck and read each card's NAME.
 //
 // Names only, deliberately. Everything else on a card — the weight, the last
 // session, the warmup breakdown — exists solely on the revealed face, and
 // revealing all twelve would both cost seconds per call and stamp a timing
 // anchor on every movement in the day. Use readDeckCard for one card's numbers.
 async function readDeckNames(page) {
-    await stepTo(page, 1);
-    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
     const names = [];
-    for (let i = 1; i <= total; i++) {
+    await walkDeck(page, async () => {
         names.push(await activeName(page));
-        if (i < total) {
-            await page.evaluate(() => {
-                const a = document.querySelectorAll('.deck-arrow');
-                a[a.length - 1].click();
-            });
-            await new Promise((r) => setTimeout(r, 110));
-        }
-    }
+        return false;
+    });
     return names;
 }
 
@@ -244,20 +382,12 @@ async function goToCard(page, name) {
     // card closes it, and reopening stamps a fresh start time — so a helper that
     // always walked from card 1 would silently restart the clock it was only
     // meant to look at.
-    if ((await activeName(page)) === name) return true;
-    await stepTo(page, 1);
-    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
-    for (let i = 1; i <= total; i++) {
-        if ((await activeName(page)) === name) return true;
-        if (i < total) {
-            await page.evaluate(() => {
-                const a = document.querySelectorAll('.deck-arrow');
-                a[a.length - 1].click();
-            });
-            await new Promise((r) => setTimeout(r, 230));
-        }
+    if ((await activeName(page)) === name) {
+        await waitForDeckToSettle(page);
+        return true;
     }
-    throw new Error('goToCard: no card named ' + name + ' in this day');
+    await findCard(page, 'goToCard', 'named ' + name, async () => (await activeName(page)) === name);
+    return true;
 }
 
 // Navigate to a named card, open it and log it — the deck's equivalent of
@@ -272,44 +402,31 @@ async function goToCardAndLog(page, name) {
 // the revealed face. This is the deck's answer to the old readCards(), which
 // could see every card at once because they were all on screen.
 async function readDeckCard(page, name, { reveal = true } = {}) {
-    await stepTo(page, 1);
-    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
-    for (let i = 1; i <= total; i++) {
-        if ((await activeName(page)) === name) {
-            if (reveal) await revealCard(page);
-            return page.evaluate((sel) => {
-                const slot = document.querySelector(sel);
-                const input = slot.querySelector('input[type="number"], input[inputmode="decimal"]');
-                const last = slot.querySelector('.card-last');
-                const hero = slot.querySelector('.hero-weight');
-                return {
-                    name: (slot.querySelector('.card-open-name') || slot.querySelector('.card-name'))
-                        .textContent.trim(),
-                    last: last ? last.textContent.trim() : '',
-                    weightValue: input ? input.value : '',
-                    weightPlaceholder: input ? input.placeholder : '',
-                    heroWeight: hero ? hero.textContent.replace(/[^0-9.]/g, '') : '',
-                    // Every weighted card carries a breakdown now; it is part of
-                    // the revealed face rather than behind its own button.
-                    hasWeightBreakdown: !!slot.querySelector('.breakdown'),
-                    breakdown: Array.from(slot.querySelectorAll('.breakdown-row'))
-                        .map((r) => r.innerText.split(String.fromCharCode(10)).join(' | ')),
-                    repsValue: (() => {
-                        const sel2 = slot.querySelector('[data-field="reps"]');
-                        return sel2 ? sel2.value : '';
-                    })(),
-                };
-            }, ACTIVE);
-        }
-        if (i < total) {
-            await page.evaluate(() => {
-                const a = document.querySelectorAll('.deck-arrow');
-                a[a.length - 1].click();
-            });
-            await new Promise((r) => setTimeout(r, 230));
-        }
-    }
-    throw new Error('readDeckCard: no card named ' + name + ' in this day');
+    await findCard(page, 'readDeckCard', 'named ' + name, async () => (await activeName(page)) === name);
+    if (reveal) await revealCard(page);
+    return page.evaluate((sel) => {
+        const slot = document.querySelector(sel);
+        const input = slot.querySelector('input[type="number"], input[inputmode="decimal"]');
+        const last = slot.querySelector('.card-last');
+        const hero = slot.querySelector('.hero-weight');
+        return {
+            name: (slot.querySelector('.card-open-name') || slot.querySelector('.card-name'))
+                .textContent.trim(),
+            last: last ? last.textContent.trim() : '',
+            weightValue: input ? input.value : '',
+            weightPlaceholder: input ? input.placeholder : '',
+            heroWeight: hero ? hero.textContent.replace(/[^0-9.]/g, '') : '',
+            // Every weighted card carries a breakdown now; it is part of
+            // the revealed face rather than behind its own button.
+            hasWeightBreakdown: !!slot.querySelector('.breakdown'),
+            breakdown: Array.from(slot.querySelectorAll('.breakdown-row'))
+                .map((r) => r.innerText.split(String.fromCharCode(10)).join(' | ')),
+            repsValue: (() => {
+                const sel2 = slot.querySelector('[data-field="reps"]');
+                return sel2 ? sel2.value : '';
+            })(),
+        };
+    }, ACTIVE);
 }
 
 // Navigate to a card, open it, type a weight into it, and hand back the warmup
@@ -333,7 +450,8 @@ async function setWeightAndOpen(page, name, weight) {
         return true;
     }, ACTIVE, String(weight));
     if (!ok) throw new Error('setWeightAndOpen: no weight input on ' + name);
-    await new Promise((r) => setTimeout(r, 250));
+    // No wait: React 18 commits an input event's state before dispatchEvent
+    // returns, so the breakdown below already reflects the new weight.
     return page.evaluate((sel) =>
         Array.from(document.querySelectorAll(sel + ' .breakdown-row'))
             .map((r) => r.innerText.split(String.fromCharCode(10)).join(' | '))
@@ -344,28 +462,12 @@ async function setWeightAndOpen(page, name, weight) {
 // name. Cases that log a whole day work in ids, because a display name can be
 // renamed by the user and an id never is.
 async function goToCardById(page, id) {
-    const activeId = await page.evaluate((sel) => {
-        const card = document.querySelector(sel + ' .card[data-exercise-id]');
-        return card ? card.getAttribute('data-exercise-id') : null;
-    }, ACTIVE);
-    if (activeId === id) return true;
-    await stepTo(page, 1);
-    const total = parseInt(((await deckPosition(page)) || '0 of 0').split(' ')[2], 10);
-    for (let i = 1; i <= total; i++) {
-        const here = await page.evaluate((sel) => {
-            const card = document.querySelector(sel + ' .card[data-exercise-id]');
-            return card ? card.getAttribute('data-exercise-id') : null;
-        }, ACTIVE);
-        if (here === id) return true;
-        if (i < total) {
-            await page.evaluate(() => {
-                const a = document.querySelectorAll('.deck-arrow');
-                a[a.length - 1].click();
-            });
-            await new Promise((r) => setTimeout(r, 230));
-        }
+    if ((await activeExerciseId(page)) === id) {
+        await waitForDeckToSettle(page);
+        return true;
     }
-    throw new Error('goToCardById: no card with id ' + id + ' in this day');
+    await findCard(page, 'goToCardById', 'with id ' + id, async () => (await activeExerciseId(page)) === id);
+    return true;
 }
 
 // Navigate to a card by id, open it, and log it.
@@ -381,28 +483,66 @@ async function logCardById(page, id) {
 async function submitDay(page) {
     for (let guard = 0; guard < 30; guard++) {
         if (await onFinishCard(page)) break;
-        await page.evaluate(() => {
-            const a = document.querySelectorAll('.deck-arrow');
-            a[a.length - 1].click();
-        });
-        await new Promise((r) => setTimeout(r, 150));
+        await stepOnce(page, true);
     }
     if (!(await onFinishCard(page))) throw new Error('submitDay: never reached the finish card');
-    const clicked = await page.evaluate((sel) => {
-        const btn = Array.from(document.querySelectorAll(sel + ' .save-btn'))
-            .find((b) => /Submit Day/i.test(b.textContent));
-        if (!btn) return false;
-        btn.click();
-        return true;
+    await waitForDeckToSettle(page);
+    // `empty` follows the app's own test (completeDay in App.jsx): the alert
+    // comes when no workout at all is saved for today. The finish card's
+    // "Nothing logged yet" is not the same thing: after a submission today the
+    // deck reads zero logged, yet Submit Day opens the Day Breakdown again.
+    const finish = await page.evaluate((sel) => {
+        let hist;
+        try { hist = JSON.parse(storage.getItem('gymWorkoutHistory') || '[]'); } catch (e) { hist = []; }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return {
+            ready: Array.from(document.querySelectorAll(sel + ' .save-btn'))
+                .some((b) => /Submit Day/i.test(b.textContent)),
+            empty: !(Array.isArray(hist) && hist.some((w) => {
+                const d = new Date(w.date);
+                d.setHours(0, 0, 0, 0);
+                return d.getTime() === today.getTime();
+            })),
+        };
     }, ACTIVE);
-    await new Promise((r) => setTimeout(r, 400));
-    return clicked;
+    if (!finish.ready) return false;
+    // The submit runs in the tap's own handler: it saves the day and opens the
+    // Day Breakdown. With nothing logged it raises an alert instead. The
+    // caller's own dialog handler answers that alert, so this only observes the
+    // event (answering it twice throws). The listener and its deadline both
+    // start before the tap: the alert fires inside the tap's handler, and the
+    // tap does not resolve until the caller's handler has answered it.
+    if (finish.empty) {
+        let onDialog, timer;
+        const alerted = new Promise((resolve) => {
+            onDialog = () => resolve(true);
+            page.on('dialog', onDialog);
+            timer = setTimeout(() => resolve(false), 20000);
+        });
+        try {
+            await tap(page, ACTIVE + ' .save-btn', { text: /Submit Day/i });
+            if (!(await alerted)) throw new Error('submitDay: no alert after tapping Submit Day with nothing saved today');
+        } finally {
+            clearTimeout(timer);
+            page.off('dialog', onDialog);
+        }
+    } else {
+        await tap(page, ACTIVE + ' .save-btn', { text: /Submit Day/i });
+        // The Day Breakdown itself, not just any modal: an unrelated overlay
+        // that swallowed the tap would otherwise satisfy the wait.
+        await waitFor(page, 'the Day Breakdown to open after Submit Day', () =>
+            Array.from(document.querySelectorAll('.modal .modal-title'))
+                .some((t) => /Day Breakdown\s*$/.test(t.textContent)));
+    }
+    return true;
 }
 
 module.exports = {
-    ACTIVE, SETTLE, DEFAULT_NS,
+    ACTIVE, DEFAULT_NS,
     swipe, swipeFrom, revealCard, isRevealed, logCard,
+    recordGestures, gestures, resetGestures, RAIL_MS, activeExerciseId,
     activeName, deckPosition, deckIndex, onFinishCard,
-    stepTo, selectDeckDay, bottomNav, waitForDeckToSettle,
+    stepOnce, stepTo, selectDeckDay, bottomNav, waitForDeckToSettle,
     startAnchors, todayWorkout, readDeckNames, readDeckCard, goToCard, goToCardAndLog, setWeightAndOpen, goToCardById, logCardById, submitDay,
 };

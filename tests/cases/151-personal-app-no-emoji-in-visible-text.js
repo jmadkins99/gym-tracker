@@ -201,7 +201,7 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
             (a) => /×[0-9]/.test(document.querySelector(a).innerText), ACTIVE);
 
         // Swipe down on the open card: the Quick Edit form.
-        await swipe(page, 0, 180, { settle: 0 });
+        await swipe(page, 0, 180, { settle: false });
         await look('Quick Edit, swipe-down form',
             () => !!document.querySelector('.modal.quick-edit input[data-field="hint"]'));
         // A tap during the form's 0.3 s slide-in misses.
@@ -212,7 +212,7 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await closeByWord(page, /^Cancel$/i);
 
         await setWeightAndOpen(page, 'Chest Flies', 200);
-        ok(await logCard(page, { settle: 0, waitForAutoAdvance: false }), 'logged Chest Flies');
+        ok(await logCard(page, { waitForAutoAdvance: false }), 'logged Chest Flies');
         await look('workout deck, logged card with PR pill',
             (a) => /Logged/.test(document.querySelector(a).innerText)
                 && !!document.querySelector(a + ' .logged-pr-badge')

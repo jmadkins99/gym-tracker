@@ -39,9 +39,9 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
+const { bottomNav, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
-const { waitForDeckToSettle } = require('../lib/deck');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -157,15 +157,6 @@ const MIXED_DAY_IDS = [
     ['kelso-shrugs', 'Kelso Shrugs'],
 ];
 
-// A real tap on the bottom-bar button, then a wait for it to turn active,
-// which happens in the same render as the destination view. Each button once
-// carried an icon glyph beside its label, so this matches on containment.
-async function clickNav(page, label) {
-    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
-    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
-        .some(b => b.textContent.indexOf(l) !== -1), label);
-}
-
 // Visits each date's History card in turn and returns the exercise-name rows of
 // its session, in the order of `dates`, so the assertions read against a
 // specific workout rather than whatever card is on screen.
@@ -242,7 +233,7 @@ async function historyItems(page, dates) {
         }, 'gym-local:');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await clickNav(page, 'History');
+        await bottomNav(page, 'History');
 
         // History opens on today; visit the date of each seeded session.
         const dates = history.map(w => dateKey(w.date));

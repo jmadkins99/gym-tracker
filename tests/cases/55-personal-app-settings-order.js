@@ -20,7 +20,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, openManageExercises, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -38,13 +38,6 @@ const POSTERIOR = [
     'Wrist Curls', 'Calf Raises', 'Stiff Legged Deadlift',
 ];
 const EXPECTED = [...ANTERIOR, ...POSTERIOR];
-
-async function openManageExercises(page) {
-    await tap(page, '.settings-btn');
-    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
-    await waitFor(page, 'the Manage Exercises rows to render',
-        () => document.querySelectorAll('.modal .exercise-row').length > 0);
-}
 
 // Read the name off its own element rather than stripping control glyphs off
 // the row's textContent: the row also holds a <select>, and a select's

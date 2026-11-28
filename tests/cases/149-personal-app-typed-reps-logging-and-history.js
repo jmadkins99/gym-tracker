@@ -86,7 +86,10 @@ async function todaysSet(page, id = TARGET) {
 
 // LOG, and check whether the card ended up logged.
 async function pressLog(page, { expectLogged }) {
-    await logCard(page);
+    // A refused press leaves no evidence that the tap landed (nothing changes),
+    // so logCard only checks that nothing was saved; the assertion below that
+    // the card is not logged is what covers a refused press.
+    await logCard(page, { expectRejected: !expectLogged });
     if (expectLogged) await goToCardById(page, TARGET);
     eq(await page.evaluate((sel) => !!document.querySelector(sel + ' .logged-chip'), ACTIVE), expectLogged,
         expectLogged ? 'the card shows as logged' : 'the card is not logged');

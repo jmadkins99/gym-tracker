@@ -21,10 +21,10 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
+const { bottomNav, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
-const { waitForDeckToSettle } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
@@ -46,15 +46,6 @@ const LEGACY_LOWER_IDS = [
     'erectors-spinal-extension', 'reverse-wrist-curls', 'cable-wrist-curls', 'abs-spinal-flexion',
     'quads-knee-extension', 'adductors-transverse-hip-adduction', 'calves-ankle-extension', 'quads-knee-extension-during-hip-flexion',
 ];
-
-// A real tap on the bottom-bar button, then a wait for it to turn active,
-// which happens in the same render as the destination view. Each button once
-// carried an icon glyph beside its label, so this matches on containment.
-async function clickNav(page, label) {
-    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
-    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
-        .some(b => b.textContent.indexOf(l) !== -1), label);
-}
 
 // Goes to the History card for `date`, opens the Edit modal on its session and
 // reads back its title and the exercise rows it offers, then closes it again.
@@ -107,7 +98,7 @@ async function openEdit(page, date) {
             localStorage.setItem('gym-local:lastBackupReminder', String(Date.now())));
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await clickNav(page, 'History');
+        await bottomNav(page, 'History');
 
         // The deck opens on today; each era's session sits on its own date.
         const dates = history.map((w) => dateKey(w.date));

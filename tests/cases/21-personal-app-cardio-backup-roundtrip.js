@@ -15,20 +15,12 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
+const { bottomNav } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { HISTORY_CARD, HISTORY_EDIT } = require('../lib/history');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
-
-// A real tap on the bottom-bar button, then a wait for it to turn active,
-// which happens in the same render as the destination view. Each button once
-// carried an icon glyph beside its label, so this matches on containment.
-async function clickNav(page, label) {
-    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
-    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
-        .some(b => b.textContent.indexOf(l) !== -1), label);
-}
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -60,7 +52,7 @@ async function clickNav(page, label) {
         await waitForApp(page);
 
         // Weekly view: the cardio workout renders its own exercises + values.
-        await clickNav(page, 'History');
+        await bottomNav(page, 'History');
         // The shown card only: the deck also mounts its neighbours.
         const weeklyText = await page.evaluate((sel) =>
             document.querySelector(sel)?.textContent || '', HISTORY_CARD);
