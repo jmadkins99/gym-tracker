@@ -49,7 +49,7 @@
 // disclaimer and its assertion fails.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -143,10 +143,7 @@ const topWeekAverage = (page) => page.evaluate(() =>
         eq(ephemeral, false, 'the "today only" disclaimer should be gone from the card');
 
         // === 4. The ledger agrees with the card ==========================
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find((b) => b.textContent.includes('History')).click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await waitFor(page, 'the weekly ledger to render',
             () => !!document.querySelector('.weigh-week'));
 
@@ -166,10 +163,7 @@ const topWeekAverage = (page) => page.evaluate(() =>
         // written about the AVERAGE — seeding only today makes this week's
         // mean exact on any weekday. It was never true of the chart, which
         // reads a rolling window rather than a week bucket.
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.weigh-range .day-pill'))
-                .find((b) => b.textContent.trim() === '30d').click();
-        });
+        await tap(page, '.weigh-range .day-pill', { text: '30d' });
         await waitFor(page, 'the 30d range to be selected',
             () => document.querySelector('.weigh-range .day-pill.active')
                 ?.textContent.trim() === '30d');

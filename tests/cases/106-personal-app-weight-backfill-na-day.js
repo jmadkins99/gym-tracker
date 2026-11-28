@@ -37,7 +37,7 @@
 // weekDaySlots and the future-day assertion fails.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -81,22 +81,17 @@ async function typeWeight(page, value) {
     }, value);
 }
 
-const clickIn = (page, selector, text) => page.evaluate((sel, t) => {
-    const btn = Array.from(document.querySelectorAll(sel))
-        .find((b) => b.textContent.trim() === t);
-    if (!btn) throw new Error('no ' + sel + ' reading "' + t + '"');
-    btn.click();
-}, selector, text);
-
 // Opens the NA row whose date label contains `label` (e.g. "Jan 8").
-const openNa = (page, label) => page.evaluate((l) => {
-    const row = Array.from(document.querySelectorAll('.weigh-day'))
-        .find((r) => r.querySelector('.weigh-day-date').textContent.includes(l));
-    if (!row) throw new Error('no day row for ' + l);
-    const btn = row.querySelector('.weigh-day-value.na');
-    if (!btn) throw new Error('row for ' + l + ' is not an NA row');
-    btn.click();
-}, label);
+const openNa = async (page, label) => {
+    const btn = await page.evaluateHandle((l) => {
+        const row = Array.from(document.querySelectorAll('.weigh-day'))
+            .find((r) => r.querySelector('.weigh-day-date').textContent.includes(l));
+        if (!row) return 'no day row for ' + l;
+        return row.querySelector('.weigh-day-value.na') || 'row for ' + l + ' is not an NA row';
+    }, label);
+    if (!btn.asElement()) throw new Error(await btn.jsonValue());
+    await tap(page, btn);
+};
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -116,13 +111,10 @@ const openNa = (page, label) => page.evaluate((l) => {
         await waitFor(page, 'the check-in card to render',
             () => !!document.querySelector('.weigh-card'));
 
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find((b) => b.textContent.includes('History')).click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await waitFor(page, 'the weekly ledger to render',
             () => !!document.querySelector('.weigh-week'));
-        await page.evaluate(() => document.querySelector('.weigh-week-head').click());
+        await tap(page, '.weigh-week-head');
         await waitFor(page, 'the opened week to list its days',
             () => document.querySelectorAll('.weigh-day').length > 0);
 
@@ -149,7 +141,7 @@ const openNa = (page, label) => page.evaluate((l) => {
 
         // === 3. Saving writes a backfilled entry ========================
         await typeWeight(page, '178.0');
-        await clickIn(page, '.weigh-day-btn', 'Save');
+        await tap(page, '.weigh-day-btn', { text: 'Save' });
         await waitFor(page, 'the filled-in day to reach localStorage',
             (ns) => JSON.parse(localStorage.getItem(ns + 'gymWeightLog') || '[]').length === 4, NS);
 

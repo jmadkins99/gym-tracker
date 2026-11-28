@@ -46,7 +46,7 @@
 // beaten-week swap and phase 2 reads 170.0.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -193,10 +193,7 @@ const load = async (page, weight, todayWeight) => {
             'the distance derives from the average: ' + varied.foot);
 
         // === 5. The dashboard agrees about the same week =================
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find((b) => b.textContent.includes('History')).click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await waitFor(page, 'the plan dashboard to render',
             () => !!document.querySelector('.plan-card'));
         const dash = await page.evaluate(() => document.querySelector('.plan-card').textContent);
