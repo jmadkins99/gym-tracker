@@ -193,17 +193,19 @@ echo
 #               repo=<name of the repo's folder, e.g. gym-tracker>
 #               pid=<the runner's own $$ as Git Bash / Linux sees it>
 #               started=<epoch seconds>
-#   Take it:  `mkdir <lock>`, which fails if it exists; that is the atomic
-#             step, so two runs can never both win. Then write <lock>/info.
+#   Take it:  `claim_dir <lock>` (below): `mkdir <lock>`, then create
+#             <lock>/.made with bash's noclobber redirect. Creating .made is
+#             the atomic step, so two runs can never both win. Then write
+#             <lock>/info.
 #   Held:     print once who holds it (repo, pid, since when), then poll every
 #             TEST_LOCK_POLL seconds (default 2) until it is free.
 #   Stale:    the holder's pid is gone (`kill -0` fails and /proc/<pid> is
 #             missing), or <lock>/info stays unreadable for 5 s. A waiter that
 #             read pid P and started S from a stale lock claims THAT lock with
-#             `mkdir <lock>/takeover-P-S`. The claim lives inside the lock
+#             `claim_dir <lock>/takeover-P-S`. The claim lives inside the lock
 #             directory, so it belongs to that one lock: of all the runs that
 #             saw the same stale lock only one can make it, and a run whose
-#             view is out of date only leaves a harmless empty folder in a
+#             view is out of date only leaves a harmless claim folder in a
 #             newer lock. With the claim made, it re-reads the info; only if
 #             it still says P and S, and P is still gone, it retires the lock.
 #   Retire:   `mv -T <lock> <lock>.gone.<pid>.<random>`, one atomic rename,
@@ -219,6 +221,16 @@ echo
 # for it until it ends. A run killed between claiming a stale lock and retiring
 # it (a few milliseconds) leaves that lock claimed for good. Delete the
 # directory by hand if either ever happens.
+
+# claim_dir <dir>: makes <dir> and succeeds only for the one call that made it.
+# A bare `mkdir` can't promise that: the uutils coreutils that Ubuntu 26.04
+# ships (CI's ubuntu-latest image) exits 0 when the directory appeared a moment
+# earlier from another process, so several racers all "won" a stale lock and
+# two suites overlapped. The winner is whoever creates <dir>/.made through
+# bash's noclobber redirect, which bash opens itself with O_CREAT|O_EXCL,
+# whatever coreutils the machine has.
+claim_dir() { mkdir "$1" 2>/dev/null && ( set -C; : > "$1/.made" ) 2>/dev/null; }
+
 if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath > /dev/null 2>&1; then
     LOCK_TMP="$(cygpath -u "$LOCALAPPDATA")/Temp"
 else
@@ -268,9 +280,9 @@ release_lock() {
 # own watch-<pid> folder inside it; the folder still being there proves it is
 # still the same lock and not a new one that is about to write its info.
 takeover_stale() {
-    mkdir "$LOCK_DIR/takeover-$1-$2" 2>/dev/null || return 0
+    claim_dir "$LOCK_DIR/takeover-$1-$2" || return 0
     if [ -z "$1" ] && [ ! -d "$LOCK_DIR/watch-$$" ]; then           # not the lock it watched
-        rmdir "$LOCK_DIR/takeover-$1-$2" 2>/dev/null; return 0
+        rm -rf "$LOCK_DIR/takeover-$1-$2" 2>/dev/null; return 0
     fi
     if read_lock_info && [ "$INFO_PID" = "$1" ] && [ "$INFO_STARTED" = "$2" ] && ! pid_alive "$1"; then
         echo "Taking over a stale test lock (pid ${1:-?} is gone)."
@@ -281,7 +293,7 @@ takeover_stale() {
 acquire_lock() {
     local announced=0 watch_since=
     while :; do
-        if mkdir "$LOCK_DIR" 2>/dev/null; then
+        if claim_dir "$LOCK_DIR"; then
             printf 'repo=%s\npid=%s\nstarted=%s\n' "$LOCK_REPO" "$$" "$(date +%s)" > "$LOCK_INFO"
             LOCK_HELD=1
             rm -rf "$LOCK_DIR".gone.* 2>/dev/null        # copies a retire could not delete
@@ -466,12 +478,12 @@ run_case() {
 }
 
 # One worker per slot. Workers take the next unclaimed case in filename order;
-# the claim is a mkdir, which is atomic, so no case runs twice, and a slow case
+# the claim is a claim_dir (see the lock above), so no case runs twice, and a slow case
 # never holds up the queue behind it.
 worker() {
     local i
     for i in "${!NAMES[@]}"; do
-        mkdir "$STATE/claim.$i" 2>/dev/null || continue
+        claim_dir "$STATE/claim.$i" || continue
         run_case "$i" "" "$1"
     done
     slot_stop

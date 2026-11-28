@@ -107,18 +107,22 @@ copies this convention exactly, so change both together:
 - **Contents:** one file, `<lock>/info`, three `key=value` lines:
   `repo=<repo folder name>`, `pid=<the runner's own $$>`,
   `started=<epoch seconds>`.
-- **Taking it:** `mkdir <lock>`, which fails if it exists, so two runs can
-  never both win; then write `<lock>/info`.
+- **Taking it:** `mkdir <lock>`, then create `<lock>/.made` with bash's
+  noclobber redirect (`set -C; : > <lock>/.made`), so two runs can never both
+  win; then write `<lock>/info`. A bare `mkdir` is not enough: the uutils
+  coreutils on Ubuntu 26.04 (CI's `ubuntu-latest`) exit 0 when another
+  process made the folder a moment earlier. `run.sh` calls this `claim_dir`
+  and uses it for every claim below, and for its per-case claims too.
 - **Held:** the run prints once which repo and pid hold it and since when,
   then polls every `TEST_LOCK_POLL` seconds (default 2).
 - **Stale:** the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
   missing), or `info` stays unreadable for 5 seconds. A run that read pid `P`
   and `started` `S` from a stale lock claims that lock with
-  `mkdir <lock>/takeover-P-S`. The claim sits inside the lock, so of all the
-  runs that saw the same stale lock only one gets it, and a run with an out of
-  date view only leaves an empty folder in a newer lock. With the claim made,
+  `claim_dir <lock>/takeover-P-S`. The claim sits inside the lock, so of all
+  the runs that saw the same stale lock only one gets it, and a run with an out
+  of date view only leaves a claim folder in a newer lock. With the claim made,
   it re-reads `info`, and only if it still says `P` and `S` and `P` is still
-  gone does it retire the lock, then go round the normal `mkdir` again. For an
+  gone does it retire the lock, then go round the normal `claim_dir` again. For an
   unreadable `info` the run first makes `<lock>/watch-<its pid>` and waits the 5
   seconds; that folder still being there when it claims proves it is the same
   lock, not a new one about to write its `info`.
