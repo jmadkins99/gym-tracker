@@ -35,7 +35,7 @@ const { eq, ok } = require('../lib/assert');
 const {
     DEFAULT_NS, revealCard, isRevealed, activeName, deckIndex,
     stepTo, selectDeckDay, bottomNav, startAnchors, swipe,
-    recordGestures, gestures, resetGestures, RAIL_MS,
+    recordGestures, gestures, resetGestures, RAIL_MS, activeExerciseId,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -98,15 +98,26 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // Leave it, then go to History INSIDE the 300ms collapse window, so
         // the unmount is what has to finish the close.
         await resetGestures(page);
+        const secondId = await activeExerciseId(page);
         await swipe(page, -220, 0, { steps: 4, settle: false });
+        // Read at once, assert below: the card just left must still be open
+        // (its close pending), or the unmount is not what has to finish it.
+        const pendingOpen = await page.evaluate((id) =>
+            !!document.querySelector('.deck-slot [data-exercise-id="' + id + '"].card-open'), secondId);
         await bottomNav(page, 'History');
         // The History tap has to land inside the window too, or the timer
         // would have fired by itself and the unmount path is not what ran.
-        const swipedAt = (await gestures(page)).up[0];
-        const navAt = await page.evaluate(() => Date.now());
-        ok(navAt - swipedAt < RAIL_MS,
-            'the overlap was not exercised: History was not up inside the ' +
-            `${RAIL_MS} ms close window (${navAt - swipedAt} ms after the swipe was released)`);
+        // Measured on the tap's own pointerdown, not after bottomNav's polling.
+        const g = await gestures(page);
+        ok(g.up.length >= 1 && g.down.length === 2,
+            `expected one release (the swipe) and two presses (swipe, History tap); got ${JSON.stringify(g)}`);
+        const gap = g.down[1] - g.up[0];
+        ok(gap < RAIL_MS,
+            'the overlap was not exercised: History was not tapped inside the ' +
+            `${RAIL_MS} ms close window (${gap} ms after the swipe was released)`);
+        ok(pendingOpen,
+            'the card just left was already closed after the swipe away — the close is ' +
+            'meant to wait out the rail animation, so History did not interrupt a pending close');
         await bottomNav(page, 'Workout');
 
         await stepTo(page, 2);

@@ -14,8 +14,9 @@
 //      rail is then displaced back and travels home. Doing it the obvious way
 //      round — animate, then commit when it lands — forces input to be locked
 //      out for the length of the animation, which swallows swipes exactly when
-//      you are moving through the deck fastest. Four back-to-back swipes, all
-//      inside one 300ms animation, must all count.
+//      you are moving through the deck fastest. Four back-to-back swipes, each
+//      made while the previous one's 300ms animation is still running, must
+//      all count.
 //
 //   3. DISTANCE **OR** SPEED. Distance alone is a bad trade: long enough and a
 //      quick flick is ignored, short enough and a card you grabbed to read
@@ -86,11 +87,14 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // === 2. Fast swipes are not dropped ============================
         const before = await deckIndex(page);
         await resetGestures(page);
-        for (let i = 0; i < 4; i++) await swipe(page, -170, 0, { settle: false });
+        // Fewest steps that still make a flick (170 px over 3 steps of 8 ms is
+        // ~7 px/ms, past FLICK_SPEED), so little CDP traffic sits between swipes.
+        for (let i = 0; i < 4; i++) await swipe(page, -170, 0, { steps: 3, stepDelay: 8, settle: false });
         const g2 = await gestures(page);
-        ok(g2.up.length === 4 && g2.up[3] - g2.up[0] < RAIL_MS,
-            'the overlap was not exercised: the four swipes were not all released inside ' +
-            `one ${RAIL_MS} ms rail animation (releases at ${JSON.stringify(g2.up)})`);
+        const gaps = g2.up.slice(1).map((t, i) => t - g2.up[i]);
+        ok(g2.up.length === 4 && gaps.every((d) => d < RAIL_MS),
+            'the overlap was not exercised: each swipe was not released inside the ' +
+            `${RAIL_MS} ms rail animation of the one before (releases at ${JSON.stringify(g2.up)})`);
         await waitForDeckToSettle(page);
         eq(await deckIndex(page) - before, 4,
             'four back-to-back swipes all count — the index commits before the animation, ' +

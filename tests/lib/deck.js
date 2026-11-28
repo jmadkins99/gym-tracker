@@ -156,9 +156,17 @@ const activeExerciseId = (page) =>
 // auto-advance and for the deck to come to rest. Pass `waitForAutoAdvance:
 // false` to inspect the logged card or the celebration itself. A LOG button
 // that is missing or disabled returns false.
+//
+// Pass `expectRejected: true` for a press the app is meant to refuse (blank or
+// invalid reps on an enabled button). The log is decided synchronously in the
+// click, so one read of the stamps right after the tap is the whole condition
+// and there is nothing to wait for. It returns false, and throws if the set
+// was saved anyway. A refused tap changes nothing, so it also leaves no
+// evidence that the tap landed; a caller that needs that proof asserts the
+// card's own state, as case 149 does with the logged chip.
 async function logCard(page, opts = {}) {
     if ('settle' in opts) throw new Error('logCard: settle is gone; pass waitForAutoAdvance: false instead');
-    const { waitForAutoAdvance = true } = opts;
+    const { waitForAutoAdvance = true, expectRejected = false } = opts;
     const ready = await page.evaluate((sel) => {
         const btn = document.querySelector(sel + ' .log-btn');
         return !!btn && !btn.disabled;
@@ -167,11 +175,24 @@ async function logCard(page, opts = {}) {
     const id = await activeExerciseId(page);
     const before = await page.evaluate(loggedStamps, id);
     await tap(page, ACTIVE + ' .log-btn');
+    if (expectRejected) {
+        if (await page.evaluate(loggedStamps, id, before)) {
+            throw new Error('logCard: ' + id + ' was saved, but the LOG press was expected to be rejected');
+        }
+        return false;
+    }
     await waitFor(page, 'the LOG tap to save ' + id + ' (its loggedAt to change)',
         loggedStamps, id, before);
     if (waitForAutoAdvance) {
-        await waitFor(page, 'the PR celebration to end and the deck to move on', (sel) =>
+        await waitFor(page, 'the PR celebration to end', (sel) =>
             !document.querySelector(sel + ' .card.pr-celebrating'), ACTIVE);
+        // The deck jumps to another unlogged card, or to the finish card when
+        // none is left, so the active card must no longer be the logged one.
+        await waitFor(page, 'the deck to move on from ' + id, (sel, loggedId) => {
+            if (document.querySelector(sel + ' .card-finish')) return true;
+            const card = document.querySelector(sel + ' .card[data-exercise-id]');
+            return !!card && card.getAttribute('data-exercise-id') !== loggedId;
+        }, ACTIVE, id);
         await waitForDeckToSettle(page);
     }
     return true;
@@ -234,7 +255,10 @@ async function stepOnce(page, forward) {
 async function stepTo(page, target, { max = 40 } = {}) {
     for (let guard = 0; guard < max; guard++) {
         const at = await deckIndex(page);
-        if (at === target) return waitForDeckToSettle(page);
+        if (at === target) {
+            await waitForDeckToSettle(page);
+            return true;
+        }
         await stepOnce(page, at === null ? false : at < target);
     }
     throw new Error('stepTo: could not reach card ' + target);
@@ -357,8 +381,12 @@ async function goToCard(page, name) {
     // card closes it, and reopening stamps a fresh start time — so a helper that
     // always walked from card 1 would silently restart the clock it was only
     // meant to look at.
-    if ((await activeName(page)) === name) return waitForDeckToSettle(page);
+    if ((await activeName(page)) === name) {
+        await waitForDeckToSettle(page);
+        return true;
+    }
     await findCard(page, 'goToCard', 'named ' + name, async () => (await activeName(page)) === name);
+    return true;
 }
 
 // Navigate to a named card, open it and log it — the deck's equivalent of
@@ -433,8 +461,12 @@ async function setWeightAndOpen(page, name, weight) {
 // name. Cases that log a whole day work in ids, because a display name can be
 // renamed by the user and an id never is.
 async function goToCardById(page, id) {
-    if ((await activeExerciseId(page)) === id) return waitForDeckToSettle(page);
+    if ((await activeExerciseId(page)) === id) {
+        await waitForDeckToSettle(page);
+        return true;
+    }
     await findCard(page, 'goToCardById', 'with id ' + id, async () => (await activeExerciseId(page)) === id);
+    return true;
 }
 
 // Navigate to a card by id, open it, and log it.
@@ -461,10 +493,27 @@ async function submitDay(page) {
     }), ACTIVE);
     if (!finish.ready) return false;
     // The submit runs in the tap's own handler: it saves the day and opens the
-    // Day Breakdown. With nothing logged it raises an alert instead, which the
-    // caller's dialog handler answers, so there is nothing to wait for here.
+    // Day Breakdown. With nothing logged it raises an alert instead. The
+    // caller's own dialog handler answers that alert, so this only observes the
+    // event (answering it twice throws); the listener is attached before the
+    // tap because the alert fires inside it.
+    let alerted = null;
+    let stopListening = () => {};
+    if (finish.empty) {
+        alerted = new Promise((resolve) => {
+            page.once('dialog', resolve);
+            stopListening = () => page.off('dialog', resolve);
+        });
+    }
     await tap(page, ACTIVE + ' .save-btn', { text: /Submit Day/i });
-    if (!finish.empty) {
+    if (finish.empty) {
+        let timer;
+        const timedOut = new Promise((resolve) => { timer = setTimeout(() => resolve(null), 5000); });
+        const dialog = await Promise.race([alerted, timedOut]);
+        clearTimeout(timer);
+        stopListening();
+        if (!dialog) throw new Error('submitDay: no alert after tapping Submit Day with nothing logged');
+    } else {
         // The Day Breakdown itself, not just any modal: an unrelated overlay
         // that swallowed the tap would otherwise satisfy the wait.
         await waitFor(page, 'the Day Breakdown to open after Submit Day', () =>

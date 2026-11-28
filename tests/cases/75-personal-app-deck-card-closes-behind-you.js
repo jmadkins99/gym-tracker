@@ -86,6 +86,10 @@ const anchorOf = async (page) => {
         ok(originalId, 'the open card has an id to find it by');
         await resetGestures(page);
         await swipe(page, -180, 0, { settle: false });
+        // Read at once, assert below: if the close were immediate (or the timer
+        // had already fired) the card just left would no longer be open.
+        const pendingOpen = await page.evaluate((id) =>
+            !!document.querySelector('.deck-slot [data-exercise-id="' + id + '"].card-open'), originalId);
         await swipe(page, 180, 0, { settle: false });
         // The return must be released before the close fires, RAIL_MS (300 ms)
         // after the swipe away, or this section says nothing about a fast return.
@@ -93,6 +97,9 @@ const anchorOf = async (page) => {
         ok(g3.up.length === 2 && g3.up[1] - g3.up[0] < RAIL_MS,
             'the overlap was not exercised: the return was not released inside the ' +
             `${RAIL_MS} ms before the close timer fired (releases at ${JSON.stringify(g3.up)})`);
+        ok(pendingOpen,
+            'the card just left was already closed after the swipe away — the close is ' +
+            'meant to wait out the rail animation, so this section proved nothing about a pending close');
         // Back on the ORIGINAL card, then wait for its close rather than
         // reading at once. If the return cancelled the close, this times out
         // and names what never happened.

@@ -173,14 +173,19 @@ function attachConsole(page) {
 // mounts the deck, but the logged cards come from a separate effect on
 // `[workoutHistory, today]` that runs after that commit and renders again. So
 // a case reading right after the deck appears could see today's cards still
-// unlogged. The saved history is in localStorage before the app ever reads
-// it, so we read it here too and wait until every mounted card whose exercise
-// has logged data carries `.is-done` (both card faces set it from
-// `loggedExercises`). The namespace is not known here, so any key ending in
-// `gymWorkoutHistory` counts. With no unsubmitted session today there is
-// nothing more to wait for. Only mounted cards are checked (the deck keeps
-// three), which is enough because every card is rendered from the same
-// `loggedExercises` state, set in one go.
+// unlogged. To see that restore from outside, we ask the app's own rule in
+// the page: `storage` and `hasLoggedData` are top-level bindings of
+// js/utils.js, so they are reachable by name, and `storage` reads the app's
+// own namespace. The rule mirrors App's effect: the first workout dated
+// today, and only when it is not submitted. If it has an exercise with
+// logged data, the deck's progress bar (`.deck-bar-fill`, always rendered,
+// its width is the share of the deck's cards in `loggedExercises`) must rise
+// above 0%. That sees the restore for the whole deck, not just the three
+// mounted cards. Without such a session, only the deck is awaited, and the
+// bar is not required when there is no `.deck-stage` (the list screen).
+//
+// Known limit: a session whose logged rows are all off this day's deck keeps
+// the bar at 0% and so times out, loudly, with the error below.
 //
 // The day lock needs no wait of its own: the start day is already the locked
 // day (pickStartDay), so `showDay(lockedDayType)` only does anything when
@@ -188,36 +193,27 @@ function attachConsole(page) {
 async function waitForApp(page, timeoutMs = 8000) {
     try {
         await page.waitForFunction(() => {
-            if (!(document.querySelector('.deck-stage') || document.querySelector('.exercise-card'))) {
-                return false;
-            }
-            const filled = (v) => !!v && v !== 'NA';
-            const hasData = (e) => e.type === 'assault-bike' ? filled(e.intensity)
-                : e.type === 'stairmaster' ? filled(e.time)
-                : e.type === 'bodyweight' ? filled(e.reps)
-                : filled(e.weight) || filled(e.reps);
+            const stage = document.querySelector('.deck-stage');
+            if (!(stage || document.querySelector('.exercise-card'))) return false;
+            if (!stage) return true;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const logged = new Set();
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (!key.endsWith('gymWorkoutHistory')) continue;
-                let history;
-                try { history = JSON.parse(localStorage.getItem(key)); } catch (e) { continue; }
-                if (!Array.isArray(history)) continue;
-                for (const w of history) {
-                    const d = new Date(w.date);
-                    d.setHours(0, 0, 0, 0);
-                    if (d.getTime() !== today.getTime() || w.submitted) continue;
-                    (w.exercises || []).forEach(e => { if (hasData(e)) logged.add(String(e.id)); });
-                }
+            let history = [];
+            try { history = JSON.parse(storage.getItem('gymWorkoutHistory') || '[]'); } catch (e) { /* unreadable: nothing to restore */ }
+            const session = (Array.isArray(history) ? history : []).find(w => {
+                const d = new Date(w.date);
+                d.setHours(0, 0, 0, 0);
+                return d.getTime() === today.getTime();
+            });
+            if (!session || session.submitted || !(session.exercises || []).some(hasLoggedData)) {
+                return true;
             }
-            return Array.from(document.querySelectorAll('.card[data-exercise-id]'))
-                .every(c => !logged.has(c.getAttribute('data-exercise-id')) || c.classList.contains('is-done'));
+            const fill = document.querySelector('.deck-bar-fill');
+            return !!fill && parseFloat(fill.style.width) > 0;
         }, { timeout: timeoutMs, polling: 50 });
     } catch (err) {
         throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for the workout ' +
-            'screen (no .deck-stage or .exercise-card, or the logged cards not marked done)');
+            'screen (no .deck-stage or .exercise-card, or the logged exercises of today not restored)');
     }
 }
 
@@ -225,9 +221,18 @@ async function waitForApp(page, timeoutMs = 8000) {
 // open the gear, act, and close it again, so a case is left exactly where it
 // was — on the deck, or on History — with only the day changed.
 async function openSettings(page) {
+    // An overlay already open would swallow the gear tap, and its own title
+    // would then satisfy the wait below, so refuse up front.
+    if (await page.evaluate(() => !!document.querySelector('.modal'))) {
+        throw new Error('openSettings: a modal is already open, so the gear tap would land on it');
+    }
     await tap(page, '.settings-btn');
-    await waitFor(page, 'the Settings modal to open',
-        () => !!document.querySelector('.modal .modal-title'));
+    // The gear opens the modal with `editOnly`, titled "Settings"; the
+    // "Exercises" title belongs to the Manage Exercises sub-view.
+    await waitFor(page, 'the Settings modal to open', () => {
+        const t = document.querySelector('.modal .modal-title');
+        return !!t && t.textContent.trim() === 'Settings';
+    });
 }
 
 async function closeSettings(page) {
