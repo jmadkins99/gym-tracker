@@ -198,19 +198,27 @@ echo
 #   Held:     print once who holds it (repo, pid, since when), then poll every
 #             TEST_LOCK_POLL seconds (default 2) until it is free.
 #   Stale:    the holder's pid is gone (`kill -0` fails and /proc/<pid> is
-#             missing), or <lock>/info stays unreadable for 5 s. Taking over is
-#             done under a second mutex, `mkdir <lock>.guard`: with the guard
-#             held, re-read the info, and only if it still names the same dead
-#             pid `rm -rf <lock>`, then drop the guard and go round the normal
-#             `mkdir` again. Nobody else can remove or replace the lock while
-#             the guard is held, so a lock that was just taken fresh is never
-#             removed. A guard older than a minute was left by a killed run and
-#             is removed.
-#   Release:  the EXIT trap removes the directory if its info still names this
+#             missing), or <lock>/info stays unreadable for 5 s. A waiter that
+#             read pid P and started S from a stale lock claims THAT lock with
+#             `mkdir <lock>/takeover-P-S`. The claim lives inside the lock
+#             directory, so it belongs to that one lock: of all the runs that
+#             saw the same stale lock only one can make it, and a run whose
+#             view is out of date only leaves a harmless empty folder in a
+#             newer lock. With the claim made, it re-reads the info; only if
+#             it still says P and S, and P is still gone, it retires the lock.
+#   Retire:   `mv -T <lock> <lock>.gone.<pid>.<random>`, one atomic rename,
+#             then delete the moved copy. Nothing ever removes a lock by path
+#             after a separate check: only the holder (its own pid in the
+#             info) or the one run with the claim retires a lock, so the lock
+#             at the path cannot change in between. If the rename fails
+#             (Windows can refuse while a file inside is open), `rm -rf <lock>`.
+#   Release:  the EXIT trap retires the directory if its info still names this
 #             pid. EXIT runs on a normal end, on a failure and on Ctrl+C / kill
 #             (the INT and TERM traps turn into `exit`).
 # A pid can be reused by an unrelated process after a crash; the run then waits
-# for it until it ends. Delete the directory by hand if that ever happens.
+# for it until it ends. A run killed between claiming a stale lock and retiring
+# it (a few milliseconds) leaves that lock claimed for good. Delete the
+# directory by hand if either ever happens.
 if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath > /dev/null 2>&1; then
     LOCK_TMP="$(cygpath -u "$LOCALAPPDATA")/Temp"
 else
@@ -218,59 +226,82 @@ else
 fi
 LOCK_DIR="${TEST_LOCK_FILE:-$LOCK_TMP/machine-test-run.lock}"
 LOCK_INFO="$LOCK_DIR/info"
-LOCK_GUARD="$LOCK_DIR.guard"
 LOCK_POLL="${TEST_LOCK_POLL:-2}"
 LOCK_HELD=0
 LOCK_REPO=$(basename "$(cd .. && pwd)")
 
-lock_field() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1; }   # lock_field <file> <key>
+# read_lock_info: one read of <lock>/info into INFO_REPO, INFO_PID and
+# INFO_STARTED (empty when missing). Returns 1 if the lock directory is gone.
+read_lock_info() {
+    local text
+    text=$(cat "$LOCK_INFO" 2>/dev/null)
+    INFO_REPO=$(sed -n 's/^repo=//p' <<< "$text" | head -n 1)
+    INFO_PID=$(sed -n 's/^pid=//p' <<< "$text" | head -n 1)
+    INFO_STARTED=$(sed -n 's/^started=//p' <<< "$text" | head -n 1)
+    [ -n "$text" ] || [ -d "$LOCK_DIR" ]
+}
 pid_alive() { [[ "$1" =~ ^[0-9]+$ ]] && { kill -0 "$1" 2>/dev/null || [ -e "/proc/$1" ]; }; }
 
+# retire_lock: moves the lock directory aside in one rename, then deletes the
+# moved copy. Only call it for a lock this run owns (its own, or the stale one
+# it has claimed): nobody else retires such a lock, so the path still names it.
+retire_lock() {
+    local gone="$LOCK_DIR.gone.$$.$RANDOM"
+    if mv -T "$LOCK_DIR" "$gone" 2>/dev/null; then
+        rm -rf "$gone" 2>/dev/null
+    else
+        rm -rf "$LOCK_DIR" 2>/dev/null
+    fi
+}
+
 release_lock() {
-    if [ "$LOCK_HELD" = 1 ] && [ "$(lock_field "$LOCK_INFO" pid)" = "$$" ]; then
-        rm -rf "$LOCK_DIR"
+    if [ "$LOCK_HELD" = 1 ] && read_lock_info && [ "$INFO_PID" = "$$" ]; then
+        retire_lock
     fi
     LOCK_HELD=0
 }
 
-# takeover_stale <pid seen>: removes the lock directory if, with the guard
-# held, it still names that same pid and the pid is still gone.
+# takeover_stale <pid> <started>: the values read from a lock whose pid is
+# gone. Claims that lock and retires it if, with the claim made, the info still
+# says the same and the pid is still gone. Anything else leaves it alone. For a
+# lock with no pid in its info, the caller has watched it for 5 s through its
+# own watch-<pid> folder inside it; the folder still being there proves it is
+# still the same lock and not a new one that is about to write its info.
 takeover_stale() {
-    if [ -d "$LOCK_GUARD" ] && [ -n "$(find "$LOCK_GUARD" -maxdepth 0 -mmin +1 2>/dev/null)" ]; then
-        rmdir "$LOCK_GUARD" 2>/dev/null
+    mkdir "$LOCK_DIR/takeover-$1-$2" 2>/dev/null || return 0
+    if [ -z "$1" ] && [ ! -d "$LOCK_DIR/watch-$$" ]; then           # not the lock it watched
+        rmdir "$LOCK_DIR/takeover-$1-$2" 2>/dev/null; return 0
     fi
-    mkdir "$LOCK_GUARD" 2>/dev/null || return 1
-    if [ "$(lock_field "$LOCK_INFO" pid)" = "$1" ] && ! pid_alive "$1"; then
+    if read_lock_info && [ "$INFO_PID" = "$1" ] && [ "$INFO_STARTED" = "$2" ] && ! pid_alive "$1"; then
         echo "Taking over a stale test lock (pid ${1:-?} is gone)."
-        rm -rf "$LOCK_DIR"
+        retire_lock
     fi
-    rmdir "$LOCK_GUARD" 2>/dev/null
-    return 0
 }
 
 acquire_lock() {
-    local announced=0 pid repo started tries=0
+    local announced=0 watch_since=
     while :; do
         if mkdir "$LOCK_DIR" 2>/dev/null; then
             printf 'repo=%s\npid=%s\nstarted=%s\n' "$LOCK_REPO" "$$" "$(date +%s)" > "$LOCK_INFO"
             LOCK_HELD=1
+            rm -rf "$LOCK_DIR".gone.* 2>/dev/null        # copies a retire could not delete
             return
         fi
-        if [ ! -d "$LOCK_DIR" ]; then continue; fi           # released just now: try again
-        pid=$(lock_field "$LOCK_INFO" pid)
-        if [ -z "$pid" ] && [ "$tries" -lt 25 ]; then        # holder is mid-write
-            tries=$((tries + 1)); sleep 0.2; continue
+        read_lock_info || continue                            # released just now: try again
+        if [ -z "$INFO_PID" ]; then                           # holder is mid-write?
+            if [ -z "$watch_since" ]; then watch_since=$SECONDS; mkdir "$LOCK_DIR/watch-$$" 2>/dev/null; fi
+            if [ $((SECONDS - watch_since)) -lt 5 ]; then sleep 0.2; continue; fi
+            if [ ! -d "$LOCK_DIR/watch-$$" ]; then watch_since=; continue; fi   # a new lock: watch it afresh
         fi
-        if ! pid_alive "$pid"; then
-            takeover_stale "$pid" || sleep 0.2
-            tries=0
+        if ! pid_alive "$INFO_PID"; then
+            takeover_stale "$INFO_PID" "$INFO_STARTED"
+            watch_since=
+            sleep 0.05
             continue
         fi
-        tries=0
+        watch_since=
         if [ "$announced" = 0 ]; then
-            repo=$(lock_field "$LOCK_INFO" repo)
-            started=$(lock_field "$LOCK_INFO" started)
-            echo "Another test run holds the machine-wide test lock: ${repo:-?} (pid $pid), started $(date -d "@$started" +%H:%M:%S 2>/dev/null || echo '?'), $(( $(date +%s) - ${started:-0} ))s ago."
+            echo "Another test run holds the machine-wide test lock: ${INFO_REPO:-?} (pid $INFO_PID), started $(date -d "@$INFO_STARTED" +%H:%M:%S 2>/dev/null || echo '?'), $(( $(date +%s) - ${INFO_STARTED:-0} ))s ago."
             echo "Waiting for it to finish (lock: $LOCK_DIR)..."
             announced=1
         fi

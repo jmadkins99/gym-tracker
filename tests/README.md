@@ -112,14 +112,23 @@ copies this convention exactly, so change both together:
 - **Held:** the run prints once which repo and pid hold it and since when,
   then polls every `TEST_LOCK_POLL` seconds (default 2).
 - **Stale:** the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
-  missing), or `info` stays unreadable for 5 seconds. Taking over runs under a
-  second mutex, `mkdir <lock>.guard`: with the guard held, re-read `info`, and
-  only if it still names the same dead pid, `rm -rf <lock>`; then drop the
-  guard and go round the normal `mkdir` again. While the guard is held nobody
-  else can remove or replace the lock, so a lock another run has just taken is
-  never removed. A guard older than a minute was left by a killed run and is
-  removed.
-- **Release:** the `EXIT` trap removes the directory if `info` still names this
+  missing), or `info` stays unreadable for 5 seconds. A run that read pid `P`
+  and `started` `S` from a stale lock claims that lock with
+  `mkdir <lock>/takeover-P-S`. The claim sits inside the lock, so of all the
+  runs that saw the same stale lock only one gets it, and a run with an out of
+  date view only leaves an empty folder in a newer lock. With the claim made,
+  it re-reads `info`, and only if it still says `P` and `S` and `P` is still
+  gone does it retire the lock, then go round the normal `mkdir` again. For an
+  unreadable `info` the run first makes `<lock>/watch-<its pid>` and waits the 5
+  seconds; that folder still being there when it claims proves it is the same
+  lock, not a new one about to write its `info`.
+- **Retiring:** `mv -T <lock> <lock>.gone.<pid>.<random>`, one atomic rename,
+  then delete the moved copy (if the rename fails, as Windows can while a file
+  inside is open, `rm -rf <lock>`). Only the holder or the one run with the
+  claim ever retires a lock, and nothing removes a lock by path after a
+  separate check, so a lock another run has just taken is never removed. The
+  next run to take the lock deletes any `.gone.*` copy left behind.
+- **Release:** the `EXIT` trap retires the directory if `info` still names this
   pid, on a normal end, a failure, Ctrl+C or kill. It also stops cases still in
   flight, and an interrupted run first publishes the logs it has and a summary
   marked `INTERRUPTED` into the last-run folder.
@@ -127,8 +136,9 @@ copies this convention exactly, so change both together:
 The pid is bash's own `$$`, which in Git Bash is the MSYS pid, not the Windows
 one. Every runner is a Git Bash process, so they all see the same pids and
 `kill -0` works across them. A crash can leave a pid that an unrelated process
-later reuses; delete the directory by hand if a run waits on a holder that is
-not a test run. `check-runner.sh` covers the default path, waiting, reporting
+later reuses, and a run killed in the few milliseconds between claiming a stale
+lock and retiring it leaves that lock claimed; delete the directory by hand if
+a run waits on a holder that is not a test run, or on a stale lock for good. `check-runner.sh` covers the default path, waiting, reporting
 the holder, stale takeover (including several runs racing for one stale lock)
 and release on SIGTERM.
 

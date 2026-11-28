@@ -228,7 +228,12 @@ for round in 1 2 3; do
     [ "$(cat "$SLOG" | tr '\n' ' ')" = "start end start end start end start end " ] || RACE_OK=0
 done
 [ "$RACE_OK" = 1 ] && ok "four runs per round, three rounds: each case ended before the next began" || fail "runs overlapped or one did not run: $(tr '\n' ' ' < "$SLOG")"
-[ ! -e "$LOCK" ] && [ ! -e "$LOCK.guard" ] && ok "no lock or guard left behind" || fail "lock or guard left behind"
+LEFT=$(ls -d "$LOCK" "$LOCK".* 2>/dev/null)
+[ -z "$LEFT" ] && ok "no lock or retired copy left behind" || fail "left behind: $LEFT"
+for round in 1 2 3; do
+    [ "$(cat "$WORK"/race-$round-*.out | grep -c 'stale test lock')" = 1 ] || RACE_ONE=0
+done
+[ "${RACE_ONE:-1}" = 1 ] && ok "exactly one run took over each stale lock" || fail "several runs took over the same stale lock"
 
 # ── one Chrome per slot ──────────────────────────────────────────────────────
 # Real Chrome cases (selftest-chrome-cases/), so this part needs puppeteer-core
