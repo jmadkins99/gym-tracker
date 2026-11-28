@@ -30,15 +30,17 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const {
     ACTIVE, DEFAULT_NS, swipe, swipeFrom, revealCard, activeName,
     deckIndex, selectDeckDay, todayWorkout, waitForDeckToSettle,
+    recordGestures, gestures, resetGestures, RAIL_MS,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
+
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -54,6 +56,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDeckDay(page, 'anterior-2');
+        await recordGestures(page);
 
         // === 1. Neighbours ride the rail ===============================
         eq(await page.$$eval('.deck-slot', (e) => e.length), 2,
@@ -64,6 +67,12 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
         // Hold a partial drag: a neighbour must genuinely be on screen.
         const held = await swipe(page, -120, 0, { release: false });
+        // The drag is painted in a requestAnimationFrame, so wait for the rail
+        // to carry its transform before measuring where the cards are.
+        await waitFor(page, 'the held drag to be painted on the rail', () => {
+            const m = /translateX\((-?[\d.]+)px\)/.exec(document.querySelector('.deck-rail').style.transform);
+            return !!m && Math.abs(parseFloat(m[1])) > 4;
+        });
         const sharing = await page.evaluate(() => {
             const stage = document.querySelector('.deck-stage').getBoundingClientRect();
             return Array.from(document.querySelectorAll('.deck-slot')).filter((s) => {
@@ -76,7 +85,12 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
         // === 2. Fast swipes are not dropped ============================
         const before = await deckIndex(page);
+        await resetGestures(page);
         for (let i = 0; i < 4; i++) await swipe(page, -170, 0, { settle: false });
+        const g2 = await gestures(page);
+        ok(g2.up.length === 4 && g2.up[3] - g2.up[0] < RAIL_MS,
+            'the overlap was not exercised: the four swipes were not all released inside ' +
+            `one ${RAIL_MS} ms rail animation (releases at ${JSON.stringify(g2.up)})`);
         await waitForDeckToSettle(page);
         eq(await deckIndex(page) - before, 4,
             'four back-to-back swipes all count — the index commits before the animation, ' +
@@ -88,11 +102,15 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         eq(await deckIndex(page) - at, 1, 'a short FAST flick advances');
 
         at = await deckIndex(page);
+        // Slow means well under FLICK_SPEED (0.45 px/ms): -40 px over 8 steps
+        // of 45 ms is 5 px / 45 ms = 0.11 px/ms.
         await swipe(page, -40, 0, { steps: 8, stepDelay: 45 });     // short, slow
         eq(await deckIndex(page) - at, 0, 'the same distance dragged SLOWLY does not');
 
         at = await deckIndex(page);
-        await swipe(page, -170, 0, { steps: 8, stepDelay: 45 });    // long, slow
+        // -170 px over 8 steps of 100 ms is 21.25 px / 100 ms = 0.21 px/ms, so
+        // only the distance rule can commit it (45 ms was 0.47 px/ms, a flick).
+        await swipe(page, -170, 0, { steps: 8, stepDelay: 100 });   // long, slow
         eq(await deckIndex(page) - at, 1, 'a long slow drag still commits');
 
         at = await deckIndex(page);

@@ -35,9 +35,11 @@ const { eq, ok } = require('../lib/assert');
 const {
     DEFAULT_NS, revealCard, isRevealed, activeName, deckIndex,
     stepTo, selectDeckDay, bottomNav, startAnchors, swipe,
+    recordGestures, gestures, resetGestures, RAIL_MS,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
+
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -53,6 +55,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDeckDay(page, 'anterior-2');
+        await recordGestures(page);
 
         // === 1. An open card survives the round trip =====================
         // Card 3 rather than card 1: landing on the right card by accident is
@@ -94,8 +97,16 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
         // Leave it, then go to History INSIDE the 300ms collapse window, so
         // the unmount is what has to finish the close.
+        await resetGestures(page);
         await swipe(page, -220, 0, { steps: 4, settle: false });
         await bottomNav(page, 'History');
+        // The History tap has to land inside the window too, or the timer
+        // would have fired by itself and the unmount path is not what ran.
+        const swipedAt = (await gestures(page)).up[0];
+        const navAt = await page.evaluate(() => Date.now());
+        ok(navAt - swipedAt < RAIL_MS,
+            'the overlap was not exercised: History was not up inside the ' +
+            `${RAIL_MS} ms close window (${navAt - swipedAt} ms after the swipe was released)`);
         await bottomNav(page, 'Workout');
 
         await stepTo(page, 2);

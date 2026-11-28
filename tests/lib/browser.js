@@ -159,26 +159,66 @@ function attachConsole(page) {
     return errors;
 }
 
-// Waits for the workout screen to render, which is our signal that React has
-// finished hydrating.
+// Waits for the workout screen to render and for today's saved session to show
+// on it, which is our signal that React has finished hydrating.
 //
 // Two selectors because the workout screen has been both: a scrolling list of
 // `.exercise-card`s and the swipe deck whose cards live inside `.deck-stage`.
 // The list half dates from when this suite also covered the public app (until
 // Oct 2026); asking for either costs nothing, and "the workout screen exists"
 // is the same question whichever element answers it.
+//
+// Existing is not enough when a session was already logged today. App.jsx
+// hydrates in one batch (history, active day, open card, `hydrated`), which
+// mounts the deck, but the logged cards come from a separate effect on
+// `[workoutHistory, today]` that runs after that commit and renders again. So
+// a case reading right after the deck appears could see today's cards still
+// unlogged. The saved history is in localStorage before the app ever reads
+// it, so we read it here too and wait until every mounted card whose exercise
+// has logged data carries `.is-done` (both card faces set it from
+// `loggedExercises`). The namespace is not known here, so any key ending in
+// `gymWorkoutHistory` counts. With no unsubmitted session today there is
+// nothing more to wait for. Only mounted cards are checked (the deck keeps
+// three), which is enough because every card is rendered from the same
+// `loggedExercises` state, set in one go.
+//
+// The day lock needs no wait of its own: the start day is already the locked
+// day (pickStartDay), so `showDay(lockedDayType)` only does anything when
+// another synced device logged on the other day.
 async function waitForApp(page, timeoutMs = 8000) {
     try {
-        await page.waitForFunction(
-            () => !!(document.querySelector('.deck-stage') || document.querySelector('.exercise-card')),
-            { timeout: timeoutMs, polling: 50 });
+        await page.waitForFunction(() => {
+            if (!(document.querySelector('.deck-stage') || document.querySelector('.exercise-card'))) {
+                return false;
+            }
+            const filled = (v) => !!v && v !== 'NA';
+            const hasData = (e) => e.type === 'assault-bike' ? filled(e.intensity)
+                : e.type === 'stairmaster' ? filled(e.time)
+                : e.type === 'bodyweight' ? filled(e.reps)
+                : filled(e.weight) || filled(e.reps);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const logged = new Set();
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (!key.endsWith('gymWorkoutHistory')) continue;
+                let history;
+                try { history = JSON.parse(localStorage.getItem(key)); } catch (e) { continue; }
+                if (!Array.isArray(history)) continue;
+                for (const w of history) {
+                    const d = new Date(w.date);
+                    d.setHours(0, 0, 0, 0);
+                    if (d.getTime() !== today.getTime() || w.submitted) continue;
+                    (w.exercises || []).forEach(e => { if (hasData(e)) logged.add(String(e.id)); });
+                }
+            }
+            return Array.from(document.querySelectorAll('.card[data-exercise-id]'))
+                .every(c => !logged.has(c.getAttribute('data-exercise-id')) || c.classList.contains('is-done'));
+        }, { timeout: timeoutMs, polling: 50 });
     } catch (err) {
         throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for the workout ' +
-            'screen (neither .deck-stage nor .exercise-card appeared)');
+            'screen (no .deck-stage or .exercise-card, or the logged cards not marked done)');
     }
-    // No extra tick: the deck mounts in the same hydration batch that restores
-    // the saved state (restoreOpenCard included), so once it exists what it
-    // shows is derived from that state already.
 }
 
 // The day toggle lives in Settings (Nov 2026), above Manage Exercises. These
@@ -245,12 +285,12 @@ async function selectDayType(page, type, { optional = false } = {}) {
         const pills = Array.from(document.querySelectorAll('.modal [data-day-type]'));
         const available = pills.map(b => b.getAttribute('data-day-type'));
         const btn = pills.find(b => b.getAttribute('data-day-type') === t);
-        if (!btn) return { clicked: false, available };
-        if (btn.classList.contains('active')) return { clicked: false, already: true, available };
-        if (toggle.hasAttribute('data-locked')) return { clicked: false, locked: true, available };
-        return { clicked: true, available };
+        if (!btn) return { canChoose: false, available };
+        if (btn.classList.contains('active')) return { canChoose: false, already: true, available };
+        if (toggle.hasAttribute('data-locked')) return { canChoose: false, locked: true, available };
+        return { canChoose: true, available };
     }, type);
-    if (result.clicked) {
+    if (result.canChoose) {
         const pill = `.modal [data-day-type="${type}"]`;
         await tap(page, pill);
         await waitFor(page, `the "${type}" pill to turn active`,
@@ -259,13 +299,13 @@ async function selectDayType(page, type, { optional = false } = {}) {
     await closeSettings(page);
     if (result.already) return true;
 
-    if (!result.clicked && !optional) {
+    if (!result.canChoose && !optional) {
         throw new Error(result.locked
             ? `the day toggle is locked, so "${type}" cannot be chosen (something was logged today)`
             : `no day-type toggle for "${type}" ` +
               `(available: ${result.available.length ? result.available.join(', ') : 'none'})`);
     }
-    return result.clicked;
+    return result.canChoose;
 }
 
 // Reads exercise cards from the current view. Each card describes what

@@ -30,9 +30,11 @@ const { eq, ok } = require('../lib/assert');
 const {
     ACTIVE, DEFAULT_NS, swipe, revealCard, isRevealed, activeName,
     selectDeckDay, startAnchors, waitForDeckToSettle,
+    recordGestures, gestures, resetGestures, RAIL_MS, activeExerciseId,
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
+
 const anchorOf = async (page) => {
     const a = await startAnchors(page);
     const k = Object.keys(a)[0];
@@ -53,6 +55,7 @@ const anchorOf = async (page) => {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDeckDay(page, 'anterior-2');
+        await recordGestures(page);
 
         // === 1. Swipe away, come back: closed ==========================
         await revealCard(page);
@@ -78,13 +81,29 @@ const anchorOf = async (page) => {
         // === 3. An immediate return still finds it shut ================
         await revealCard(page);
         eq(await isRevealed(page), true, 'open again');
+        const original = await activeName(page);
+        const originalId = await activeExerciseId(page);
+        ok(originalId, 'the open card has an id to find it by');
+        await resetGestures(page);
         await swipe(page, -180, 0, { settle: false });
-        await swipe(page, 180, 0);
-        // The close fires RAIL_MS (300 ms) after the first swipe, which the
-        // return beats, so wait for it rather than reading at once. If the
-        // return cancelled it, this times out and names what never happened.
-        await waitFor(page, 'the card swiped away from to close behind us',
-            (sel) => !document.querySelector(sel + ' .card-open'), ACTIVE);
+        await swipe(page, 180, 0, { settle: false });
+        // The return must be released before the close fires, RAIL_MS (300 ms)
+        // after the swipe away, or this section says nothing about a fast return.
+        const g3 = await gestures(page);
+        ok(g3.up.length === 2 && g3.up[1] - g3.up[0] < RAIL_MS,
+            'the overlap was not exercised: the return was not released inside the ' +
+            `${RAIL_MS} ms before the close timer fired (releases at ${JSON.stringify(g3.up)})`);
+        // Back on the ORIGINAL card, then wait for its close rather than
+        // reading at once. If the return cancelled the close, this times out
+        // and names what never happened.
+        await waitFor(page, 'the original card to be active again and closed',
+            (sel, id) => {
+                const slot = document.querySelector(sel);
+                return !!slot && !!slot.querySelector('[data-exercise-id="' + id + '"]') &&
+                    !slot.querySelector('.card-open');
+            }, ACTIVE, originalId);
+        await waitForDeckToSettle(page);
+        eq(await activeName(page), original, 'the return swipe landed on the original card');
         eq(await isRevealed(page), false,
             'swiping straight back STILL finds it closed — the close is not cancelled ' +
             'by a fast return, or a stale anchor would survive through the back door');
