@@ -7,25 +7,25 @@
 // Firestore before Complete Day is ever tapped (65 and 69 pin that). What was
 // missing was any way to read them back. DayBreakdownModal finds the workout
 // whose date is today and returns null for anything else, so the moment the day
-// rolled over the numbers were invisible — saved, and unreadable. The Time button beside
-// each History entry's pencil is the second reader, and this case is what says
-// it reads the workout that was TAPPED rather than today's.
+// rolled over the numbers were invisible — saved, and unreadable. Each History
+// card is the second reader: the session's total sits after its day label and
+// each movement's time under its weight and reps. This case is what says a
+// card reads ITS OWN session rather than today's.
 //
 // Three things, none of which the other timing cases can catch:
 //
-//   1. The Time button opens the timing of ITS OWN entry. Both fixtures below are
-//      submitted and neither is guaranteed to be today, so a modal that reached
-//      for today's workout — the way the Day Breakdown does — renders nothing at
-//      all here. That is the regression this case exists for.
+//   1. A card shows the timing of its own session. Both fixtures below are
+//      submitted and neither is today, so a card that reached for today's
+//      workout — the way the Day Breakdown does — shows no times at all here.
+//      That is the regression this case exists for.
 //
-//   2. A workout with no timestamps shows NO Time button. Every one of the ~124 real
-//      pre-August-2026 workouts is in that state; history is never migrated, so
-//      they will be forever. Offering a button that opens an empty modal on the
-//      overwhelming majority of the user's history is the wrong failure.
+//   2. A workout with no timestamps shows NO total and NO row times. Every one
+//      of the ~124 real pre-August-2026 workouts is in that state; history is
+//      never migrated, so they will be forever. Filling the overwhelming
+//      majority of the user's history with "0m" or NA times is the wrong
+//      failure.
 //
-//   3. The Edit button still works from a header row that now holds two buttons. 21 and
-//      22 find the pencil by `textContent.trim() === 'Edit'`, which a Time sibling
-//      does not disturb — but the assertion belongs somewhere explicit.
+//   3. The Edit gear still opens the Edit modal from a card carrying times.
 //
 // The rows themselves are asserted against exact seeded timestamps, as in 66,
 // not a wall clock. Every movement here is anchored or measured from the
@@ -34,24 +34,24 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, tap } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
+const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
+const { waitForDeckToSettle } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-// Monday of the current week at a given hour, so both workouts land in the
-// default History page (which opens on the current week) and neither can be a
-// future date whenever in the week the suite runs.
-function mondayAt(hour, min = 0) {
+// A past date at a given hour: the timed workout two days ago, the untimed one
+// three days ago. Each gets its own History card (one session per date), and
+// neither can be a future date whenever the suite runs.
+function daysAgoAt(daysAgo, hour, min = 0) {
     const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const dow = d.getDay();
-    d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
     d.setHours(hour, min, 0, 0);
+    d.setDate(d.getDate() - daysAgo);
     return d;
 }
-const base = mondayAt(9);
+const base = daysAgoAt(2, 9);
 const at = (min, sec = 0) => new Date(base.getTime() + min * 60000 + sec * 1000).toISOString();
 
 const TIMED = [
@@ -68,11 +68,12 @@ const TIMED = [
       startedAt: at(20), loggedAt: at(25, 30) },
 ];
 
-const EXPECTED_ROWS = [
-    ['pecs-transverse-shoulder-adduction-with-elbow-extension', '6:00'],
-    ['pecs-shoulder-flexion', '6:00 *'],
-    ['pecs-transverse-shoulder-adduction', '5:30'],
-];
+// Keyed by id: the card lists rows in the day's order, not the logged order.
+const EXPECTED_ROWS = {
+    'pecs-transverse-shoulder-adduction-with-elbow-extension': '6:00',
+    'pecs-shoulder-flexion': '6:00 *',
+    'pecs-transverse-shoulder-adduction': '5:30',
+};
 
 // 09:00 -> 09:25:30. formatDuration floors to whole minutes under the hour.
 const EXPECTED_TOTAL = '25m';
@@ -83,26 +84,27 @@ const UNTIMED = [
     { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '160', reps: '5' },
 ];
 
-// One entry per workout, newest first, with which icon buttons its header row
-// offers. The buttons are read by their words
-// (Time, Edit), the way cases 21 and 22 read Edit.
-async function historyItems(page) {
-    return page.evaluate(() =>
-        Array.from(document.querySelectorAll('.history-item')).map(item => ({
-            heading: item.querySelector('.history-date')?.textContent?.trim() || '',
-            icons: Array.from(item.querySelectorAll('.history-date button'))
-                .map(b => b.textContent.trim()),
-        })));
-}
-
-async function clickIcon(page, itemIndex, icon) {
-    const btn = await page.evaluateHandle((i, ic) => {
-        const item = document.querySelectorAll('.history-item')[i];
-        return (item && Array.from(item.querySelectorAll('.history-date button'))
-            .find(b => b.textContent.includes(ic))) || null;
-    }, itemIndex, icon);
-    ok(btn.asElement(), `history item ${itemIndex} offers a ${icon} button to click`);
-    await tap(page, btn);
+// What the session on the shown History card says about its time: the day
+// label, the total after it, each row's M:SS, the footnote, and whether the
+// Edit gear is there.
+async function readCardTiming(page) {
+    return page.evaluate((session) => {
+        const item = document.querySelector(session);
+        if (!item) return null;
+        const label = item.querySelector('.history-day-label');
+        const total = item.querySelector('[data-history-total]');
+        const note = item.querySelector('.history-time-note');
+        return {
+            label: label ? label.firstChild.textContent.trim() : null,
+            total: total ? total.textContent.replace(/^\s*·\s*/, '').trim() : null,
+            rows: Object.fromEntries(Array.from(item.querySelectorAll('[data-history-time]')).map(r => [
+                r.getAttribute('data-history-time'),
+                r.textContent.trim(),
+            ])),
+            note: note ? note.textContent.trim() : null,
+            edit: !!item.querySelector('[aria-label="Edit workout"]'),
+        };
+    }, HISTORY_SESSION);
 }
 
 (async () => {
@@ -116,7 +118,7 @@ async function clickIcon(page, itemIndex, icon) {
         await seedPersonalApp(page, {
             workoutHistory: [
                 workoutEntry({ date: at(25, 30), day: 'anterior', exercises: TIMED }),
-                workoutEntry({ date: mondayAt(7).toISOString(), day: 'anterior', exercises: UNTIMED }),
+                workoutEntry({ date: daysAgoAt(3, 7).toISOString(), day: 'anterior', exercises: UNTIMED }),
             ],
         });
         await page.evaluate(() =>
@@ -125,59 +127,44 @@ async function clickIcon(page, itemIndex, icon) {
         await waitForApp(page);
 
         await tap(page, '.bottom-nav-btn', { text: /History/ });
-        await page.waitForSelector('.history-item', { timeout: 8000 });
 
-        // === 1. Which entries offer a stopwatch =========================
-        const items = await historyItems(page);
-        eq(items.length, 2, 'both workouts render in the current week');
+        // History opens on today; visit each seeded session's date.
+        const TIMED_DATE = dateKey(base);
+        const UNTIMED_DATE = dateKey(daysAgoAt(3, 7));
 
-        eq(items[0].icons, ['Time', 'Edit'],
-            'the timed workout offers a stopwatch before its pencil');
-        eq(items[1].icons, ['Edit'],
-            'a workout with no timestamps offers only a pencil — no stopwatch onto an empty modal');
-
-        // === 2. The stopwatch reports the tapped workout's own session ===
-        await clickIcon(page, 0, 'Time');
-        await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
-
-        eq(await page.evaluate(() =>
-            document.querySelector('.modal-title').textContent.trim()),
-            'Anterior Time Details',
-            'the modal is titled for the workout that was tapped');
-
-        eq(await page.evaluate(() =>
-            document.querySelector('[data-timing-total]').textContent.trim()),
-            EXPECTED_TOTAL,
+        // === 1. The card reports its own session's timing ================
+        await historyGoTo(page, TIMED_DATE);
+        const timed = await readCardTiming(page);
+        eq(timed.label, 'Anterior',
+            'the total sits after the day label of the workout on the card');
+        eq(timed.total, EXPECTED_TOTAL,
             'the total runs from the first Weight Breakdown tap to the last log');
-
-        // Details are expanded on open — the breakdown is the whole reason the
-        // button was pressed.
-        const rows = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('[data-timing-row]')).map(r => [
-                r.getAttribute('data-timing-row'),
-                r.children[1].textContent.trim(),
-            ]));
-        eq(rows, EXPECTED_ROWS,
-            'every movement is timed in logged order, with the estimate marked');
-
-        ok(await page.evaluate(() =>
-            /estimated/.test(document.querySelector('[data-timing-details]').textContent)),
+        eq(timed.rows, EXPECTED_ROWS,
+            'every movement shows its time under its weight and reps, with the estimate marked');
+        ok(timed.note && /estimated/.test(timed.note),
             'the asterisk footnote renders alongside an estimated row');
 
-        await tap(page, '.modal-btn', { text: 'Close' });
-        await page.waitForFunction(() => !document.querySelector('[data-timing-total]'),
-            { timeout: 8000 });
+        // === 2. An untimed workout shows no times at all =================
+        await historyGoTo(page, UNTIMED_DATE);
+        const untimed = await readCardTiming(page);
+        eq(untimed.total, null,
+            'a workout with no timestamps shows no total after its day label');
+        eq(untimed.rows, {}, 'and no row times');
+        eq(untimed.note, null, 'and no footnote');
+        ok(untimed.edit, 'it still offers the Edit gear');
 
-        // === 3. The pencil still works beside its new sibling ============
-        await clickIcon(page, 0, 'Edit');
-        await page.waitForSelector('.modal input[data-field], .modal select[data-field]',
-            { timeout: 8000 });
+        // === 3. The gear opens Edit on the timed card ===================
+        await historyGoTo(page, TIMED_DATE);
+        await waitForDeckToSettle(page); // a tap during the slide misses
+        await tap(page, HISTORY_EDIT);
+        await waitFor(page, 'the edit modal', () =>
+            !!document.querySelector('.modal input[data-field], .modal select[data-field]'));
         ok(await page.evaluate(() =>
             /Edit/i.test(document.querySelector('.modal-title').textContent)),
-            'the pencil still opens the Edit modal from a header row holding two buttons');
+            'the gear opens the Edit modal from a card carrying times');
 
         eq(errors.length, 0, `no console errors (got: ${JSON.stringify(errors)})`);
-        console.log('PASS: History exposes a past session timing, and only where there is timing to show.');
+        console.log('PASS: History cards show a past session timing, and only where there is timing to show.');
     } finally {
         await browser.close();
         await server.stop();

@@ -1,7 +1,7 @@
 // What this test covers
 // ----------------------
-// The text buttons that replaced the icon buttons (Settings, History's Time and
-// Edit, Manage Exercises' Edit / up / down, weight History's reading and NA
+// The text buttons that replaced the icon buttons (Settings, History's Edit
+// gear, Manage Exercises' Edit / up / down, weight History's reading and NA
 // buttons) are big enough to hit with a thumb, and Manage Exercises still fits
 // its row with a long custom name.
 //
@@ -26,7 +26,7 @@
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, waitFor, tap, setNow } = require('../lib/browser');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
-const { bottomNav } = require('../lib/deck');
+const { ACTIVE, bottomNav } = require('../lib/deck');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -130,8 +130,8 @@ function measureAll(allow) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         const version = await page.evaluate(() => EXERCISE_CONFIG_VERSION);
         // Monday of the pinned week (not Node's real date), so the entry is on
-        // History's default page. startedAt and loggedAt are what make the Time
-        // button appear. Node runs in Phoenix time too (lib/browser.js).
+        // History's opening card. startedAt and loggedAt give the card its
+        // times. Node runs in Phoenix time too (lib/browser.js).
         const day = new Date(NOW);
         day.setHours(0, 0, 0, 0);
         const dow = day.getDay();
@@ -155,7 +155,7 @@ function measureAll(allow) {
         await scan(page, 'workout', ratio);
         await bottomNav(page, 'History');
         await page.waitForSelector('.history-item', { timeout: 8000 });
-        await check('workout History', '.history-date .text-btn', 2);
+        await check('workout History', ACTIVE + ' .history-edit', 1);
         await scan(page, 'workout History', ratio);
         await bottomNav(page, 'Workout');
         await tap(page, '.settings-btn');

@@ -25,8 +25,9 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, setNow, tap } = require('../lib/browser');
-const { ACTIVE, goToCardById, revealCard, logCard } = require('../lib/deck');
+const { ACTIVE, goToCardById, revealCard, logCard, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
+const { HISTORY_CARD, HISTORY_SESSION, HISTORY_EDIT, historyGoTo, dateKey } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -100,37 +101,31 @@ async function bottomTo(page, label) {
 }
 
 // The Chest Flies row's PR badge (its streak, 'PR' for a lone one, null for
-// none) in every History week, newest first.
+// none) on every stored session's History card, newest first.
 async function readHistory(page) {
     await bottomTo(page, 'History');
-    await waitFor(page, 'the week navigation', () => !!document.querySelector('.week-nav'));
-    const snapshot = () => page.evaluate(() => document.querySelector('.week-nav').parentElement.textContent);
-    const readWeek = () => page.evaluate(() => Array.from(document.querySelectorAll('.history-item'))
-        .flatMap(item => Array.from(item.querySelectorAll('.history-exercise'))
-            .filter(r => r.querySelector('.history-exercise-name').textContent.trim() === 'Chest Flies')
-            .map(r => {
-                const b = r.querySelector('[data-pr-badge]');
-                return b ? (b.getAttribute('data-streak') || 'PR') : null;
-            })));
-    const rows = await readWeek();
-    for (;;) {
-        const before = await snapshot();
-        // The first week button is Prev.
-        if (await page.$eval('.week-nav-btn', (b) => b.disabled)) break;
-        await tap(page, '.week-nav-btn');
-        await waitFor(page, 'the previous week to show', (prev) =>
-            document.querySelector('.week-nav').parentElement.textContent !== prev, before);
-        rows.push(...await readWeek());
+    const dates = [...new Set((await readStore(page)).map(w => dateKey(w.date)))].sort().reverse();
+    const readCard = () => page.evaluate((sel) => Array.from(document.querySelectorAll(sel + ' .history-exercise'))
+        .filter(r => r.querySelector('.history-exercise-name').textContent.trim() === 'Chest Flies')
+        .map(r => {
+            const b = r.querySelector('[data-pr-badge]');
+            return b ? (b.getAttribute('data-streak') || 'PR') : null;
+        }), HISTORY_SESSION);
+    const rows = [];
+    for (const date of dates) {
+        await historyGoTo(page, date);
+        rows.push(...await readCard());
     }
     return rows;
 }
 
-// Opens the edit modal on the newest History entry and tags Chest Flies' two boxes.
+// Opens the edit modal on today's History card (the session these cases edit)
+// and tags Chest Flies' two boxes.
 async function openEdit(page) {
     await bottomTo(page, 'History');
-    await waitFor(page, 'History rows', () => document.querySelectorAll('.history-item').length > 0);
-    // The first match is in the first, newest, entry.
-    await tap(page, '.history-item button', { text: 'Edit' });
+    await historyGoTo(page, NOW);
+    await waitForDeckToSettle(page);
+    await tap(page, HISTORY_EDIT);
     await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
     await page.evaluate(() => {
         const block = Array.from(document.querySelectorAll('.modal > div')).find(d =>

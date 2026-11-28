@@ -29,6 +29,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
 const { ACTIVE, bottomNav, goToCardById, logCard, revealCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { HISTORY_SESSION, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -102,11 +103,12 @@ async function readCardBadge(page, exerciseId) {
     }, ACTIVE);
 }
 
-// The newest History entry, keyed by exercise name.
+// The newest session's History card, keyed by exercise name.
 async function readHistoryBadges(page) {
-    return page.evaluate(() => {
+    await historyGoTo(page, LATEST.date);
+    return page.evaluate((sel) => {
         const out = {};
-        const latest = document.querySelector('.history-item');
+        const latest = document.querySelector(sel);
         if (!latest) return out;
         latest.querySelectorAll('.history-exercise').forEach((row) => {
             const name = row.querySelector('.history-exercise-name');
@@ -115,7 +117,7 @@ async function readHistoryBadges(page) {
             out[name.textContent.trim()] = badge ? window.pillView(badge).visible : null;
         });
         return out;
-    });
+    }, HISTORY_SESSION);
 }
 
 (async () => {
@@ -165,7 +167,6 @@ async function readHistoryBadges(page) {
 
         // === 3. History agrees ==========================================
         await bottomNav(page, 'History');
-        await page.waitForSelector('.history-item', { timeout: 8000 });
         const badges = await readHistoryBadges(page);
 
         eq(badges[NAMES['traps-scapular-retraction']], null,

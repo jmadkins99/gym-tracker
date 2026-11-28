@@ -94,11 +94,11 @@
         }
 
         /* A small text button: the same dark fill, border, radius, size and
-           weight as .week-nav-btn and .modal-btn, but sized to its words and
+           weight as .modal-btn, but sized to its words and
            never below a 44px tap target AS RENDERED. Both pages open at
            initial-scale 0.75, so 44 rendered px is 44 / 0.75 = 59 CSS px; a
            plain 44px here lands at 33px under the thumb. Header Settings,
-           History's Time and Edit, and Manage Exercises' Edit / up / down all
+           History's Edit gear, and Manage Exercises' Edit / up / down all
            share it. */
         .text-btn,
         .settings-btn {
@@ -381,41 +381,130 @@
             color: #666;
         }
 
-        .week-nav {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .week-nav-btn {
-            padding: 8px 16px;
-            background: #1a1a2a;
-            border: 1px solid #2a2a3a;
-            color: #8a8aa0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .week-nav-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .week-title {
-            flex: 1;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .content > .week-nav,
         .content > .history-item,
         .content > .empty-state {
             flex: none;
+        }
+
+        /* ---- History deck ----
+           The same rail as the Workout deck, but only horizontal drags are
+           the deck's: a vertical one scrolls a card too long for the stage. */
+        .history-deck .deck-stage {
+            touch-action: pan-y;
+        }
+
+        /* Two classes, to win over the plain .card rule further down, whose
+           overflow: hidden would otherwise clip a card taller than the stage. */
+        .card.history-card {
+            min-height: 0;
+            overflow-y: auto;
+            /* Never sideways: a horizontal drag is the deck's, not the card's. */
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+
+        /* Inside a card the session is the card, so it drops its own box. It
+           grows to fill the card (but never shrinks below its rows, so a long
+           day scrolls instead), and its rows share the spare height up to a
+           cap: an 11-exercise day fills a phone, a 3-exercise day sits at the
+           top instead of stretching into three giant rows. A grid rather than
+           flex, because minmax(auto, 64px) caps only the growth: a row whose
+           own content is taller (a long name on three lines) keeps its height
+           instead of spilling into the next row. The header's track is auto,
+           so it does not grow. */
+        .history-card .history-item {
+            background: none;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            margin: 0;
+            flex: 1 0 auto;
+            display: grid;
+            grid-template-rows: auto;
+            grid-auto-rows: minmax(auto, 64px);
+            align-content: start;
+        }
+
+        /* A long unbroken name wraps rather than pushing the row wider. */
+        .history-card .history-exercise-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .history-card .history-time-note {
+            align-self: start;
+        }
+
+        .history-card .history-exercise-data {
+            text-align: right;
+        }
+
+        /* The exercise's time, under its weight and reps. */
+        .history-exercise-time {
+            margin-top: 2px;
+            font-size: 12px;
+            font-weight: 400;
+            color: #777;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* The total after the day label reads as a figure, not part of the
+           spaced capitals: "ANTERIOR · 58m". */
+        .history-total {
+            text-transform: none;
+            letter-spacing: normal;
+            font-weight: 600;
+        }
+
+        .history-time-note {
+            margin-top: 10px;
+            color: #777;
+            font-size: 12px;
+        }
+
+        .history-edit {
+            flex: none;
+        }
+
+        .history-card .history-date {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .history-date-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .history-day-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent-muted);
+        }
+
+        .history-rest {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .history-foot .text-btn {
+            flex: none;
+            padding: 0 12px;
+            white-space: nowrap;
+        }
+
+        .history-foot .deck-count {
+            margin-bottom: 0;
         }
 
         .history-item {

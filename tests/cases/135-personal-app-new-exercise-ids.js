@@ -32,6 +32,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap } = require('../lib/browser');
 const { workoutEntry } = require('../lib/state');
 const { ACTIVE, readDeckNames, readDeckCard, bottomNav } = require('../lib/deck');
+const { HISTORY_SESSION, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -97,7 +98,7 @@ const V24_CONFIG = {
     ].map((e, order) => ({ ...e, order })),
 };
 
-// Monday of last week plus `dayOffset` days; see case 100 for why History
+// Monday of last week plus `dayOffset` days; see case 100 for why these
 // cases anchor to a Monday rather than counting back.
 function lastWeek(dayOffset) {
     const d = new Date();
@@ -244,21 +245,11 @@ const content = (history) => history.map(({ week, ...w }) => w);
 
         // --- History tab: old sessions under their logged names ---
         await bottomNav(page, 'History');
-        // The sessions are last week's. History may open on the current week
-        // or already on theirs (Prev is disabled on week 1), so step back only
-        // when there is a week to step back to.
-        const prev = await page.evaluateHandle(() => Array.from(document.querySelectorAll('.week-nav-btn'))
-            .find(b => b.textContent.indexOf('Prev') !== -1) || null);
-        if (await prev.evaluate((b) => !!b && !b.disabled)) {
-            const week = await page.$eval('.week-title', (t) => t.textContent.trim());
-            await tap(page, prev);
-            await waitFor(page, 'History to step back a week',
-                (w) => document.querySelector('.week-title').textContent.trim() !== w, week);
-        }
-        await page.waitForSelector('.history-item', { timeout: 8000 });
-        const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.history-exercise'))
+        // History opens on today; the old-id session is on its own card.
+        await historyGoTo(page, OLD_SESSION.date);
+        const rows = await page.evaluate((sel) => Array.from(document.querySelectorAll(sel + ' .history-exercise'))
             .map(r => r.querySelector('.history-exercise-name').textContent.trim() + ': ' +
-                r.querySelector('.history-exercise-data').textContent.trim()));
+                r.querySelector('.history-exercise-data').textContent.trim()), HISTORY_SESSION);
         ok(rows.includes('Shoulder Press: 255lbs × 4'),
             `History still shows the old Shoulder Press session (rows: ${rows.join(' / ')})`);
         ok(rows.includes('Leg Press: 260lbs × 5'), 'History still shows the old Leg Press session');

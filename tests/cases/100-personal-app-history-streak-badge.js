@@ -32,17 +32,16 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, tap } = require('../lib/browser');
 const { ACTIVE, bottomNav, goToCardById, revealCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { HISTORY_SESSION, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const BADGE_BORDER = 'rgb(212, 175, 55)';
 
 // Monday of last week, plus `dayOffset` days. Every session is anchored to one
-// Monday rather than counted back in "days ago" because the app restamps each
-// workout's `week` from its date on load and History shows one week at a time:
-// a rolling ten-day window would straddle two week screens on some weekdays and
-// not others. Last week rather than this one so all five fit whatever day the
-// suite runs on.
+// Monday rather than counted back in "days ago" so the five dates are the same
+// whatever weekday the suite runs on, and all of them are in the past (History
+// has a card for each date up to today). The case visits each date's card.
 function lastWeek(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -95,23 +94,33 @@ function buildHistory() {
     }));
 }
 
-// Every History entry on screen, newest first, as { name -> badge }.
-async function readHistory(page) {
-    return page.evaluate(() => Array.from(document.querySelectorAll('.history-item')).map((item) => {
-        const rows = {};
-        item.querySelectorAll('.history-exercise').forEach((row) => {
-            const name = row.querySelector('.history-exercise-name');
-            if (!name) return;
-            const badge = row.querySelector('[data-pr-badge]');
-            rows[name.textContent.trim()] = {
-                text: badge ? window.pillView(badge).visible : null,
-                streakAttr: badge ? badge.getAttribute('data-streak') : null,
-                border: badge ? getComputedStyle(badge).borderTopColor : null,
-                className: badge ? badge.className : null,
-            };
-        });
-        return rows;
-    }));
+// The session on the shown History card, as { name -> badge }.
+const readSession = (page) => page.evaluate((sel) => {
+    const item = document.querySelector(sel);
+    const rows = {};
+    item.querySelectorAll('.history-exercise').forEach((row) => {
+        const name = row.querySelector('.history-exercise-name');
+        if (!name) return;
+        const badge = row.querySelector('[data-pr-badge]');
+        rows[name.textContent.trim()] = {
+            text: badge ? window.pillView(badge).visible : null,
+            streakAttr: badge ? badge.getAttribute('data-streak') : null,
+            border: badge ? getComputedStyle(badge).borderTopColor : null,
+            className: badge ? badge.className : null,
+        };
+    });
+    return rows;
+}, HISTORY_SESSION);
+
+// Every seeded session's card, newest first, read one date at a time.
+async function readHistory(page, history) {
+    const dates = history.map((w) => w.date).reverse();
+    const items = [];
+    for (const date of dates) {
+        await historyGoTo(page, date);
+        items.push(await readSession(page));
+    }
+    return items;
 }
 
 async function readCardBadge(page, exerciseId) {
@@ -143,13 +152,9 @@ async function readCardBadge(page, exerciseId) {
         eq(await readCardBadge(page, 'biceps-elbow-flexion-with-shoulder-flexion'), null,
             'five flat sessions earn no card badge');
 
-        // The seeded week is last week's, so History opens on the current
-        // (empty) week and has to be stepped back one.
+        // History opens on today; visit each seeded session's date, newest first.
         await bottomNav(page, 'History');
-        await tap(page, '.week-nav-btn', { text: /Prev/ });
-        await page.waitForSelector('.history-item', { timeout: 8000 });
-
-        const items = await readHistory(page);
+        const items = await readHistory(page, buildHistory());
         eq(items.length, SESSIONS.length, 'History shows all five seeded sessions');
 
         EXPECTED.forEach((want, i) => {

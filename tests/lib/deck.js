@@ -24,7 +24,7 @@ const { selectDayType, tap, waitFor } = require('./browser');
 
 // A pointer drag across the card stage, sent as raw CDP mouse events that
 // carry their own timestamps. The deck reads a gesture's speed from the event
-// `timeStamp`s (e.timeStamp in SwipeDeck), and the commit rule is distance OR
+// `timeStamp`s (e.timeStamp in SwipeRail), and the commit rule is distance OR
 // velocity, so a short flick and a slow short drag are meant to behave
 // differently. With real timing that speed was whatever the machine managed: on
 // a busy runner the round trip between two moves could stretch a 3-step flick
@@ -278,7 +278,7 @@ async function selectDeckDay(page, type) {
 
 // Wait for the deck to come to rest: the rail back at its resting position and
 // the active card back on it. A swipe or an arrow commits the index at once and
-// then animates (RAIL_MS in SwipeDeck), so this is for a case that next reads
+// then animates (RAIL_MS in SwipeRail), so this is for a case that next reads
 // the deck or starts another gesture from a still deck. A computed transform
 // reports the in-flight value, so an identity transform means the motion is over.
 const waitForDeckToSettle = (page) =>
@@ -313,7 +313,7 @@ const startAnchors = (page, ns = DEFAULT_NS) =>
 // prove its back-to-back swipes really fell inside the app's 300 ms rail window
 // rather than trusting the run to be fast. The drag's event timestamps are
 // synthetic; Date.now() is the clock the app's own setTimeout runs on.
-const RAIL_MS = 300; // SwipeDeck's rail transition, and the card-close delay
+const RAIL_MS = 300; // SwipeRail's rail transition, and the card-close delay
 const recordGestures = (page) => page.evaluate(() => {
     window.__gestures = { down: [], up: [] };
     document.addEventListener('pointerdown', () => window.__gestures.down.push(Date.now()), true);

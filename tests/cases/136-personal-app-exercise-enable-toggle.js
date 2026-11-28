@@ -25,6 +25,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, waitFor, tap } = require('../lib/browser');
 const { readDeckNames, activeName, goToCard, revealCard, logCard, todayWorkout, bottomNav } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
+const { HISTORY_CARD, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -37,7 +38,7 @@ const JM = 'triceps-elbow-extension-during-shoulder-flexion';      // JM Press
 const CP = 'pecs-transverse-shoulder-adduction-with-elbow-extension'; // Chest Press
 const TRICEPS = 'triceps-elbow-extension';                          // Tricep Extensions, right after Chest Press
 
-// Monday of last week plus `dayOffset` days; see case 100.
+// Monday of last week plus `dayOffset` days; see case 100 for why.
 function lastWeek(dayOffset) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -165,10 +166,9 @@ const listNames = (page) => page.evaluate(() =>
 
         // === 3. History =====================================================
         await bottomNav(page, 'History');
-        await tap(page, '.week-nav-btn', { text: /Prev/ });
-        await page.waitForSelector('.history-item', { timeout: 8000 });
-        const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.history-exercise-name'))
-            .map(e => e.textContent.trim()));
+        await historyGoTo(page, session.date);
+        const rows = await page.evaluate((card) => Array.from(document.querySelectorAll(card + ' .history-exercise-name'))
+            .map(e => e.textContent.trim()), HISTORY_CARD);
         ok(!rows.includes(nameOf(JM)), 'History hides a disabled row that was not logged');
         ok(rows.includes(nameOf(CP)), 'and keeps a disabled row that was');
         eq(rows.length, roster.length - 1, 'every other row is still there');

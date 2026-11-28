@@ -14,6 +14,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { bottomNav } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { HISTORY_CARD, HISTORY_EDIT } = require('../lib/history');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -49,7 +50,7 @@ async function setNumber(page, selector, value) {
         await waitForApp(page);
 
         await bottomNav(page, 'History');
-        await tap(page, 'button', { text: 'Edit' });
+        await tap(page, HISTORY_EDIT);
         await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
 
         // Level must be an editable dropdown (the bug: it was a disabled input).
@@ -80,7 +81,8 @@ async function setNumber(page, selector, value) {
         await waitFor(page, 'the edit modal to close', () => !document.querySelector('.modal'));
 
         // Weekly view should now reflect all of the edits.
-        const weeklyText = await page.evaluate(() => document.querySelector('.content')?.textContent || '');
+        // The shown card only: the deck also mounts its neighbours.
+        const weeklyText = await page.evaluate((sel) => document.querySelector(sel)?.textContent || '', HISTORY_CARD);
         contains(weeklyText, 'BW × 75', 'squats reps updated to 75');
         contains(weeklyText, '15:00 / Level 10', 'stairmaster time + level updated');
         contains(weeklyText, '32/28 @ 35W', 'assault bike intensity + watts updated');
