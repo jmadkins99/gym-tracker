@@ -16,6 +16,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { HISTORY_CARD, HISTORY_EDIT } = require('../lib/history');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -60,8 +61,9 @@ async function clickNav(page, label) {
 
         // Weekly view: the cardio workout renders its own exercises + values.
         await clickNav(page, 'History');
-        const weeklyText = await page.evaluate(() =>
-            document.querySelector('.content')?.textContent || '');
+        // The shown card only: the deck also mounts its neighbours.
+        const weeklyText = await page.evaluate((sel) =>
+            document.querySelector(sel)?.textContent || '', HISTORY_CARD);
         contains(weeklyText, 'Body Weight Squats', 'weekly shows squats');
         contains(weeklyText, 'BW × 50', 'weekly shows squats as "BW × 50"');
         contains(weeklyText, 'Stairmaster', 'weekly shows stairmaster');
@@ -70,7 +72,7 @@ async function clickNav(page, label) {
         contains(weeklyText, '30/30 @ 25W', 'weekly shows assault bike intensity + watts');
 
         // Edit modal: opens on the cardio workout and renders its own cards.
-        await tap(page, 'button', { text: 'Edit' });
+        await tap(page, HISTORY_EDIT);
         await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
         const modalText = await page.evaluate(() =>
             document.querySelector('.modal')?.textContent || '');

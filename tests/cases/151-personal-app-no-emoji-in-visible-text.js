@@ -20,8 +20,8 @@
 //
 // Stops, workout app: the deck (front of a card, open card with its streak
 // pill, logged state, finish card), the swipe-down Quick Edit form, Day
-// Breakdown, History (rows with Time and Edit, PR badges, an empty week), the
-// timing modal, the edit-workout modal, Settings, Manage Exercises with an edit
+// Breakdown, History (a card with its times and Edit gear, PR badges, a
+// rest-day card), the edit-workout modal, Settings, Manage Exercises with an edit
 // form open, and the sign-in banner with both Settings sign-in states. Weight
 // app: the empty check-in and empty History, a seeded check-in with a plan,
 // History with a week opened and a reading being edited, and Settings in its
@@ -45,6 +45,7 @@ const { ACTIVE, setWeightAndOpen, logCard, submitDay, bottomNav, readDeckCard, s
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
+const { HISTORY_SESSION, HISTORY_EDIT } = require('../lib/history');
 
 const NS = 'gym-local:';
 const FLIES = 'pecs-transverse-shoulder-adduction';
@@ -234,16 +235,15 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
             (a) => !!document.querySelector(a + ' .card-finish'), ACTIVE);
 
         await bottomNav(page, 'History');
-        await look('History, rows with Time and Edit', () => {
-            const btns = Array.from(document.querySelectorAll('.history-date button')).map((b) => b.textContent.trim());
-            return btns.includes('Time') && btns.includes('Edit');
-        });
+        // The deck opens on today, whose session was just submitted.
+        // The card carries the session's total and row times, and the Edit gear.
+        await look('History, a card with its times and Edit gear', (session) => {
+            const item = document.querySelector(session);
+            return !!item && !!item.querySelector('[data-history-total]')
+                && !!item.querySelector('[aria-label="Edit workout"]');
+        }, HISTORY_SESSION);
 
-        await tap(page, '.history-date button', { text: 'Time' });
-        await look('timing details modal', () => !!document.querySelector('.modal [data-timing-total]'));
-        await closeByWord(page, /^(Close|Done|Got it)$/i);
-
-        await tap(page, '.history-date button', { text: 'Edit' });
+        await tap(page, HISTORY_EDIT);
         await look('edit workout modal', modalHas, 'Chest Flies');
         await closeByWord(page, /^(Close|Cancel|Done)$/i);
 
@@ -276,7 +276,7 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await dialogsHandled(confirms, before + 1, 'the workout bad-backup alert');
 
         // A device with no history: Submit Day with nothing logged alerts,
-        // and History shows its empty state.
+        // and History shows a single rest-day card.
         const emptyPage = await newPhone();
         const emptyDialogs = watchDialogs(emptyPage, 'workout, empty', dialogs);
         await emptyPage.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
@@ -291,7 +291,8 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await submitDay(emptyPage);
         await dialogsHandled(emptyDialogs, 1, 'the Submit Day with nothing logged alert');
         await bottomNav(emptyPage, 'History');
-        await lookFor(emptyPage)('History, empty', () => !!document.querySelector('.empty-state'));
+        await lookFor(emptyPage)('History, empty',
+            (a) => !!document.querySelector(a + ' .history-rest'), ACTIVE);
         await emptyPage.close();
 
         // === Sign-in banner and Settings sign-in states =================

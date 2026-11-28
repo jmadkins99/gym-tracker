@@ -1,6 +1,6 @@
 // What this test covers
 // ----------------------
-// The Weekly tab has to render several eras of workout at once after the
+// The History deck has to render several eras of workout at once after the
 // Anterior/Posterior switch, and each one has a different rule. This is the
 // guard on ~124 real Full Body workouts, every Aug-2026 Upper/Lower session,
 // and every older Cardio session — none of which can be re-logged, so a
@@ -40,6 +40,8 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
+const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
+const { waitForDeckToSettle } = require('../lib/deck');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -164,15 +166,22 @@ async function clickNav(page, label) {
         .some(b => b.textContent.indexOf(l) !== -1), label);
 }
 
-// Weekly renders one .history-item per workout, newest first. Returns the
-// exercise-name rows of each, keyed by the date text so the assertions read
-// against a specific workout rather than a positional index.
-async function weeklyItems(page) {
-    return page.evaluate(() =>
-        Array.from(document.querySelectorAll('.history-item')).map(item => ({
-            heading: item.querySelector('.history-date')?.textContent?.trim() || '',
-            rows: Array.from(item.querySelectorAll('.history-exercise-name')).map(e => e.textContent.trim()),
-        })));
+// Visits each date's History card in turn and returns the exercise-name rows of
+// its session, in the order of `dates`, so the assertions read against a
+// specific workout rather than whatever card is on screen.
+async function historyItems(page, dates) {
+    const items = [];
+    for (const date of dates) {
+        await historyGoTo(page, date);
+        items.push(await page.evaluate((session) => {
+            const item = document.querySelector(session);
+            return {
+                heading: item.querySelector('.history-date')?.textContent?.trim() || '',
+                rows: Array.from(item.querySelectorAll('.history-exercise-name')).map(e => e.textContent.trim()),
+            };
+        }, HISTORY_SESSION));
+    }
+    return items;
 }
 
 (async () => {
@@ -184,20 +193,13 @@ async function weeklyItems(page) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
         const history = await page.evaluate((fbEra, anterior, legacyUpper, mixed, cardioRows) => {
-            // Four workouts inside the current week so they all land in the
-            // default Weekly view. Times are staggered so the ordering is
-            // deterministic (Weekly sorts newest first). The two Wednesday
-            // entries differ by hour rather than by day: pushing one to
-            // Thursday would be a future date whenever the suite runs early in
-            // the week.
-            const monday = new Date();
-            monday.setHours(0, 0, 0, 0);
-            const dow = monday.getDay();
-            monday.setDate(monday.getDate() + (dow === 0 ? -6 : 1 - dow));
-            const at = (offsetDays, hour) => {
-                const d = new Date(monday);
-                d.setDate(d.getDate() + offsetDays);
+            // Five workouts on five past dates, newest first: a History card
+            // holds one session, so each gets its own date, and none can be a
+            // future date whenever the suite runs.
+            const at = (daysAgo, hour) => {
+                const d = new Date();
                 d.setHours(hour, 0, 0, 0);
+                d.setDate(d.getDate() - daysAgo);
                 return d.toISOString();
             };
 
@@ -207,7 +209,7 @@ async function weeklyItems(page) {
 
             return [
                 {
-                    date: at(2, 21), day: 'anterior', week: 1, submitted: true, plateauBusters: [],
+                    date: at(1, 21), day: 'anterior', week: 1, submitted: true, plateauBusters: [],
                     exercises: mixed.map(([id, name]) => std(id, name)),
                 },
                 {
@@ -215,11 +217,11 @@ async function weeklyItems(page) {
                     exercises: anterior.map(([id, name]) => std(id, name)),
                 },
                 {
-                    date: at(2, 17), day: 'upper', week: 1, submitted: true, plateauBusters: [],
+                    date: at(3, 17), day: 'upper', week: 1, submitted: true, plateauBusters: [],
                     exercises: legacyUpper.map(([id, name]) => std(id, name)),
                 },
                 {
-                    date: at(1, 17), day: 'cardio', week: 1, submitted: true, plateauBusters: [],
+                    date: at(4, 17), day: 'cardio', week: 1, submitted: true, plateauBusters: [],
                     exercises: [
                         { id: 'body-weight-squats', name: cardioRows[0], category: 'Cardio', type: 'bodyweight', weight: 'Body Weight', reps: '60' },
                         { id: 'burpee-jump-tucks', name: cardioRows[1], category: 'Cardio', type: 'bodyweight', weight: 'Body Weight', reps: '12' },
@@ -228,7 +230,7 @@ async function weeklyItems(page) {
                     ],
                 },
                 {
-                    date: at(0, 17), day: 'fullbody', week: 1, submitted: true, plateauBusters: [],
+                    date: at(5, 17), day: 'fullbody', week: 1, submitted: true, plateauBusters: [],
                     exercises: fbEra.map(([id, name]) => std(id, name)),
                 },
             ];
@@ -242,11 +244,13 @@ async function weeklyItems(page) {
         await waitForApp(page);
         await clickNav(page, 'History');
 
-        const items = await weeklyItems(page);
-        eq(items.length, 5, 'all five workouts render in the current week');
+        // History opens on today; visit the date of each seeded session.
+        const dates = history.map(w => dateKey(w.date));
+        const items = await historyItems(page, dates);
+        eq(items.length, 5, 'all five workouts render on their own cards');
 
-        // Newest first: mixed-day anterior (Wed 21:00), anterior (Wed 19:00),
-        // legacy upper (Wed 17:00), cardio (Tue), fullbody (Mon).
+        // Newest first: mixed-day anterior, anterior, legacy upper, cardio,
+        // fullbody.
         const [mixedItem, anteriorItem, legacyUpperItem, cardioItem, fullBodyItem] = items;
 
         // 1. Current-era Anterior renders against the LIVE config: exactly its
@@ -292,8 +296,9 @@ async function weeklyItems(page) {
 
         // The Edit modal shares the rule, on both branches.
         const openEditRows = async (index) => {
-            await tap(page, await page.evaluateHandle((i) =>
-                document.querySelectorAll('.history-item')[i].querySelector('.history-date button'), index));
+            await historyGoTo(page, dates[index]);
+            await waitForDeckToSettle(page); // a tap during the slide misses
+            await tap(page, HISTORY_EDIT);
             await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
             const rows = await page.evaluate(() =>
                 Array.from(document.querySelectorAll('.modal > div > div'))
@@ -310,7 +315,7 @@ async function weeklyItems(page) {
             'the Edit modal offers a legacy Upper workout its own 13 fields');
 
         eq(errors, [], 'no console errors during load');
-        console.log('PASS: Weekly and Edit render Anterior, legacy Upper, legacy Cardio, and pre-split Full Body correctly.');
+        console.log('PASS: History cards and Edit render Anterior, legacy Upper, legacy Cardio, and pre-split Full Body correctly.');
     } finally {
         await browser.close();
         await server.stop();

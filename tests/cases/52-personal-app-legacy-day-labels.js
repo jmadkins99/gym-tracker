@@ -23,6 +23,8 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
+const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
+const { waitForDeckToSettle } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
@@ -54,11 +56,12 @@ async function clickNav(page, label) {
         .some(b => b.textContent.indexOf(l) !== -1), label);
 }
 
-// Opens the Edit modal on the nth Weekly item and reads back its title and the
-// exercise rows it offers, then closes it again.
-async function openEdit(page, index) {
-    await tap(page, await page.evaluateHandle((i) =>
-        document.querySelectorAll('.history-item')[i].querySelector('.history-date button'), index));
+// Goes to the History card for `date`, opens the Edit modal on its session and
+// reads back its title and the exercise rows it offers, then closes it again.
+async function openEdit(page, date) {
+    await historyGoTo(page, date);
+    await waitForDeckToSettle(page); // a tap during the slide misses
+    await tap(page, HISTORY_EDIT);
     await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
     const result = await page.evaluate(() => ({
         title: document.querySelector('.modal-title')?.textContent?.trim() || '',
@@ -80,26 +83,23 @@ async function openEdit(page, index) {
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
         const history = await page.evaluate((ant, up, low) => {
-            const monday = new Date();
-            monday.setHours(0, 0, 0, 0);
-            const dow = monday.getDay();
-            monday.setDate(monday.getDate() + (dow === 0 ? -6 : 1 - dow));
-            // All three land on Monday, separated by hour, so none can fall on
-            // a future date whenever in the week the suite runs.
-            const at = (hour) => {
-                const d = new Date(monday);
-                d.setHours(hour, 0, 0, 0);
+            // One session per calendar date (a History card holds one), the
+            // three on the three days before today so none is in the future.
+            const at = (daysAgo) => {
+                const d = new Date();
+                d.setHours(12, 0, 0, 0);
+                d.setDate(d.getDate() - daysAgo);
                 return d.toISOString();
             };
             const std = (id) => ({
                 id, name: id, category: 'Legacy', type: 'standard', weight: '100', reps: '5',
             });
-            const entry = (hour, day, ids) => ({
-                date: at(hour), day, week: 1, submitted: true, plateauBusters: [],
+            const entry = (daysAgo, day, ids) => ({
+                date: at(daysAgo), day, week: 1, submitted: true, plateauBusters: [],
                 exercises: ids.map(std),
             });
-            // Newest first once Weekly sorts them: anterior, upper, lower.
-            return [entry(18, 'anterior', ant), entry(16, 'upper', up), entry(14, 'lower', low)];
+            // Newest first: anterior, upper, lower.
+            return [entry(1, 'anterior', ant), entry(2, 'upper', up), entry(3, 'lower', low)];
         }, ANTERIOR_IDS, LEGACY_UPPER_IDS, LEGACY_LOWER_IDS);
 
         await seedPersonalApp(page, { workoutHistory: history });
@@ -109,23 +109,23 @@ async function openEdit(page, index) {
         await waitForApp(page);
         await clickNav(page, 'History');
 
-        const count = await page.evaluate(() => document.querySelectorAll('.history-item').length);
-        eq(count, 3, 'all three eras render in the current week');
+        // The deck opens on today; each era's session sits on its own date.
+        const dates = history.map((w) => dateKey(w.date));
 
         // Current era: live-config branch, today's 12.
-        const anterior = await openEdit(page, 0);
+        const anterior = await openEdit(page, dates[0]);
         contains(anterior.title, 'Anterior', 'a day:anterior workout is titled Anterior');
         eq(anterior.rows.length, 12, 'the Anterior workout offers 12 fields');
 
         // Legacy Upper: stored branch, the 13 it was performed with.
-        const upper = await openEdit(page, 1);
+        const upper = await openEdit(page, dates[1]);
         contains(upper.title, 'Upper', 'a legacy day:upper workout is still titled Upper');
         ok(!/Anterior|Posterior|Full Body/.test(upper.title),
             `legacy Upper is not relabelled (got "${upper.title}")`);
         eq(upper.rows.length, 13, 'the legacy Upper workout keeps its 13 fields, not today\'s 12');
 
         // Legacy Lower: stored branch, the 8 it was performed with.
-        const lower = await openEdit(page, 2);
+        const lower = await openEdit(page, dates[2]);
         contains(lower.title, 'Lower', 'a legacy day:lower workout is still titled Lower');
         ok(!/Anterior|Posterior|Full Body/.test(lower.title),
             `legacy Lower is not relabelled (got "${lower.title}")`);

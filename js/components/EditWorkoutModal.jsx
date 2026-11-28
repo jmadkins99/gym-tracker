@@ -2,7 +2,7 @@
 
         function EditWorkoutModal({ workout, onClose, onSave, exercises }) {
             const [editedExercises, setEditedExercises] = useState(workout.exercises);
-            // Which fields this workout offers, by era. Mirrors WeeklyView —
+            // Which fields this workout offers, by era. Mirrors HistoryDeck —
             // see getWorkoutExerciseList in utils.js.
             const allExercises = getWorkoutExerciseList(workout, exercises);
 
