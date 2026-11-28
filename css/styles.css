@@ -398,6 +398,8 @@
         .card.history-card {
             min-height: 0;
             overflow-y: auto;
+            /* Never sideways: a horizontal drag is the deck's, not the card's. */
+            overflow-x: hidden;
             overscroll-behavior: contain;
         }
 
@@ -405,7 +407,11 @@
            grows to fill the card (but never shrinks below its rows, so a long
            day scrolls instead), and its rows share the spare height up to a
            cap: an 11-exercise day fills a phone, a 3-exercise day sits at the
-           top instead of stretching into three giant rows. */
+           top instead of stretching into three giant rows. A grid rather than
+           flex, because minmax(auto, 64px) caps only the growth: a row whose
+           own content is taller (a long name on three lines) keeps its height
+           instead of spilling into the next row. The header's track is auto,
+           so it does not grow. */
         .history-card .history-item {
             background: none;
             border: none;
@@ -413,13 +419,20 @@
             padding: 0;
             margin: 0;
             flex: 1 0 auto;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-rows: auto;
+            grid-auto-rows: minmax(auto, 64px);
+            align-content: start;
         }
 
-        .history-card .history-exercise {
-            flex: 1 0 auto;
-            max-height: 64px;
+        /* A long unbroken name wraps rather than pushing the row wider. */
+        .history-card .history-exercise-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .history-card .history-time-note {
+            align-self: start;
         }
 
         .history-card .history-exercise-data {

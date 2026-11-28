@@ -142,7 +142,7 @@
                         );
                     })}
                     {hasEstimate && (
-                        <div className="history-time-note">* estimated: measured from the previous log</div>
+                        <div className="history-time-note">* estimated, not timed from the Weight Breakdown</div>
                     )}
                 </div>
             );

@@ -26,7 +26,7 @@
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, waitFor, setNow } = require('../lib/browser');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
-const { bottomNav } = require('../lib/deck');
+const { ACTIVE, bottomNav } = require('../lib/deck');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -164,7 +164,7 @@ const clickText = async (page, sel, text) => {
         await scan(page, 'workout', ratio);
         await bottomNav(page, 'History');
         await page.waitForSelector('.history-item', { timeout: 8000 });
-        await check('workout History', '.history-date .history-edit', 1);
+        await check('workout History', ACTIVE + ' .history-edit', 1);
         await scan(page, 'workout History', ratio);
         await bottomNav(page, 'Workout');
         await page.click('.settings-btn');

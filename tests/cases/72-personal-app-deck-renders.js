@@ -32,6 +32,8 @@ const {
 } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
+// Fixed once, so a run that crosses midnight still visits the date it seeded.
+const YESTERDAY = new Date(Date.now() - 86400000);
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -46,7 +48,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // could leak if it wanted to.
         await seedPersonalApp(page, {
             workoutHistory: [{
-                date: new Date(Date.now() - 86400000).toISOString(),
+                date: YESTERDAY.toISOString(),
                 day: 'anterior', week: 1, submitted: true, plateauBusters: [],
                 exercises: [
                     // Whatever leads the day has to be in here: section 3
@@ -130,7 +132,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         // === 5. History still reachable ================================
         await bottomNav(page, 'History');
         // History opens on today, a rest day; the seeded session is yesterday's.
-        await historyGoTo(page, dateKey(Date.now() - 86400000));
+        await historyGoTo(page, dateKey(YESTERDAY));
         ok(await page.$(HISTORY_SESSION), 'the History tab still renders past sessions');
         await bottomNav(page, 'Workout');
         ok(await page.$('.deck-stage'), 'and the deck comes back');

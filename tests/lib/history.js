@@ -42,9 +42,10 @@ function dateKey(d) {
     return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
 }
 
-function keyDiff(a, b) {
+// Calendar dates from key `from` to key `to`: positive when `to` is later.
+function daysFromTo(from, to) {
     const ms = (k) => { const [y, m, d] = k.split('-').map(Number); return Date.UTC(y, m - 1, d); };
-    return Math.round((ms(b) - ms(a)) / 86400000);
+    return Math.round((ms(to) - ms(from)) / 86400000);
 }
 
 // The YYYY-MM-DD of the card on screen, or null if History is not showing.
@@ -91,7 +92,7 @@ async function historyGoTo(page, date) {
     for (let guard = 0; guard < 400; guard++) {
         const now = await shownDate(page);
         if (!now) throw new Error('historyGoTo: History is not on screen');
-        const diff = keyDiff(now, target);
+        const diff = daysFromTo(now, target);
         if (diff === 0) { await waitForShown(page, 'History card ' + target, target); return; }
         const which = diff <= -7 ? 'back' : diff >= 7 ? 'forward' : diff < 0 ? 'prev' : 'next';
         if (await footDisabled(page, which)) {

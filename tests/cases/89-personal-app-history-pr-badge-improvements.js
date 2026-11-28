@@ -231,6 +231,9 @@ async function readCardBadge(page, exerciseId) {
         const flames = await page.evaluate(() => window.allFlames());
         ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
             'every History flame draws with its own resolving gradient id: ' + JSON.stringify(flames));
+        eq(await page.evaluate(() => new Set(Array.from(document.querySelectorAll('.pr-flame'))
+            .map((f) => f.closest('[data-history-date]').getAttribute('data-history-date'))).size), 2,
+            'and the flames come from two sessions\' cards, so the unique-id check spans both');
         eq(todayRows['Preacher Curls'].badgeText, '×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,

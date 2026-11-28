@@ -16,7 +16,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
-const { HISTORY_EDIT } = require('../lib/history');
+const { HISTORY_CARD, HISTORY_EDIT } = require('../lib/history');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -61,8 +61,9 @@ async function clickNav(page, label) {
 
         // Weekly view: the cardio workout renders its own exercises + values.
         await clickNav(page, 'History');
-        const weeklyText = await page.evaluate(() =>
-            document.querySelector('.content')?.textContent || '');
+        // The shown card only: the deck also mounts its neighbours.
+        const weeklyText = await page.evaluate((sel) =>
+            document.querySelector(sel)?.textContent || '', HISTORY_CARD);
         contains(weeklyText, 'Body Weight Squats', 'weekly shows squats');
         contains(weeklyText, 'BW × 50', 'weekly shows squats as "BW × 50"');
         contains(weeklyText, 'Stairmaster', 'weekly shows stairmaster');

@@ -20,11 +20,12 @@
 //      Breaking the live branch reads "40m" (the last log, 11:40).
 //   2. A minute later it reads "1h 1m so far" with no tap — it ticks. (The
 //      card shows whole minutes, so the step is a minute.)
-//   3. Past 30 minutes since the last log (12:11) it falls back to the last
-//      log, "40m", with no "so far". Dropping the cutoff reads "1h 11m".
+//   3. Past 30 minutes since the last log (12:10:06) it falls back to the
+//      last log, "40m", with no "so far". Dropping the cutoff reads "1h 10m".
 //   4. Submitted, today (a second seed, since a History card holds one session
-//      and the in-progress day is today's): 07:00 -> 07:30 = "30m", with no
-//      "so far". Dropping the `submitted` check reads a live figure.
+//      and the in-progress day is today's): 11:30 -> 11:50 = "20m", with no
+//      "so far". The last log is only 10 minutes before noon, inside the
+//      30-minute window, so dropping the `submitted` check reads "30m so far".
 //   5. The per-movement rows are the same either way — the live end moves the
 //      total only.
 
@@ -55,9 +56,9 @@ const IN_PROGRESS = [
 
 const SUBMITTED = [
     { id: 'pecs-transverse-shoulder-adduction-with-elbow-extension', name: 'Chest Press', weight: '195', reps: '6',
-      startedAt: iso(7, 0), loggedAt: iso(7, 10) },
+      startedAt: iso(11, 30), loggedAt: iso(11, 40) },
     { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '160', reps: '6',
-      startedAt: iso(7, 25), loggedAt: iso(7, 30) },
+      startedAt: iso(11, 45), loggedAt: iso(11, 50) },
 ];
 
 // What the shown History card says about its session's time: the total after
@@ -156,21 +157,21 @@ async function advanceTo(page, ms, expectedTotal) {
         ok(ticked.live, 'still live a minute on');
 
         // === 3. 30 minutes with no log: back to the last log =============
-        // 12:01 + 10m = 12:11, which is 31m after the 11:40 log.
-        const stale = await advanceTo(page, 10 * 60000, '40m');
+        // 12:01 + 9m06s = 12:10:06, which is 30m06s after the 11:40 log.
+        const stale = await advanceTo(page, 9 * 60000 + 6000, '40m');
         ok(!stale.live,
             'past 30 minutes with no log the total is the finished session again');
 
         // === 4. Today, submitted: ends at the last log ===================
         await seedPersonalApp(page, {
-            workoutHistory: [workoutEntry({ date: iso(7, 0), day: 'full-body', exercises: SUBMITTED })],
+            workoutHistory: [workoutEntry({ date: iso(11, 30), day: 'full-body', exercises: SUBMITTED })],
         });
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await tap(page, '.bottom-nav-btn', { text: /History/ });
         await historyGoTo(page, new Date(NOW));
         const done = await openTiming(page);
-        eq(done.total, '30m',
+        eq(done.total, '20m',
             'a submitted day ends at its last log, whatever the time now');
         ok(!done.live, 'a finished session is not marked so far');
         eq(done.rows, [['pecs-transverse-shoulder-adduction-with-elbow-extension', '10:00'], ['pecs-transverse-shoulder-adduction', '5:00']],

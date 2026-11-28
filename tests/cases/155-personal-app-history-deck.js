@@ -3,7 +3,7 @@
 // History as a swipe deck of History cards (#38): one card per calendar date,
 // from the date of the first session ever logged through today.
 //
-//   (0) With no sessions at all, the deck is a single rest card for today.
+//   (0) With no sessions at all, the deck is a single History card for today, a rest day.
 //   (1) It opens on today. Today has no session, so the card is a rest day:
 //       the date and "No workout", with no day label, total or Edit gear, and
 //       the forward controls are disabled.
@@ -108,7 +108,7 @@ async function setVisibility(page, state) {
 
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
 
-        // === (0) No sessions at all: one rest card, today =================
+        // === (0) No sessions at all: one History card, today, a rest day ===
         await seedPersonalApp(page, { workoutHistory: [] });
         await page.evaluate((ns) => localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
@@ -145,11 +145,28 @@ async function setVisibility(page, state) {
         eq(card.heading, 'Tuesday, November 24, 2026', 'the card shows the full date');
         eq(card.label, 'Posterior', 'and the session\'s day label');
         ok(!/Day \d/.test(card.text), 'and no "Day N" counter');
+        ok(!/Week \d/.test(card.text), 'and no training "Week N"');
         ok(card.edit, 'a session offers the Edit gear');
         eq(card.total, null, 'a session without timestamps shows no total');
         eq(card.times, {}, 'and no row times');
-        eq(await page.evaluate((sel) => getComputedStyle(document.querySelector(sel)).overflowY, HISTORY_CARD),
-            'auto', 'a card taller than the stage scrolls inside itself instead of clipping');
+        // On a screen too short for its rows, the card scrolls inside itself
+        // and the footer stays on screen below it.
+        const viewport = page.viewport();
+        await page.setViewport({ width: 390, height: 420 });
+        const short = await page.evaluate((sel) => {
+            const el = document.querySelector(sel);
+            el.scrollTop = 40;
+            const foot = document.querySelector('.history-foot').getBoundingClientRect();
+            return {
+                overflows: el.scrollHeight > el.clientHeight,
+                scrolled: el.scrollTop > 0,
+                footOnScreen: foot.bottom <= window.innerHeight && foot.top >= el.getBoundingClientRect().bottom - 1,
+            };
+        }, HISTORY_CARD);
+        eq(short, { overflows: true, scrolled: true, footOnScreen: true },
+            'a card taller than the stage scrolls inside itself above the footer instead of clipping');
+        await page.evaluate((sel) => { document.querySelector(sel).scrollTop = 0; }, HISTORY_CARD);
+        await page.setViewport(viewport);
 
         // === (3) 7-day jumps ===============================================
         await historyPress(page, 'back');
@@ -189,6 +206,9 @@ async function setVisibility(page, state) {
             const t = document.querySelector('.modal-title');
             return !!t && t.textContent.indexOf('Edit Workout') !== -1;
         });
+        ok(await page.evaluate(() =>
+            document.querySelector('.modal').textContent.indexOf('Wednesday, November 18, 2026') !== -1),
+            'the gear opens the Edit modal on its own card\'s session');
         await page.evaluate(() => document.querySelector('.modal-overlay').dispatchEvent(new MouseEvent('click', { bubbles: true })));
         await waitFor(page, 'the Edit modal to close', () => !document.querySelector('.modal-overlay'));
         eq(await shownDate(page), '2026-11-18', 'the deck stays on the card after the modal');
