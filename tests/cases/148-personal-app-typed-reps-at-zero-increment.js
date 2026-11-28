@@ -26,7 +26,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, setNow } = require('../lib/browser');
 const { ACTIVE, readDeckCard, goToCardById, revealCard, logCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -36,12 +36,18 @@ const NS = 'gym-local:';
 const TARGET = 'pecs-transverse-shoulder-adduction';   // pin stack, Chest Flies on anterior-2
 const CONTROL = 'pecs-shoulder-flexion';              // stays on the 2.5 seed
 
+// The page clock is pinned to a Phoenix evening, after midnight UTC, when a
+// workout's ISO date is already the next day. Slicing that date and comparing
+// it with the local date is what broke this case after 17:00 Phoenix (#48), so
+// days are compared by local date and the case runs at that hour every time.
+const NOW = '2026-11-25T20:00:00-07:00';
 function daysAgo(n) {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
+    const d = new Date(NOW);
+    d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() - n);
-    return d.toISOString().split('T')[0];
+    return d.toISOString();
 }
+const localDate = (iso) => new Date(iso).toDateString();
 
 const ex = (id, name, weight, reps, extra = {}) => ({ id, name, weight, reps, ...extra });
 
@@ -150,6 +156,7 @@ const readStore = (page) => page.evaluate((ns) =>
     const browser = await launch();
     try {
         const page = await browser.newPage();
+        await setNow(page, NOW);
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPersonalApp(page, { workoutHistory: history });
@@ -250,7 +257,7 @@ const readStore = (page) => page.evaluate((ns) =>
         await typeReps(page, ACTIVE, '3');
         await logCard(page);
         const todayWorkout = (await readStore(page)).find(w =>
-            w.date.slice(0, 10) === daysAgo(0) && w.exercises.some(e => e.id === TARGET));
+            localDate(w.date) === localDate(NOW) && w.exercises.some(e => e.id === TARGET));
         const logged = todayWorkout.exercises.find(e => e.id === TARGET);
         eq([logged.weight, logged.reps, logged.noRange, logged.repMin], ['200', '3', true, undefined],
             'the set is stamped as logged without a rep range');
