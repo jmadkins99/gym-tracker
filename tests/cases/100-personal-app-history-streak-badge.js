@@ -29,7 +29,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, tap } = require('../lib/browser');
 const { ACTIVE, bottomNav, goToCardById, revealCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -146,11 +146,7 @@ async function readCardBadge(page, exerciseId) {
         // The seeded week is last week's, so History opens on the current
         // (empty) week and has to be stepped back one.
         await bottomNav(page, 'History');
-        await page.evaluate(() => {
-            const prev = Array.from(document.querySelectorAll('.week-nav-btn'))
-                .find(b => b.textContent.indexOf('Prev') !== -1);
-            if (prev && !prev.disabled) prev.click();
-        });
+        await tap(page, '.week-nav-btn', { text: /Prev/ });
         await page.waitForSelector('.history-item', { timeout: 8000 });
 
         const items = await readHistory(page);

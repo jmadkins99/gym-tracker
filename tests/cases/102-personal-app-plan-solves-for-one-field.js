@@ -38,7 +38,7 @@
 // fails on the plan that was just saved.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok, contains } = require('../lib/assert');
 
@@ -69,10 +69,11 @@ const planFields = (page) => page.evaluate(() => {
     return out;
 });
 
-const clickPill = (page, label) => page.evaluate((text) => {
-    Array.from(document.querySelectorAll('.plan-solve-toggle .day-pill'))
-        .find((b) => b.textContent.trim() === text).click();
-}, label);
+const clickPill = async (page, label) => {
+    await tap(page, '.plan-solve-toggle .day-pill', { text: label });
+    await waitFor(page, `the ${label} pill to be selected`, (text) =>
+        document.querySelector('.plan-solve-toggle .day-pill.active')?.textContent.trim() === text, label);
+};
 
 // Types into one of the editor's inputs the way a person does, so React's
 // onChange actually runs.
@@ -127,10 +128,7 @@ const typeInto = async (page, label, text) => {
                  '135.0 lb, not 145.0',
                  'and says where the rate and the length actually land');
 
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.modal-btn'))
-                .find((b) => b.textContent.includes('Edit plan')).click();
-        });
+        await tap(page, '.modal-btn', { text: /Edit plan/ });
         await waitFor(page, 'the plan editor to open', () => !!document.querySelector('.plan-solve'));
 
         let fields = await planFields(page);
@@ -169,10 +167,7 @@ const typeInto = async (page, label, text) => {
 
         // === 4. What gets saved is a plan whose four numbers agree ==========
         await typeInto(page, 'Target rate', '2.5');
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.modal-btn'))
-                .find((b) => b.textContent.includes('Save plan')).click();
-        });
+        await tap(page, '.modal-btn', { text: /Save plan/ });
         await waitFor(page, 'the editor to close', () => !document.querySelector('.plan-solve'));
 
         const saved = await page.evaluate((ns) => {
@@ -198,10 +193,7 @@ const typeInto = async (page, label, text) => {
         eq(saved.goalPounds, 30, 'and the bar counts down the same 30 lb the line covers');
 
         // Reopened, a reconciled plan has nothing left to complain about.
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.modal-btn'))
-                .find((b) => b.textContent.includes('Edit plan')).click();
-        });
+        await tap(page, '.modal-btn', { text: /Edit plan/ });
         await waitFor(page, 'the plan editor to reopen', () => !!document.querySelector('.plan-solve'));
         fields = await planFields(page);
         eq(fields['Length'].derived, true, 'it reopens on the field it was solving for');

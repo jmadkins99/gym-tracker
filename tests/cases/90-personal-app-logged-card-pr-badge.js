@@ -23,8 +23,8 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
-const { ACTIVE, deckIndex, goToCardById, revealCard, logCard } = require('../lib/deck');
+const { launch, attachConsole, waitForApp, selectDayType, waitForPageTime } = require('../lib/browser');
+const { ACTIVE, deckIndex, goToCardById, revealCard, logCard, todayWorkout } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -82,7 +82,9 @@ async function enterSet(page, exerciseId, weight, reps) {
         selectSetter.call(select, r);
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }, ACTIVE, weight, reps);
-    await new Promise(r => setTimeout(r, 120));
+    // No wait here. React 18 handles input and change as discrete events and
+    // commits their state before dispatchEvent returns, and logCard reads the
+    // LOG button only after that.
 }
 
 async function readHeader(page, exerciseId) {
@@ -190,7 +192,11 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         const flamesHeld = await page.evaluate(() => window.allFlames());
         ok(flamesHeld.count >= 1 && flamesHeld.allDrawn && flamesHeld.uniqueIds,
             'with several pills mounted, every flame draws and none shares a gradient id: ' + JSON.stringify(flamesHeld));
-        await new Promise(r => setTimeout(r, 1300));
+        // Most of the way through the 2s hold (PR_CELEBRATION_MS), counted
+        // from the set's own loggedAt stamp: the card must still be holding.
+        const prLoggedAt = Date.parse((await todayWorkout(page)).exercises
+            .find((e) => e.id === 'biceps-elbow-flexion-with-shoulder-extension').loggedAt);
+        await waitForPageTime(page, 'the page clock to reach 1.5s after the PR log', prLoggedAt + 1500);
         const lingering = await readActiveReview(page);
         eq(lingering.id, 'biceps-elbow-flexion-with-shoulder-extension',
             'the PR celebration keeps the logged card visible for the two-second aura hold');

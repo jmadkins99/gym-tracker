@@ -32,7 +32,7 @@
 // average stops moving.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -81,21 +81,14 @@ async function typeWeight(page, value) {
     }, value);
 }
 
-const clickIn = (page, selector, text) => page.evaluate((sel, t) => {
-    const btn = Array.from(document.querySelectorAll(sel))
-        .find((b) => b.textContent.trim() === t);
-    if (!btn) throw new Error('no ' + sel + ' reading "' + t + '"');
-    btn.click();
-}, selector, text);
-
-// The value button carries a unit and a pencil glyph alongside the number, so
-// it is matched on the reading it opens rather than on its whole label.
-const openEditor = (page, weight) => page.evaluate((w) => {
-    const btn = Array.from(document.querySelectorAll('.weigh-day-value'))
-        .find((b) => parseFloat(b.textContent) === w);
-    if (!btn) throw new Error('no day row showing ' + w);
-    btn.click();
-}, weight);
+// The value button carries a unit alongside the number, so it is matched on
+// the reading it opens rather than on its whole label.
+const openEditor = async (page, weight) => {
+    const btn = await page.evaluateHandle((w) => Array.from(document.querySelectorAll('.weigh-day-value'))
+        .find((b) => parseFloat(b.textContent) === w) || null, weight);
+    if (!btn.asElement()) throw new Error('no day row showing ' + weight);
+    await tap(page, btn);
+};
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -120,10 +113,7 @@ const openEditor = (page, weight) => page.evaluate((w) => {
             () => !!document.querySelector('.weigh-card'));
 
         // === 1. History arrives with nothing raw on it ===================
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find((b) => b.textContent.includes('History')).click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await waitFor(page, 'the weekly ledger to render',
             () => !!document.querySelector('.weigh-week'));
 
@@ -131,7 +121,7 @@ const openEditor = (page, weight) => page.evaluate((w) => {
         eq((await dayRows(page)).length, 0, 'no daily reading may be on screen before a week is opened');
 
         // === 2. Opening one week reveals its readings ====================
-        await page.evaluate(() => document.querySelector('.weigh-week-head').click());
+        await tap(page, '.weigh-week-head');
         await waitFor(page, 'the opened week to list its days',
             () => document.querySelectorAll('.weigh-day').length > 0);
 
@@ -147,7 +137,7 @@ const openEditor = (page, weight) => page.evaluate((w) => {
            'the editor opens on the reading being corrected, not empty');
 
         await typeWeight(page, '178.0');
-        await clickIn(page, '.weigh-day-btn', 'Save');
+        await tap(page, '.weigh-day-btn', { text: 'Save' });
         await waitFor(page, 'the corrected reading to reach localStorage',
             (ns) => (JSON.parse(localStorage.getItem(ns + 'gymWeightLog') || '[]')
                 .find((e) => e.date === '2026-01-07') || {}).weight === 178.0, NS);
@@ -164,7 +154,7 @@ const openEditor = (page, weight) => page.evaluate((w) => {
         await openEditor(page, 178.0);
         await waitFor(page, 'the inline editor to open',
             () => !!document.querySelector('.weigh-day-input'));
-        await clickIn(page, '.weigh-day-btn', 'Delete');
+        await tap(page, '.weigh-day-btn', { text: 'Delete' });
         await waitFor(page, 'the deleted day to leave localStorage',
             (ns) => JSON.parse(localStorage.getItem(ns + 'gymWeightLog') || '[]').length === 2, NS);
 

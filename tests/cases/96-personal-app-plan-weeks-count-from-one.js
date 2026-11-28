@@ -32,7 +32,7 @@
 // and this week's target fail.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq } = require('../lib/assert');
 
@@ -111,10 +111,7 @@ const planLines = (page) => page.evaluate(() => {
         eq(rows.weekNumber, 3, 'planWeekNumber counts from 1 on the starting Monday');
 
         // === 2. What the card says ======================================
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find((b) => b.textContent.includes('History')).click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await waitFor(page, 'the plan card to render',
             () => !!document.querySelector('.plan-week'));
 

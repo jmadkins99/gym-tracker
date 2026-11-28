@@ -38,7 +38,7 @@
 // unconditionally and the collapsed-on-arrival assertion fails.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -77,10 +77,7 @@ const seed = (page) => page.evaluate((ns) => {
 }, NS);
 
 const toHistory = async (page) => {
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((b) => b.textContent.includes('History')).click();
-    });
+    await tap(page, '.bottom-nav-btn', { text: /History/ });
     await waitFor(page, 'the weekly ledger to render',
         () => !!document.querySelector('.weigh-week'));
 };
@@ -116,7 +113,13 @@ const block = (page) => page.evaluate(() => {
     };
 });
 
-const toggle = (page) => page.evaluate(() => document.querySelector('.weigh-project-btn').click());
+const toggle = (page) => tap(page, '.weigh-project-btn');
+
+// The rows fade in and out on staggered transition delays, so the block has
+// settled only once no transition on it or its rows is pending or running.
+const waitForProjectionToSettle = (page) =>
+    waitFor(page, 'the projection rows to finish their staggered transitions', () =>
+        document.querySelector('.weigh-projection').getAnimations({ subtree: true }).length === 0);
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -162,8 +165,7 @@ const toggle = (page) => page.evaluate(() => document.querySelector('.weigh-proj
         await toggle(page);
         await waitFor(page, 'the projection to open',
             () => document.querySelector('.weigh-projection').classList.contains('open'));
-        // Long enough for the last staggered row to have finished arriving.
-        await new Promise((r) => setTimeout(r, 1200));
+        await waitForProjectionToSettle(page);
 
         const after = await ledger(page);
         const proj = after.filter((r) => r.projected);
@@ -209,7 +211,7 @@ const toggle = (page) => page.evaluate(() => document.querySelector('.weigh-proj
         await toggle(page);
         await waitFor(page, 'the projection to close',
             () => !document.querySelector('.weigh-projection').classList.contains('open'));
-        await new Promise((r) => setTimeout(r, 1200));
+        await waitForProjectionToSettle(page);
 
         const closed = await ledger(page);
         eq(closed.filter((r) => r.projected).every((r) => r.opacity === 0), true,
@@ -252,7 +254,7 @@ const toggle = (page) => page.evaluate(() => document.querySelector('.weigh-proj
         await toggle(page);
         await waitFor(page, 'the projection to open',
             () => document.querySelector('.weigh-projection').classList.contains('open'));
-        await new Promise((r) => setTimeout(r, 900));
+        await waitForProjectionToSettle(page);
 
         const week1 = (await ledger(page)).filter((r) => r.projected);
         eq(week1.map((r) => r.weight), [165.0, 168.0, 172.0],

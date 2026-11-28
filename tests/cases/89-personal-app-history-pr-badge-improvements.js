@@ -98,7 +98,9 @@ async function enterSet(page, exerciseId, weight, reps) {
         selectSetter.call(select, r);
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }, ACTIVE, weight, reps);
-    await new Promise(r => setTimeout(r, 120));
+    // No wait here. React 18 handles input and change as discrete events and
+    // commits their state before dispatchEvent returns, and logCard reads the
+    // LOG button only after that.
 }
 
 // The newest History entry, keyed by exercise name.
