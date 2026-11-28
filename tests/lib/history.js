@@ -8,7 +8,7 @@
 // The footer's date label carries the shown card's date as
 // `data-history-shown="YYYY-MM-DD"`, which is what every helper here waits on.
 
-const { ACTIVE } = require('./deck');
+const { ACTIVE, waitForDeckToSettle } = require('./deck');
 const { tap, waitFor } = require('./browser');
 
 const HISTORY_CARD = ACTIVE + ' .history-card';
@@ -43,6 +43,9 @@ async function waitForShown(page, label, key) {
         return !!el && el.getAttribute('data-history-shown') === k
             && !!card && card.getAttribute('data-history-date') === k;
     }, key);
+    // The index commits at once and the rail then slides for RAIL_MS; a tap
+    // during the slide can miss its button, so hand back a still deck.
+    await waitForDeckToSettle(page);
 }
 
 // Taps one of the footer buttons and waits for the shown date to change.
@@ -61,7 +64,8 @@ async function historyPress(page, which) {
 }
 
 // Moves the deck to `date` (Date, ISO string or YYYY-MM-DD) with 7-day jumps
-// and then single days. Throws if the date is outside the deck.
+// and then single days, and waits for the deck to come to rest. Throws if the
+// date is outside the deck.
 async function historyGoTo(page, date) {
     const target = dateKey(date);
     for (let guard = 0; guard < 400; guard++) {

@@ -27,8 +27,9 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor, setNow, tap } = require('../lib/browser');
-const { ACTIVE, readDeckCard, goToCardById, revealCard, logCard } = require('../lib/deck');
+const { ACTIVE, readDeckCard, goToCardById, revealCard, logCard, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
+const { HISTORY_CARD, HISTORY_SESSION, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -267,35 +268,23 @@ const readStore = (page) => page.evaluate((ns) =>
         ok(pill && /PR/.test(pill), '3 reps beating 2 at the same weight is a PR on the logged card: ' + pill);
 
         await tap(page, '.bottom-nav-btn', { text: /History/ });
-        await waitFor(page, 'History rows', () => document.querySelectorAll('.history-item').length > 0);
-        // History pages by week, so walk back to the first one.
-        const readFlies = () => page.evaluate(() => Array.from(document.querySelectorAll('.history-item'))
-            .map(item => Array.from(item.querySelectorAll('.history-exercise'))
-                .filter(r => r.querySelector('.history-exercise-name').textContent.trim() === 'Chest Flies')
-                .map(r => !!r.querySelector('[data-pr-badge]')))
-            .filter(rows => rows.length)
-            .map(rows => rows[0]));
-        const badges = await readFlies();
-        for (;;) {
-            const beforeText = await page.evaluate(() =>
-                Array.from(document.querySelectorAll('.history-item')).map(i => i.textContent).join('|'));
-            // The first week button is Prev.
-            if (await page.$eval('.week-nav-btn', (b) => b.disabled)) break;
-            await tap(page, '.week-nav-btn');
-            await waitFor(page, 'the previous week to show', (prev) =>
-                Array.from(document.querySelectorAll('.history-item')).map(i => i.textContent).join('|') !== prev,
-                beforeText);
+        // One card per date: today's session, then each seeded session, newest first.
+        const readFlies = () => page.evaluate((sel) => Array.from(document.querySelectorAll(sel + ' .history-exercise'))
+            .filter(r => r.querySelector('.history-exercise-name').textContent.trim() === 'Chest Flies')
+            .map(r => !!r.querySelector('[data-pr-badge]')), HISTORY_SESSION);
+        const badges = [];
+        for (const date of [NOW, ...history.map(w => w.date)]) {
+            await historyGoTo(page, date);
             badges.push(...await readFlies());
         }
         eq(badges, [true, false, false, false],
             'History badges today (typed 3 over 2); older sessions keep their verdicts, the unstamped 200 x 3 stays failed');
 
         // --- History edit uses the same box --------------------------------
-        await tap(page, await page.evaluateHandle(() => {
-            const item = Array.from(document.querySelectorAll('.history-item'))
-                .find(i => i.textContent.includes('Low to High Flies'));
-            return Array.from(item.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit');
-        }));
+        // The Low to High Flies session is the one from 7 days ago.
+        await historyGoTo(page, history[0].date);
+        await waitForDeckToSettle(page);
+        await tap(page, HISTORY_CARD + ' .history-date .text-btn', { text: 'Edit' });
         await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
         const editBoxes = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.modal [data-field="reps"]')).map(el => ({

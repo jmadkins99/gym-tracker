@@ -35,6 +35,7 @@ const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/bro
 const { ACTIVE, bottomNav, goToCardById, logCard, revealCard } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
+const { HISTORY_SESSION, dateKey, historyGoTo } = require('../lib/history');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const BADGE_BG = 'rgba(0, 0, 0, 0)';
@@ -103,11 +104,11 @@ async function enterSet(page, exerciseId, weight, reps) {
     // LOG button only after that.
 }
 
-// The newest History entry, keyed by exercise name.
+// The session on the History card on screen, keyed by exercise name.
 async function readHistoryRows(page, names) {
-    return page.evaluate((wanted) => {
+    return page.evaluate((wanted, session) => {
         const rows = {};
-        const latest = document.querySelector('.history-item');
+        const latest = document.querySelector(session);
         if (!latest) return rows;
 
         latest.querySelectorAll('.history-exercise').forEach((row) => {
@@ -126,7 +127,7 @@ async function readHistoryRows(page, names) {
         });
 
         return rows;
-    }, names);
+    }, names, HISTORY_SESSION);
 }
 
 async function readCardBadge(page, exerciseId) {
@@ -158,8 +159,10 @@ async function readCardBadge(page, exerciseId) {
         eq(await readCardBadge(page, 'lats-sagittal-shoulder-extension'), null,
             'card streak does not count a weight drop, even at top reps');
 
+        // History opens on today, which has no session yet: go to LATEST's date.
         await bottomNav(page, 'History');
-        await page.waitForSelector('.history-item', { timeout: 8000 });
+        await historyGoTo(page, dateKey(LATEST.date));
+        await page.waitForSelector(HISTORY_SESSION, { timeout: 8000 });
 
         const historyRows = await readHistoryRows(page, EXERCISES.map(([, name]) => name));
 
@@ -192,15 +195,16 @@ async function readCardBadge(page, exerciseId) {
 
         // Log against LATEST without submitting: Shoulder Flexion Curls 55x5 -> 55x6
         // improves, Kelso Shrugs repeats 190x6 and does not. Today's entry is
-        // now the newest .history-item and is still unsubmitted.
+        // now the session on today's History card and is still unsubmitted.
         await bottomNav(page, 'Workout');
         await enterSet(page, 'biceps-elbow-flexion-with-shoulder-flexion', '55', '6');
         ok(await logCard(page), 'biceps-elbow-flexion-with-shoulder-flexion: LOG button clicked');
         await enterSet(page, 'traps-scapular-retraction', '190', '6');
         ok(await logCard(page), 'traps-scapular-retraction: LOG button clicked');
 
+        // The tab opens on today, where the in-progress entry now sits.
         await bottomNav(page, 'History');
-        await page.waitForSelector('.history-item', { timeout: 8000 });
+        await page.waitForSelector(HISTORY_SESSION, { timeout: 8000 });
 
         const submitted = await page.evaluate(() => {
             const hist = JSON.parse(localStorage.getItem('gym-local:gymWorkoutHistory') || '[]');
@@ -220,8 +224,10 @@ async function readCardBadge(page, exerciseId) {
         eq(todayRows['Preacher Curls'].badgeView.exposed, 'PR streak 2',
             'the History streak pill exposes "PR streak 2" as text');
         const flames = await page.evaluate(() => window.allFlames());
-        ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
-            'every History flame draws and no two share a gradient id: ' + JSON.stringify(flames));
+        // Today's card is the only one on screen with a flame (the neighbours
+        // are rest days or empty), so there is one to draw.
+        ok(flames.count >= 1 && flames.allDrawn && flames.uniqueIds,
+            'the History flame draws with a resolving gradient id: ' + JSON.stringify(flames));
         eq(todayRows['Preacher Curls'].badgeText, '×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,

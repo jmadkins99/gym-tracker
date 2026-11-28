@@ -37,21 +37,21 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
+const { HISTORY_SESSION, dateKey, historyGoTo } = require('../lib/history');
+const { waitForDeckToSettle } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
-// Monday of the current week at a given hour, so both workouts land in the
-// default History page (which opens on the current week) and neither can be a
-// future date whenever in the week the suite runs.
-function mondayAt(hour, min = 0) {
+// A past date at a given hour: the timed workout two days ago, the untimed one
+// three days ago. Each gets its own History card (one session per date), and
+// neither can be a future date whenever the suite runs.
+function daysAgoAt(daysAgo, hour, min = 0) {
     const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    const dow = d.getDay();
-    d.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
     d.setHours(hour, min, 0, 0);
+    d.setDate(d.getDate() - daysAgo);
     return d;
 }
-const base = mondayAt(9);
+const base = daysAgoAt(2, 9);
 const at = (min, sec = 0) => new Date(base.getTime() + min * 60000 + sec * 1000).toISOString();
 
 const TIMED = [
@@ -83,26 +83,18 @@ const UNTIMED = [
     { id: 'pecs-transverse-shoulder-adduction', name: 'Chest Flies', weight: '160', reps: '5' },
 ];
 
-// One entry per workout, newest first, with which icon buttons its header row
-// offers. The buttons are read by their words
-// (Time, Edit), the way cases 21 and 22 read Edit.
-async function historyItems(page) {
-    return page.evaluate(() =>
-        Array.from(document.querySelectorAll('.history-item')).map(item => ({
-            heading: item.querySelector('.history-date')?.textContent?.trim() || '',
-            icons: Array.from(item.querySelectorAll('.history-date button'))
-                .map(b => b.textContent.trim()),
-        })));
+// Which header buttons the session on the shown History card offers, read by
+// their words (Time, Edit), the way cases 21 and 22 read Edit.
+async function shownIcons(page) {
+    return page.evaluate((session) => {
+        const item = document.querySelector(session);
+        return item ? Array.from(item.querySelectorAll('.history-date button'))
+            .map(b => b.textContent.trim()) : null;
+    }, HISTORY_SESSION);
 }
 
-async function clickIcon(page, itemIndex, icon) {
-    const btn = await page.evaluateHandle((i, ic) => {
-        const item = document.querySelectorAll('.history-item')[i];
-        return (item && Array.from(item.querySelectorAll('.history-date button'))
-            .find(b => b.textContent.includes(ic))) || null;
-    }, itemIndex, icon);
-    ok(btn.asElement(), `history item ${itemIndex} offers a ${icon} button to click`);
-    await tap(page, btn);
+async function clickIcon(page, icon) {
+    await tap(page, HISTORY_SESSION + ' .history-date .text-btn', { text: icon });
 }
 
 (async () => {
@@ -116,7 +108,7 @@ async function clickIcon(page, itemIndex, icon) {
         await seedPersonalApp(page, {
             workoutHistory: [
                 workoutEntry({ date: at(25, 30), day: 'anterior', exercises: TIMED }),
-                workoutEntry({ date: mondayAt(7).toISOString(), day: 'anterior', exercises: UNTIMED }),
+                workoutEntry({ date: daysAgoAt(3, 7).toISOString(), day: 'anterior', exercises: UNTIMED }),
             ],
         });
         await page.evaluate(() =>
@@ -125,19 +117,22 @@ async function clickIcon(page, itemIndex, icon) {
         await waitForApp(page);
 
         await tap(page, '.bottom-nav-btn', { text: /History/ });
-        await page.waitForSelector('.history-item', { timeout: 8000 });
 
         // === 1. Which entries offer a stopwatch =========================
-        const items = await historyItems(page);
-        eq(items.length, 2, 'both workouts render in the current week');
-
-        eq(items[0].icons, ['Time', 'Edit'],
+        // History opens on today; visit each seeded session's date.
+        const TIMED_DATE = dateKey(base);
+        const UNTIMED_DATE = dateKey(daysAgoAt(3, 7));
+        await historyGoTo(page, TIMED_DATE);
+        eq(await shownIcons(page), ['Time', 'Edit'],
             'the timed workout offers a stopwatch before its pencil');
-        eq(items[1].icons, ['Edit'],
+        await historyGoTo(page, UNTIMED_DATE);
+        eq(await shownIcons(page), ['Edit'],
             'a workout with no timestamps offers only a pencil — no stopwatch onto an empty modal');
 
         // === 2. The stopwatch reports the tapped workout's own session ===
-        await clickIcon(page, 0, 'Time');
+        await historyGoTo(page, TIMED_DATE);
+        await waitForDeckToSettle(page); // a tap during the slide misses
+        await clickIcon(page, 'Time');
         await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
 
         eq(await page.evaluate(() =>
@@ -169,7 +164,7 @@ async function clickIcon(page, itemIndex, icon) {
             { timeout: 8000 });
 
         // === 3. The pencil still works beside its new sibling ============
-        await clickIcon(page, 0, 'Edit');
+        await clickIcon(page, 'Edit');
         await page.waitForSelector('.modal input[data-field], .modal select[data-field]',
             { timeout: 8000 });
         ok(await page.evaluate(() =>

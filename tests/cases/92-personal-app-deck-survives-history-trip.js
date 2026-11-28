@@ -67,7 +67,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
         eq(anchored.length, 1, 'opening the panel stamped exactly one anchor');
 
         await bottomNav(page, 'History');
-        eq(await page.evaluate(() => !!document.querySelector('.deck-stage')), false,
+        eq(await page.evaluate(() => !!document.querySelector('.deck:not(.history-deck)')), false,
             'the deck is gone while History is up — the state under test is not its own');
 
         await bottomNav(page, 'Workout');

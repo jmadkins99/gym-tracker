@@ -160,7 +160,7 @@ async function selectDeckDay(page, type) {
 
 // Wait for the deck to come to rest: the rail back at its resting position and
 // the active card back on it. A swipe or an arrow commits the index at once and
-// then animates (RAIL_MS in SwipeDeck), so this is for a case that next reads
+// then animates (RAIL_MS in SwipeRail), so this is for a case that next reads
 // the deck or starts another gesture from a still deck. A computed transform
 // reports the in-flight value, so an identity transform means the motion is over.
 const waitForDeckToSettle = (page) =>

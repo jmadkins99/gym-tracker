@@ -14,10 +14,11 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, closeSettings } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap, openSettings, closeSettings } = require('../lib/browser');
 const { goToCardById, revealCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq } = require('../lib/assert');
+const { HISTORY_SESSION, dateKey, historyGoTo } = require('../lib/history');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
@@ -50,36 +51,24 @@ async function setup(page, VERSION, history, overrides = { increment: 0 }) {
 }
 
 async function bottomTo(page, label) {
-    await page.evaluate((l) => Array.from(document.querySelectorAll('.bottom-nav-btn'))
-        .find(b => b.textContent.includes(l)).click(), label);
+    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
 }
 
 // The Chest Flies row's PR badge (its streak, 'PR' for a lone one, null for
-// none) in every History week, newest first.
+// none) on the History card of every stored session, newest first.
 async function readHistory(page) {
+    const dates = [...new Set((await readStore(page)).map(w => dateKey(w.date)))].sort().reverse();
     await bottomTo(page, 'History');
-    await waitFor(page, 'the week navigation', () => !!document.querySelector('.week-nav'));
-    const snapshot = () => page.evaluate(() => document.querySelector('.week-nav').parentElement.textContent);
-    const readWeek = () => page.evaluate(() => Array.from(document.querySelectorAll('.history-item'))
-        .flatMap(item => Array.from(item.querySelectorAll('.history-exercise'))
+    await waitFor(page, 'the History deck', () => !!document.querySelector('[data-history-shown]'));
+    const rows = [];
+    for (const date of dates) {
+        await historyGoTo(page, date);
+        rows.push(...await page.evaluate((session) => Array.from(document.querySelectorAll(session + ' .history-exercise'))
             .filter(r => r.querySelector('.history-exercise-name').textContent.trim() === 'Chest Flies')
             .map(r => {
                 const b = r.querySelector('[data-pr-badge]');
                 return b ? (b.getAttribute('data-streak') || 'PR') : null;
-            })));
-    const rows = await readWeek();
-    for (;;) {
-        const before = await snapshot();
-        const more = await page.evaluate(() => {
-            const btn = document.querySelector('.week-nav-btn');
-            if (btn.disabled) return false;
-            btn.click();
-            return true;
-        });
-        if (!more) break;
-        await waitFor(page, 'the previous week to show', (prev) =>
-            document.querySelector('.week-nav').parentElement.textContent !== prev, before);
-        rows.push(...await readWeek());
+            }), HISTORY_SESSION));
     }
     return rows;
 }

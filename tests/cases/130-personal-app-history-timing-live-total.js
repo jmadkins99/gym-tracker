@@ -20,7 +20,8 @@
 //   2. Five seconds later it reads "1h 0m 5s" without reopening — it ticks.
 //   3. Past 30 minutes since the last log (12:10:06) it falls back to the
 //      last log, "40m", titled plainly. Dropping the cutoff reads "1h 10m 6s".
-//   4. Submitted, today: 07:00 -> 07:30 = "30m", titled plainly. Dropping the
+//   4. Submitted, today (a second seed, since a History card holds one session
+//      and the in-progress day is today's): 07:00 -> 07:30 = "30m", titled plainly. Dropping the
 //      `submitted` check reads a live figure.
 //   5. The per-movement rows are the same either way — the live end moves the
 //      total only.
@@ -29,6 +30,8 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
+const { waitForDeckToSettle } = require('../lib/deck');
+const { HISTORY_CARD, historyGoTo } = require('../lib/history');
 const { eq } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -66,13 +69,11 @@ function readTiming(page) {
     }));
 }
 
-async function openTiming(page, itemIndex) {
-    const btn = await page.evaluateHandle((i) => {
-        const item = document.querySelectorAll('.history-item')[i];
-        return Array.from(item.querySelectorAll('.history-date button'))
-            .find(b => b.textContent.trim() === 'Time') || null;
-    }, itemIndex);
-    await tap(page, btn);
+// Taps Time on the shown History card (a card holds one session, so a day
+// that needs both an in-progress and a submitted session gets its own seed).
+async function openTiming(page) {
+    await waitForDeckToSettle(page);
+    await tap(page, HISTORY_CARD + ' .history-date .text-btn', { text: 'Time' });
     await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
     return readTiming(page);
 }
@@ -125,7 +126,6 @@ async function closeTiming(page) {
         await seedPersonalApp(page, {
             workoutHistory: [
                 workoutEntry({ date: iso(11, 0), day: 'full-body', submitted: false, exercises: IN_PROGRESS }),
-                workoutEntry({ date: iso(7, 0), day: 'full-body', exercises: SUBMITTED }),
             ],
         });
         await page.evaluate(() =>
@@ -133,16 +133,12 @@ async function closeTiming(page) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
+        // History opens on today's card.
         await tap(page, '.bottom-nav-btn', { text: /History/ });
-        await page.waitForSelector('.history-item', { timeout: 8000 });
-
-        const headings = await page.evaluate(() =>
-            Array.from(document.querySelectorAll('.history-item .history-date'))
-                .map(h => h.textContent));
-        eq(headings.length, 2, 'both of today\'s workouts render');
+        await historyGoTo(page, new Date(NOW));
 
         // === 1. Today, unsubmitted: runs to now ==========================
-        const live = await openTiming(page, 0);
+        const live = await openTiming(page);
         eq(live.total, '1h 0m 0s',
             'an unsubmitted day today runs from the first tap to now');
         eq(live.label, 'Time at the Gym So Far',
@@ -162,7 +158,14 @@ async function closeTiming(page) {
         await closeTiming(page);
 
         // === 4. Today, submitted: ends at the last log ===================
-        const done = await openTiming(page, 1);
+        await seedPersonalApp(page, {
+            workoutHistory: [workoutEntry({ date: iso(7, 0), day: 'full-body', exercises: SUBMITTED })],
+        });
+        await page.reload({ waitUntil: 'networkidle0' });
+        await waitForApp(page);
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
+        await historyGoTo(page, new Date(NOW));
+        const done = await openTiming(page);
         eq(done.total, '30m',
             'a submitted day ends at its last log, whatever the time now');
         eq(done.label, 'Time at the Gym',
