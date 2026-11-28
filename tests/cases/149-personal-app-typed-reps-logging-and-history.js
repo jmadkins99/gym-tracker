@@ -45,7 +45,7 @@ function daysAgo(n) {
     d.setDate(d.getDate() - n);
     return d.toISOString();
 }
-const localDay = (iso) => new Date(iso).toDateString();
+const localDate = (iso) => new Date(iso).toDateString();
 
 const flies = (daysBack, weight, reps, extra = {}) => workoutEntry({
     date: daysAgo(daysBack), day: 'anterior-2',
@@ -78,7 +78,7 @@ const value = (page, selector) => page.evaluate((s) => document.querySelector(s)
 const readStore = (page) => page.evaluate((ns) =>
     JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory')) || [], NS);
 async function todaysSet(page, id = TARGET) {
-    const w = (await readStore(page)).find(w => localDay(w.date) === localDay(NOW));
+    const w = (await readStore(page)).find(w => localDate(w.date) === localDate(NOW));
     const e = w && w.exercises.find(e => e.id === id);
     return e && (e.weight || e.reps) ? e : null;
 }

@@ -47,7 +47,7 @@ function daysAgo(n) {
     d.setDate(d.getDate() - n);
     return d.toISOString();
 }
-const localDay = (iso) => new Date(iso).toDateString();
+const localDate = (iso) => new Date(iso).toDateString();
 
 const ex = (id, name, weight, reps, extra = {}) => ({ id, name, weight, reps, ...extra });
 
@@ -257,7 +257,7 @@ const readStore = (page) => page.evaluate((ns) =>
         await typeReps(page, ACTIVE, '3');
         await logCard(page);
         const todayWorkout = (await readStore(page)).find(w =>
-            localDay(w.date) === localDay(NOW) && w.exercises.some(e => e.id === TARGET));
+            localDate(w.date) === localDate(NOW) && w.exercises.some(e => e.id === TARGET));
         const logged = todayWorkout.exercises.find(e => e.id === TARGET);
         eq([logged.weight, logged.reps, logged.noRange, logged.repMin], ['200', '3', true, undefined],
             'the set is stamped as logged without a rep range');
