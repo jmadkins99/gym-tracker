@@ -19,14 +19,13 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor, waitForPageTime, tap } = require('../lib/browser');
 const { ACTIVE, swipe, goToCard, revealCard, isRevealed, startAnchors } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const LATERAL = 'delts-shoulder-abduction-stop-at-90-degrees';
 const TRICEPS = 'triceps-elbow-extension';
@@ -36,6 +35,21 @@ const savedHint = (page, id) => page.evaluate((ns, id) => {
     const e = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig')).exercises.find(x => x.id === id);
     return 'hint' in e ? e.hint : '(absent)';
 }, NS, id);
+
+// The form slides down from above the screen (quickEditIn, 0.3 s), and the
+// hint field is not under a finger until that has finished.
+const waitForFormOpen = (page) => waitFor(page, 'the quick-edit form to open and stop sliding', () => {
+    const modal = document.querySelector('.modal.quick-edit');
+    return !!modal && modal.getAnimations().length === 0;
+});
+const waitForFormClosed = (page) => waitFor(page, 'the quick-edit form to close',
+    () => !document.querySelector('.modal.quick-edit'));
+
+// Swipe down on the active card, which opens its quick-edit form.
+async function swipeDownToEdit(page) {
+    await swipe(page, 0, 180, { settle: 0 });
+    await waitForFormOpen(page);
+}
 
 const quickForm = (page) => page.evaluate(() => {
     const modal = document.querySelector('.modal.quick-edit');
@@ -56,7 +70,7 @@ async function swipeUpOnOverlay(page) {
     await page.mouse.down();
     for (let i = 1; i <= 6; i++) await page.mouse.move(x, y - 30 * i);
     await page.mouse.up();
-    await sleep(300);
+    await waitForFormClosed(page);
 }
 
 (async () => {
@@ -79,9 +93,11 @@ async function swipeUpOnOverlay(page) {
         await revealCard(page);
         const before = await startAnchors(page);
         ok(before[LATERAL], 'opening the card stamped its start');
-        await sleep(1100);
+        // The clock reads whole seconds and must show at least 1s.
+        await waitForPageTime(page, 'a second on Lateral Raises since its start',
+            Date.parse(before[LATERAL]) + 1000);
 
-        await swipe(page, 0, 180, { settle: 400 });
+        await swipeDownToEdit(page);
         eq(await quickForm(page), [LATERAL], 'swiping down opens the form for just this exercise');
         eq(await page.evaluate(() => document.activeElement.tagName), 'BODY',
             'and focuses nothing, so a phone keyboard does not jump up over it');
@@ -89,8 +105,9 @@ async function swipeUpOnOverlay(page) {
             document.querySelector('[data-exercise-clock] span')?.textContent ?? null);
         const firstTick = await clock();
         ok(/^0m [1-9]\d?s$/.test(firstTick), `the form shows time on the exercise since it was opened (got ${firstTick})`);
-        await sleep(1100);
-        ok((await clock()) !== firstTick, 'and the clock is live');
+        // The clock is live: its text moves on.
+        await waitFor(page, `the form clock to tick past ${firstTick}`, (t) =>
+            document.querySelector('[data-exercise-clock] span')?.textContent !== t, firstTick);
         await typeHint(page, 'seat 3');
         await swipeUpOnOverlay(page);
         eq(await quickForm(page), null, 'swiping up closes the form');
@@ -103,23 +120,22 @@ async function swipeUpOnOverlay(page) {
         // === 2. Down on an unopened card, Cancel ===========================
         await goToCard(page, 'Tricep Extensions');
         eq(await isRevealed(page), false, 'the next card starts shut');
-        await swipe(page, 0, 180, { settle: 400 });
+        await swipeDownToEdit(page);
         eq(await quickForm(page), [TRICEPS], 'swiping down on a shut card opens its form too');
         eq(await page.$('[data-exercise-clock]'), null, 'with no clock, since it has no start');
         await typeHint(page, 'discard me');
-        await page.evaluate(() => Array.from(document.querySelectorAll('.modal.quick-edit button'))
-            .find(b => b.textContent.trim() === 'Cancel').click());
-        await sleep(250);
+        await tap(page, '.modal.quick-edit button', { text: 'Cancel' });
+        await waitForFormClosed(page);
         eq(await quickForm(page), null, 'Cancel closes it');
         eq(await savedHint(page, TRICEPS), '(absent)', 'and writes nothing');
         eq(await isRevealed(page), false, 'the card is still shut');
         ok(!(await startAnchors(page))[TRICEPS], 'and no start was stamped for it');
 
         // === 3. A tap outside saves ========================================
-        await swipe(page, 0, 180, { settle: 400 });
+        await swipeDownToEdit(page);
         await typeHint(page, 'rope');
         await page.mouse.click(195, 820);
-        await sleep(250);
+        await waitForFormClosed(page);
         eq(await quickForm(page), null, 'a tap outside closes the form');
         eq(await savedHint(page, TRICEPS), 'rope', 'and saves it');
 

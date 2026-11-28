@@ -14,16 +14,19 @@
 //      whole log back.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok, contains } = require('../lib/assert');
 
 const NS = 'gym-local:';
 
-const clickButton = (page, text) => page.evaluate((t) => {
-    Array.from(document.querySelectorAll('button'))
-        .find((b) => b.textContent.includes(t)).click();
-}, text);
+// A real tap on the first button whose label contains `text`.
+const clickButton = (page, text) => tap(page, 'button', { text: new RegExp(text) });
+
+async function closeSettings(page) {
+    await clickButton(page, 'Close');
+    await waitFor(page, 'Settings to close', () => !document.querySelector('.modal'));
+}
 
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
@@ -102,7 +105,7 @@ const clickButton = (page, text) => page.evaluate((t) => {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitFor(page, 'the check-in card', () => !!document.querySelector('.weigh-card'));
 
-        await page.click('.settings-btn');
+        await tap(page, '.settings-btn');
         await waitFor(page, 'settings', () => !!document.querySelector('.modal-title'));
         await clickButton(page, 'Edit plan');
         await waitFor(page, 'the plan editor', () => !!document.querySelector('.plan-field select'));
@@ -142,7 +145,7 @@ const clickButton = (page, text) => page.evaluate((t) => {
         eq(after.filter((e) => e.filled).length, days - seeded.readings, 'the gaps are the filled ones');
         ok(after.filter((e) => e.filled).every((e) => e.weight === 172), 'all at the new start weight');
 
-        await clickButton(page, 'Close');
+        await closeSettings(page);
         await clickButton(page, 'History');
         await waitFor(page, 'History', () => !!document.querySelector('.weigh-chart-card'));
         const ledger = await page.evaluate(() => ({
@@ -152,10 +155,10 @@ const clickButton = (page, text) => page.evaluate((t) => {
         eq(ledger, { title: false, rows: 0 }, 'a plan with no readings yet shows no week history');
 
         // Cleared, there is no plan, so the whole log is back.
-        await page.click('.settings-btn');
+        await tap(page, '.settings-btn');
         await waitFor(page, 'settings', () => !!document.querySelector('.modal-title'));
         await clickButton(page, 'Clear plan');
-        await clickButton(page, 'Close');
+        await closeSettings(page);
         const all = await page.evaluate(() => document.querySelectorAll('.weigh-week:not(.projected)').length);
         ok(all >= 8, `without a plan every week shows (${all})`);
         contains(await page.evaluate(() => document.body.textContent), 'By week', 'under its heading');

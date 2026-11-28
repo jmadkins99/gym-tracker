@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, closeSettings, setNow } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, closeSettings, setNow, tap } = require('../lib/browser');
 const { ACTIVE, goToCardById, revealCard, logCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -91,9 +91,9 @@ async function pressLog(page, { expectLogged }) {
         expectLogged ? 'the card shows as logged' : 'the card is not logged');
 }
 
+// The callers wait for what they need from the destination view.
 async function bottomTo(page, label) {
-    await page.evaluate((l) => Array.from(document.querySelectorAll('.bottom-nav-btn'))
-        .find(b => b.textContent.includes(l)).click(), label);
+    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
 }
 
 // The Chest Flies row's PR badge (its streak, 'PR' for a lone one, null for
@@ -112,13 +112,9 @@ async function readHistory(page) {
     const rows = await readWeek();
     for (;;) {
         const before = await snapshot();
-        const more = await page.evaluate(() => {
-            const btn = document.querySelector('.week-nav-btn');
-            if (btn.disabled) return false;
-            btn.click();
-            return true;
-        });
-        if (!more) break;
+        // The first week button is Prev.
+        if (await page.$eval('.week-nav-btn', (b) => b.disabled)) break;
+        await tap(page, '.week-nav-btn');
         await waitFor(page, 'the previous week to show', (prev) =>
             document.querySelector('.week-nav').parentElement.textContent !== prev, before);
         rows.push(...await readWeek());
@@ -130,8 +126,8 @@ async function readHistory(page) {
 async function openEdit(page) {
     await bottomTo(page, 'History');
     await waitFor(page, 'History rows', () => document.querySelectorAll('.history-item').length > 0);
-    await page.evaluate(() => Array.from(document.querySelector('.history-item').querySelectorAll('button'))
-        .find(b => b.textContent.trim() === 'Edit').click());
+    // The first match is in the first, newest, entry.
+    await tap(page, '.history-item button', { text: 'Edit' });
     await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
     await page.evaluate(() => {
         const block = Array.from(document.querySelectorAll('.modal > div')).find(d =>
@@ -141,29 +137,25 @@ async function openEdit(page) {
     });
 }
 async function saveEdit(page) {
-    await page.evaluate(() => document.querySelector('.modal-btn.primary').click());
+    await tap(page, '.modal-btn.primary');
     await waitFor(page, 'the edit modal to close', () => !document.querySelector('.modal'));
 }
 
 async function changeIncrement(page, step) {
     await openSettings(page);
-    await page.evaluate(() => Array.from(document.querySelectorAll('.modal-btn'))
-        .find(b => b.textContent.includes('Manage Exercises')).click());
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
     await waitFor(page, 'the exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
     const row = `.exercise-row[data-exercise-id="${TARGET}"]`;
-    await page.evaluate((row) => Array.from(document.querySelector(row).querySelectorAll('button'))
-        .find(b => b.textContent.trim() === 'Edit').click(), row);
+    await tap(page, row + ' button', { text: 'Edit' });
     await waitFor(page, 'the increment field', (row) => !!document.querySelector(row + ' select[data-field="increment"]'), row);
     await page.evaluate((row, step) => {
         const s = document.querySelector(row + ' select[data-field="increment"]');
         Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, step);
         s.dispatchEvent(new Event('change', { bubbles: true }));
     }, row, step);
-    await page.evaluate((row) => Array.from(document.querySelector(row).querySelectorAll('button'))
-        .find(b => b.textContent.trim() === 'Save').click(), row);
+    await tap(page, row + ' button', { text: 'Save' });
     await waitFor(page, 'the form to close', (row) => !document.querySelector(row + ' select[data-field="increment"]'), row);
-    await page.evaluate(() => Array.from(document.querySelectorAll('.modal button'))
-        .find(b => b.textContent.includes('Back to Settings')).click());
+    await tap(page, '.modal button', { text: /Back to Settings/ });
     await waitFor(page, 'the Settings menu', () => Array.from(document.querySelectorAll('.modal .modal-btn'))
         .some(b => b.textContent.trim() === 'Close'));
     await closeSettings(page);

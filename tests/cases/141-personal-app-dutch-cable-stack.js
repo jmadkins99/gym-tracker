@@ -26,7 +26,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap } = require('../lib/browser');
 const { ACTIVE, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq } = require('../lib/assert');
@@ -47,24 +47,20 @@ function daysAgo(n) {
 const rowSel = (id) => `.exercise-row[data-exercise-id="${id}"]`;
 
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await waitFor(page, 'the Manage Exercises button',
-        () => Array.from(document.querySelectorAll('.modal-btn'))
-            .some(b => b.textContent.includes('Manage Exercises')));
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises')).click();
-    });
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
     await waitFor(page, 'the exercise rows',
         () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
+// Edit swaps the row's Edit button for Save and Cancel, and either of those
+// swaps it back, so the press has landed once the other button shows.
 async function clickRowButton(page, id, label) {
-    await page.evaluate((sel, label) => {
-        Array.from(document.querySelector(sel).querySelectorAll('button'))
-            .find(b => b.textContent.trim() === label).click();
-    }, rowSel(id), label);
-    await new Promise(r => setTimeout(r, 150));
+    const next = label === 'Edit' ? 'Save' : 'Edit';
+    await tap(page, rowSel(id) + ' button', { text: label });
+    await waitFor(page, `${label} on ${id} to show its ${next} button`, (sel, next) =>
+        Array.from(document.querySelectorAll(sel + ' button'))
+            .some(b => b.textContent.trim() === next), rowSel(id), next);
 }
 
 const readForm = (page, id) => page.evaluate((sel) => {
@@ -148,8 +144,10 @@ async function reload(page) {
         eq(form.label, 'Dutch gym cable stack PR adjustment', 'the switch is labelled');
         eq(form.on, false, 'and opens off');
         eq(form.hint, null, 'with no hint under it (removed at Josh\'s request)');
-        // The input is zero-sized under the painted track, so click it in-page.
-        await page.evaluate((sel) => document.querySelector(sel).click(), rowSel(TARGET) + ' input[data-field="cableStack"]');
+        // The checkbox is 0x0; a finger hits the track drawn right after it.
+        const box = rowSel(TARGET) + ' input[data-field="cableStack"]';
+        await tap(page, box + ' + .switch-track');
+        await waitFor(page, 'the cable stack switch to turn on', (sel) => document.querySelector(sel).checked, box);
         await clickRowButton(page, TARGET, 'Save');
 
         let saved = await readConfig(page);

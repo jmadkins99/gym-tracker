@@ -22,14 +22,13 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor, tap } = require('../lib/browser');
 const { readDeckNames, activeName, goToCard, revealCard, logCard, todayWorkout, bottomNav } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const JM = 'triceps-elbow-extension-during-shoulder-flexion';      // JM Press
 // Both subjects are on Anterior, the day a load with no Anterior or Posterior
@@ -51,33 +50,26 @@ function lastWeek(dayOffset) {
 const rowSel = (id) => `.exercise-row[data-exercise-id="${id}"]`;
 
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await sleep(200);
-    await page.evaluate(() => Array.from(document.querySelectorAll('.modal-btn'))
-        .find(b => b.textContent.includes('Manage Exercises')).click());
-    await sleep(300);
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the exercise rows',
+        () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
 async function closeSettings(page) {
-    for (const label of ['Back to Settings', 'Close']) {
-        await page.evaluate((l) => {
-            const b = Array.from(document.querySelectorAll('.modal-btn')).find(x => x.textContent.includes(l));
-            if (b) b.click();
-        }, label);
-        await sleep(250);
-    }
+    await tap(page, '.modal-btn', { text: /Back to Settings/ });
+    await tap(page, '.modal-btn', { text: 'Close' });
+    await waitFor(page, 'Settings to close', () => !document.querySelector('.modal'));
 }
 
+// Edit swaps the row's Edit button for Save and Cancel, and either of those
+// swaps it back, so the press has landed once the other button shows.
 async function rowButton(page, id, label) {
-    const clicked = await page.evaluate((sel, label) => {
-        const btn = Array.from(document.querySelector(sel).querySelectorAll('button'))
-            .find(b => b.textContent.trim() === label);
-        if (!btn) return false;
-        btn.click();
-        return true;
-    }, rowSel(id), label);
-    ok(clicked, `clicked ${label} on ${id}`);
-    await sleep(250);
+    const next = label === 'Edit' ? 'Save' : 'Edit';
+    await tap(page, rowSel(id) + ' button', { text: label });
+    await waitFor(page, `${label} on ${id} to show its ${next} button`, (sel, next) =>
+        Array.from(document.querySelectorAll(sel + ' button'))
+            .some(b => b.textContent.trim() === next), rowSel(id), next);
 }
 
 const readSwitch = (page, id) => page.evaluate((sel) => {
@@ -85,12 +77,12 @@ const readSwitch = (page, id) => page.evaluate((sel) => {
     return box ? box.checked : null;
 }, rowSel(id));
 
+// The checkbox itself is 0x0; a finger hits the track drawn right after it.
 async function setEnabled(page, id, on) {
-    await page.evaluate((sel, on) => {
-        const box = document.querySelector(sel + ' input[data-field="enabled"]');
-        if (box.checked !== on) box.click();
-    }, rowSel(id), on);
-    await sleep(150);
+    const box = rowSel(id) + ' input[data-field="enabled"]';
+    if (await page.$eval(box, (b) => b.checked) !== on) await tap(page, box + ' + .switch-track');
+    await waitFor(page, `the Enabled switch on ${id} to read ${on ? 'on' : 'off'}`,
+        (sel, on) => document.querySelector(sel).checked === on, box, on);
 }
 
 // Toggle through the real form: pencil, switch, Save.
@@ -173,11 +165,7 @@ const listNames = (page) => page.evaluate(() =>
 
         // === 3. History =====================================================
         await bottomNav(page, 'History');
-        await page.evaluate(() => {
-            const prev = Array.from(document.querySelectorAll('.week-nav-btn'))
-                .find(b => b.textContent.indexOf('Prev') !== -1);
-            if (prev && !prev.disabled) prev.click();
-        });
+        await tap(page, '.week-nav-btn', { text: /Prev/ });
         await page.waitForSelector('.history-item', { timeout: 8000 });
         const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.history-exercise-name'))
             .map(e => e.textContent.trim()));
@@ -220,7 +208,6 @@ const listNames = (page) => page.evaluate(() =>
         })), NS, TRICEPS);
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await sleep(400);
         eq(await activeName(page), nameOf(TRICEPS), 'a reload reopens Tricep Extensions, not the card after it');
 
         eq(errors, [], 'no console errors');
