@@ -130,6 +130,7 @@ function loggedStamps(exerciseId, was) {
         if (!key.endsWith('gymWorkoutHistory')) continue;
         let hist;
         try { hist = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { continue; }
+        if (!Array.isArray(hist)) continue;
         for (const w of hist || []) {
             for (const e of (w && w.exercises) || []) {
                 if (e && e.id === exerciseId && e.loggedAt) stamps.push(e.loggedAt);
@@ -486,34 +487,48 @@ async function submitDay(page) {
     }
     if (!(await onFinishCard(page))) throw new Error('submitDay: never reached the finish card');
     await waitForDeckToSettle(page);
-    const finish = await page.evaluate((sel) => ({
-        ready: Array.from(document.querySelectorAll(sel + ' .save-btn'))
-            .some((b) => /Submit Day/i.test(b.textContent)),
-        empty: /Nothing logged/i.test((document.querySelector(sel + ' .finish-title') || {}).textContent || ''),
-    }), ACTIVE);
+    // `empty` follows the app's own test (completeDay in App.jsx): the alert
+    // comes when no workout at all is saved for today. The finish card's
+    // "Nothing logged yet" is not the same thing: after a submission today the
+    // deck reads zero logged, yet Submit Day opens the Day Breakdown again.
+    const finish = await page.evaluate((sel) => {
+        let hist;
+        try { hist = JSON.parse(storage.getItem('gymWorkoutHistory') || '[]'); } catch (e) { hist = []; }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return {
+            ready: Array.from(document.querySelectorAll(sel + ' .save-btn'))
+                .some((b) => /Submit Day/i.test(b.textContent)),
+            empty: !(Array.isArray(hist) && hist.some((w) => {
+                const d = new Date(w.date);
+                d.setHours(0, 0, 0, 0);
+                return d.getTime() === today.getTime();
+            })),
+        };
+    }, ACTIVE);
     if (!finish.ready) return false;
     // The submit runs in the tap's own handler: it saves the day and opens the
     // Day Breakdown. With nothing logged it raises an alert instead. The
     // caller's own dialog handler answers that alert, so this only observes the
-    // event (answering it twice throws); the listener is attached before the
-    // tap because the alert fires inside it.
-    let alerted = null;
-    let stopListening = () => {};
+    // event (answering it twice throws). The listener and its deadline both
+    // start before the tap: the alert fires inside the tap's handler, and the
+    // tap does not resolve until the caller's handler has answered it.
     if (finish.empty) {
-        alerted = new Promise((resolve) => {
-            page.once('dialog', resolve);
-            stopListening = () => page.off('dialog', resolve);
+        let onDialog, timer;
+        const alerted = new Promise((resolve) => {
+            onDialog = () => resolve(true);
+            page.on('dialog', onDialog);
+            timer = setTimeout(() => resolve(false), 20000);
         });
-    }
-    await tap(page, ACTIVE + ' .save-btn', { text: /Submit Day/i });
-    if (finish.empty) {
-        let timer;
-        const timedOut = new Promise((resolve) => { timer = setTimeout(() => resolve(null), 5000); });
-        const dialog = await Promise.race([alerted, timedOut]);
-        clearTimeout(timer);
-        stopListening();
-        if (!dialog) throw new Error('submitDay: no alert after tapping Submit Day with nothing logged');
+        try {
+            await tap(page, ACTIVE + ' .save-btn', { text: /Submit Day/i });
+            if (!(await alerted)) throw new Error('submitDay: no alert after tapping Submit Day with nothing saved today');
+        } finally {
+            clearTimeout(timer);
+            page.off('dialog', onDialog);
+        }
     } else {
+        await tap(page, ACTIVE + ' .save-btn', { text: /Submit Day/i });
         // The Day Breakdown itself, not just any modal: an unrelated overlay
         // that swallowed the tap would otherwise satisfy the wait.
         await waitFor(page, 'the Day Breakdown to open after Submit Day', () =>
