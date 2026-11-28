@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, closeSettings } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, closeSettings, setNow } = require('../lib/browser');
 const { ACTIVE, goToCardById, revealCard, logCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -34,13 +34,18 @@ const NS = 'gym-local:';
 const TARGET = 'pecs-transverse-shoulder-adduction';   // Chest Flies, anterior-2
 const CONTROL = 'pecs-shoulder-flexion';              // Low to High Flies, anterior-2
 
+// The page clock is pinned to a Phoenix evening, after midnight UTC, when a
+// workout's ISO date is already the next day. Slicing that date and comparing
+// it with the local date is what broke this case after 17:00 Phoenix (#48), so
+// days are compared by local date and the case runs at that hour every time.
+const NOW = '2026-11-25T20:00:00-07:00';
 function daysAgo(n) {
-    const d = new Date();
+    const d = new Date(NOW);
     d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() - n);
     return d.toISOString();
 }
-const today = () => daysAgo(0).slice(0, 10);
+const localDate = (iso) => new Date(iso).toDateString();
 
 const flies = (daysBack, weight, reps, extra = {}) => workoutEntry({
     date: daysAgo(daysBack), day: 'anterior-2',
@@ -73,7 +78,7 @@ const value = (page, selector) => page.evaluate((s) => document.querySelector(s)
 const readStore = (page) => page.evaluate((ns) =>
     JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory')) || [], NS);
 async function todaysSet(page, id = TARGET) {
-    const w = (await readStore(page)).find(w => w.date.slice(0, 10) === today());
+    const w = (await readStore(page)).find(w => localDate(w.date) === localDate(NOW));
     const e = w && w.exercises.find(e => e.id === id);
     return e && (e.weight || e.reps) ? e : null;
 }
@@ -169,6 +174,7 @@ async function changeIncrement(page, step) {
     const browser = await launch();
     try {
         const page = await browser.newPage();
+        await setNow(page, NOW);
         const errors = attachConsole(page);
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         await seedPersonalApp(page, { workoutHistory: [] });
