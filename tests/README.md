@@ -107,12 +107,13 @@ copies this convention exactly, so change both together:
 - **Contents:** one file, `<lock>/info`, three `key=value` lines:
   `repo=<repo folder name>`, `pid=<the runner's own $$>`,
   `started=<epoch seconds>`.
-- **Taking it:** `mkdir <lock>`, then create `<lock>/.made` with bash's
-  noclobber redirect (`set -C; : > <lock>/.made`), so two runs can never both
-  win; then write `<lock>/info`. A bare `mkdir` is not enough: the uutils
-  coreutils on Ubuntu 26.04 (CI's `ubuntu-latest`) exit 0 when another
-  process made the folder a moment earlier. `run.sh` calls this `claim_dir`
-  and uses it for every claim below, and for its per-case claims too.
+- **Taking it:** `mkdir <lock>`, then write `<lock>/info` through bash's
+  noclobber redirect (`set -C`), which creates it with `O_CREAT|O_EXCL`, so
+  two runs can never both win and the winner's `info` is written in the same
+  step. A bare `mkdir` is not enough: the uutils coreutils on Ubuntu 26.04
+  (CI's `ubuntu-latest`) exit 0 when another process made the folder a moment
+  earlier. The other claims below use `run.sh`'s `claim_dir`: `mkdir <dir>`,
+  then create `<dir>/.made` the same way. The per-case claims use it too.
 - **Held:** the run prints once which repo and pid hold it and since when,
   then polls every `TEST_LOCK_POLL` seconds (default 2).
 - **Stale:** the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
@@ -120,7 +121,8 @@ copies this convention exactly, so change both together:
   and `started` `S` from a stale lock claims that lock with
   `claim_dir <lock>/takeover-P-S`. The claim sits inside the lock, so of all
   the runs that saw the same stale lock only one gets it, and a run with an out
-  of date view only leaves a claim folder in a newer lock. With the claim made,
+  of date view only leaves its claim folder in a newer lock (it never removes
+  it, since by then that folder may be another run's claim). With the claim made,
   it re-reads `info`, and only if it still says `P` and `S` and `P` is still
   gone does it retire the lock, then go round the normal `claim_dir` again. For an
   unreadable `info` the run first makes `<lock>/watch-<its pid>` and waits the 5
