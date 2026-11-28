@@ -40,7 +40,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
-const { HISTORY_SESSION, dateKey, historyGoTo } = require('../lib/history');
+const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
 const { waitForDeckToSettle } = require('../lib/deck');
 const { eq, ok } = require('../lib/assert');
 
@@ -298,7 +298,7 @@ async function historyItems(page, dates) {
         const openEditRows = async (index) => {
             await historyGoTo(page, dates[index]);
             await waitForDeckToSettle(page); // a tap during the slide misses
-            await tap(page, HISTORY_SESSION + ' .history-date .text-btn', { text: /Edit/ });
+            await tap(page, HISTORY_EDIT);
             await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
             const rows = await page.evaluate(() =>
                 Array.from(document.querySelectorAll('.modal > div > div'))

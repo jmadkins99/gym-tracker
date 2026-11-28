@@ -5,8 +5,8 @@
 //
 //   (0) With no sessions at all, the deck is a single rest card for today.
 //   (1) It opens on today. Today has no session, so the card is a rest day:
-//       the date and "No workout", with no day label, Edit or Time, and the
-//       forward controls are disabled.
+//       the date and "No workout", with no day label, total or Edit gear, and
+//       the forward controls are disabled.
 //   (2) ‹ and › move one date; a session's card shows its full date and day
 //       label ("Posterior"), and no "Day N" counter.
 //   (3) "← Week" and "Week →" move exactly 7 calendar dates, and a jump that
@@ -14,7 +14,8 @@
 //       point off the deck are disabled.
 //   (4) A horizontal swipe moves one date each way; a vertical drag does not
 //       move the deck.
-//   (5) Time and Edit on a past card open that session's modals.
+//   (5) A timed past card shows its total after the day label and each row's
+//       time; its Edit gear opens that session's Edit modal.
 //   (6) Tapping the History tab, from Workout or from History itself, puts the
 //       deck back on today.
 //   (7) When the date rolls over with History open, the deck gains the new
@@ -28,7 +29,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { bottomNav, swipe } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
-const { HISTORY_CARD, HISTORY_SESSION, shownDate, footDisabled, historyPress, historyGoTo } = require('../lib/history');
+const { HISTORY_CARD, HISTORY_SESSION, HISTORY_EDIT, shownDate, footDisabled, historyPress, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -44,7 +45,7 @@ function history() {
         // The first session ever logged: the deck's first card.
         workoutEntry({ date: '2026-11-02T09:00:00-07:00', day: 'posterior-2',
             exercises: [{ id: CURLS, weight: '100', reps: '6' }] }),
-        // Carries loggedAt, so its card offers Time.
+        // Carries startedAt and loggedAt, so its card shows times.
         workoutEntry({ date: '2026-11-18T09:00:00-07:00', day: 'anterior-2',
             exercises: [{ id: FLIES, weight: '80', reps: '7',
                 startedAt: '2026-11-18T09:00:00-07:00', loggedAt: '2026-11-18T09:04:00-07:00' }] }),
@@ -53,16 +54,23 @@ function history() {
     ];
 }
 
+// The shown card. `label` is the day label alone; `total` is what follows it
+// (" · 4m"), and `times` maps each row's exercise id to its time.
 const readCard = (page) => page.evaluate((card, session) => {
     const el = document.querySelector(card);
-    const btns = el ? Array.from(el.querySelectorAll('button')).map((b) => b.textContent.trim()) : [];
+    const q = (sel) => el && el.querySelector(sel);
+    const labelEl = q('.history-day-label');
     return {
         date: el && el.getAttribute('data-history-date'),
         session: !!document.querySelector(session),
-        heading: (el && el.querySelector('.history-date-full') || {}).textContent || null,
-        label: (el && el.querySelector('.history-day-label') || {}).textContent || null,
+        heading: (q('.history-date-full') || {}).textContent || null,
+        label: labelEl ? labelEl.firstChild.textContent.trim() : null,
+        total: (q('[data-history-total]') || {}).textContent || null,
+        times: el ? Object.fromEntries(Array.from(el.querySelectorAll('[data-history-time]'))
+            .map((t) => [t.getAttribute('data-history-time'), t.textContent.trim()])) : {},
         text: el ? el.textContent : '',
-        buttons: btns,
+        buttons: el ? el.querySelectorAll('button').length : 0,
+        edit: !!q('[aria-label="Edit workout"]'),
     };
 }, HISTORY_CARD, HISTORY_SESSION);
 
@@ -124,7 +132,8 @@ async function setVisibility(page, state) {
         ok(card.text.indexOf('No workout') !== -1, 'a rest day reads "No workout"');
         eq(card.heading, 'Wednesday, November 25, 2026', 'with its full date');
         eq(card.label, null, 'and no day label');
-        eq(card.buttons, [], 'and no Edit or Time');
+        eq(card.buttons, 0, 'and no buttons: no Edit gear');
+        eq(card.total, null, 'and no total');
         eq(await disabled(page), { back: false, prev: false, next: true, forward: true },
             'on today only the backward controls are live');
 
@@ -136,7 +145,9 @@ async function setVisibility(page, state) {
         eq(card.heading, 'Tuesday, November 24, 2026', 'the card shows the full date');
         eq(card.label, 'Posterior', 'and the session\'s day label');
         ok(!/Day \d/.test(card.text), 'and no "Day N" counter');
-        eq(card.buttons, ['Edit'], 'a session without timestamps offers Edit only');
+        ok(card.edit, 'a session offers the Edit gear');
+        eq(card.total, null, 'a session without timestamps shows no total');
+        eq(card.times, {}, 'and no row times');
         eq(await page.evaluate((sel) => getComputedStyle(document.querySelector(sel)).overflowY, HISTORY_CARD),
             'auto', 'a card taller than the stage scrolls inside itself instead of clipping');
 
@@ -167,22 +178,20 @@ async function setVisibility(page, state) {
         await swipe(page, 0, -160);
         eq(await shownDate(page), '2026-11-18', 'a vertical drag does not move the deck');
 
-        // === (5) Time and Edit =============================================
+        // === (5) Times and the Edit gear ===================================
         card = await readCard(page);
         eq(card.label, 'Anterior', '18 Nov is the Anterior session');
-        eq(card.buttons, ['Time', 'Edit'], 'a timed session offers Time and Edit');
-        await tap(page, HISTORY_CARD + ' .text-btn', { text: 'Time' });
-        await waitFor(page, 'the Time details modal', () => !!document.querySelector('[data-timing-total]'));
-        await tap(page, '.modal-btn.primary');
-        await waitFor(page, 'the Time details modal to close', () => !document.querySelector('.modal-overlay'));
-        await tap(page, HISTORY_CARD + ' .text-btn', { text: 'Edit' });
+        eq(card.total, ' · 4m', 'its total follows the day label');
+        eq(card.times, { [FLIES]: '4:00' }, 'and the row shows its own time');
+        ok(card.edit, 'the timed session offers the Edit gear');
+        await tap(page, HISTORY_EDIT);
         await waitFor(page, 'the Edit modal for 18 Nov', () => {
             const t = document.querySelector('.modal-title');
             return !!t && t.textContent.indexOf('Edit Workout') !== -1;
         });
         await page.evaluate(() => document.querySelector('.modal-overlay').dispatchEvent(new MouseEvent('click', { bubbles: true })));
         await waitFor(page, 'the Edit modal to close', () => !document.querySelector('.modal-overlay'));
-        eq(await shownDate(page), '2026-11-18', 'the deck stays on the card after the modals');
+        eq(await shownDate(page), '2026-11-18', 'the deck stays on the card after the modal');
 
         // === (6) The History tab puts it back on today =====================
         await bottomNav(page, 'History');

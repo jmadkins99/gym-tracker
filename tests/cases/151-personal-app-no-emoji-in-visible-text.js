@@ -20,8 +20,8 @@
 //
 // Stops, workout app: the deck (front of a card, open card with its streak
 // pill, logged state, finish card), the swipe-down Quick Edit form, Day
-// Breakdown, History (rows with Time and Edit, PR badges, a rest-day card), the
-// timing modal, the edit-workout modal, Settings, Manage Exercises with an edit
+// Breakdown, History (a card with its times and Edit gear, PR badges, a
+// rest-day card), the edit-workout modal, Settings, Manage Exercises with an edit
 // form open, and the sign-in banner with both Settings sign-in states. Weight
 // app: the empty check-in and empty History, a seeded check-in with a plan,
 // History with a week opened and a reading being edited, and Settings in its
@@ -45,7 +45,7 @@ const { ACTIVE, setWeightAndOpen, logCard, submitDay, bottomNav, readDeckCard, s
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
-const { HISTORY_SESSION } = require('../lib/history');
+const { HISTORY_SESSION, HISTORY_EDIT } = require('../lib/history');
 
 const NS = 'gym-local:';
 const FLIES = 'pecs-transverse-shoulder-adduction';
@@ -232,17 +232,14 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
 
         await bottomNav(page, 'History');
         // The deck opens on today, whose session was just submitted.
-        await look('History, rows with Time and Edit', (session) => {
+        // The card carries the session's total and row times, and the Edit gear.
+        await look('History, a card with its times and Edit gear', (session) => {
             const item = document.querySelector(session);
-            const btns = item ? Array.from(item.querySelectorAll('.history-date button')).map((b) => b.textContent.trim()) : [];
-            return btns.includes('Time') && btns.includes('Edit');
+            return !!item && !!item.querySelector('[data-history-total]')
+                && !!item.querySelector('[aria-label="Edit workout"]');
         }, HISTORY_SESSION);
 
-        await tap(page, HISTORY_SESSION + ' .history-date button', 'Time');
-        await look('timing details modal', () => !!document.querySelector('.modal [data-timing-total]'));
-        await closeByWord(page, '^(Close|Done|Got it)$');
-
-        await tap(page, HISTORY_SESSION + ' .history-date button', 'Edit');
+        await tap(page, HISTORY_EDIT);
         await look('edit workout modal', modalHas, 'Chest Flies');
         await closeByWord(page, '^(Close|Cancel|Done)$');
 

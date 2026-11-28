@@ -27,7 +27,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, setNow, tap } = require('../lib/browser');
 const { ACTIVE, goToCardById, revealCard, logCard, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
-const { HISTORY_CARD, HISTORY_SESSION, historyGoTo, dateKey } = require('../lib/history');
+const { HISTORY_CARD, HISTORY_SESSION, HISTORY_EDIT, historyGoTo, dateKey } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -122,7 +122,7 @@ async function openEdit(page) {
     await bottomTo(page, 'History');
     await historyGoTo(page, NOW);
     await waitForDeckToSettle(page);
-    await tap(page, HISTORY_CARD + ' .history-date .text-btn', { text: 'Edit' });
+    await tap(page, HISTORY_EDIT);
     await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
     await page.evaluate(() => {
         const block = Array.from(document.querySelectorAll('.modal > div')).find(d =>

@@ -29,7 +29,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, selectDayType, waitFor, setNow, tap } = require('../lib/browser');
 const { ACTIVE, readDeckCard, goToCardById, revealCard, logCard, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
-const { HISTORY_CARD, HISTORY_SESSION, historyGoTo } = require('../lib/history');
+const { HISTORY_CARD, HISTORY_SESSION, HISTORY_EDIT, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -284,7 +284,7 @@ const readStore = (page) => page.evaluate((ns) =>
         // The Low to High Flies session is the one from 7 days ago.
         await historyGoTo(page, history[0].date);
         await waitForDeckToSettle(page);
-        await tap(page, HISTORY_CARD + ' .history-date .text-btn', { text: 'Edit' });
+        await tap(page, HISTORY_EDIT);
         await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
         const editBoxes = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.modal [data-field="reps"]')).map(el => ({

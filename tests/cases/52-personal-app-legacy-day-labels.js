@@ -23,7 +23,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
-const { HISTORY_SESSION, dateKey, historyGoTo } = require('../lib/history');
+const { HISTORY_SESSION, HISTORY_EDIT, dateKey, historyGoTo } = require('../lib/history');
 const { waitForDeckToSettle } = require('../lib/deck');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -61,7 +61,7 @@ async function clickNav(page, label) {
 async function openEdit(page, date) {
     await historyGoTo(page, date);
     await waitForDeckToSettle(page); // a tap during the slide misses
-    await tap(page, HISTORY_SESSION + ' .text-btn', { text: /Edit/ });
+    await tap(page, HISTORY_EDIT);
     await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
     const result = await page.evaluate(() => ({
         title: document.querySelector('.modal-title')?.textContent?.trim() || '',
