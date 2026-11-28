@@ -35,6 +35,19 @@
             return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
         }
 
+        // The date key History opens on: the newest date with a session, the
+        // last day on record. Today when nothing is logged yet. When today has
+        // a session it is the newest, so History opens on today as before.
+        function historyLatestDateKey(workoutHistory) {
+            let newest = null;
+            (workoutHistory || []).forEach((w) => {
+                const d = startOfDate(w.date);
+                if (isNaN(d)) return;
+                if (!newest || d > newest) newest = d;
+            });
+            return historyDateKey(newest || new Date());
+        }
+
         function historyKeyToDate(key) {
             const [y, m, d] = key.split('-').map(Number);
             return new Date(y, m - 1, d);
@@ -156,7 +169,7 @@
 
         // today: App's date string, so the deck grows by a card when the date
         // rolls over. viewingDate: the YYYY-MM-DD key of the card on screen,
-        // owned by App so the History tab can put it back on today; a key
+        // owned by App so the History tab can put it back on the newest session; a key
         // rather than an index, so a new date added at the end leaves you on
         // the card you were reading.
         function HistoryDeck({ workoutHistory, exercises, onEditWorkout, foregroundAt,
