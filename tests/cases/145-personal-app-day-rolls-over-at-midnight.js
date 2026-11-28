@@ -25,7 +25,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, readDayToggle, waitFor } = require('../lib/browser');
-const { activeName, revealCard, logCard, todayWorkout } = require('../lib/deck');
+const { ACTIVE, activeName, revealCard, logCard, todayWorkout } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -83,7 +83,13 @@ const historyLength = (page) => page.evaluate((ns) =>
         await setVisibility(page, 'hidden');
         await page.evaluate((ms) => window.__advanceClock(ms), DAY_MS);
         await setVisibility(page, 'visible');
-        await new Promise(r => setTimeout(r, 200));
+        // The listener only sets App's `today`; the day switch follows in a
+        // render, so wait for the deck to be rebuilt on Posterior's first card.
+        await waitFor(page, 'the deck to roll over to Posterior', (sel) => {
+            const slot = document.querySelector(sel);
+            const el = slot && (slot.querySelector('.card-open-name') || slot.querySelector('.card-name'));
+            return !!el && el.textContent.trim() === 'Recline Curls';
+        }, ACTIVE);
 
         toggle = await readDayToggle(page);
         eq([toggle.active, toggle.locked, toggle.note], ['posterior-2', false, ''],

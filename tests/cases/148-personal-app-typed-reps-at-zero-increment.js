@@ -26,7 +26,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor, setNow } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, setNow, tap } = require('../lib/browser');
 const { ACTIVE, readDeckCard, goToCardById, revealCard, logCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -63,36 +63,36 @@ const history = [
         ex(TARGET, 'Chest Flies', '200', '2')] }),
 ];
 
+const rowSel = (id) => `.exercise-row[data-exercise-id="${id}"]`;
+
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await waitFor(page, 'the Manage Exercises button',
-        () => Array.from(document.querySelectorAll('.modal-btn'))
-            .some(b => b.textContent.includes('Manage Exercises')));
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises')).click();
-    });
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
     await waitFor(page, 'the exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
 async function clickPencil(page, id) {
-    await page.evaluate((id) => {
-        Array.from(document.querySelector(`.exercise-row[data-exercise-id="${id}"]`).querySelectorAll('button'))
-            .find(b => b.textContent.trim() === 'Edit').click();
-    }, id);
+    await tap(page, rowSel(id) + ' button', { text: 'Edit' });
     await waitFor(page, `the increment field on ${id}`, (id) => !!document.querySelector(
         `.exercise-row[data-exercise-id="${id}"] select[data-field="increment"]`), id);
 }
 
 async function clickRowButton(page, id, label) {
-    await page.evaluate((id, label) => {
-        Array.from(document.querySelector(`.exercise-row[data-exercise-id="${id}"]`).querySelectorAll('button'))
-            .find(b => b.textContent.trim() === label).click();
-    }, id, label);
+    await tap(page, rowSel(id) + ' button', { text: label });
     // Save and Cancel both close the form, so the increment field going away
     // is the sign the click landed.
     await waitFor(page, `the ${label} click on ${id} to close the form`, (id) => !document.querySelector(
         `.exercise-row[data-exercise-id="${id}"] select[data-field="increment"]`), id);
+}
+
+// Flip the Dutch cable stack switch. The checkbox is 0x0; a finger hits the
+// track drawn right after it.
+async function toggleCableStack(page, id) {
+    const box = rowSel(id) + ' input[data-field="cableStack"]';
+    const was = await page.$eval(box, (b) => b.checked);
+    await tap(page, box + ' + .switch-track');
+    await waitFor(page, `the cable stack switch on ${id} to turn ${was ? 'off' : 'on'}`,
+        (sel, was) => document.querySelector(sel).checked !== was, box, was);
 }
 
 async function setSelect(page, id, field, value) {
@@ -175,8 +175,7 @@ const readStore = (page) => page.evaluate((ns) =>
         await setSelect(page, TARGET, 'increment', '5');
         await setSelect(page, TARGET, 'repMin', '6');
         await setSelect(page, TARGET, 'repMax', '9');
-        await page.evaluate((id) => document.querySelector(
-            `.exercise-row[data-exercise-id="${id}"] input[data-field="cableStack"]`).click(), TARGET);
+        await toggleCableStack(page, TARGET);
         await clickRowButton(page, TARGET, 'Save');
 
         await clickPencil(page, TARGET);
@@ -194,8 +193,7 @@ const readStore = (page) => page.evaluate((ns) =>
         // Edits made earlier in the same form session are not saved at 0.
         await clickPencil(page, TARGET);
         await setSelect(page, TARGET, 'repMin', '8');
-        await page.evaluate((id) => document.querySelector(
-            `.exercise-row[data-exercise-id="${id}"] input[data-field="cableStack"]`).click(), TARGET);
+        await toggleCableStack(page, TARGET);
         await setSelect(page, TARGET, 'increment', '0');
         await clickRowButton(page, TARGET, 'Save');
         const kept = (await page.evaluate((ns) => JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig')), NS))
@@ -268,9 +266,7 @@ const readStore = (page) => page.evaluate((ns) =>
         }, ACTIVE);
         ok(pill && /PR/.test(pill), '3 reps beating 2 at the same weight is a PR on the logged card: ' + pill);
 
-        await page.evaluate(() => {
-            Array.from(document.querySelectorAll('.bottom-nav-btn')).find(b => b.textContent.includes('History')).click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await waitFor(page, 'History rows', () => document.querySelectorAll('.history-item').length > 0);
         // History pages by week, so walk back to the first one.
         const readFlies = () => page.evaluate(() => Array.from(document.querySelectorAll('.history-item'))
@@ -283,13 +279,9 @@ const readStore = (page) => page.evaluate((ns) =>
         for (;;) {
             const beforeText = await page.evaluate(() =>
                 Array.from(document.querySelectorAll('.history-item')).map(i => i.textContent).join('|'));
-            const more = await page.evaluate(() => {
-                const btn = document.querySelector('.week-nav-btn');
-                if (btn.disabled) return false;
-                btn.click();
-                return true;
-            });
-            if (!more) break;
+            // The first week button is Prev.
+            if (await page.$eval('.week-nav-btn', (b) => b.disabled)) break;
+            await tap(page, '.week-nav-btn');
             await waitFor(page, 'the previous week to show', (prev) =>
                 Array.from(document.querySelectorAll('.history-item')).map(i => i.textContent).join('|') !== prev,
                 beforeText);
@@ -299,11 +291,11 @@ const readStore = (page) => page.evaluate((ns) =>
             'History badges today (typed 3 over 2); older sessions keep their verdicts, the unstamped 200 x 3 stays failed');
 
         // --- History edit uses the same box --------------------------------
-        await page.evaluate(() => {
+        await tap(page, await page.evaluateHandle(() => {
             const item = Array.from(document.querySelectorAll('.history-item'))
                 .find(i => i.textContent.includes('Low to High Flies'));
-            Array.from(item.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit').click();
-        });
+            return Array.from(item.querySelectorAll('button')).find(b => b.textContent.trim() === 'Edit');
+        }));
         await waitFor(page, 'the edit modal', () => !!document.querySelector('.modal [data-field="reps"]'));
         const editBoxes = await page.evaluate(() =>
             Array.from(document.querySelectorAll('.modal [data-field="reps"]')).map(el => ({

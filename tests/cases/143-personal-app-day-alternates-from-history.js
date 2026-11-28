@@ -31,7 +31,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readDayToggle, openSettings, closeSettings } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, readDayToggle, openSettings, closeSettings, waitFor, waitForPageTime, tap } = require('../lib/browser');
 const { activeName, revealCard, logCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -104,8 +104,9 @@ async function loadWith(page, history) {
         eq(toggle.note, 'Today is Posterior. It switches after Submit Day.', 'and says why');
 
         await openSettings(page);
-        await page.evaluate(() => document.querySelector('.modal [data-day-type="anterior-2"]').click());
-        await new Promise(r => setTimeout(r, 150));
+        const tappedAt = await page.evaluate(() => Date.now());
+        await tap(page, '.modal [data-day-type="anterior-2"]');
+        await waitForPageTime(page, '300 ms margin for a day change that must not come', tappedAt + 300);
         await closeSettings(page);
         eq((await readDayToggle(page)).active, 'posterior-2', 'a tap on Anterior changes nothing');
         eq(await page.evaluate(() => document.querySelector('.deck-count')?.textContent.trim().split(' ')[2]),
@@ -118,11 +119,9 @@ async function loadWith(page, history) {
 
         // === 5. Submit Day lifts the lock ==================================
         ok(await submitDay(page), 'submitted the Posterior day');
-        await page.evaluate(() => {
-            const overlay = document.querySelector('.modal-overlay');
-            if (overlay) overlay.click();
-        });
-        await new Promise(r => setTimeout(r, 250));
+        // Submit Day opens the Day Breakdown; close it.
+        await tap(page, '.modal .modal-btn', { text: 'Close' });
+        await waitFor(page, 'the Day Breakdown to close', () => !document.querySelector('.modal'));
         toggle = await readDayToggle(page);
         eq([toggle.active, toggle.locked, toggle.note], ['anterior-2', false, ''],
             'after Submit Day the toggle is unlocked, on Anterior');

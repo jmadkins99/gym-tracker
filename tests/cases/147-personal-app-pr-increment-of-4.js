@@ -25,7 +25,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap } = require('../lib/browser');
 const { ACTIVE, readDeckCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq } = require('../lib/assert');
@@ -49,33 +49,25 @@ async function reload(page) {
 }
 
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await waitFor(page, 'the Manage Exercises button',
-        () => Array.from(document.querySelectorAll('.modal-btn'))
-            .some(b => b.textContent.includes('Manage Exercises')));
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises')).click();
-    });
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
     await waitFor(page, 'the exercise rows',
         () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
 async function clickPencil(page, id) {
-    await page.evaluate((sel) => {
-        Array.from(document.querySelector(sel).querySelectorAll('button'))
-            .find(b => b.textContent.trim() === 'Edit').click();
-    }, rowSel(id));
+    await tap(page, rowSel(id) + ' button', { text: 'Edit' });
     await waitFor(page, `the increment field on ${id}`,
         (sel) => !!document.querySelector(sel + ' select[data-field="increment"]'), rowSel(id));
 }
 
+// Save and Cancel both swap the row's Edit button back, so the press has
+// landed once Edit shows again.
 async function clickRowButton(page, id, label) {
-    await page.evaluate((sel, label) => {
-        Array.from(document.querySelector(sel).querySelectorAll('button'))
-            .find(b => b.textContent.trim() === label).click();
-    }, rowSel(id), label);
-    await new Promise(r => setTimeout(r, 150));
+    await tap(page, rowSel(id) + ' button', { text: label });
+    await waitFor(page, `${label} on ${id} to show its Edit button`, (sel) =>
+        Array.from(document.querySelectorAll(sel + ' button'))
+            .some(b => b.textContent.trim() === 'Edit'), rowSel(id));
 }
 
 // Native setter + change event: React ignores a plain `.value =` assignment.
@@ -87,7 +79,6 @@ async function chooseIncrement(page, id, value) {
         setter.call(select, value);
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }, rowSel(id), value);
-    await new Promise(r => setTimeout(r, 50));
 }
 
 const readIncrementField = (page, id) => page.evaluate((sel) => {
@@ -123,8 +114,8 @@ async function seedHistory(page, weight) {
 // Feeds a backup to the real <input class="file-input"> in Settings, the way
 // picking a file would (same approach as case 60).
 async function importBackup(page, backup) {
-    await page.click('.settings-btn');
-    await new Promise(r => setTimeout(r, 250));
+    await tap(page, '.settings-btn');
+    await waitFor(page, 'the Settings file input', () => !!document.querySelector('input.file-input'));
     const fed = await page.evaluate((json) => {
         const input = document.querySelector('input.file-input');
         if (!input) return 'no file input';
@@ -141,11 +132,8 @@ async function importBackup(page, backup) {
         const cfg = JSON.parse(localStorage.getItem(ns + 'gymExerciseConfig'));
         return !!cfg && cfg.version === undefined;
     }, NS);
-    await page.evaluate(() => {
-        const overlay = document.querySelector('.modal-overlay');
-        if (overlay) overlay.click();
-    });
-    await new Promise(r => setTimeout(r, 250));
+    // Importing closes Settings by itself.
+    await waitFor(page, 'Settings to close after the import', () => !document.querySelector('.modal'));
 }
 
 (async () => {
