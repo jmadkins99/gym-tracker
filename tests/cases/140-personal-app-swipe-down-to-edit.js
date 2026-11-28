@@ -106,8 +106,10 @@ async function swipeUpOnOverlay(page) {
         const firstTick = await clock();
         ok(/^0m [1-9]\d?s$/.test(firstTick), `the form shows time on the exercise since it was opened (got ${firstTick})`);
         // The clock is live: its text moves on.
-        await waitFor(page, `the form clock to tick past ${firstTick}`, (t) =>
-            document.querySelector('[data-exercise-clock] span')?.textContent !== t, firstTick);
+        await waitFor(page, `the form clock to tick past ${firstTick}`, (t) => {
+            const el = document.querySelector('[data-exercise-clock] span');
+            return !!el && el.textContent !== t;
+        }, firstTick);
         await typeHint(page, 'seat 3');
         await swipeUpOnOverlay(page);
         eq(await quickForm(page), null, 'swiping up closes the form');

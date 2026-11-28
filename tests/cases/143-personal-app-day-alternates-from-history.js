@@ -31,7 +31,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, readDayToggle, openSettings, closeSettings, waitFor, tap } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, readDayToggle, openSettings, closeSettings, waitFor, waitForPageTime, tap } = require('../lib/browser');
 const { activeName, revealCard, logCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -104,9 +104,9 @@ async function loadWith(page, history) {
         eq(toggle.note, 'Today is Posterior. It switches after Submit Day.', 'and says why');
 
         await openSettings(page);
-        // A tap's click handler commits before tap() returns, so no wait is
-        // needed for a change that should not come.
+        const tappedAt = await page.evaluate(() => Date.now());
         await tap(page, '.modal [data-day-type="anterior-2"]');
+        await waitForPageTime(page, '300 ms margin for a day change that must not come', tappedAt + 300);
         await closeSettings(page);
         eq((await readDayToggle(page)).active, 'posterior-2', 'a tap on Anterior changes nothing');
         eq(await page.evaluate(() => document.querySelector('.deck-count')?.textContent.trim().split(' ')[2]),

@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, closeSettings, setNow, tap } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, openSettings, setNow, tap } = require('../lib/browser');
 const { ACTIVE, goToCardById, revealCard, logCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -158,7 +158,8 @@ async function changeIncrement(page, step) {
     await tap(page, '.modal button', { text: /Back to Settings/ });
     await waitFor(page, 'the Settings menu', () => Array.from(document.querySelectorAll('.modal .modal-btn'))
         .some(b => b.textContent.trim() === 'Close'));
-    await closeSettings(page);
+    await tap(page, '.modal .modal-btn', { text: 'Close' });
+    await waitFor(page, 'Settings to close', () => !document.querySelector('.modal'));
 }
 
 (async () => {
