@@ -154,7 +154,7 @@ async function readSaved(page) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await tap(page, '.settings-btn');
-        await waitFor(page, 'the Settings modal to open', () => !!document.querySelector('.modal .modal-title'));
+        await waitFor(page, 'the Settings import input', () => !!document.querySelector('.modal input[type="file"]'));
         page.once('dialog', d => d.accept());
         const input = await page.$('input[type="file"]');
         ok(input, 'the import file input is on the Settings modal');

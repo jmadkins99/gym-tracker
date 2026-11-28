@@ -105,11 +105,8 @@ const open = async (page) => {
     await tap(page, '.weigh-project-btn');
     await waitFor(page, 'the projection to open',
         () => document.querySelector('.weigh-projection').classList.contains('open'));
-    // The rows arrive on staggered transition delays and `projected` reads each
-    // row's computed border, so wait until no transition on the block or its
-    // rows is pending or running.
-    await waitFor(page, 'the projection rows to finish their staggered transitions', () =>
-        document.querySelector('.weigh-projection').getAnimations({ subtree: true }).length === 0);
+    // No wait for the rows' staggered arrival: it animates only opacity,
+    // transform and filter, and `projected` reads text and the border colour.
 };
 
 const reseed = async (page, goal) => {

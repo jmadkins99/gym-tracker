@@ -69,13 +69,14 @@ async function closeSettings(page) {
 
 const rowSel = (id) => `.exercise-row[data-exercise-id="${id}"]`;
 
-// Edit, Save and Cancel each swap the row's buttons (Edit for Save and Cancel,
-// or back), so the press has landed once the button pressed is gone.
+// Edit swaps the row's Edit button for Save and Cancel, and either of those
+// swaps it back, so the press has landed once the other button shows.
 async function rowButton(page, id, label) {
+    const next = label === 'Edit' ? 'Save' : 'Edit';
     await tap(page, rowSel(id) + ' button', { text: label });
-    await waitFor(page, `${label} on ${id} to take effect`, (sel, label) =>
-        !Array.from(document.querySelectorAll(sel + ' button'))
-            .some(b => b.textContent.trim() === label), rowSel(id), label);
+    await waitFor(page, `${label} on ${id} to show its ${next} button`, (sel, next) =>
+        Array.from(document.querySelectorAll(sel + ' button'))
+            .some(b => b.textContent.trim() === next), rowSel(id), next);
 }
 
 // The Gympin controls as the user sees them on one row.
@@ -99,10 +100,11 @@ async function readGympinForm(page, id) {
 }
 
 // The checkbox itself is 0x0 and transparent; what a finger hits is the track
-// drawn beside it, inside the same <label>.
+// drawn right after it, inside the same <label>. The row has other switches,
+// so the track is found from the Gympin checkbox rather than the row.
 async function setSwitch(page, id, on) {
     const box = rowSel(id) + ' input[data-field="gympin"]';
-    if (await page.$eval(box, (b) => b.checked) !== on) await tap(page, rowSel(id) + ' .switch-track');
+    if (await page.$eval(box, (b) => b.checked) !== on) await tap(page, box + ' + .switch-track');
     await waitFor(page, `the Gympin switch on ${id} to read ${on ? 'on' : 'off'}`,
         (sel, on) => document.querySelector(sel).checked === on, box, on);
 }

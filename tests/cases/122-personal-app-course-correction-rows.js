@@ -104,12 +104,12 @@ const correctionButtons = (page) => page.evaluate(() =>
 
 const toggleProjection = (page) => tap(page, '.weigh-project-btn');
 
-// The projection opens by growing its grid row while its rows slide in on
-// staggered delays, so a button inside it is still moving until no transition
-// on the block or its rows is pending or running.
+// The projection opens by growing its grid row (0fr to 1fr), which pushes the
+// week rows below it, the correction button's among them, down the page. Only
+// the block's own transition moves them; its rows' staggered fade does not.
 const waitForProjectionToSettle = (page) =>
-    waitFor(page, 'the projection rows to finish their staggered transitions', () =>
-        document.querySelector('.weigh-projection').getAnimations({ subtree: true }).length === 0);
+    waitFor(page, 'the projection block to finish growing', () =>
+        document.querySelector('.weigh-projection').getAnimations().length === 0);
 
 // The forecast rows, newest-first as the ledger renders them.
 const forecastRows = (page) => page.evaluate(() =>

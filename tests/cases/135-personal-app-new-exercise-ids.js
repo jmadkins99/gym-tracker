@@ -132,8 +132,8 @@ const NEW_SESSION = workoutEntry({
 // Same shape as case 60's: feed a backup to the real Settings file input.
 async function importBackup(page, backup) {
     await tap(page, '.settings-btn');
-    await waitFor(page, 'the Settings modal to open',
-        () => !!document.querySelector('.modal .modal-title'));
+    await waitFor(page, 'the Settings import input',
+        () => !!document.querySelector('.modal input.file-input'));
     const fed = await page.evaluate((json) => {
         const input = document.querySelector('input.file-input');
         if (!input) return 'no file input';
