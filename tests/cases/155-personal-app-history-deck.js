@@ -3,6 +3,7 @@
 // History as a swipe deck of History cards (#38): one card per calendar date,
 // from the date of the first session ever logged through today.
 //
+//   (0) With no sessions at all, the deck is a single rest card for today.
 //   (1) It opens on today. Today has no session, so the card is a rest day:
 //       the date and "No workout", with no day label, Edit or Time, and the
 //       forward controls are disabled.
@@ -27,7 +28,7 @@ const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
 const { bottomNav, swipe } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
-const { HISTORY_CARD, HISTORY_SESSION, shownDate, historyPress, historyGoTo } = require('../lib/history');
+const { HISTORY_CARD, HISTORY_SESSION, shownDate, footDisabled, historyPress, historyGoTo } = require('../lib/history');
 const { eq, ok } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
@@ -65,13 +66,9 @@ const readCard = (page) => page.evaluate((card, session) => {
     };
 }, HISTORY_CARD, HISTORY_SESSION);
 
-const disabled = (page) => page.evaluate(() => {
-    const foot = document.querySelector('.history-foot');
-    const jump = (t) => Array.from(foot.querySelectorAll('.history-jump')).find((b) => b.textContent.indexOf(t) !== -1).disabled;
-    return {
-        back: jump('← Week'), prev: foot.querySelector('[aria-label="Previous day"]').disabled,
-        next: foot.querySelector('[aria-label="Next day"]').disabled, forward: jump('Week →'),
-    };
+const disabled = async (page) => ({
+    back: await footDisabled(page, 'back'), prev: await footDisabled(page, 'prev'),
+    next: await footDisabled(page, 'next'), forward: await footDisabled(page, 'forward'),
 });
 
 async function setVisibility(page, state) {
@@ -102,6 +99,18 @@ async function setVisibility(page, state) {
         }, START);
 
         await page.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
+
+        // === (0) No sessions at all: one rest card, today =================
+        await seedPersonalApp(page, { workoutHistory: [] });
+        await page.evaluate((ns) => localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
+        await page.reload({ waitUntil: 'networkidle0' });
+        await waitForApp(page);
+        await bottomNav(page, 'History');
+        eq(await shownDate(page), '2026-11-25', 'with no sessions History is today');
+        ok((await readCard(page)).text.indexOf('No workout') !== -1, 'a rest day');
+        eq(await disabled(page), { back: true, prev: true, next: true, forward: true },
+            'and the only card, so every footer button is disabled');
+
         await seedPersonalApp(page, { workoutHistory: history() });
         await page.evaluate((ns) => localStorage.setItem(ns + 'lastBackupReminder', String(Date.now())), NS);
         await page.reload({ waitUntil: 'networkidle0' });
@@ -128,6 +137,8 @@ async function setVisibility(page, state) {
         eq(card.label, 'Posterior', 'and the session\'s day label');
         ok(!/Day \d/.test(card.text), 'and no "Day N" counter');
         eq(card.buttons, ['Edit'], 'a session without timestamps offers Edit only');
+        eq(await page.evaluate((sel) => getComputedStyle(document.querySelector(sel)).overflowY, HISTORY_CARD),
+            'auto', 'a card taller than the stage scrolls inside itself instead of clipping');
 
         // === (3) 7-day jumps ===============================================
         await historyPress(page, 'back');
@@ -194,6 +205,13 @@ async function setVisibility(page, state) {
         await historyGoTo(page, '2026-11-26');
         ok((await readCard(page)).text.indexOf('No workout') !== -1, 'the new today is a rest day');
         eq((await disabled(page)).forward, true, 'and is the deck\'s last card');
+
+        // Another midnight passes with the app on screen (no visibilitychange):
+        // a tap on History still opens on the real today.
+        await page.evaluate((ms) => window.__advanceClock(ms), DAY_MS);
+        await bottomNav(page, 'History');
+        await waitFor(page, 'History to open on 27 Nov',
+            () => (document.querySelector('[data-history-shown]') || {}).getAttribute?.('data-history-shown') === '2026-11-27');
 
         eq(errors, [], 'no page errors');
         console.log('PASS');

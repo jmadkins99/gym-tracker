@@ -15,6 +15,21 @@ const HISTORY_CARD = ACTIVE + ' .history-card';
 // The session on the shown card, if the date has one.
 const HISTORY_SESSION = HISTORY_CARD + ' .history-item';
 
+// The footer's buttons: 'prev' / 'next' move one day, 'back' / 'forward' are
+// the 7-day jumps. The two jumps share a class, so their text tells them apart.
+const FOOT = {
+    prev: { sel: '.history-foot [aria-label="Previous day"]' },
+    next: { sel: '.history-foot [aria-label="Next day"]' },
+    back: { sel: '.history-foot .history-jump', text: '← Week' },
+    forward: { sel: '.history-foot .history-jump', text: 'Week →' },
+};
+
+function footButton(which) {
+    const b = FOOT[which];
+    if (!b) throw new Error('history: unknown footer button ' + which);
+    return b;
+}
+
 // A Date, ISO string or YYYY-MM-DD as the local YYYY-MM-DD key the deck uses.
 // Run in Node, so it relies on the harness's pinned time zone matching the
 // page's (America/Phoenix, see browser.js).
@@ -36,27 +51,30 @@ const shownDate = (page) => page.evaluate(() => {
     return el ? el.getAttribute('data-history-shown') : null;
 });
 
+// Is that footer button ('prev', 'next', 'back' or 'forward') missing or disabled?
+const footDisabled = (page, which) => page.evaluate(({ sel, text }) => {
+    const el = Array.from(document.querySelectorAll(sel))
+        .find((x) => !text || x.textContent.indexOf(text) !== -1);
+    return !el || el.disabled;
+}, footButton(which));
+
 async function waitForShown(page, label, key) {
-    await waitFor(page, label, (k) => {
+    await waitFor(page, label, (k, sel) => {
         const el = document.querySelector('[data-history-shown]');
-        const card = document.querySelector('.deck-slot:not([aria-hidden="true"]) .history-card');
+        const card = document.querySelector(sel);
         return !!el && el.getAttribute('data-history-shown') === k
             && !!card && card.getAttribute('data-history-date') === k;
-    }, key);
+    }, key, HISTORY_CARD);
     // The index commits at once and the rail then slides for RAIL_MS; a tap
     // during the slide can miss its button, so hand back a still deck.
     await waitForDeckToSettle(page);
 }
 
 // Taps one of the footer buttons and waits for the shown date to change.
-// `which`: 'prev' / 'next' (one day) or 'back' / 'forward' (the 7-day jump).
 async function historyPress(page, which) {
+    const { sel, text } = footButton(which);
     const before = await shownDate(page);
-    if (which === 'prev') await tap(page, '.history-foot [aria-label="Previous day"]');
-    else if (which === 'next') await tap(page, '.history-foot [aria-label="Next day"]');
-    else if (which === 'back') await tap(page, '.history-foot .history-jump', { text: /← Week/ });
-    else if (which === 'forward') await tap(page, '.history-foot .history-jump', { text: /Week →/ });
-    else throw new Error('historyPress: unknown button ' + which);
+    await tap(page, sel, text ? { text: new RegExp(text) } : undefined);
     await waitFor(page, 'History to move off ' + before, (b) => {
         const el = document.querySelector('[data-history-shown]');
         return !!el && el.getAttribute('data-history-shown') !== b;
@@ -74,17 +92,12 @@ async function historyGoTo(page, date) {
         const diff = keyDiff(now, target);
         if (diff === 0) { await waitForShown(page, 'History card ' + target, target); return; }
         const which = diff <= -7 ? 'back' : diff >= 7 ? 'forward' : diff < 0 ? 'prev' : 'next';
-        const disabled = await page.evaluate((w) => {
-            const b = w === 'prev' ? document.querySelector('.history-foot [aria-label="Previous day"]')
-                : w === 'next' ? document.querySelector('.history-foot [aria-label="Next day"]')
-                : Array.from(document.querySelectorAll('.history-foot .history-jump'))
-                    .find((x) => x.textContent.indexOf(w === 'back' ? '← Week' : 'Week →') !== -1);
-            return !b || b.disabled;
-        }, which);
-        if (disabled) throw new Error('historyGoTo: ' + target + ' is outside the deck (stuck at ' + now + ')');
+        if (await footDisabled(page, which)) {
+            throw new Error('historyGoTo: ' + target + ' is outside the deck (stuck at ' + now + ')');
+        }
         await historyPress(page, which);
     }
     throw new Error('historyGoTo: gave up reaching ' + target);
 }
 
-module.exports = { HISTORY_CARD, HISTORY_SESSION, dateKey, shownDate, historyPress, historyGoTo };
+module.exports = { HISTORY_CARD, HISTORY_SESSION, dateKey, shownDate, footDisabled, historyPress, historyGoTo };

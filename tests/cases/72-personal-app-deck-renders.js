@@ -25,6 +25,7 @@ const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
+const { HISTORY_SESSION, dateKey, historyGoTo } = require('../lib/history');
 const { eq, ok, contains } = require('../lib/assert');
 const {
     ACTIVE, DEFAULT_NS, revealCard, activeName, deckPosition, selectDeckDay, bottomNav,
@@ -128,7 +129,9 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
         // === 5. History still reachable ================================
         await bottomNav(page, 'History');
-        ok(await page.$('.history-item'), 'the History tab still renders past sessions');
+        // History opens on today, a rest day; the seeded session is yesterday's.
+        await historyGoTo(page, dateKey(Date.now() - 86400000));
+        ok(await page.$(HISTORY_SESSION), 'the History tab still renders past sessions');
         await bottomNav(page, 'Workout');
         ok(await page.$('.deck-stage'), 'and the deck comes back');
 

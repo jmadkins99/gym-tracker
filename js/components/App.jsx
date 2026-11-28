@@ -1277,7 +1277,16 @@
                         </button>
                         <button
                             className={`bottom-nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
-                            onClick={() => { setCurrentView('weekly'); setViewingDate(historyDateKey(new Date(today))); window.scrollTo(0, 0); }}
+                            onClick={() => {
+                                // Re-read the date, as a return to the foreground
+                                // does: History opens on today even when the app
+                                // stayed on screen across midnight.
+                                const now = new Date();
+                                setToday(now.toDateString());
+                                setCurrentView('weekly');
+                                setViewingDate(historyDateKey(now));
+                                window.scrollTo(0, 0);
+                            }}
                         >
                             <span className="bottom-nav-icon">≡</span>
                             History

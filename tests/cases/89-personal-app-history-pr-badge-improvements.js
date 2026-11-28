@@ -223,11 +223,14 @@ async function readCardBadge(page, exerciseId) {
             'the History streak pill draws a real flame');
         eq(todayRows['Preacher Curls'].badgeView.exposed, 'PR streak 2',
             'the History streak pill exposes "PR streak 2" as text');
+        // Yesterday is a rest day whose neighbours are LATEST's card (its PR
+        // flames) and today's (this streak flame), so the deck mounts flames
+        // from two sessions at once: each must draw, and no two may share a
+        // gradient id.
+        await historyGoTo(page, dateKey(dayOffset(-1, 9)));
         const flames = await page.evaluate(() => window.allFlames());
-        // Today's card is the only one on screen with a flame (the neighbours
-        // are rest days or empty), so there is one to draw.
-        ok(flames.count >= 1 && flames.allDrawn && flames.uniqueIds,
-            'the History flame draws with a resolving gradient id: ' + JSON.stringify(flames));
+        ok(flames.count >= 2 && flames.allDrawn && flames.uniqueIds,
+            'every History flame draws with its own resolving gradient id: ' + JSON.stringify(flames));
         eq(todayRows['Preacher Curls'].badgeText, '×2',
             'History badges an improvement as soon as it is logged, before Submit Day');
         eq(todayRows['Preacher Curls'].badgeBorder, BADGE_BORDER,

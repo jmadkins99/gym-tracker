@@ -393,11 +393,12 @@
             touch-action: pan-y;
         }
 
-        .history-card {
+        /* Two classes, to win over the plain .card rule further down, whose
+           overflow: hidden would otherwise clip a card taller than the stage. */
+        .card.history-card {
             min-height: 0;
             overflow-y: auto;
             overscroll-behavior: contain;
-            padding: 20px 18px;
         }
 
         /* Inside a card the session is the card, so it drops its own box. */
