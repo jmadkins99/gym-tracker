@@ -94,7 +94,7 @@
         }
 
         /* A small text button: the same dark fill, border, radius, size and
-           weight as .week-nav-btn and .modal-btn, but sized to its words and
+           weight as .modal-btn, but sized to its words and
            never below a 44px tap target AS RENDERED. Both pages open at
            initial-scale 0.75, so 44 rendered px is 44 / 0.75 = 59 CSS px; a
            plain 44px here lands at 33px under the thumb. Header Settings,
@@ -381,41 +381,73 @@
             color: #666;
         }
 
-        .week-nav {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .week-nav-btn {
-            padding: 8px 16px;
-            background: #1a1a2a;
-            border: 1px solid #2a2a3a;
-            color: #8a8aa0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .week-nav-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .week-title {
-            flex: 1;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .content > .week-nav,
         .content > .history-item,
         .content > .empty-state {
             flex: none;
+        }
+
+        /* ---- History deck ----
+           The same rail as the Workout deck, but only horizontal drags are
+           the deck's: a vertical one scrolls a card too long for the stage. */
+        .history-deck .deck-stage {
+            touch-action: pan-y;
+        }
+
+        .history-card {
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: 20px 18px;
+        }
+
+        /* Inside a card the session is the card, so it drops its own box. */
+        .history-card .history-item {
+            background: none;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-card .history-date {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .history-date-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .history-day-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--accent-muted);
+        }
+
+        .history-rest {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .history-foot .text-btn {
+            flex: none;
+            padding: 0 12px;
+            white-space: nowrap;
+        }
+
+        .history-foot .deck-count {
+            margin-bottom: 0;
         }
 
         .history-item {

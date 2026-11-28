@@ -40,7 +40,9 @@
             // The history entry whose Time button was tapped, or null. Distinct from
             // showDayBreakdown, which is always today's session.
             const [timingWorkout, setTimingWorkout] = useState(null);
-            const [viewingWeek, setViewingWeek] = useState(1);
+            // The History card on screen, as a YYYY-MM-DD date key. The History
+            // tab puts it back on today; see HistoryDeck.
+            const [viewingDate, setViewingDate] = useState(() => historyDateKey(new Date()));
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
             // Which card the deck is parked on. It lives up here for the same
             // reason expandedWeightBreakdown does: SwipeDeck is unmounted while
@@ -252,7 +254,6 @@
                         window.repo.saveHistory(migratedHistory);
                     }
 
-                    setViewingWeek(currentWeek);
                     hasMigratedWeeks.current = true;
                 }
             }, [workoutHistory.length, currentWeek]);
@@ -1249,11 +1250,11 @@
                             foregroundAt={lastForegroundAt}
                             onEditExercise={setQuickEditId}
                         />}
-                        {currentView === 'weekly' && <WeeklyView
+                        {currentView === 'weekly' && <HistoryDeck
                             workoutHistory={workoutHistory}
-                            viewingWeek={viewingWeek}
-                            setViewingWeek={setViewingWeek}
-                            currentWeek={currentWeek}
+                            today={today}
+                            viewingDate={viewingDate}
+                            setViewingDate={setViewingDate}
                             exercises={exercises}
                             onEditWorkout={(workout) => {
                                 setEditingWorkout(workout);
@@ -1276,7 +1277,7 @@
                         </button>
                         <button
                             className={`bottom-nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
-                            onClick={() => { setCurrentView('weekly'); setViewingWeek(currentWeek); window.scrollTo(0, 0); }}
+                            onClick={() => { setCurrentView('weekly'); setViewingDate(historyDateKey(new Date(today))); window.scrollTo(0, 0); }}
                         >
                             <span className="bottom-nav-icon">≡</span>
                             History
