@@ -254,7 +254,8 @@ const waitForProjectionToSettle = (page) =>
         await toggle(page);
         await waitFor(page, 'the projection to open',
             () => document.querySelector('.weigh-projection').classList.contains('open'));
-        await waitForProjectionToSettle(page);
+        // No settle wait: the rows below are read for their numbers, which are
+        // there while they fade in, not for their opacity.
 
         const week1 = (await ledger(page)).filter((r) => r.projected);
         eq(week1.map((r) => r.weight), [165.0, 168.0, 172.0],
