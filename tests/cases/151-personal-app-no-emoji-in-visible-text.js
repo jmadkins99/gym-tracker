@@ -40,8 +40,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, waitFor, selectDayType } = require('../lib/browser');
-const { ACTIVE, setWeightAndOpen, logCard, submitDay, bottomNav, readDeckCard, swipe } = require('../lib/deck');
+const { launch, attachConsole, waitForApp, waitFor, tap, selectDayType } = require('../lib/browser');
+const { ACTIVE, setWeightAndOpen, logCard, submitDay, bottomNav, readDeckCard, swipe, waitForDeckToSettle } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
@@ -105,8 +105,6 @@ function scanPage(badSource) {
     return found;
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 // Queues what the page's next native dialogs should do and records every one.
 // Alerts are accepted; a confirm is accepted while `accept` > 0, else dismissed.
 function watchDialogs(page, label, log) {
@@ -120,24 +118,26 @@ function watchDialogs(page, label, log) {
     return state;
 }
 
-// A real mouse click on the first element matching `sel` (and reading `text`,
-// when given): scrolled into view and hit-tested, never a DOM .click().
-async function tap(page, sel, text) {
-    const h = await page.evaluateHandle((s, t) => Array.from(document.querySelectorAll(s))
-        .find((x) => t === undefined || x.textContent.trim() === t) || null, sel, text);
-    const el = h.asElement();
-    if (!el) throw new Error('no ' + sel + (text === undefined ? '' : ' reading "' + text + '"') + ' to click');
-    await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
-    await el.click();
-}
-
-// Waits for a native dialog beyond the first `count` to be recorded, so the
-// next reload cannot cancel the one the page is about to raise.
-async function dialogCame(log, count, label) {
-    const end = Date.now() + 20000;
-    while (log.length <= count) {
-        if (Date.now() > end) throw new Error('timed out after 20s waiting for ' + label);
-        await sleep(50);
+// Waits for `log` (filled by watchDialogs) to hold more than `count` dialogs,
+// so the next step cannot cancel or race one the page is about to raise.
+// watchDialogs' listener was added first, so it has pushed the entry by the
+// time this one runs.
+async function dialogCame(page, log, count, label) {
+    if (log.length > count) return;
+    let timer, onDialog;
+    try {
+        await Promise.race([
+            new Promise((resolve) => {
+                onDialog = () => { if (log.length > count) resolve(); };
+                page.on('dialog', onDialog);
+            }),
+            new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error('timed out after 20s waiting for ' + label)), 20000); // allow-sync-wait: a deadline for an event wait, not a sleep
+            }),
+        ]);
+    } finally {
+        clearTimeout(timer);
+        page.off('dialog', onDialog);
     }
 }
 
@@ -168,14 +168,11 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
             await pg.setViewport({ width: 390, height: 844 });
             return pg;
         };
-        // Real click on the modal button whose words match `re`.
+        // Real tap on the modal button whose words match `re`, then wait for
+        // the modal to be gone.
         const closeByWord = async (pg, re) => {
-            const h = await pg.evaluateHandle((src) => Array.from(document.querySelectorAll('.modal button'))
-                .find((x) => new RegExp(src, 'i').test(x.textContent.trim())) || null, re);
-            const el = h.asElement();
-            if (!el) throw new Error('no modal button matching ' + re);
-            await el.click();
-            await sleep(300);
+            await tap(pg, '.modal button', { text: re });
+            await waitFor(pg, 'the modal to close after ' + re, () => !document.querySelector('.modal'));
         };
 
         const page = await newPhone();
@@ -191,7 +188,6 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'anterior-2');
-        await sleep(300);
 
         await look('workout deck, card front', (a) => !!document.querySelector(a), ACTIVE);
         await readDeckCard(page, 'Chest Flies');
@@ -199,14 +195,18 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
             (a) => /×[0-9]/.test(document.querySelector(a).innerText), ACTIVE);
 
         // Swipe down on the open card: the Quick Edit form.
-        await swipe(page, 0, 180, { settle: 400 });
+        await swipe(page, 0, 180, { settle: 0 });
         await look('Quick Edit, swipe-down form',
             () => !!document.querySelector('.modal.quick-edit input[data-field="hint"]'));
-        await closeByWord(page, '^Cancel$');
-        await waitFor(page, 'Quick Edit to close', () => !document.querySelector('.modal.quick-edit'));
+        // A tap during the form's 0.3 s slide-in misses.
+        await waitFor(page, 'Quick Edit to finish sliding in', () => {
+            const m = document.querySelector('.modal.quick-edit');
+            return !!m && m.getAnimations().length === 0;
+        });
+        await closeByWord(page, /^Cancel$/i);
 
         await setWeightAndOpen(page, 'Chest Flies', 200);
-        ok(await logCard(page, { settle: 300 }), 'logged Chest Flies');
+        ok(await logCard(page, { settle: 0, waitForAutoAdvance: false }), 'logged Chest Flies');
         await look('workout deck, logged card with PR pill',
             (a) => /Logged/.test(document.querySelector(a).innerText)
                 && !!document.querySelector(a + ' .logged-pr-badge')
@@ -220,11 +220,10 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
 
         ok(await submitDay(page), 'pressed Submit Day');
         await look('Day Breakdown modal', () => !!document.querySelector('[data-pr-count]'));
-        await closeByWord(page, '^(Close|Done|Got it)$');
+        await closeByWord(page, /^(Close|Done|Got it)$/i);
         for (let i = 0; i < 30 && !(await page.$(ACTIVE + ' .card-finish')); i++) {
-            const arrows = await page.$$('.deck-arrow');
-            await arrows[arrows.length - 1].click();
-            await sleep(200);
+            await tap(page, '.deck-arrow[aria-label="Next exercise"]');
+            await waitForDeckToSettle(page);
         }
         await look('workout deck, finish card',
             (a) => !!document.querySelector(a + ' .card-finish'), ACTIVE);
@@ -235,22 +234,22 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
             return btns.includes('Time') && btns.includes('Edit');
         });
 
-        await tap(page, '.history-date button', 'Time');
+        await tap(page, '.history-date button', { text: 'Time' });
         await look('timing details modal', () => !!document.querySelector('.modal [data-timing-total]'));
-        await closeByWord(page, '^(Close|Done|Got it)$');
+        await closeByWord(page, /^(Close|Done|Got it)$/i);
 
-        await tap(page, '.history-date button', 'Edit');
+        await tap(page, '.history-date button', { text: 'Edit' });
         await look('edit workout modal', modalHas, 'Chest Flies');
-        await closeByWord(page, '^(Close|Cancel|Done)$');
+        await closeByWord(page, /^(Close|Cancel|Done)$/i);
 
         await bottomNav(page, 'Workout');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await page.click('.settings-btn');
+        await tap(page, '.settings-btn');
         await look('Settings', modalHas, 'Manage Exercises');
-        await tap(page, '.modal-btn', 'Manage Exercises');
+        await tap(page, '.modal-btn', { text: 'Manage Exercises' });
         await look('Manage Exercises', () => document.querySelectorAll('.exercise-row').length > 0);
-        await tap(page, '.exercise-row .text-btn', 'Edit');
+        await tap(page, '.exercise-row .text-btn', { text: 'Edit' });
         await look('Manage Exercises, edit form',
             () => !!document.querySelector('.exercise-row select[data-field="increment"]'));
 
@@ -259,16 +258,17 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         // second one shows, and that one is dismissed, so nothing is erased.
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await page.click('.settings-btn');
+        await tap(page, '.settings-btn');
         await waitFor(page, 'Settings', modalHas, 'Reset All Data');
         confirms.accept = 1;
-        await tap(page, '.modal-btn', 'Reset All Data');
-        await sleep(300);
+        const beforeReset = dialogs.length;
+        await tap(page, '.modal-btn', { text: 'Reset All Data' });
+        await dialogCame(page, dialogs, beforeReset + 1, 'both workout Reset All Data confirms');
         const input = await page.$('.modal input[type=file]');
         ok(input, 'Settings has a file input for Import Data');
         const before = dialogs.length;
         await input.uploadFile(junk);
-        await dialogCame(dialogs, before, 'the workout bad-backup alert');
+        await dialogCame(page, dialogs, before, 'the workout bad-backup alert');
 
         // A device with no history: Submit Day with nothing logged alerts,
         // and History shows its empty state.
@@ -283,8 +283,9 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await emptyPage.reload({ waitUntil: 'networkidle0' });
         await waitForApp(emptyPage);
         await selectDayType(emptyPage, 'anterior-2');
+        const beforeSubmit = dialogs.length;
         await submitDay(emptyPage);
-        await sleep(300);
+        await dialogCame(emptyPage, dialogs, beforeSubmit, 'the Submit Day with nothing logged alert');
         await bottomNav(emptyPage, 'History');
         await lookFor(emptyPage)('History, empty', () => !!document.querySelector('.empty-state'));
         await emptyPage.close();
@@ -303,14 +304,14 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await waitForApp(bannerPage);
         const look2 = lookFor(bannerPage);
         await look2('sign-in banner', () => /Sign in to sync/.test(document.body.innerText));
-        await bannerPage.click('.settings-btn');
+        await tap(bannerPage, '.settings-btn');
         await look2('Settings, signed out', modalHas, 'Sign in');
         await bannerPage.evaluate(() => {
             window.repo.mode = 'firestore';
             window.repo.status = () => ({ email: 'josh@example.com', pendingWrites: 2 });
         });
-        await closeByWord(bannerPage, '^Close$');
-        await bannerPage.click('.settings-btn');
+        await closeByWord(bannerPage, /^Close$/i);
+        await tap(bannerPage, '.settings-btn');
         await look2('Settings, signed in', modalHas, 'Syncing as');
         await bannerPage.close();
 
@@ -319,13 +320,11 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         const werrors = attachConsole(wpage);
         watchDialogs(wpage, 'weight', dialogs);
         const wlook = lookFor(wpage);
+        // Tap a bottom-bar tab and wait for it to turn active.
         const wgo = async (label) => {
-            const h = await wpage.evaluateHandle((l) => Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find((b) => b.textContent.includes(l)) || null, label);
-            const el = h.asElement();
-            if (!el) throw new Error('no bottom nav button ' + label);
-            await el.click();
-            await sleep(400);
+            await tap(wpage, '.bottom-nav-btn', { text: new RegExp(label) });
+            await waitFor(wpage, 'the ' + label + ' tab to open', (l) => Array.from(document.querySelectorAll('.bottom-nav-btn'))
+                .some((b) => b.textContent.includes(l) && b.classList.contains('active')), label);
         };
         await wpage.goto(server.url + '/weight/index.html', { waitUntil: 'networkidle0' });
         await wpage.evaluate((ns) => {
@@ -357,31 +356,33 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await wlook('weight check-in, with plan and readings', () => !!document.querySelector('.weigh-card'));
         await wgo('History');
         await wlook('weight History, weeks', () => !!document.querySelector('.weigh-week'));
-        await wpage.click('.weigh-week-head');
+        await tap(wpage, '.weigh-week-head');
         await wlook('weight History, week opened', () => document.querySelectorAll('.weigh-day').length > 0);
-        await wpage.click('.weigh-day-value:not(.na)');
+        await tap(wpage, '.weigh-day-value:not(.na)');
         await wlook('weight History, editing a reading', () => !!document.querySelector('.weigh-day-input'));
         // Deleting a reading asks first; the confirm is dismissed.
-        await tap(wpage, '.weigh-day-btn.danger', 'Delete');
-        await sleep(300);
+        const beforeDelete = dialogs.length;
+        await tap(wpage, '.weigh-day-btn.danger', { text: 'Delete' });
+        await dialogCame(wpage, dialogs, beforeDelete, 'the weight delete-reading confirm');
 
-        await wpage.click('.settings-btn');
+        await tap(wpage, '.settings-btn');
         await wlook('weight Settings, plan saved', modalHas, 'Edit plan');
-        await tap(wpage, '.modal .modal-btn', 'Edit plan');
+        await tap(wpage, '.modal .modal-btn', { text: 'Edit plan' });
         await wlook('weight Settings, plan form', modalHas, 'Save plan');
 
         // Native dialogs from weight Settings: Reset All Data (dismissed) and a bad backup.
         await wpage.reload({ waitUntil: 'networkidle0' });
         await waitFor(wpage, 'check-in', () => !!document.querySelector('.weigh-card'));
-        await wpage.click('.settings-btn');
+        await tap(wpage, '.settings-btn');
         await waitFor(wpage, 'weight Settings', modalHas, 'Reset All Data');
-        await tap(wpage, '.modal-btn', 'Reset All Data');
-        await sleep(300);
+        const beforeWReset = dialogs.length;
+        await tap(wpage, '.modal-btn', { text: 'Reset All Data' });
+        await dialogCame(wpage, dialogs, beforeWReset, 'the weight Reset All Data confirm');
         const winput = await wpage.$('.modal input[type=file]');
         ok(winput, 'weight Settings has a file input for Import Data');
         const wbefore = dialogs.length;
         await winput.uploadFile(junk);
-        await dialogCame(dialogs, wbefore, 'the weight bad-backup alert');
+        await dialogCame(wpage, dialogs, wbefore, 'the weight bad-backup alert');
 
         await wpage.evaluate((ns) => localStorage.setItem(ns + 'gymWeightPlan', 'null'), NS);
         await wpage.evaluateOnNewDocument(() => {
@@ -389,14 +390,14 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         });
         await wpage.reload({ waitUntil: 'networkidle0' });
         await waitFor(wpage, 'check-in', () => !!document.querySelector('.weigh-card'));
-        await wpage.click('.settings-btn');
+        await tap(wpage, '.settings-btn');
         await wlook('weight Settings, no plan, signed out', modalHas, 'Set a plan');
         await wpage.evaluate(() => {
             window.repo.mode = 'firestore';
             window.repo.status = () => ({ email: 'josh@example.com', pendingWrites: 2 });
         });
-        await closeByWord(wpage, '^Close$');
-        await wpage.click('.settings-btn');
+        await closeByWord(wpage, /^Close$/i);
+        await tap(wpage, '.settings-btn');
         await wlook('weight Settings, signed in', modalHas, 'Syncing as');
 
         // === Dialogs =====================================================

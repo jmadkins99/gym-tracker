@@ -24,7 +24,7 @@
 // check names the width.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, waitFor, setNow } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor, tap, setNow } = require('../lib/browser');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { bottomNav } = require('../lib/deck');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
@@ -92,15 +92,6 @@ function measureAll(allow) {
         });
 }
 
-const clickText = async (page, sel, text) => {
-    const h = await page.evaluateHandle((s, t) => Array.from(document.querySelectorAll(s))
-        .find((b) => b.textContent.trim() === t) || null, sel, text);
-    const el = h.asElement();
-    ok(el, 'found ' + sel + ' reading "' + text + '"');
-    await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
-    await el.click();
-};
-
 (async () => {
     const server = await start({ root: PERSONAL_APP_ROOT });
     const browser = await launch();
@@ -167,10 +158,10 @@ const clickText = async (page, sel, text) => {
         await check('workout History', '.history-date .text-btn', 2);
         await scan(page, 'workout History', ratio);
         await bottomNav(page, 'Workout');
-        await page.click('.settings-btn');
+        await tap(page, '.settings-btn');
         await waitFor(page, 'Settings', () => !!document.querySelector('.modal .modal-title'));
         await scan(page, 'Settings', ratio);
-        await clickText(page, '.modal-btn', 'Manage Exercises');
+        await tap(page, '.modal-btn', { text: 'Manage Exercises' });
         await waitFor(page, 'exercise rows', () => document.querySelectorAll('.exercise-row').length > 0);
         await scan(page, 'Manage Exercises (all)', ratio);
         await check('Manage Exercises', '.exercise-row .text-btn', 3);
@@ -228,13 +219,12 @@ const clickText = async (page, sel, text) => {
         };
         await wcheck('weight header', '.settings-btn', 1);
         await scan(wpage, 'weight check-in', wratio);
-        await (await wpage.evaluateHandle(() => Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((b) => b.textContent.includes('History')))).click();
+        await tap(wpage, '.bottom-nav-btn', { text: /History/ });
         await waitFor(wpage, 'weekly ledger', () => !!document.querySelector('.weigh-week'));
         const head = await wpage.evaluateHandle((label) => Array.from(document.querySelectorAll('.weigh-week-head'))
             .find((h) => h.textContent.includes(label)) || null, openLabel);
         ok(head.asElement(), 'found the ledger row "' + openLabel + '"');
-        await head.asElement().click();
+        await tap(wpage, head);
         await waitFor(wpage, 'opened week', () => document.querySelectorAll('.weigh-day-value').length > 0);
         await wcheck('weight History reading', '.weigh-day-value:not(.na)', 1);
         await wcheck('weight History NA', '.weigh-day-value.na', 1);
@@ -252,9 +242,9 @@ const clickText = async (page, sel, text) => {
             await seedExerciseConfig(p, { version, overrides: { [FLIES]: { name: LONG } } });
             await p.reload({ waitUntil: 'networkidle0' });
             await waitForApp(p);
-            await p.click('.settings-btn');
+            await tap(p, '.settings-btn');
             await waitFor(p, 'Settings', () => !!document.querySelector('.modal .modal-title'));
-            await clickText(p, '.modal-btn', 'Manage Exercises');
+            await tap(p, '.modal-btn', { text: 'Manage Exercises' });
             await p.waitForSelector('[data-exercise-id="' + FLIES + '"]', { timeout: 8000 });
             const fit = await p.evaluate((id) => {
                 const row = document.querySelector('[data-exercise-id="' + id + '"]');
