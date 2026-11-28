@@ -15,7 +15,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, waitFor } = require('../lib/browser');
 const { ACTIVE, revealCard, logCard, submitDay } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq } = require('../lib/assert');
@@ -78,7 +78,12 @@ async function waitForClock(page, expected) {
             setter.call(input, '100');
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }, ACTIVE);
-        await new Promise((r) => setTimeout(r, 1200));
+        // A check that the clock did NOT appear, so it needs a margin: past one
+        // tick of its 1 s interval. Date is frozen here, so the margin is read off
+        // the page's monotonic clock instead.
+        const typedAt = await page.evaluate(() => performance.now());
+        await waitFor(page, 'one 1 s clock tick to pass (margin for a clock that must not appear)',
+            (t) => performance.now() >= t, typedAt + 1200);
         eq(await readClock(page), null, 'no clock before the first log');
 
         // === 2. First log: clock counts from the swipe ====================

@@ -42,7 +42,7 @@
 // draws 23 rows; drop the `overrun` class and the tag and border assertions go.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -78,10 +78,7 @@ const seed = (page, goalWeight) => page.evaluate((ns, goal) => {
 }, NS, goalWeight);
 
 const toHistory = async (page) => {
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((b) => b.textContent.includes('History')).click();
-    });
+    await tap(page, '.bottom-nav-btn', { text: /History/ });
     await waitFor(page, 'the weekly ledger to render',
         () => !!document.querySelector('.weigh-week'));
 };
@@ -105,11 +102,14 @@ const projected = (page) => page.evaluate(() => {
 });
 
 const open = async (page) => {
-    await page.evaluate(() => document.querySelector('.weigh-project-btn').click());
+    await tap(page, '.weigh-project-btn');
     await waitFor(page, 'the projection to open',
         () => document.querySelector('.weigh-projection').classList.contains('open'));
-    // Long enough for the last staggered row to have finished arriving.
-    await new Promise((r) => setTimeout(r, 1600));
+    // The rows arrive on staggered transition delays and `projected` reads each
+    // row's computed border, so wait until no transition on the block or its
+    // rows is pending or running.
+    await waitFor(page, 'the projection rows to finish their staggered transitions', () =>
+        document.querySelector('.weigh-projection').getAnimations({ subtree: true }).length === 0);
 };
 
 const reseed = async (page, goal) => {
