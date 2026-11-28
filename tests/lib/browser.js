@@ -55,15 +55,22 @@ function findChrome() {
         CHROME_CANDIDATES.join('\n  '));
 }
 
-async function launch() {
-    // Deliberately NO userDataDir. Puppeteer then creates a fresh temp profile
-    // per launch, which is what keeps concurrent cases from sharing the
-    // `gym-local:` localStorage namespace — run.sh runs several at once. Setting
+// One Chrome, started the way every test Chrome is started. Used by launch()
+// for a case run by hand, and by lib/slot-chrome.js for the runner's slot
+// Chromes.
+function launchChrome(userDataDir) {
+    // Deliberately no FIXED userDataDir. Without one, Puppeteer creates a fresh
+    // temp profile per launch (the only caller that passes one is run.sh, via
+    // slot-chrome.js, with a folder unique to that one Chrome so that it can
+    // delete it after force-killing the Chrome), so two Chromes never share the `gym-local:` localStorage
+    // namespace. (Cases sharing ONE slot Chrome are isolated by a fresh browser
+    // context each, which has storage of its own; see launch() below.) Setting
     // a fixed userDataDir here (a tempting way to shave launch time) would make
     // parallel runs silently nondeterministic rather than failing outright.
     // Cases also land on different ports, so they are different origins too;
     // that is a second layer, not the one to rely on.
-    const browser = await puppeteer.launch({
+    return puppeteer.launch({
+        ...(userDataDir ? { userDataDir } : {}),
         executablePath: findChrome(),
         headless: 'new',
         env: { ...process.env, TZ: TIME_ZONE },
@@ -72,6 +79,35 @@ async function launch() {
         // as random flakes. Costs nothing outside a container.
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
+}
+
+// What a case gets from launch(): something with newPage() and close().
+//
+// Under run.sh, TEST_CHROME_WS names the slot's long-lived Chrome. A Chrome
+// exit costs 2.6 to 19.5 s on Windows, a fresh browser context 0.03 to 0.3 s,
+// so the runner keeps one Chrome per job slot for the whole run and each case
+// connects to it and works in a context of its own (own storage, own cookies).
+// close() then closes only that context and disconnects; the Chrome lives on.
+// Run by hand (no TEST_CHROME_WS), launch() starts a Chrome of its own and
+// close() ends it, exactly as before.
+async function launch() {
+    const ws = process.env.TEST_CHROME_WS;
+    let browser;
+    if (ws) {
+        const shared = await puppeteer.connect({ browserWSEndpoint: ws });
+        try {
+            browser = await shared.createBrowserContext();
+        } catch (err) {
+            await shared.disconnect();
+            throw err;
+        }
+        const closeContext = browser.close.bind(browser);
+        browser.close = async () => {
+            try { await closeContext(); } finally { await shared.disconnect(); }
+        };
+    } else {
+        browser = await launchChrome();
+    }
     // Every case builds its page with browser.newPage(), so wrapping it here
     // installs the CDN shim suite-wide without touching a single case file.
     const newPage = browser.newPage.bind(browser);
@@ -333,6 +369,6 @@ const waitForCards = (page) =>
     waitFor(page, 'exercise cards to render',
         () => document.querySelectorAll('.exercise-card').length > 0);
 
-module.exports = { launch, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
+module.exports = { launch, launchChrome, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
                    openSettings, closeSettings,
                    waitFor, waitForPageTime, tap, waitForStorageKey, waitForCards };

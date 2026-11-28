@@ -49,9 +49,7 @@ jobs:
         with:
           node-version: 24
 
-      # The full suite, sliced -- never --affected: a fresh runner has no
-      # tests/.coverage map, and CI is the one place that should never trust
-      # a selection.
+      # The full suite, sliced four ways.
       - name: Run tests
         working-directory: tests
         env:
@@ -72,6 +70,18 @@ jobs:
           fetch-depth: 0
       - run: bash tests/check-cache-bust.sh
       - run: bash tests/check-no-sync-waits.sh
+      # The runner self-test: run.sh as a whole process against made-up cases
+      # (tests/selftest-cases), plus real Chrome cases (tests/selftest-chrome-cases)
+      # that check two cases on one slot's Chrome don't share storage and that a
+      # crashed slot Chrome is replaced. Those need puppeteer-core and a Chrome
+      # (ubuntu-latest ships one at /usr/bin/google-chrome).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm install --silent --no-audit --no-fund
+      - run: bash tests/check-runner.sh
 
   # The one check the "protect main" ruleset requires, so the shard count can
   # change without touching the ruleset. `always()` because a job skipped

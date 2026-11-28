@@ -21,29 +21,57 @@ TEST_JOBS=1 bash run.sh 50 # one at a time (see below)
 TEST_SHARD=2/4 bash run.sh # every 4th case from the 2nd: one of CI's four slices
 ```
 
-Cases run **6 at a time**. The full suite takes about **110 seconds**;
-sequentially it took 8m34s. Results are reported in filename order however
-they finish, so two runs are diffable, and each case's output is buffered
-and printed whole so a failure's diagnostics never interleave with another
-case's.
+Cases run **8 at a time**, one per job slot, and each slot keeps **one
+Chrome for the whole run**. A case connects to its slot's Chrome (the runner
+passes the endpoint in `TEST_CHROME_WS`) and works in a fresh browser context
+of its own: own localStorage and cookies, closed when the case ends. A Chrome
+exit costs 2.6 to 19.5 seconds on Windows and a context 0.03 to 0.3, which is
+why. A case run by hand (`node cases/<case>.js`) has no slot, so `launch()`
+starts and closes a Chrome of its own, as it always did. If a slot's Chrome
+dies, the runner starts a new one for the slot, and the case that was on it
+goes through the retry described below. Results are reported in filename
+order however they finish, so two runs are diffable, and each case's output
+is buffered and printed whole so a failure's diagnostics never interleave
+with another case's.
 
-`TEST_JOBS=n` changes the concurrency, but 6 is close to optimal on a
-16-core box and raising it does not help. Measured: 6 jobs 107-110s, 10
-jobs 113s, and 14 jobs both slower *and* failing a case with
-`net::ERR_NO_BUFFER_SPACE` — socket exhaustion from that many concurrent
-Chromes, not a test bug. Past a handful of jobs the bottleneck is Chrome
-startup rather than anything the runner controls. `TEST_JOBS=1` restores
-strictly sequential behaviour, which is what to reach for if a failure
-looks timing-dependent and you want to rule concurrency out.
+`TEST_JOBS=n` changes the number of slots. Measured on the maintainer's
+Windows PC, full suite, nothing else running: 527 s before slot Chromes (6
+jobs); with them 4 jobs 362 s, 6 jobs 266 s, 8 jobs 236 s, 10 jobs 235 s,
+12 jobs 250 s with one FLAKY case. Past 8 there is no gain, so 8 is the
+default. (Older figures here, about 110 s at 6 jobs, were from another
+machine; and 14 Chromes at once once failed a case with
+`net::ERR_NO_BUFFER_SPACE`, socket exhaustion and not a test bug.)
+`TEST_JOBS=1` restores strictly sequential behaviour, which is what to reach
+for if a failure looks timing-dependent and you want to rule concurrency out.
 
 **Timeouts and retries.** A case that runs longer than 120 seconds
 (`TEST_CASE_TIMEOUT=n` to change it) is killed along with its Chrome and
 counts as a failure, so one hung case can no longer hang the whole run.
 After the parallel pass, every failed case is run once more, alone. Most
 flakes here are load (`ERR_NO_BUFFER_SPACE`, a script not loaded yet), and
-a real bug fails the same way twice. A case that passes only on retry
-prints `PASS (retry)` with its first attempt's output and is named in the
-summary; only a case that fails both times fails the run.
+a real bug fails the same way twice. A case that passes only on retry is
+reported as **FLAKY** (in the summary and, on CI, as a `::warning`
+annotation) with its first attempt's output; only a case that fails both
+times fails the run.
+
+**Last-run folder.** Every run replaces `tests/.last-run/` (git-ignored) at
+its start and leaves in it one `<case>.log` per case run (result line, first
+attempt's output, retry's output if any) and `summary.txt` (failed, FLAKY and
+passed cases with timings). Read a failure with `cat .last-run/<case>.log`,
+never by rerunning, and never pipe a run through `tail` or `head`.
+
+**`TEST_CASES` guard.** `TEST_CASES` set but empty, or naming a case that
+does not exist, exits non-zero with a message before any case runs. Unset it
+to run without a list.
+
+**Runner self-test.** `bash check-runner.sh` runs `run.sh` as a whole process
+against the made-up cases in `selftest-cases/`, using `TEST_CASES_DIR` (the
+cases folder) and `TEST_OUT_DIR` (the last-run folder), which exist only for
+it. Because the runner deletes the output folder at the start of a run, an
+explicit `TEST_OUT_DIR` is refused unless it is missing, empty, or holds the
+`.runner-last-run` marker an earlier run wrote. CI's `guardrails` job runs it.
+An interrupted run (Ctrl+C, kill) still publishes a log for every case that
+had started and a `summary.txt` marked `INTERRUPTED`.
 
 **Waiting.** Cases wait for conditions, not clocks — `waitForApp`,
 `waitForStorageKey` and `waitFor` in `lib/browser.js`. A fixed
@@ -63,6 +91,62 @@ Subsequent runs skip the install and just execute.
 
 A failing test dumps its full output indented under the test name so
 you can read the assertion error and stack trace inline.
+
+### Machine-wide test lock
+
+Only one run at a time on the machine, across gym-tracker and kanban, so
+concurrent sessions stop slowing each other down. Full runs and pattern runs
+both take it; a run refused up front (bad `TEST_CASES`, bad `TEST_SHARD`, no
+cases matched, an unsafe `TEST_OUT_DIR`) never waits for it. kanban's `run.sh`
+copies this convention exactly, so change both together:
+
+- **Where:** a directory `machine-test-run.lock` in the user's temp folder,
+  found the same way in every session whatever `TMPDIR` a session sets: in Git
+  Bash on Windows `$LOCALAPPDATA/Temp` (through `cygpath`), otherwise `/tmp`.
+  `TEST_LOCK_FILE` overrides the path; only `check-runner.sh` uses that.
+- **Contents:** one file, `<lock>/info`, three `key=value` lines:
+  `repo=<repo folder name>`, `pid=<the runner's own $$>`,
+  `started=<epoch seconds>`.
+- **Taking it:** `mkdir <lock>`, then write `<lock>/info` through bash's
+  noclobber redirect (`set -C`), which creates it with `O_CREAT|O_EXCL`, so
+  two runs can never both win and the winner's `info` is written in the same
+  step. A bare `mkdir` is not enough: the uutils coreutils on Ubuntu 26.04
+  (CI's `ubuntu-latest`) exit 0 when another process made the folder a moment
+  earlier. The other claims below use `run.sh`'s `claim_dir`: `mkdir <dir>`,
+  then create `<dir>/.made` the same way. The per-case claims use it too.
+- **Held:** the run prints once which repo and pid hold it and since when,
+  then polls every `TEST_LOCK_POLL` seconds (default 2).
+- **Stale:** the holder's pid is gone (`kill -0` fails and `/proc/<pid>` is
+  missing), or `info` stays unreadable for 5 seconds. A run that read pid `P`
+  and `started` `S` from a stale lock claims that lock with
+  `claim_dir <lock>/takeover-P-S`. The claim sits inside the lock, so of all
+  the runs that saw the same stale lock only one gets it, and a run with an out
+  of date view only leaves its claim folder in a newer lock (it never removes
+  it, since by then that folder may be another run's claim). With the claim made,
+  it re-reads `info`, and only if it still says `P` and `S` and `P` is still
+  gone does it retire the lock, then go round the normal `claim_dir` again. For an
+  unreadable `info` the run first makes `<lock>/watch-<its pid>` and waits the 5
+  seconds; that folder still being there when it claims proves it is the same
+  lock, not a new one about to write its `info`.
+- **Retiring:** `mv -T <lock> <lock>.gone.<pid>.<random>`, one atomic rename,
+  then delete the moved copy (if the rename fails, as Windows can while a file
+  inside is open, `rm -rf <lock>`). Only the holder or the one run with the
+  claim ever retires a lock, and nothing removes a lock by path after a
+  separate check, so a lock another run has just taken is never removed. The
+  next run to take the lock deletes any `.gone.*` copy left behind.
+- **Release:** the `EXIT` trap retires the directory if `info` still names this
+  pid, on a normal end, a failure, Ctrl+C or kill. It also stops cases still in
+  flight, and an interrupted run first publishes the logs it has and a summary
+  marked `INTERRUPTED` into the last-run folder.
+
+The pid is bash's own `$$`, which in Git Bash is the MSYS pid, not the Windows
+one. Every runner is a Git Bash process, so they all see the same pids and
+`kill -0` works across them. A crash can leave a pid that an unrelated process
+later reuses, and a run killed in the few milliseconds between claiming a stale
+lock and retiring it leaves that lock claimed; delete the directory by hand if
+a run waits on a holder that is not a test run, or on a stale lock for good. `check-runner.sh` covers the default path, waiting, reporting
+the holder, stale takeover (including several runs racing for one stale lock)
+and release on SIGTERM.
 
 ### Requirements
 
@@ -100,9 +184,6 @@ merge a PR until that run is green on a branch that is up to date with
 2026: a hook runs on the pusher's machine, so `--no-verify`, a fresh clone or
 a phone session skipped it, and CI cannot be skipped.
 
-`run.sh --affected` stays the fast local check before a commit, and it is
-now what keeps `.coverage/_base` current (see the note in `run.sh`).
-
 public-gym-app has the same setup since Oct 2026: its own `tests/`, its own
 workflow, no pre-push hook.
 
@@ -110,7 +191,7 @@ workflow, no pre-push hook.
 
 ```
 1. On a fresh branch, make a code change (config swap, bug fix, etc.)
-2. cd tests && bash run.sh --affected
+2. cd tests && bash run.sh <pattern>
 3. All pass?
      → commit, push the branch, open a PR once its CI run is green
    Anything fails?
@@ -329,6 +410,7 @@ tests/
 ├── README.md          (you are here)
 ├── package.json       (just puppeteer-core)
 ├── run.sh             (the runner)
+├── check-runner.sh    (runner self-test; uses selftest-cases/)
 ├── lib/
 │   ├── assert.js      (eq / ok / contains)
 │   ├── browser.js     (puppeteer launch + page helpers)

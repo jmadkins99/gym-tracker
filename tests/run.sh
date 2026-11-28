@@ -8,16 +8,18 @@
 #
 #   - Each case starts its own HTTP server on an OS-assigned free port
 #     (lib/server.js passes port 0), so no two cases can contend for one.
-#   - Each case launches its own Chrome, and puppeteer gives every launch a
-#     fresh temp profile, so localStorage cannot leak between them. They are
-#     also on different ports, hence different origins, so the isolation holds
-#     twice over. See the note in lib/browser.js — that isolation must not be
-#     "optimized" away with a shared userDataDir.
+#   - Each job slot has one Chrome for the whole run (a Chrome exit costs
+#     seconds on Windows; a fresh browser context costs milliseconds), and each
+#     case works in a context of its own, which has its own localStorage. The
+#     cases are also on different ports, hence different origins, so the
+#     isolation holds twice over. A case run by hand with `node` launches its
+#     own Chrome instead. See lib/browser.js; the isolation must not be
+#     "optimized" away with a shared userDataDir or a shared context.
 #   - No case writes to disk, and none depends on another having run first;
 #     every case seeds its own state and tears down in a finally block.
 #
-# Concurrency is capped rather than unbounded: each case costs a Chrome
-# (~200 MB) plus a node process, so 57 at once would thrash. Override with
+# Concurrency is capped rather than unbounded: each slot costs a Chrome
+# (~200 MB) plus a node process per case, so 57 at once would thrash. Override with
 # TEST_JOBS=n. TEST_JOBS=1 restores the old strictly-sequential behaviour,
 # which is worth reaching for when a failure looks timing-dependent.
 
@@ -29,23 +31,26 @@ cd "$(dirname "$0")"
 # every process the runner starts. Phoenix has no DST.
 export TZ=America/Phoenix
 
+# Where the cases live, and where this run's output goes. Both exist for the
+# runner self-test (check-runner.sh), which points the runner at a folder of
+# made-up cases and a temp output folder. Nobody else needs to set them.
+# (The runner deletes the output folder, so see the TEST_OUT_DIR guard below.)
+CASES_DIR="${TEST_CASES_DIR:-cases}"
+OUT_DIR="${TEST_OUT_DIR:-.last-run}"
+OUT_MARKER=.runner-last-run
+
 # Optional filter: `bash run.sh 42` runs just case 42, `bash run.sh personal-app`
 # runs every personal-app case. Matched as a substring of the case name.
 #
 # TEST_CASES, if set, is an exact list of case names (whitespace-separated)
-# and replaces the filter.
-#
-# `bash run.sh --affected` runs only the cases the working tree's changes can
-# touch -- committed or not, since the last verified commit -- chosen by
-# lib/select.js, and falls back to the full suite whenever that selection
-# cannot vouch for a change. It is the everyday check before a commit; CI
-# runs the full suite on every branch push. Plain `bash run.sh` is the full
-# suite.
-AFFECTED=0
-if [ "${1:-}" = "--affected" ]; then AFFECTED=1; shift; fi
+# and replaces the filter. Plain `bash run.sh` is the full suite.
 PATTERN="${1:-}"
 ONLY="${TEST_CASES:-}"
-JOBS="${TEST_JOBS:-6}"
+# `${TEST_CASES+x}` is "x" when the variable is set, even to the empty string.
+# That is the case the guard below refuses: a broken filter (an alias or a
+# pipeline that produced nothing) must never quietly become a full run.
+ONLY_SET="${TEST_CASES+x}"
+JOBS="${TEST_JOBS:-8}"   # also the number of slot Chromes
 CASE_TIMEOUT="${TEST_CASE_TIMEOUT:-120}"
 
 # TEST_SHARD=i/n runs every n-th case starting at the i-th (1-based), so n
@@ -62,68 +67,55 @@ if [ -n "$SHARD" ]; then
     fi
 fi
 
+# TEST_CASES guard: refuse before anything runs. Set-but-empty, or naming a
+# case that has no file in the cases folder, is an error, not "run everything".
+if [ -n "$ONLY_SET" ]; then
+    if [ -z "$(echo $ONLY)" ]; then
+        echo "TEST_CASES is set but empty. Refusing to run: an empty list is almost certainly a broken filter, not a request for the full suite."
+        echo "Unset it (or use bash run.sh <pattern>) to run cases."
+        exit 1
+    fi
+    UNKNOWN=()
+    for want in $ONLY; do
+        [ -f "$CASES_DIR/$want.js" ] || UNKNOWN+=("$want")
+    done
+    if [ "${#UNKNOWN[@]}" -gt 0 ]; then
+        echo "TEST_CASES names case(s) that do not exist in $CASES_DIR/: ${UNKNOWN[*]}"
+        echo "Nothing was run."
+        exit 1
+    fi
+fi
+
+# TEST_OUT_DIR guard (self-test only): the runner deletes the output folder at
+# the start of a run, so an explicit TEST_OUT_DIR is only accepted if it is
+# missing, empty, or carries the marker file an earlier run wrote there. The
+# default folder (.last-run) is the runner's own and is always replaced.
+if [ -n "${TEST_OUT_DIR:-}" ] && [ -e "$OUT_DIR" ]; then
+    if [ ! -d "$OUT_DIR" ] || { [ -n "$(ls -A "$OUT_DIR")" ] && [ ! -e "$OUT_DIR/$OUT_MARKER" ]; }; then
+        echo "TEST_OUT_DIR ($OUT_DIR) exists, is not empty and is not a last-run folder (no $OUT_MARKER marker). Refusing to delete it."
+        echo "Nothing was run."
+        exit 1
+    fi
+fi
+
 # Guardrails (check-cache-bust.sh, check-no-sync-waits.sh): a changed asset needs a new
-# ?v= in the HTML that loads it. Runs on full and --affected runs, not on a
+# ?v= in the HTML that loads it. Runs on a full run, not on a
 # filtered run, and not on a CI shard (CI has a job of its own for it, so four
 # shards would not repeat it).
 CACHE_FAIL=0
-if [ -z "$PATTERN" ] && [ -z "$ONLY" ] && [ -z "$SHARD" ]; then
+if [ -z "$PATTERN" ] && [ -z "$ONLY_SET" ] && [ -z "$SHARD" ] && [ -z "${TEST_CASES_DIR:-}" ]; then
     bash ./check-cache-bust.sh || CACHE_FAIL=1
     bash ./check-no-sync-waits.sh || CACHE_FAIL=1
     echo
 fi
 
-# Every case is run with lib/coverage.js preloaded, which records the repo
-# files it reads into .coverage/<case>.json. That is the map --affected
-# selects from; it is rebuilt here on every run and never edited by hand.
-COVERAGE_DIR="$PWD/.coverage"
-PRELOAD="$PWD/lib/coverage.js"
+# Slot Chromes: on for the real suite, off for the self-test's made-up cases
+# (plain node scripts) unless TEST_SLOT_CHROME=1 asks for them.
+if [ -n "${TEST_CASES_DIR:-}" ] && [ "${TEST_SLOT_CHROME:-}" != 1 ]; then SLOT_CHROME=0; else SLOT_CHROME=1; fi
 
-# .coverage/_base is the commit the map is verified against: --affected diffs
-# from it. A full run or an --affected run moves it to the commit checked out
-# when the run STARTED, so a commit made mid-run still shows up in the next
-# diff. Moving it is safe even when cases fail, because a failed case drops
-# its own entry and lib/select.js runs an unknown case every time.
-HEAD_AT_START="$(git rev-parse HEAD 2>/dev/null || true)"
-ADVANCE_BASE=0
-advance_base() {
-    mkdir -p "$COVERAGE_DIR"
-    if [ -n "$HEAD_AT_START" ]; then echo "$HEAD_AT_START" > "$COVERAGE_DIR/_base"
-    else rm -f "$COVERAGE_DIR/_base"; fi
-}
-
-if [ "$AFFECTED" = "1" ] && [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then
-    BASE="$(cat "$COVERAGE_DIR/_base" 2>/dev/null || true)"
-    if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
-        echo "Affected: no verified base yet, so running the full suite."
-    else
-        # Both lists come out relative to the repo root, as select.js expects:
-        # tracked changes (committed since BASE, staged, or not) plus new
-        # files git does not know about yet.
-        ROOT="$(git rev-parse --show-toplevel)"
-        SELECTION="$( { git -C "$ROOT" diff --name-only --no-renames "$BASE" 2>/dev/null;
-                        git -C "$ROOT" ls-files --others --exclude-standard 2>/dev/null; } |
-                      node lib/select.js )"
-        case "$SELECTION" in
-            "ALL "*)
-                echo "Affected: ${SELECTION#ALL }, so running the full suite." ;;
-            "")
-                echo "Affected: no case reads anything changed since $(git rev-parse --short "$BASE") -- nothing to run."
-                advance_base
-                exit $CACHE_FAIL ;;
-            *)
-                ONLY="$SELECTION"
-                ADVANCE_BASE=1 ;;
-        esac
-    fi
-fi
-FULL=0
-if [ -z "$PATTERN" ] && [ -z "$ONLY" ]; then FULL=1; ADVANCE_BASE=1; fi
-# A shard is a slice, so it must not prune the map or move the base.
-if [ -n "$SHARD" ]; then FULL=0; ADVANCE_BASE=0; fi
-
-# Install puppeteer-core etc. on first run.
-if [ ! -d node_modules ]; then
+# Install puppeteer-core etc. on first run. Not for the self-test's made-up
+# cases, which are plain node scripts unless they use Chrome.
+if [ ! -d node_modules ] && [ "$SLOT_CHROME" = 1 ] && [ -z "${TEST_CASES_DIR:-}" ]; then
     echo "Installing test dependencies..."
     npm install --silent --no-audit --no-fund
 fi
@@ -131,9 +123,9 @@ fi
 # Collect the cases to run, in filename order.
 NAMES=()
 FILES=()
-for test in cases/*.js; do
+for test in "$CASES_DIR"/*.js; do
     name=$(basename "$test" .js)
-    if [ -n "$ONLY" ]; then
+    if [ -n "$ONLY_SET" ]; then
         case " $(echo $ONLY) " in
             *" $name "*) NAMES+=("$name"); FILES+=("$test") ;;
         esac
@@ -159,9 +151,7 @@ TOTAL=${#NAMES[@]}
 if [ -n "$SHARD" ]; then
     echo "Shard $SHARD: every ${SHARD_N}th case, starting at #$SHARD_I"
 fi
-if [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
-    echo "Affected: only the cases that read something changed since $(git rev-parse --short "$BASE")"
-elif [ -n "$ONLY" ]; then
+if [ -n "$ONLY_SET" ]; then
     echo "Selected: only the cases listed in TEST_CASES"
 elif [ -n "$PATTERN" ]; then
     echo "Filter: only cases matching \"$PATTERN\""
@@ -176,8 +166,215 @@ echo
 # Each case writes its own output to its own file. Nothing is printed while
 # cases are in flight: with several running at once, interleaved writes would
 # shred the failure diagnostics, which are the entire value of a failure.
-OUTDIR=$(mktemp -d)
-trap 'rm -rf "$OUTDIR"' EXIT
+#
+# Two folders. STATE is scratch (exit codes, timings, raw attempt logs) and is
+# deleted on exit. OUT_DIR (tests/.last-run/, git-ignored) is the record that
+# survives: replaced at the start of every run, one <case>.log per case run
+# plus summary.txt, written at the end. A failure is read with `cat`, never by
+# rerunning the suite. The lock (below) is taken before OUT_DIR is replaced, so
+# a run that is still waiting never wipes the folder of the run holding it.
+
+# ── Machine-wide test lock ───────────────────────────────────────────────────
+# Only one test run at a time on the machine, across gym-tracker AND kanban, so
+# concurrent agent sessions stop slowing each other down (about 12 Chromes once
+# fought for the machine and every run got slower). Full runs and pattern runs
+# both take it. A run that is refused before it starts (bad TEST_CASES, bad
+# TEST_SHARD, no cases matched, an unsafe TEST_OUT_DIR) never takes it or waits
+# for it.
+#
+# THE CONVENTION (kanban's run.sh copies it; keep the two identical, and see
+# the "Machine-wide test lock" section of tests/README.md):
+#   Where:    a DIRECTORY named machine-test-run.lock in the user's temp
+#             folder, found the same way in every session, whatever TMPDIR the
+#             session sets: on Git Bash/Windows $LOCALAPPDATA/Temp (through
+#             cygpath), otherwise /tmp. TEST_LOCK_FILE overrides the path; only
+#             check-runner.sh does.
+#   Contents: one file, <lock>/info, three lines, key=value:
+#               repo=<name of the repo's folder, e.g. gym-tracker>
+#               pid=<the runner's own $$ as Git Bash / Linux sees it>
+#               started=<epoch seconds>
+#   Take it:  `mkdir <lock>`, then write <lock>/info through bash's noclobber
+#             redirect (`set -C`), which creates it with O_CREAT|O_EXCL.
+#             Creating info is the atomic step, so two runs can never both
+#             win, and the winner's info is written in that same step. A bare
+#             mkdir is not enough: see claim_dir below.
+#   Held:     print once who holds it (repo, pid, since when), then poll every
+#             TEST_LOCK_POLL seconds (default 2) until it is free.
+#   Stale:    the holder's pid is gone (`kill -0` fails and /proc/<pid> is
+#             missing), or <lock>/info stays unreadable for 5 s. A waiter that
+#             read pid P and started S from a stale lock claims THAT lock with
+#             `claim_dir <lock>/takeover-P-S`. The claim lives inside the lock
+#             directory, so it belongs to that one lock: of all the runs that
+#             saw the same stale lock only one can make it, and a run whose
+#             view is out of date only leaves its claim folder in a newer
+#             lock (it never removes it: by then the folder may be another
+#             run's claim in a lock newer still). With the claim made, it re-reads the info; only if
+#             it still says P and S, and P is still gone, it retires the lock.
+#   Retire:   `mv -T <lock> <lock>.gone.<pid>.<random>`, one atomic rename,
+#             then delete the moved copy. Nothing ever removes a lock by path
+#             after a separate check: only the holder (its own pid in the
+#             info) or the one run with the claim retires a lock, so the lock
+#             at the path cannot change in between. If the rename fails
+#             (Windows can refuse while a file inside is open), `rm -rf <lock>`.
+#   Release:  the EXIT trap retires the directory if its info still names this
+#             pid. EXIT runs on a normal end, on a failure and on Ctrl+C / kill
+#             (the INT and TERM traps turn into `exit`).
+# A pid can be reused by an unrelated process after a crash; the run then waits
+# for it until it ends. A run killed between claiming a stale lock and retiring
+# it (a few milliseconds) leaves that lock claimed for good, and so does a
+# leftover claim folder in a lock whose holder then dies before writing its
+# info. Delete the directory by hand if any of these ever happens.
+
+# claim_dir <dir>: makes <dir> and succeeds only for the one call that made it.
+# A bare `mkdir` can't promise that: the uutils coreutils that Ubuntu 26.04
+# ships (CI's ubuntu-latest image) exits 0 when the directory appeared a moment
+# earlier from another process, so several racers all "won" a stale lock and
+# two suites overlapped. The winner is whoever creates <dir>/.made through
+# bash's noclobber redirect, which bash opens itself with O_CREAT|O_EXCL,
+# whatever coreutils the machine has. Used for the takeover claim and the
+# per-case claims; taking the lock does the same with its info file.
+claim_dir() { mkdir "$1" 2>/dev/null && ( set -C; : > "$1/.made" ) 2>/dev/null; }
+
+if [ -n "${LOCALAPPDATA:-}" ] && command -v cygpath > /dev/null 2>&1; then
+    LOCK_TMP="$(cygpath -u "$LOCALAPPDATA")/Temp"
+else
+    LOCK_TMP=/tmp
+fi
+LOCK_DIR="${TEST_LOCK_FILE:-$LOCK_TMP/machine-test-run.lock}"
+LOCK_INFO="$LOCK_DIR/info"
+LOCK_POLL="${TEST_LOCK_POLL:-2}"
+LOCK_HELD=0
+LOCK_REPO=$(basename "$(cd .. && pwd)")
+
+# read_lock_info: one read of <lock>/info into INFO_REPO, INFO_PID and
+# INFO_STARTED (empty when missing). Returns 1 if the lock directory is gone.
+read_lock_info() {
+    local text
+    text=$(cat "$LOCK_INFO" 2>/dev/null)
+    INFO_REPO=$(sed -n 's/^repo=//p' <<< "$text" | head -n 1)
+    INFO_PID=$(sed -n 's/^pid=//p' <<< "$text" | head -n 1)
+    INFO_STARTED=$(sed -n 's/^started=//p' <<< "$text" | head -n 1)
+    [ -n "$text" ] || [ -d "$LOCK_DIR" ]
+}
+pid_alive() { [[ "$1" =~ ^[0-9]+$ ]] && { kill -0 "$1" 2>/dev/null || [ -e "/proc/$1" ]; }; }
+
+# retire_lock: moves the lock directory aside in one rename, then deletes the
+# moved copy. Only call it for a lock this run owns (its own, or the stale one
+# it has claimed): nobody else retires such a lock, so the path still names it.
+retire_lock() {
+    local gone="$LOCK_DIR.gone.$$.$RANDOM"
+    if mv -T "$LOCK_DIR" "$gone" 2>/dev/null; then
+        rm -rf "$gone" 2>/dev/null
+    else
+        rm -rf "$LOCK_DIR" 2>/dev/null
+    fi
+}
+
+release_lock() {
+    if [ "$LOCK_HELD" = 1 ] && read_lock_info && [ "$INFO_PID" = "$$" ]; then
+        retire_lock
+    fi
+    LOCK_HELD=0
+}
+
+# takeover_stale <pid> <started>: the values read from a lock whose pid is
+# gone. Claims that lock and retires it if, with the claim made, the info still
+# says the same and the pid is still gone. Anything else leaves it alone. For a
+# lock with no pid in its info, the caller has watched it for 5 s through its
+# own watch-<pid> folder inside it; the folder still being there proves it is
+# still the same lock and not a new one that is about to write its info.
+takeover_stale() {
+    claim_dir "$LOCK_DIR/takeover-$1-$2" || return 0
+    if [ -z "$1" ] && [ ! -d "$LOCK_DIR/watch-$$" ]; then           # not the lock it watched
+        return 0                                    # leave the claim: see Stale above
+    fi
+    if read_lock_info && [ "$INFO_PID" = "$1" ] && [ "$INFO_STARTED" = "$2" ] && ! pid_alive "$1"; then
+        echo "Taking over a stale test lock (pid ${1:-?} is gone)."
+        retire_lock
+    fi
+}
+
+acquire_lock() {
+    local announced=0 watch_since=
+    while :; do
+        if mkdir "$LOCK_DIR" 2>/dev/null && ( set -C
+            printf 'repo=%s\npid=%s\nstarted=%s\n' "$LOCK_REPO" "$$" "$(date +%s)" > "$LOCK_INFO" ) 2>/dev/null; then
+            LOCK_HELD=1
+            rm -rf "$LOCK_DIR".gone.* 2>/dev/null        # copies a retire could not delete
+            return
+        fi
+        read_lock_info || continue                            # released just now: try again
+        if [ -z "$INFO_PID" ]; then                           # holder is mid-write?
+            if [ -z "$watch_since" ]; then watch_since=$SECONDS; mkdir "$LOCK_DIR/watch-$$" 2>/dev/null; fi
+            if [ $((SECONDS - watch_since)) -lt 5 ]; then sleep 0.2; continue; fi
+            if [ ! -d "$LOCK_DIR/watch-$$" ]; then watch_since=; continue; fi   # a new lock: watch it afresh
+        fi
+        if ! pid_alive "$INFO_PID"; then
+            takeover_stale "$INFO_PID" "$INFO_STARTED"
+            watch_since=
+            sleep 0.05
+            continue
+        fi
+        watch_since=
+        if [ "$announced" = 0 ]; then
+            echo "Another test run holds the machine-wide test lock: ${INFO_REPO:-?} (pid $INFO_PID), started $(date -d "@$INFO_STARTED" +%H:%M:%S 2>/dev/null || echo '?'), $(( $(date +%s) - ${INFO_STARTED:-0} ))s ago."
+            echo "Waiting for it to finish (lock: $LOCK_DIR)..."
+            announced=1
+        fi
+        sleep "$LOCK_POLL"
+    done
+}
+
+# ── Interrupted runs ─────────────────────────────────────────────────────────
+# Ctrl+C or kill stops the cases still in flight, then publishes what was
+# collected so far (a log per case that started, a summary marked INTERRUPTED)
+# into OUT_DIR before the scratch folder is deleted, then releases the lock.
+INTERRUPTED=0
+FINISHED=0
+OUT_READY=0
+
+publish_interrupted() {
+    local i s name result finished_n=0
+    for i in "${!NAMES[@]}"; do
+        s=$(printf '%04d' "$i")
+        [ -f "$STATE/$s.log" ] || continue
+        name="${NAMES[$i]}"
+        if [ -f "$STATE/$s.code" ]; then
+            finished_n=$((finished_n + 1))
+            if [ "$(cat "$STATE/$s.code")" = 0 ]; then result="PASS"; else result="FAIL (first attempt)"; fi
+        else
+            result="INTERRUPTED (the run was stopped while this case was running)"
+        fi
+        { echo "RESULT: $result"; cat "$STATE/$s.log"; } > "$OUT_DIR/$name.log" 2>/dev/null
+    done
+    {
+        echo "================================================"
+        echo "  INTERRUPTED: the run was stopped before it finished."
+        echo "  $finished_n / $TOTAL case(s) had finished their first attempt."
+        echo "Per-case output (cases that had started): $OUT_DIR/<case>.log"
+        echo "================================================"
+    } > "$OUT_DIR/summary.txt" 2>/dev/null
+}
+
+STATE=$(mktemp -d)
+trap 'INTERRUPTED=1; exit 130' INT
+trap 'INTERRUPTED=1; exit 143' TERM
+# On Ctrl+C / kill, cases still in flight (and their Chromes) are stopped too,
+# so the next run does not start on a machine still busy with this one.
+cleanup() {
+    local j
+    for j in $(jobs -rp); do kill_tree "$j"; done
+    slot_stop
+    if [ "$INTERRUPTED" = 1 ] && [ "$FINISHED" = 0 ] && [ "$OUT_READY" = 1 ]; then publish_interrupted; fi
+    release_lock
+    rm -rf "$STATE" 2>/dev/null
+}
+trap cleanup EXIT
+acquire_lock
+rm -rf "$OUT_DIR"
+mkdir -p "$OUT_DIR"
+: > "$OUT_DIR/$OUT_MARKER"
+OUT_READY=1
 
 # A case gets TEST_CASE_TIMEOUT seconds (default 120, about ten times the
 # slowest case) and is then killed. Without a limit, one hung case -- a Chrome
@@ -200,35 +397,104 @@ kill_tree() {
     fi
 }
 
-# run_case <index> <suffix>: runs one case into $OUTDIR/<slot><suffix>.log and
-# writes 0 (pass) or 1 (fail or timeout) to the matching .code file.
+# Milliseconds since the epoch (bash 5's $EPOCHREALTIME is microseconds).
+now_ms() { local t="${EPOCHREALTIME/./}"; echo $(( t / 1000 )); }
+
+# ── Slot Chromes ─────────────────────────────────────────────────────────────
+# Each job slot is a worker (below) with one long-lived Chrome, held by a small
+# node process (lib/slot-chrome.js) that writes the Chrome's DevTools endpoint
+# to a file and exits if the Chrome dies. The worker checks that process before
+# every case and starts a fresh Chrome if it is gone, so a killed Chrome costs
+# the case that was on it (which then goes through the one-retry path below),
+# not the rest of the slot. SLOT_* belong to whichever shell is running the
+# slot: a worker subshell, or the main shell for the retry pass.
+SLOT_PID=""
+SLOT_WS=""
+
+SLOT_PROFILE=""
+
+# The Chrome is force-killed (a graceful exit is the 2.6 to 19.5 s this design
+# removes), which skips Puppeteer's own cleanup of its temp profile. So each
+# slot Chrome gets a profile folder of a known name under $STATE, removed here
+# best effort: Windows may hold a file for a moment, and a leftover is picked up
+# by the final `rm -rf $STATE` and never fails the run.
+slot_stop() {
+    if [ -n "$SLOT_PID" ] && kill -0 "$SLOT_PID" 2>/dev/null; then kill_tree "$SLOT_PID"; fi
+    if [ -n "$SLOT_PROFILE" ]; then rm -rf "$SLOT_PROFILE" 2>/dev/null || true; fi
+    SLOT_PID=""; SLOT_WS=""; SLOT_PROFILE=""
+}
+
+# slot_ensure <name> <case log>: leaves SLOT_WS naming a live Chrome, starting
+# (or replacing) it if needed. Returns 1 and writes why to the case log if it
+# cannot.
+slot_ensure() {
+    [ "$SLOT_CHROME" = 1 ] || return 0
+    local f="$STATE/chrome-$1.ws" n
+    if [ -n "$SLOT_PID" ] && kill -0 "$SLOT_PID" 2>/dev/null; then return 0; fi
+    slot_stop
+    rm -f "$f"
+    SLOT_PROFILE="$STATE/profile-$1-$RANDOM$RANDOM"
+    node lib/slot-chrome.js "$f" "$SLOT_PROFILE" > "$STATE/chrome-$1.log" 2>&1 &
+    SLOT_PID=$!
+    for n in $(seq 1 300); do                       # up to 60 s
+        if [ -s "$f" ]; then SLOT_WS=$(cat "$f"); return 0; fi
+        kill -0 "$SLOT_PID" 2>/dev/null || break
+        sleep 0.2
+    done
+    { echo "Could not start Chrome for slot $1:"; cat "$STATE/chrome-$1.log"; } >> "$2"
+    slot_stop
+    return 1
+}
+
+# run_case <index> <suffix> <slot name>: runs one case into
+# $STATE/<index><suffix>.log on that slot's Chrome and writes 0 (pass) or 1
+# (fail or timeout) to the matching .code file and its duration in ms to .ms.
 run_case() {
-    local slot pid start code
-    slot=$(printf '%04d' "$1")
-    node -r "$PRELOAD" "${FILES[$1]}" > "$OUTDIR/$slot$2.log" 2>&1 &
+    local key pid start code t0
+    key=$(printf '%04d' "$1")
+    t0=$(now_ms)
+    : > "$STATE/$key$2.log"
+    if ! slot_ensure "$3" "$STATE/$key$2.log"; then
+        echo 1 > "$STATE/$key$2.code"
+        echo $(( $(now_ms) - t0 )) > "$STATE/$key$2.ms"
+        return
+    fi
+    TEST_CHROME_WS="$SLOT_WS" node "${FILES[$1]}" >> "$STATE/$key$2.log" 2>&1 &
     pid=$!
     start=$SECONDS
     while kill -0 "$pid" 2>/dev/null; do
         if [ $(( SECONDS - start )) -ge "$CASE_TIMEOUT" ]; then
             kill_tree "$pid"
             wait "$pid" 2>/dev/null
-            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its Chrome. Its output up to then is above." >> "$OUTDIR/$slot$2.log"
-            echo 1 > "$OUTDIR/$slot$2.code"
+            # A hung case may have left a page (or a wedged Chrome) behind, so
+            # the slot gets a fresh Chrome for its next case.
+            slot_stop
+            echo "TIMED OUT after ${CASE_TIMEOUT}s (TEST_CASE_TIMEOUT); killed it and its slot's Chrome. Its output up to then is above." >> "$STATE/$key$2.log"
+            echo 1 > "$STATE/$key$2.code"
+            echo $(( $(now_ms) - t0 )) > "$STATE/$key$2.ms"
             return
         fi
         sleep 0.5
     done
     wait "$pid"; code=$?
-    [ "$code" = 0 ] && echo 0 > "$OUTDIR/$slot$2.code" || echo 1 > "$OUTDIR/$slot$2.code"
+    [ "$code" = 0 ] && echo 0 > "$STATE/$key$2.code" || echo 1 > "$STATE/$key$2.code"
+    echo $(( $(now_ms) - t0 )) > "$STATE/$key$2.ms"
 }
 
-for i in "${!NAMES[@]}"; do
-    run_case "$i" "" &
-    # Cap in-flight jobs. `wait -n` returns as soon as any one finishes, so a
-    # slow case never blocks the queue behind it.
-    while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do
-        wait -n
+# One worker per slot. Workers take the next unclaimed case in filename order;
+# the claim is a claim_dir (see the lock above), so no case runs twice, and a slow case
+# never holds up the queue behind it.
+worker() {
+    local i
+    for i in "${!NAMES[@]}"; do
+        claim_dir "$STATE/claim.$i" || continue
+        run_case "$i" "" "$1"
     done
+    slot_stop
+}
+
+for ((w = 1; w <= JOBS; w++)); do
+    worker "$w" &
 done
 wait
 
@@ -238,84 +504,104 @@ wait
 # other Chromes competed for the machine -- and a quiet machine removes that
 # cause. A real bug fails the same way twice, and only a case that fails both
 # times turns the run red. A pass on retry is still reported as one, with the
-# first attempt's output, so a flake gets looked into rather than hidden. Its
-# coverage entry is the one the passing retry wrote, since that ran last.
+# first attempt's output, so a flake gets looked into rather than hidden.
 RETRY=()
 for i in "${!NAMES[@]}"; do
-    [ "$(cat "$OUTDIR/$(printf '%04d' "$i").code" 2>/dev/null)" = "0" ] || RETRY+=("$i")
+    [ "$(cat "$STATE/$(printf '%04d' "$i").code" 2>/dev/null)" = "0" ] || RETRY+=("$i")
 done
 if [ "${#RETRY[@]}" -gt 0 ]; then
     echo "Retrying ${#RETRY[@]} failed case(s) one at a time..."
     echo
-    for i in "${RETRY[@]}"; do run_case "$i" .retry; done
+    # "Retried once on a fresh Chrome": each retry gets a Chrome started for it,
+    # never one left over from the previous retry (which may be the one that
+    # just crashed, or one a hung case wedged).
+    for i in "${RETRY[@]}"; do
+        slot_stop
+        run_case "$i" .retry retry
+    done
+    slot_stop
 fi
 
 # Report in filename order regardless of the order they finished, so two runs
-# of the same filter are diffable against each other.
+# of the same filter are diffable against each other. Each case's file in
+# OUT_DIR holds its result line, its first attempt's output and, if it was
+# retried, the retry's output. Cases that failed then passed are FLAKY.
+secs() { awk -v ms="$1" 'BEGIN { printf "%.1fs", ms / 1000 }'; }
+
+# attempt_logs <key> <indent>: the first attempt's output, then the retry's.
+# <indent> is prefixed to every line of the output (empty for the file in
+# OUT_DIR, four spaces for the console).
+attempt_logs() {
+    echo "─── first attempt's output ──────────────────"
+    sed "s/^/$2/" "$STATE/$1.log" 2>/dev/null
+    echo "─── retry's output ──────────────────────────"
+    sed "s/^/$2/" "$STATE/$1.retry.log" 2>/dev/null
+}
+
 FAIL=0
 PASSED=0
-RETRY_PASSED=()
+PASSED_LIST=(); FAILED_LIST=(); FLAKY_LIST=()
 for i in "${!NAMES[@]}"; do
-    slot=$(printf '%04d' "$i")
-    code=$(cat "$OUTDIR/$slot.code" 2>/dev/null || echo 1)
-    printf "▶ %s ... " "${NAMES[$i]}"
+    key=$(printf '%04d' "$i")
+    name="${NAMES[$i]}"
+    code=$(cat "$STATE/$key.code" 2>/dev/null || echo 1)
+    t1=$(secs "$(cat "$STATE/$key.ms" 2>/dev/null || echo 0)")
+    t2=$(secs "$(cat "$STATE/$key.retry.ms" 2>/dev/null || echo 0)")
+    out="$OUT_DIR/$name.log"
+    printf "▶ %s ... " "$name"
     if [ "$code" = "0" ]; then
-        echo "PASS"
+        echo "PASS ($t1)"
         PASSED=$((PASSED + 1))
-    elif [ "$(cat "$OUTDIR/$slot.retry.code" 2>/dev/null)" = "0" ]; then
-        echo "PASS (retry)"
-        PASSED=$((PASSED + 1))
-        RETRY_PASSED+=("${NAMES[$i]}")
-        echo "─── first attempt's output ──────────────────"
-        sed 's/^/    /' "$OUTDIR/$slot.log" 2>/dev/null
-        echo "─────────────────────────────────────────────"
+        PASSED_LIST+=("$name  $t1")
+        { echo "RESULT: PASS ($t1)"; cat "$STATE/$key.log"; } > "$out"
     else
-        echo "FAIL"
-        # A failed case may have stopped before loading everything it
-        # normally reads, so its list cannot be trusted. Dropping it makes the
-        # case unknown to lib/select.js, which then runs it on every push until
-        # it passes again.
-        rm -f "$COVERAGE_DIR/${NAMES[$i]}.json"
-        echo "─── first attempt's output ──────────────────"
-        sed 's/^/    /' "$OUTDIR/$slot.log" 2>/dev/null
-        echo "─── retry's output ──────────────────────────"
-        sed 's/^/    /' "$OUTDIR/$slot.retry.log" 2>/dev/null
+        if [ "$(cat "$STATE/$key.retry.code" 2>/dev/null)" = "0" ]; then
+            echo "FLAKY: failed ($t1), passed on retry ($t2)"
+            PASSED=$((PASSED + 1))
+            FLAKY_LIST+=("$name  first attempt failed ($t1), retry passed ($t2)")
+            { echo "RESULT: FLAKY (first attempt failed in $t1, retry passed in $t2)"; attempt_logs "$key" ""; } > "$out"
+            # A GitHub Actions annotation puts the flake on the run's summary page.
+            if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning title=FLAKY test::$name failed once and passed on retry"; fi
+        else
+            echo "FAIL ($t1, retry $t2)"
+            FAILED_LIST+=("$name  failed twice ($t1, retry $t2)")
+            { echo "RESULT: FAIL (first attempt $t1, retry $t2)"; attempt_logs "$key" ""; } > "$out"
+            FAIL=1
+        fi
+        attempt_logs "$key" "    "
         echo "─────────────────────────────────────────────"
-        FAIL=1
     fi
 done
 
-# A full run has just rewritten the entry of every case that exists, so any
-# other entry belongs to a deleted or renamed case.
-if [ "$FULL" = "1" ] && [ -d "$COVERAGE_DIR" ]; then
-    for entry in "$COVERAGE_DIR"/*.json; do
-        [ -e "$entry" ] || continue
-        [ -f "cases/$(basename "$entry" .json).js" ] || rm -f "$entry"
-    done
-fi
-
-# Every case the changes since the old base could affect has now rerun and
-# rewritten (or, on failure, dropped) its entry, so the map is verified up to
-# the commit this run started on. Uncommitted edits were run too; they show up
-# in the next diff anyway, which can only select more, never fewer.
-if [ "$ADVANCE_BASE" = "1" ]; then advance_base; fi
+# summary.txt: the same text the run ends with. Failed and FLAKY come before
+# the passed list because they are what a reader is after.
+write_summary() {
+    echo "================================================"
+    if [ -n "$SHARD" ]; then
+        echo "  $PASSED / $TOTAL passed  (shard $SHARD)"
+    elif [ -n "$ONLY_SET" ]; then
+        echo "  $PASSED / $TOTAL passed  (selected cases only)"
+    elif [ -n "$PATTERN" ]; then
+        echo "  $PASSED / $TOTAL passed  (filtered: \"$PATTERN\")"
+    else
+        echo "  $PASSED / $TOTAL passed"
+    fi
+    if [ "${#FAILED_LIST[@]}" -gt 0 ]; then
+        echo "FAILED (${#FAILED_LIST[@]}):"; printf '  %s\n' "${FAILED_LIST[@]}"
+    fi
+    if [ "${#FLAKY_LIST[@]}" -gt 0 ]; then
+        echo "FLAKY (${#FLAKY_LIST[@]}), passed only on retry, look into these:"; printf '  %s\n' "${FLAKY_LIST[@]}"
+    fi
+    if [ "${#PASSED_LIST[@]}" -gt 0 ]; then
+        echo "PASSED (${#PASSED_LIST[@]}):"; printf '  %s\n' "${PASSED_LIST[@]}"
+    fi
+    if [ "$CACHE_FAIL" = "1" ]; then echo "guardrail check FAILED (see the top of this output)"; fi
+    echo "Per-case output: $OUT_DIR/<case>.log (read it with cat)"
+    echo "================================================"
+}
+write_summary > "$OUT_DIR/summary.txt"
+FINISHED=1
 
 echo
-echo "================================================"
-if [ -n "$SHARD" ]; then
-    echo "  $PASSED / $TOTAL passed  (shard $SHARD)"
-elif [ "$AFFECTED" = "1" ] && [ -n "$ONLY" ]; then
-    echo "  $PASSED / $TOTAL passed  (affected cases only; the other $(( $(ls cases/*.js | wc -l) - TOTAL )) cannot see these changes)"
-elif [ -n "$ONLY" ]; then
-    echo "  $PASSED / $TOTAL passed  (selected cases only)"
-elif [ -n "$PATTERN" ]; then
-    echo "  $PASSED / $TOTAL passed  (filtered: \"$PATTERN\")"
-else
-    echo "  $PASSED / $TOTAL passed"
-fi
-if [ "${#RETRY_PASSED[@]}" -gt 0 ]; then
-    echo "  ${#RETRY_PASSED[@]} passed only on retry: ${RETRY_PASSED[*]}"
-fi
-if [ "$CACHE_FAIL" = "1" ]; then echo "  guardrail check FAILED (see the top of this output)"; fi
-echo "================================================"
+cat "$OUT_DIR/summary.txt"
 exit $(( FAIL || CACHE_FAIL ))
