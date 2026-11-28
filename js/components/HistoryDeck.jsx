@@ -35,6 +35,28 @@
             return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
         }
 
+        // The start of a session's local date, or null when it has no usable
+        // date (missing, null or unparseable). The one place that decides
+        // which sessions count, for the deck and for the opening date.
+        function sessionDate(w) {
+            if (!w || w.date == null) return null;
+            const d = startOfDate(w.date);
+            return isNaN(d) ? null : d;
+        }
+
+        // The date key History opens on: the newest session dated on or before
+        // today, else today.
+        function historyOpeningDateKey(workoutHistory, today) {
+            const todayDate = startOfDate(today);
+            let newest = null;
+            (workoutHistory || []).forEach((w) => {
+                const d = sessionDate(w);
+                if (!d || d > todayDate) return;
+                if (!newest || d > newest) newest = d;
+            });
+            return historyDateKey(newest || todayDate);
+        }
+
         function historyKeyToDate(key) {
             const [y, m, d] = key.split('-').map(Number);
             return new Date(y, m - 1, d);
@@ -156,7 +178,7 @@
 
         // today: App's date string, so the deck grows by a card when the date
         // rolls over. viewingDate: the YYYY-MM-DD key of the card on screen,
-        // owned by App so the History tab can put it back on today; a key
+        // owned by App so the History tab can put it back on the newest session; a key
         // rather than an index, so a new date added at the end leaves you on
         // the card you were reading.
         function HistoryDeck({ workoutHistory, exercises, onEditWorkout, foregroundAt,
@@ -166,8 +188,8 @@
             const sessionsByDate = new Map();
             let first = todayDate;
             workoutHistory.forEach((w) => {
-                const d = startOfDate(w.date);
-                if (isNaN(d)) return;
+                const d = sessionDate(w);
+                if (!d) return;
                 sessionsByDate.set(historyDateKey(d), w);
                 if (d < first) first = d;
             });

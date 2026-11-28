@@ -40,8 +40,8 @@
             // The history entry whose Time button was tapped, or null. Distinct from
             // showDayBreakdown, which is always today's session.
             // The History card on screen, as a YYYY-MM-DD date key. The History
-            // tab puts it back on today; see HistoryDeck.
-            const [viewingDate, setViewingDate] = useState(() => historyDateKey(new Date()));
+            // tab puts it back on the newest session's date; see HistoryDeck.
+            const [viewingDate, setViewingDate] = useState(() => historyOpeningDateKey(workoutHistory, new Date()));
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
             // Which card the deck is parked on. It lives up here for the same
             // reason expandedWeightBreakdown does: SwipeDeck is unmounted while
@@ -1269,12 +1269,12 @@
                             className={`bottom-nav-btn ${currentView === 'weekly' ? 'active' : ''}`}
                             onClick={() => {
                                 // Re-read the date, as a return to the foreground
-                                // does: History opens on today even when the app
+                                // does: History opens on the newest session even when the app
                                 // stayed on screen across midnight.
                                 const now = new Date();
                                 setToday(now.toDateString());
                                 setCurrentView('weekly');
-                                setViewingDate(historyDateKey(now));
+                                setViewingDate(historyOpeningDateKey(workoutHistory, now));
                                 window.scrollTo(0, 0);
                             }}
                         >

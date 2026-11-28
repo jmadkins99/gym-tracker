@@ -4,9 +4,10 @@
 // from the date of the first session ever logged through today.
 //
 //   (0) With no sessions at all, the deck is a single History card for today, a rest day.
-//   (1) It opens on today. Today has no session, so the card is a rest day:
-//       the date and "No workout", with no day label, total or Edit gear, and
-//       the forward controls are disabled.
+//   (1) It opens on the newest session's date (24 Nov), not on today (25 Nov),
+//       so a day with nothing logged does not open on a History card for a rest day. › goes
+//       forward to today's rest day: the date and "No workout", with no day
+//       label, total or Edit gear, and the forward controls are disabled.
 //   (2) ‹ and › move one date; a session's card shows its full date and day
 //       label ("Posterior"), and no "Day N" counter.
 //   (3) "← Week" and "Week →" move exactly 7 calendar dates, and a jump that
@@ -17,7 +18,7 @@
 //   (5) A timed past card shows its total after the day label and each row's
 //       time; its Edit gear opens that session's Edit modal.
 //   (6) Tapping the History tab, from Workout or from History itself, puts the
-//       deck back on today.
+//       deck back on the newest session's date.
 //   (7) When the date rolls over with History open, the deck gains the new
 //       today at the end and stays on the card being read.
 //
@@ -42,6 +43,11 @@ const FLIES = 'pecs-transverse-shoulder-adduction';
 
 function history() {
     return [
+        // The newest session on or before today, late in the evening: 25 Nov
+        // 03:00 in UTC, so a UTC comparison would call it the 25th. Listed
+        // out of order, so the last array entry is not the newest.
+        workoutEntry({ date: '2026-11-24T20:00:00-07:00', day: 'posterior-2',
+            exercises: [{ id: CURLS, weight: '105', reps: '6' }] }),
         // The first session ever logged: the deck's first card.
         workoutEntry({ date: '2026-11-02T09:00:00-07:00', day: 'posterior-2',
             exercises: [{ id: CURLS, weight: '100', reps: '6' }] }),
@@ -49,8 +55,9 @@ function history() {
         workoutEntry({ date: '2026-11-18T09:00:00-07:00', day: 'anterior-2',
             exercises: [{ id: FLIES, weight: '80', reps: '7',
                 startedAt: '2026-11-18T09:00:00-07:00', loggedAt: '2026-11-18T09:04:00-07:00' }] }),
-        workoutEntry({ date: '2026-11-24T09:00:00-07:00', day: 'posterior-2',
-            exercises: [{ id: CURLS, weight: '105', reps: '6' }] }),
+        // Dated after today (an import, say): never the opening date.
+        workoutEntry({ date: '2026-11-30T09:00:00-07:00', day: 'anterior-2',
+            exercises: [{ id: FLIES, weight: '90', reps: '5' }] }),
     ];
 }
 
@@ -124,10 +131,17 @@ async function setVisibility(page, state) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        // === (1) Opens on today, a rest day ================================
+        // === (1) Opens on the newest session; › reaches today's rest day ====
         await bottomNav(page, 'History');
-        eq(await shownDate(page), '2026-11-25', 'History opens on today');
+        eq(await shownDate(page), '2026-11-24', 'History opens on the newest session, not today');
         let card = await readCard(page);
+        ok(card.session, 'the newest date has its session');
+        eq(card.label, 'Posterior', 'with its day label');
+        eq(await disabled(page), { back: false, prev: false, next: false, forward: false },
+            'the deck still runs on to today, so every footer button is live');
+        await historyPress(page, 'next');
+        eq(await shownDate(page), '2026-11-25', '› goes forward to today');
+        card = await readCard(page);
         ok(!card.session, 'today has no session');
         ok(card.text.indexOf('No workout') !== -1, 'a rest day reads "No workout"');
         eq(card.heading, 'Wednesday, November 25, 2026', 'with its full date');
@@ -224,13 +238,13 @@ async function setVisibility(page, state) {
         await waitFor(page, 'the Edit modal to close', () => !document.querySelector('.modal-overlay'));
         eq(await shownDate(page), '2026-11-18', 'the deck stays on the card after the modal');
 
-        // === (6) The History tab puts it back on today =====================
+        // === (6) The History tab puts it back on the newest session =======
         await bottomNav(page, 'History');
-        eq(await shownDate(page), '2026-11-25', 'tapping History while on History returns to today');
+        eq(await shownDate(page), '2026-11-24', 'tapping History while on History returns to the newest session');
         await historyGoTo(page, '2026-11-20');
         await bottomNav(page, 'Workout');
         await bottomNav(page, 'History');
-        eq(await shownDate(page), '2026-11-25', 'coming back from Workout opens on today');
+        eq(await shownDate(page), '2026-11-24', 'coming back from Workout opens on the newest session');
 
         // === (7) Midnight with History open ================================
         await historyGoTo(page, '2026-11-20');
@@ -247,11 +261,14 @@ async function setVisibility(page, state) {
         eq((await disabled(page)).forward, true, 'and is the deck\'s last card');
 
         // Another midnight passes with the app on screen (no visibilitychange):
-        // a tap on History still opens on the real today.
+        // a tap on History still opens on the newest session, and the deck
+        // has grown to the real today.
         await page.evaluate((ms) => window.__advanceClock(ms), DAY_MS);
         await bottomNav(page, 'History');
-        await waitFor(page, 'History to open on 27 Nov',
-            () => (document.querySelector('[data-history-shown]') || {}).getAttribute?.('data-history-shown') === '2026-11-27');
+        await waitFor(page, 'History to open on 24 Nov',
+            () => (document.querySelector('[data-history-shown]') || {}).getAttribute?.('data-history-shown') === '2026-11-24');
+        await historyGoTo(page, '2026-11-27');
+        eq((await disabled(page)).forward, true, '27 Nov, the real today, is the last card');
 
         eq(errors, [], 'no page errors');
         console.log('PASS');
