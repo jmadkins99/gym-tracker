@@ -34,14 +34,13 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap } = require('../lib/browser');
 const { setWeightAndOpen } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 const NS = 'gym-local:';
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const PRESET = {
     'erectors-spinal-extension': { gympin: true, stackMax: 260 },
@@ -56,47 +55,28 @@ function currentConfigVersion(src) {
 }
 
 async function openManageExercises(page) {
-    await page.click('.settings-btn');
-    await sleep(200);
-    const opened = await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises'));
-        if (!btn) return false;
-        btn.click();
-        return true;
-    });
-    ok(opened, 'opened Manage Exercises');
-    await sleep(300);
+    await tap(page, '.settings-btn');
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the exercise rows',
+        () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
 async function closeSettings(page) {
-    await page.evaluate(() => {
-        const back = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Back to Settings'));
-        if (back) back.click();
-    });
-    await sleep(200);
-    await page.evaluate(() => {
-        const close = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.trim() === 'Close');
-        if (close) close.click();
-    });
-    await sleep(300);
+    await tap(page, '.modal-btn', { text: /Back to Settings/ });
+    await tap(page, '.modal-btn', { text: 'Close' });
+    await waitFor(page, 'Settings to close', () => !document.querySelector('.modal'));
 }
 
 const rowSel = (id) => `.exercise-row[data-exercise-id="${id}"]`;
 
+// Edit swaps the row's Edit button for Save and Cancel, and either of those
+// swaps it back, so the press has landed once the other button shows.
 async function rowButton(page, id, label) {
-    const clicked = await page.evaluate((sel, label) => {
-        const row = document.querySelector(sel);
-        const btn = row && Array.from(row.querySelectorAll('button'))
-            .find(b => b.textContent.trim() === label);
-        if (!btn) return false;
-        btn.click();
-        return true;
-    }, rowSel(id), label);
-    ok(clicked, `clicked ${label} on ${id}`);
-    await sleep(250);
+    const next = label === 'Edit' ? 'Save' : 'Edit';
+    await tap(page, rowSel(id) + ' button', { text: label });
+    await waitFor(page, `${label} on ${id} to show its ${next} button`, (sel, next) =>
+        Array.from(document.querySelectorAll(sel + ' button'))
+            .some(b => b.textContent.trim() === next), rowSel(id), next);
 }
 
 // The Gympin controls as the user sees them on one row.
@@ -119,12 +99,14 @@ async function readGympinForm(page, id) {
     }, rowSel(id));
 }
 
+// The checkbox itself is 0x0 and transparent; what a finger hits is the track
+// drawn right after it, inside the same <label>. The row has other switches,
+// so the track is found from the Gympin checkbox rather than the row.
 async function setSwitch(page, id, on) {
-    await page.evaluate((sel, on) => {
-        const box = document.querySelector(sel + ' input[data-field="gympin"]');
-        if (box.checked !== on) box.click();
-    }, rowSel(id), on);
-    await sleep(150);
+    const box = rowSel(id) + ' input[data-field="gympin"]';
+    if (await page.$eval(box, (b) => b.checked) !== on) await tap(page, box + ' + .switch-track');
+    await waitFor(page, `the Gympin switch on ${id} to read ${on ? 'on' : 'off'}`,
+        (sel, on) => document.querySelector(sel).checked === on, box, on);
 }
 
 async function setValue(page, selector, value) {
@@ -134,7 +116,6 @@ async function setValue(page, selector, value) {
         Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, v);
         el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
     }, selector, String(value));
-    await sleep(200);
 }
 
 async function readSaved(page) {

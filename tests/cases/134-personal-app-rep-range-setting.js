@@ -22,7 +22,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap } = require('../lib/browser');
 const { ACTIVE, readDeckCard, goToCardAndLog } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq } = require('../lib/assert');
@@ -47,35 +47,24 @@ const lastSession = (reps) => [workoutEntry({
 
 async function openManageExercises(page) {
     await page.click('.settings-btn');
-    await waitFor(page, 'the Manage Exercises button',
-        () => Array.from(document.querySelectorAll('.modal-btn'))
-            .some(b => b.textContent.includes('Manage Exercises')));
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.includes('Manage Exercises')).click();
-    });
+    await tap(page, '.modal-btn', { text: /Manage Exercises/ });
     await waitFor(page, 'the exercise rows',
         () => document.querySelectorAll('.exercise-row').length > 0);
 }
 
 async function clickPencil(page, id) {
-    await page.evaluate((id) => {
-        const row = document.querySelector(`.exercise-row[data-exercise-id="${id}"]`);
-        Array.from(row.querySelectorAll('button'))
-            .find(b => b.textContent.trim() === 'Edit').click();
-    }, id);
+    await tap(page, `.exercise-row[data-exercise-id="${id}"] button`, { text: 'Edit' });
     await waitFor(page, `the rep range fields on ${id}`,
         (id) => !!document.querySelector(
             `.exercise-row[data-exercise-id="${id}"] select[data-field="repMin"]`), id);
 }
 
 async function clickRowButton(page, id, label) {
-    await page.evaluate((id, label) => {
-        const row = document.querySelector(`.exercise-row[data-exercise-id="${id}"]`);
-        Array.from(row.querySelectorAll('button'))
-            .find(b => b.textContent.trim() === label).click();
-    }, id, label);
-    await new Promise(r => setTimeout(r, 100));
+    await tap(page, `.exercise-row[data-exercise-id="${id}"] button`, { text: label });
+    // Save and Cancel both close the row, which shows its Edit button again.
+    await waitFor(page, `${id} to leave edit mode after ${label}`, (id) =>
+        Array.from(document.querySelectorAll(`.exercise-row[data-exercise-id="${id}"] button`))
+            .some(b => b.textContent.trim() === 'Edit'), id);
 }
 
 // Native setter + change event: React ignores a plain `.value =` assignment.
@@ -88,7 +77,6 @@ async function choose(page, id, field, value) {
         setter.call(select, value);
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }, id, field, value);
-    await new Promise(r => setTimeout(r, 50));
 }
 
 const readRange = (page, id) => page.evaluate((id) => {

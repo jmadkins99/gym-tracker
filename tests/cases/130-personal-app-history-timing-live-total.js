@@ -27,7 +27,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap } = require('../lib/browser');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq } = require('../lib/assert');
 
@@ -67,12 +67,12 @@ function readTiming(page) {
 }
 
 async function openTiming(page, itemIndex) {
-    await page.evaluate((i) => {
+    const btn = await page.evaluateHandle((i) => {
         const item = document.querySelectorAll('.history-item')[i];
-        const btn = Array.from(item.querySelectorAll('.history-date button'))
-            .find(b => b.textContent.trim() === 'Time');
-        btn.click();
+        return Array.from(item.querySelectorAll('.history-date button'))
+            .find(b => b.textContent.trim() === 'Time') || null;
     }, itemIndex);
+    await tap(page, btn);
     await page.waitForSelector('[data-timing-total]', { timeout: 8000 });
     return readTiming(page);
 }
@@ -92,11 +92,7 @@ async function advanceTo(page, ms, expectedTotal) {
 }
 
 async function closeTiming(page) {
-    await page.evaluate(() => {
-        const btn = Array.from(document.querySelectorAll('.modal-btn'))
-            .find(b => b.textContent.trim() === 'Close');
-        btn.click();
-    });
+    await tap(page, '.modal-btn', { text: 'Close' });
     await page.waitForFunction(() => !document.querySelector('[data-timing-total]'),
         { timeout: 8000 });
 }
@@ -137,11 +133,7 @@ async function closeTiming(page) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await page.evaluate(() => {
-            const btn = Array.from(document.querySelectorAll('.bottom-nav-btn'))
-                .find(b => b.textContent.indexOf('History') !== -1);
-            if (btn) btn.click();
-        });
+        await tap(page, '.bottom-nav-btn', { text: /History/ });
         await page.waitForSelector('.history-item', { timeout: 8000 });
 
         const headings = await page.evaluate(() =>

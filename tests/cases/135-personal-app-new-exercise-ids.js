@@ -29,7 +29,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap } = require('../lib/browser');
 const { workoutEntry } = require('../lib/state');
 const { ACTIVE, readDeckNames, readDeckCard, bottomNav } = require('../lib/deck');
 const { eq, ok } = require('../lib/assert');
@@ -131,8 +131,9 @@ const NEW_SESSION = workoutEntry({
 
 // Same shape as case 60's: feed a backup to the real Settings file input.
 async function importBackup(page, backup) {
-    await page.click('.settings-btn');
-    await new Promise(r => setTimeout(r, 250));
+    await tap(page, '.settings-btn');
+    await waitFor(page, 'the Settings import input',
+        () => !!document.querySelector('.modal input.file-input'));
     const fed = await page.evaluate((json) => {
         const input = document.querySelector('input.file-input');
         if (!input) return 'no file input';
@@ -143,12 +144,11 @@ async function importBackup(page, backup) {
         return 'ok';
     }, JSON.stringify(backup));
     eq(fed, 'ok', 'fed the backup to the Settings file input');
-    await new Promise(r => setTimeout(r, 600));
-    await page.evaluate(() => {
-        const overlay = document.querySelector('.modal-overlay');
-        if (overlay) overlay.click();
-    });
-    await new Promise(r => setTimeout(r, 250));
+    // importData reads the file through FileReader.onload, and the same
+    // callback closes Settings, so the modal going away is the sign that the
+    // import has landed.
+    await waitFor(page, 'the import to land and close Settings',
+        () => !document.querySelector('.modal'));
 }
 
 const readStored = (page) => page.evaluate((ns) => ({
@@ -244,11 +244,17 @@ const content = (history) => history.map(({ week, ...w }) => w);
 
         // --- History tab: old sessions under their logged names ---
         await bottomNav(page, 'History');
-        await page.evaluate(() => {
-            const prev = Array.from(document.querySelectorAll('.week-nav-btn'))
-                .find(b => b.textContent.indexOf('Prev') !== -1);
-            if (prev && !prev.disabled) prev.click();
-        });
+        // The sessions are last week's. History may open on the current week
+        // or already on theirs (Prev is disabled on week 1), so step back only
+        // when there is a week to step back to.
+        const prev = await page.evaluateHandle(() => Array.from(document.querySelectorAll('.week-nav-btn'))
+            .find(b => b.textContent.indexOf('Prev') !== -1) || null);
+        if (await prev.evaluate((b) => !!b && !b.disabled)) {
+            const week = await page.$eval('.week-title', (t) => t.textContent.trim());
+            await tap(page, prev);
+            await waitFor(page, 'History to step back a week',
+                (w) => document.querySelector('.week-title').textContent.trim() !== w, week);
+        }
         await page.waitForSelector('.history-item', { timeout: 8000 });
         const rows = await page.evaluate(() => Array.from(document.querySelectorAll('.history-exercise'))
             .map(r => r.querySelector('.history-exercise-name').textContent.trim() + ': ' +

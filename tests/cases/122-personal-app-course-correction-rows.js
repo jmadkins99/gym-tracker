@@ -43,7 +43,7 @@
 // fails; forget to clear it when the projection closes and phase 6 fails.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -93,10 +93,7 @@ const seed = (page) => page.evaluate((ns, thisWeek) => {
     return { today, monday: key(monday) };
 }, NS, THIS_WEEK);
 
-const goHistory = (page) => page.evaluate(() => {
-    Array.from(document.querySelectorAll('.bottom-nav-btn'))
-        .find((b) => b.textContent.includes('History')).click();
-});
+const goHistory = (page) => tap(page, '.bottom-nav-btn', { text: /History/ });
 
 const correctionButtons = (page) => page.evaluate(() =>
     Array.from(document.querySelectorAll('.weigh-correction-btn')).map((b) => ({
@@ -105,8 +102,14 @@ const correctionButtons = (page) => page.evaluate(() =>
         week: b.closest('.weigh-week').querySelector('.history-date').textContent.trim(),
     })));
 
-const toggleProjection = (page) => page.evaluate(() =>
-    document.querySelector('.weigh-project-btn').click());
+const toggleProjection = (page) => tap(page, '.weigh-project-btn');
+
+// The projection opens by growing its grid row (0fr to 1fr), which pushes the
+// week rows below it, the correction button's among them, down the page. Only
+// the block's own transition moves them; its rows' staggered fade does not.
+const waitForProjectionToSettle = (page) =>
+    waitFor(page, 'the projection block to finish growing', () =>
+        document.querySelector('.weigh-projection').getAnimations().length === 0);
 
 // The forecast rows, newest-first as the ledger renders them.
 const forecastRows = (page) => page.evaluate(() =>
@@ -182,7 +185,9 @@ const weekdayIndex = (page) => page.evaluate(() => {
         // === 3. No forecast rows until it is pressed ====================
         eq(await forecastRows(page), [], 'the forecast is behind the button, not beside it');
 
-        await page.evaluate(() => document.querySelector('.weigh-correction-btn').click());
+        // A real tap hit-tests where the button is, so let it stop moving first.
+        await waitForProjectionToSettle(page);
+        await tap(page, '.weigh-correction-btn');
         await waitFor(page, 'the forecast rows', () => !!document.querySelector('.weigh-day.forecast'));
 
         // === 4. The forecast covers today and every day after it ========

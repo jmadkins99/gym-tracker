@@ -42,7 +42,7 @@
 // 0.4, which is the bug this case exists for.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -111,10 +111,7 @@ const paceFor = (page, drop) => page.evaluate((ns, drop) => {
 }, NS, drop);
 
 const toHistory = async (page) => {
-    await page.evaluate(() => {
-        Array.from(document.querySelectorAll('.bottom-nav-btn'))
-            .find((b) => b.textContent.includes('History')).click();
-    });
+    await tap(page, '.bottom-nav-btn', { text: /History/ });
     await waitFor(page, 'the weekly ledger to render',
         () => !!document.querySelector('.weigh-week'));
 };

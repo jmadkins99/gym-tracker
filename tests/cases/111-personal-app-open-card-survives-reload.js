@@ -52,7 +52,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, readDayToggle, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, readDayToggle, waitFor, waitForPageTime } = require('../lib/browser');
 const { goToCardById, revealCard, isRevealed, logCard, logCardById, deckPosition, startAnchors, todayWorkout } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -70,8 +70,10 @@ const activeDay = async (page) => (await readDayToggle(page)).active;
 
 async function reload(page) {
     await page.reload({ waitUntil: 'networkidle0' });
+    // restoreOpenCard sets the day, the deck index and the open card in the
+    // same hydration batch that mounts the deck, so the restored state (or its
+    // absence) is already there once the workout screen is.
     await waitForApp(page);
-    await new Promise(r => setTimeout(r, 200));
 }
 
 async function seedAnchor(page, id, dateString) {
@@ -117,7 +119,7 @@ async function seedAnchor(page, id, dateString) {
         const anchor = (await startAnchors(page, NS))[target];
         ok(anchor, 'the swipe up stamped an anchor');
 
-        await new Promise(r => setTimeout(r, GAP_MS));
+        await waitForPageTime(page, `${GAP_MS} ms to pass since the swipe up`, Date.parse(anchor) + GAP_MS);
         await reload(page);
 
         eq(await activeDay(page), otherDay, 'after the reload the deck is back on the session\'s day');

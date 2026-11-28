@@ -31,7 +31,7 @@
 // distinctness assertion fails.
 
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitFor, tap } = require('../lib/browser');
 const { PERSONAL_APP_ROOT } = require('../lib/paths');
 const { eq, ok } = require('../lib/assert');
 
@@ -90,8 +90,7 @@ const checkIn = async (page, weight) => {
         set.call(input, w);
         input.dispatchEvent(new Event('input', { bubbles: true }));
     }, String(weight));
-    await new Promise(r => setTimeout(r, 120));
-    await page.evaluate(() => document.querySelector('.weigh-submit').click());
+    await tap(page, '.weigh-submit');
     await waitFor(page, 'the read-back state', () => !!document.querySelector('.weigh-hero'));
 };
 
