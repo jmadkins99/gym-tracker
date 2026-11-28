@@ -41,7 +41,7 @@
             // showDayBreakdown, which is always today's session.
             // The History card on screen, as a YYYY-MM-DD date key. The History
             // tab puts it back on the newest session's date; see HistoryDeck.
-            const [viewingDate, setViewingDate] = useState(() => historyLatestDateKey(workoutHistory));
+            const [viewingDate, setViewingDate] = useState(() => historyOpeningDateKey(workoutHistory, new Date()));
             const [expandedWeightBreakdown, setExpandedWeightBreakdown] = useState(null);
             // Which card the deck is parked on. It lives up here for the same
             // reason expandedWeightBreakdown does: SwipeDeck is unmounted while
@@ -1274,7 +1274,7 @@
                                 const now = new Date();
                                 setToday(now.toDateString());
                                 setCurrentView('weekly');
-                                setViewingDate(historyLatestDateKey(workoutHistory));
+                                setViewingDate(historyOpeningDateKey(workoutHistory, now));
                                 window.scrollTo(0, 0);
                             }}
                         >

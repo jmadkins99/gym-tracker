@@ -5,7 +5,7 @@
 //
 //   (0) With no sessions at all, the deck is a single History card for today, a rest day.
 //   (1) It opens on the newest session's date (24 Nov), not on today (25 Nov),
-//       so a day with nothing logged does not open on a rest card. › goes
+//       so a day with nothing logged does not open on a History card for a rest day. › goes
 //       forward to today's rest day: the date and "No workout", with no day
 //       label, total or Edit gear, and the forward controls are disabled.
 //   (2) ‹ and › move one date; a session's card shows its full date and day
@@ -43,6 +43,11 @@ const FLIES = 'pecs-transverse-shoulder-adduction';
 
 function history() {
     return [
+        // The newest session on or before today, late in the evening: 25 Nov
+        // 03:00 in UTC, so a UTC comparison would call it the 25th. Listed
+        // out of order, so the last array entry is not the newest.
+        workoutEntry({ date: '2026-11-24T20:00:00-07:00', day: 'posterior-2',
+            exercises: [{ id: CURLS, weight: '105', reps: '6' }] }),
         // The first session ever logged: the deck's first card.
         workoutEntry({ date: '2026-11-02T09:00:00-07:00', day: 'posterior-2',
             exercises: [{ id: CURLS, weight: '100', reps: '6' }] }),
@@ -50,8 +55,9 @@ function history() {
         workoutEntry({ date: '2026-11-18T09:00:00-07:00', day: 'anterior-2',
             exercises: [{ id: FLIES, weight: '80', reps: '7',
                 startedAt: '2026-11-18T09:00:00-07:00', loggedAt: '2026-11-18T09:04:00-07:00' }] }),
-        workoutEntry({ date: '2026-11-24T09:00:00-07:00', day: 'posterior-2',
-            exercises: [{ id: CURLS, weight: '105', reps: '6' }] }),
+        // Dated after today (an import, say): never the opening date.
+        workoutEntry({ date: '2026-11-30T09:00:00-07:00', day: 'anterior-2',
+            exercises: [{ id: FLIES, weight: '90', reps: '5' }] }),
     ];
 }
 

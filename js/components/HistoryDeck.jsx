@@ -35,17 +35,26 @@
             return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
         }
 
-        // The date key History opens on: the newest date with a session, the
-        // last day on record. Today when nothing is logged yet. When today has
-        // a session it is the newest, so History opens on today as before.
-        function historyLatestDateKey(workoutHistory) {
+        // The start of a session's local date, or null when it has no usable
+        // date (missing, null or unparseable). The one place that decides
+        // which sessions count, for the deck and for the opening date.
+        function sessionDate(w) {
+            if (!w || w.date == null) return null;
+            const d = startOfDate(w.date);
+            return isNaN(d) ? null : d;
+        }
+
+        // The date key History opens on: the newest session dated on or before
+        // today, else today.
+        function historyOpeningDateKey(workoutHistory, today) {
+            const todayDate = startOfDate(today);
             let newest = null;
             (workoutHistory || []).forEach((w) => {
-                const d = startOfDate(w.date);
-                if (isNaN(d)) return;
+                const d = sessionDate(w);
+                if (!d || d > todayDate) return;
                 if (!newest || d > newest) newest = d;
             });
-            return historyDateKey(newest || new Date());
+            return historyDateKey(newest || todayDate);
         }
 
         function historyKeyToDate(key) {
@@ -179,8 +188,8 @@
             const sessionsByDate = new Map();
             let first = todayDate;
             workoutHistory.forEach((w) => {
-                const d = startOfDate(w.date);
-                if (isNaN(d)) return;
+                const d = sessionDate(w);
+                if (!d) return;
                 sessionsByDate.set(historyDateKey(d), w);
                 if (d < first) first = d;
             });
