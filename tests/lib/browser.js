@@ -176,26 +176,32 @@ async function waitForApp(page, timeoutMs = 8000) {
         throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for the workout ' +
             'screen (neither .deck-stage nor .exercise-card appeared)');
     }
-    // Give React one more tick so derived state (PR helpers, defaults) settles.
-    await new Promise(r => setTimeout(r, 250));
+    // No extra tick: the deck mounts in the same hydration batch that restores
+    // the saved state (restoreOpenCard included), so once it exists what it
+    // shows is derived from that state already.
 }
 
 // The day toggle lives in Settings (Nov 2026), above Manage Exercises. These
 // open the gear, act, and close it again, so a case is left exactly where it
 // was — on the deck, or on History — with only the day changed.
 async function openSettings(page) {
-    await page.evaluate(() => document.querySelector('.settings-btn').click());
+    await tap(page, '.settings-btn');
     await waitFor(page, 'the Settings modal to open',
         () => !!document.querySelector('.modal .modal-title'));
 }
 
 async function closeSettings(page) {
-    await page.evaluate(() => {
-        const close = Array.from(document.querySelectorAll('.modal .modal-btn'))
-            .find(b => b.textContent.trim() === 'Close');
-        if (close) close.click();
-    });
+    await tap(page, '.modal .modal-btn', { text: 'Close' });
     await waitFor(page, 'the Settings modal to close', () => !document.querySelector('.modal'));
+}
+
+// Settings > Manage Exercises, waiting for its rows. To leave it, tap Back to
+// Settings, then closeSettings.
+async function openManageExercises(page) {
+    await openSettings(page);
+    await tap(page, '.modal .modal-btn', { text: /Manage Exercises/ });
+    await waitFor(page, 'the Manage Exercises rows to render',
+        () => document.querySelectorAll('.modal .exercise-row').length > 0);
 }
 
 // What the Settings day toggle shows: every day it offers, which one is
@@ -242,9 +248,14 @@ async function selectDayType(page, type, { optional = false } = {}) {
         if (!btn) return { clicked: false, available };
         if (btn.classList.contains('active')) return { clicked: false, already: true, available };
         if (toggle.hasAttribute('data-locked')) return { clicked: false, locked: true, available };
-        btn.click();
         return { clicked: true, available };
     }, type);
+    if (result.clicked) {
+        const pill = `.modal [data-day-type="${type}"]`;
+        await tap(page, pill);
+        await waitFor(page, `the "${type}" pill to turn active`,
+            (sel) => !!document.querySelector(sel + '.active'), pill);
+    }
     await closeSettings(page);
     if (result.already) return true;
 
@@ -254,7 +265,6 @@ async function selectDayType(page, type, { optional = false } = {}) {
             : `no day-type toggle for "${type}" ` +
               `(available: ${result.available.length ? result.available.join(', ') : 'none'})`);
     }
-    if (result.clicked) await new Promise(r => setTimeout(r, 150));
     return result.clicked;
 }
 
@@ -370,5 +380,5 @@ const waitForCards = (page) =>
         () => document.querySelectorAll('.exercise-card').length > 0);
 
 module.exports = { launch, launchChrome, setNow, TIME_ZONE, attachConsole, waitForApp, readCards, selectDayType, readDayToggle,
-                   openSettings, closeSettings,
+                   openSettings, closeSettings, openManageExercises,
                    waitFor, waitForPageTime, tap, waitForStorageKey, waitForCards };

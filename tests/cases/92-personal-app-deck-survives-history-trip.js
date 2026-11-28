@@ -94,7 +94,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
 
         // Leave it, then go to History INSIDE the 300ms collapse window, so
         // the unmount is what has to finish the close.
-        await swipe(page, -220, 0, { steps: 4, settle: 40 });
+        await swipe(page, -220, 0, { steps: 4, settle: false });
         await bottomNav(page, 'History');
         await bottomNav(page, 'Workout');
 

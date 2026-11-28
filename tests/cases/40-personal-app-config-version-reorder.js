@@ -25,7 +25,7 @@
 const path = require('path');
 const fs = require('fs');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, tap, waitFor } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, openManageExercises, tap, waitFor } = require('../lib/browser');
 const { readDeckNames } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
@@ -147,10 +147,7 @@ const EXPECTED_POSTERIOR = [
         // this also covers App.jsx stamping EXERCISE_CONFIG_VERSION on save.
         // Drop that stamp and the migration reads the config as stale and
         // resets the user's arrangement on the next load.
-        await tap(page, '.settings-btn');
-        await tap(page, '.modal-btn', { text: /Manage Exercises/ });
-        await waitFor(page, 'the Manage Exercises rows to render',
-            () => document.querySelectorAll('.exercise-row').length > 0);
+        await openManageExercises(page);
         // Move the last Posterior row up one. The probe has to be a row with
         // something above it on its own day (the arrows stop at a day's
         // boundary), and the tail of a day is the stable place to find one.

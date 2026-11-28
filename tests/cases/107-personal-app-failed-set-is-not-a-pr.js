@@ -188,7 +188,7 @@ async function readHistoryBadges(page) {
         // The real one celebrates and then advances, so read it before the
         // auto-advance rather than after.
         await enterSet(page, 'lats-sagittal-shoulder-extension', '105', '5');
-        ok(await logCard(page, { settle: 750, waitForAutoAdvance: false }),
+        ok(await logCard(page, { waitForAutoAdvance: false }),
             'lats-sagittal-shoulder-extension: LOG button clicked');
         const realPill = await page.evaluate((sel) => {
             const badge = document.querySelector(sel + ' [data-logged-pr-badge]');

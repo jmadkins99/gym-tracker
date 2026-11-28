@@ -137,11 +137,9 @@ async function readActiveReview(page) {
     }, ACTIVE);
 }
 
-async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
+async function logSet(page, exerciseId, weight, reps, { waitForAutoAdvance = true } = {}) {
     await enterSet(page, exerciseId, weight, reps);
-    const clicked = await logCard(page, settle === undefined
-        ? undefined
-        : { settle, waitForAutoAdvance: false });
+    const clicked = await logCard(page, { waitForAutoAdvance });
     ok(clicked, `${exerciseId}: LOG button clicked`);
 }
 
@@ -172,7 +170,7 @@ async function logSet(page, exerciseId, weight, reps, { settle } = {}) {
         eq(before.loggedPR, null,
             'before logging, the current-session PR badge is absent');
 
-        await logSet(page, 'biceps-elbow-flexion-with-shoulder-extension', '100', '6', { settle: 250 });
+        await logSet(page, 'biceps-elbow-flexion-with-shoulder-extension', '100', '6', { waitForAutoAdvance: false });
         const celebrating = await readActiveReview(page);
         eq(celebrating.id, 'biceps-elbow-flexion-with-shoulder-extension',
             'a PR log stays on the current logged card before advancing');

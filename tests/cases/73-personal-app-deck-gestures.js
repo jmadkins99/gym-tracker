@@ -14,8 +14,8 @@
 //      rail is then displaced back and travels home. Doing it the obvious way
 //      round — animate, then commit when it lands — forces input to be locked
 //      out for the length of the animation, which swallows swipes exactly when
-//      you are moving through the deck fastest. Four swipes 90ms apart against
-//      a 300ms animation must all count.
+//      you are moving through the deck fastest. Four back-to-back swipes, all
+//      inside one 300ms animation, must all count.
 //
 //   3. DISTANCE **OR** SPEED. Distance alone is a bad trade: long enough and a
 //      quick flick is ignored, short enough and a card you grabbed to read
@@ -63,7 +63,7 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
             'with a card either side, all three are mounted');
 
         // Hold a partial drag: a neighbour must genuinely be on screen.
-        await swipe(page, -120, 0, { release: false });
+        const held = await swipe(page, -120, 0, { release: false });
         const sharing = await page.evaluate(() => {
             const stage = document.querySelector('.deck-stage').getBoundingClientRect();
             return Array.from(document.querySelectorAll('.deck-slot')).filter((s) => {
@@ -71,16 +71,15 @@ const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
                 return r.right > stage.left + 4 && r.left < stage.right - 4;
             }).length;
         });
-        await page.mouse.up();
-        await waitForDeckToSettle(page);
+        await held.release();
         eq(sharing, 2, 'two cards share the stage mid-drag — the peek, not one card over black');
 
         // === 2. Fast swipes are not dropped ============================
         const before = await deckIndex(page);
-        for (let i = 0; i < 4; i++) await swipe(page, -170, 0, { settle: 90 });
+        for (let i = 0; i < 4; i++) await swipe(page, -170, 0, { settle: false });
         await waitForDeckToSettle(page);
         eq(await deckIndex(page) - before, 4,
-            'four swipes 90ms apart all count — the index commits before the animation, ' +
+            'four back-to-back swipes all count — the index commits before the animation, ' +
             'so there is no window in which input is locked out');
 
         // === 3. Distance OR speed ======================================

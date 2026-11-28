@@ -24,7 +24,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, tap, waitForPageTime } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, tap, waitFor, waitForPageTime } = require('../lib/browser');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 const {
@@ -78,8 +78,13 @@ const anchorOf = async (page) => {
         // === 3. An immediate return still finds it shut ================
         await revealCard(page);
         eq(await isRevealed(page), true, 'open again');
-        await swipe(page, -180, 0, { settle: 60 });
-        await swipe(page, 180, 0, { settle: 800 });
+        await swipe(page, -180, 0, { settle: false });
+        await swipe(page, 180, 0);
+        // The close fires RAIL_MS (300 ms) after the first swipe, which the
+        // return beats, so wait for it rather than reading at once. If the
+        // return cancelled it, this times out and names what never happened.
+        await waitFor(page, 'the card swiped away from to close behind us',
+            (sel) => !document.querySelector(sel + ' .card-open'), ACTIVE);
         eq(await isRevealed(page), false,
             'swiping straight back STILL finds it closed — the close is not cancelled ' +
             'by a fast return, or a stale anchor would survive through the back door');

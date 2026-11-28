@@ -47,7 +47,7 @@ const waitForFormClosed = (page) => waitFor(page, 'the quick-edit form to close'
 
 // Swipe down on the active card, which opens its quick-edit form.
 async function swipeDownToEdit(page) {
-    await swipe(page, 0, 180, { settle: 0 });
+    await swipe(page, 0, 180, { settle: false });
     await waitForFormOpen(page);
 }
 

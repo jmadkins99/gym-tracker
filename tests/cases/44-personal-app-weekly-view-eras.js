@@ -39,6 +39,7 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
+const { bottomNav } = require('../lib/deck');
 const { seedPersonalApp } = require('../lib/state');
 const { eq, ok } = require('../lib/assert');
 
@@ -155,15 +156,6 @@ const MIXED_DAY_IDS = [
     ['kelso-shrugs', 'Kelso Shrugs'],
 ];
 
-// A real tap on the bottom-bar button, then a wait for it to turn active,
-// which happens in the same render as the destination view. Each button once
-// carried an icon glyph beside its label, so this matches on containment.
-async function clickNav(page, label) {
-    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
-    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
-        .some(b => b.textContent.indexOf(l) !== -1), label);
-}
-
 // Weekly renders one .history-item per workout, newest first. Returns the
 // exercise-name rows of each, keyed by the date text so the assertions read
 // against a specific workout rather than a positional index.
@@ -240,7 +232,7 @@ async function weeklyItems(page) {
         }, 'gym-local:');
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
-        await clickNav(page, 'History');
+        await bottomNav(page, 'History');
 
         const items = await weeklyItems(page);
         eq(items.length, 5, 'all five workouts render in the current week');

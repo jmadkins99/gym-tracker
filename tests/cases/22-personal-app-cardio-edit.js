@@ -12,19 +12,11 @@
 const path = require('path');
 const { start } = require('../lib/server');
 const { launch, attachConsole, waitForApp, tap, waitFor } = require('../lib/browser');
+const { bottomNav } = require('../lib/deck');
 const { seedPersonalApp, workoutEntry } = require('../lib/state');
 const { eq, ok, contains } = require('../lib/assert');
 
 const PERSONAL_APP_ROOT = path.resolve(__dirname, '..', '..');
-
-// A real tap on the bottom-bar button, then a wait for it to turn active,
-// which happens in the same render as the destination view. Each button once
-// carried an icon glyph beside its label, so this matches on containment.
-async function clickNav(page, label) {
-    await tap(page, '.bottom-nav-btn', { text: new RegExp(label) });
-    await waitFor(page, `the ${label} tab to open`, (l) => Array.from(document.querySelectorAll('.bottom-nav-btn.active'))
-        .some(b => b.textContent.indexOf(l) !== -1), label);
-}
 
 async function setNumber(page, selector, value) {
     await page.click(selector, { clickCount: 3 });
@@ -56,7 +48,7 @@ async function setNumber(page, selector, value) {
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
 
-        await clickNav(page, 'History');
+        await bottomNav(page, 'History');
         await tap(page, 'button', { text: 'Edit' });
         await waitFor(page, 'the edit modal to open', () => !!document.querySelector('.modal .modal-title'));
 
