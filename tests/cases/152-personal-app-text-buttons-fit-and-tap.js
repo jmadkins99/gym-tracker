@@ -166,7 +166,7 @@ function measureAll(allow) {
         await scan(page, 'Manage Exercises (all)', ratio);
         await check('Manage Exercises', '.exercise-row .text-btn', 3);
         const phoneName = await page.evaluate((id) =>
-            document.querySelector('[data-exercise-id="' + id + '"] .exercise-row-name')
+            document.querySelector('.exercise-row[data-exercise-id="' + id + '"] .exercise-row-name')
                 .getBoundingClientRect().width, FLIES);
         ok(phoneName * (await ratio()) >= MIN_NAME,
             'phone: the name keeps a usable width (' + Math.round(phoneName * (await ratio())) + ' rendered px)');
@@ -221,10 +221,8 @@ function measureAll(allow) {
         await scan(wpage, 'weight check-in', wratio);
         await tap(wpage, '.bottom-nav-btn', { text: /History/ });
         await waitFor(wpage, 'weekly ledger', () => !!document.querySelector('.weigh-week'));
-        const head = await wpage.evaluateHandle((label) => Array.from(document.querySelectorAll('.weigh-week-head'))
-            .find((h) => h.textContent.includes(label)) || null, openLabel);
-        ok(head.asElement(), 'found the ledger row "' + openLabel + '"');
-        await tap(wpage, head);
+        await tap(wpage, '.weigh-week-head',
+            { text: new RegExp(openLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) });
         await waitFor(wpage, 'opened week', () => document.querySelectorAll('.weigh-day-value').length > 0);
         await wcheck('weight History reading', '.weigh-day-value:not(.na)', 1);
         await wcheck('weight History NA', '.weigh-day-value.na', 1);
@@ -245,9 +243,9 @@ function measureAll(allow) {
             await tap(p, '.settings-btn');
             await waitFor(p, 'Settings', () => !!document.querySelector('.modal .modal-title'));
             await tap(p, '.modal-btn', { text: 'Manage Exercises' });
-            await p.waitForSelector('[data-exercise-id="' + FLIES + '"]', { timeout: 8000 });
+            await p.waitForSelector('.exercise-row[data-exercise-id="' + FLIES + '"]', { timeout: 8000 });
             const fit = await p.evaluate((id) => {
-                const row = document.querySelector('[data-exercise-id="' + id + '"]');
+                const row = document.querySelector('.exercise-row[data-exercise-id="' + id + '"]');
                 const rr = row.getBoundingClientRect();
                 const out = [];
                 for (const el of row.querySelectorAll('button, .exercise-row-name')) {

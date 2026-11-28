@@ -107,29 +107,30 @@ function scanPage(badSource) {
 
 // Queues what the page's next native dialogs should do and records every one.
 // Alerts are accepted; a confirm is accepted while `accept` > 0, else dismissed.
+// `handled` counts this page's dialogs whose answer has gone back to the page.
 function watchDialogs(page, label, log) {
-    const state = { accept: 0 };
+    const state = { accept: 0, handled: 0, waiters: [] };
     page.on('dialog', async (d) => {
         log.push({ label, type: d.type(), message: d.message() });
         if (d.type() === 'confirm' && state.accept > 0) { state.accept--; await d.accept(); }
         else if (d.type() === 'confirm') await d.dismiss();
         else await d.accept();
+        state.handled++;
+        state.waiters = state.waiters.filter((w) => !w());
     });
     return state;
 }
 
-// Waits for `log` (filled by watchDialogs) to hold more than `count` dialogs,
-// so the next step cannot cancel or race one the page is about to raise.
-// watchDialogs' listener was added first, so it has pushed the entry by the
-// time this one runs.
-async function dialogCame(page, log, count, label) {
-    if (log.length > count) return;
-    let timer, onDialog;
+// Waits until `count` dialogs on this page (state from watchDialogs) have been
+// raised AND answered, so the next tap, upload or reload neither cancels one
+// the page is about to raise nor races one still open.
+async function dialogsHandled(state, count, label) {
+    if (state.handled >= count) return;
+    let timer;
     try {
         await Promise.race([
             new Promise((resolve) => {
-                onDialog = () => { if (log.length > count) resolve(); };
-                page.on('dialog', onDialog);
+                state.waiters.push(() => state.handled >= count && (resolve(), true));
             }),
             new Promise((_, reject) => {
                 timer = setTimeout(() => reject(new Error('timed out after 20s waiting for ' + label)), 20000); // allow-sync-wait: a deadline for an event wait, not a sleep
@@ -137,7 +138,6 @@ async function dialogCame(page, log, count, label) {
         ]);
     } finally {
         clearTimeout(timer);
-        page.off('dialog', onDialog);
     }
 }
 
@@ -188,6 +188,11 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await page.reload({ waitUntil: 'networkidle0' });
         await waitForApp(page);
         await selectDayType(page, 'anterior-2');
+        // The Anterior deck starts on Chest Flies.
+        await waitFor(page, 'the Anterior deck', (a, id) => {
+            const el = document.querySelector(a + ' [data-exercise-id]');
+            return !!el && el.getAttribute('data-exercise-id') === id;
+        }, ACTIVE, FLIES);
 
         await look('workout deck, card front', (a) => !!document.querySelector(a), ACTIVE);
         await readDeckCard(page, 'Chest Flies');
@@ -261,19 +266,19 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await tap(page, '.settings-btn');
         await waitFor(page, 'Settings', modalHas, 'Reset All Data');
         confirms.accept = 1;
-        const beforeReset = dialogs.length;
+        const beforeReset = confirms.handled;
         await tap(page, '.modal-btn', { text: 'Reset All Data' });
-        await dialogCame(page, dialogs, beforeReset + 1, 'both workout Reset All Data confirms');
+        await dialogsHandled(confirms, beforeReset + 2, 'both workout Reset All Data confirms');
         const input = await page.$('.modal input[type=file]');
         ok(input, 'Settings has a file input for Import Data');
-        const before = dialogs.length;
+        const before = confirms.handled;
         await input.uploadFile(junk);
-        await dialogCame(page, dialogs, before, 'the workout bad-backup alert');
+        await dialogsHandled(confirms, before + 1, 'the workout bad-backup alert');
 
         // A device with no history: Submit Day with nothing logged alerts,
         // and History shows its empty state.
         const emptyPage = await newPhone();
-        watchDialogs(emptyPage, 'workout, empty', dialogs);
+        const emptyDialogs = watchDialogs(emptyPage, 'workout, empty', dialogs);
         await emptyPage.goto(server.url + '/index.html', { waitUntil: 'networkidle0' });
         // Pages in one browser share localStorage, so drop what the first one seeded.
         await emptyPage.evaluate((ns) => {
@@ -283,9 +288,8 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await emptyPage.reload({ waitUntil: 'networkidle0' });
         await waitForApp(emptyPage);
         await selectDayType(emptyPage, 'anterior-2');
-        const beforeSubmit = dialogs.length;
         await submitDay(emptyPage);
-        await dialogCame(emptyPage, dialogs, beforeSubmit, 'the Submit Day with nothing logged alert');
+        await dialogsHandled(emptyDialogs, 1, 'the Submit Day with nothing logged alert');
         await bottomNav(emptyPage, 'History');
         await lookFor(emptyPage)('History, empty', () => !!document.querySelector('.empty-state'));
         await emptyPage.close();
@@ -318,10 +322,10 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         // === Weight app =================================================
         const wpage = await newPhone();
         const werrors = attachConsole(wpage);
-        watchDialogs(wpage, 'weight', dialogs);
+        const wdialogs = watchDialogs(wpage, 'weight', dialogs);
         const wlook = lookFor(wpage);
-        // Tap a bottom-bar tab and wait for it to turn active.
-        const wgo = async (label) => {
+        // Tap a weight bottom-bar tab and wait for it to turn active.
+        const weightTab = async (label) => {
             await tap(wpage, '.bottom-nav-btn', { text: new RegExp(label) });
             await waitFor(wpage, 'the ' + label + ' tab to open', (l) => Array.from(document.querySelectorAll('.bottom-nav-btn'))
                 .some((b) => b.textContent.includes(l) && b.classList.contains('active')), label);
@@ -334,7 +338,7 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         }, NS);
         await wpage.reload({ waitUntil: 'networkidle0' });
         await wlook('weight check-in, empty', () => !!document.querySelector('.weigh-card'));
-        await wgo('History');
+        await weightTab('History');
         await wlook('weight History, empty', () => !!document.querySelector('.empty-state'));
 
         await wpage.evaluate((ns) => {
@@ -354,16 +358,16 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         }, NS);
         await wpage.reload({ waitUntil: 'networkidle0' });
         await wlook('weight check-in, with plan and readings', () => !!document.querySelector('.weigh-card'));
-        await wgo('History');
+        await weightTab('History');
         await wlook('weight History, weeks', () => !!document.querySelector('.weigh-week'));
         await tap(wpage, '.weigh-week-head');
         await wlook('weight History, week opened', () => document.querySelectorAll('.weigh-day').length > 0);
         await tap(wpage, '.weigh-day-value:not(.na)');
         await wlook('weight History, editing a reading', () => !!document.querySelector('.weigh-day-input'));
         // Deleting a reading asks first; the confirm is dismissed.
-        const beforeDelete = dialogs.length;
+        const beforeDelete = wdialogs.handled;
         await tap(wpage, '.weigh-day-btn.danger', { text: 'Delete' });
-        await dialogCame(wpage, dialogs, beforeDelete, 'the weight delete-reading confirm');
+        await dialogsHandled(wdialogs, beforeDelete + 1, 'the weight delete-reading confirm');
 
         await tap(wpage, '.settings-btn');
         await wlook('weight Settings, plan saved', modalHas, 'Edit plan');
@@ -375,14 +379,14 @@ const modalHas = (src) => !!document.querySelector('.modal') &&
         await waitFor(wpage, 'check-in', () => !!document.querySelector('.weigh-card'));
         await tap(wpage, '.settings-btn');
         await waitFor(wpage, 'weight Settings', modalHas, 'Reset All Data');
-        const beforeWReset = dialogs.length;
+        const beforeWReset = wdialogs.handled;
         await tap(wpage, '.modal-btn', { text: 'Reset All Data' });
-        await dialogCame(wpage, dialogs, beforeWReset, 'the weight Reset All Data confirm');
+        await dialogsHandled(wdialogs, beforeWReset + 1, 'the weight Reset All Data confirm');
         const winput = await wpage.$('.modal input[type=file]');
         ok(winput, 'weight Settings has a file input for Import Data');
-        const wbefore = dialogs.length;
+        const wbefore = wdialogs.handled;
         await winput.uploadFile(junk);
-        await dialogCame(wpage, dialogs, wbefore, 'the weight bad-backup alert');
+        await dialogsHandled(wdialogs, wbefore + 1, 'the weight bad-backup alert');
 
         await wpage.evaluate((ns) => localStorage.setItem(ns + 'gymWeightPlan', 'null'), NS);
         await wpage.evaluateOnNewDocument(() => {

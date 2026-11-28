@@ -14,7 +14,7 @@
 
 const path = require('path');
 const { start } = require('../lib/server');
-const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap, openSettings, closeSettings } = require('../lib/browser');
+const { launch, attachConsole, waitForApp, selectDayType, waitFor, tap, openSettings } = require('../lib/browser');
 const { goToCardById, revealCard } = require('../lib/deck');
 const { seedPersonalApp, seedExerciseConfig, workoutEntry } = require('../lib/state');
 const { eq } = require('../lib/assert');
@@ -35,6 +35,12 @@ const today = () => daysAgo(0).slice(0, 10);
 const flies = (daysBack, weight, reps, extra = {}) => workoutEntry({
     date: daysAgo(daysBack), day: 'anterior-2',
     exercises: [{ id: TARGET, name: 'Chest Flies', weight, reps, ...extra }] });
+
+// Tap Settings' Close and wait for the modal to be gone.
+async function closeSettingsByTap(page) {
+    await tap(page, '.modal .modal-btn', { text: 'Close' });
+    await waitFor(page, 'Settings to close', () => !document.querySelector('.modal'));
+}
 
 const readStore = (page) => page.evaluate((ns) =>
     JSON.parse(localStorage.getItem(ns + 'gymWorkoutHistory')) || [], NS);
@@ -101,7 +107,7 @@ async function exportBackup(page) {
     await tap(page, '.modal-btn', { text: 'Export Data' });
     await waitFor(page, 'the export', () => !!window.__exported);
     const text = await page.evaluate(() => window.__exported.text());
-    await closeSettings(page);
+    await closeSettingsByTap(page);
     return JSON.parse(text);
 }
 
@@ -124,7 +130,7 @@ async function changeIncrement(page, step) {
     await tap(page, '.modal button', { text: /Back to Settings/ });
     await waitFor(page, 'the Settings menu', () => Array.from(document.querySelectorAll('.modal .modal-btn'))
         .some(b => b.textContent.trim() === 'Close'));
-    await closeSettings(page);
+    await closeSettingsByTap(page);
 }
 
 (async () => {
