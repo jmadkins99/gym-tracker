@@ -98,7 +98,7 @@
            never below a 44px tap target AS RENDERED. Both pages open at
            initial-scale 0.75, so 44 rendered px is 44 / 0.75 = 59 CSS px; a
            plain 44px here lands at 33px under the thumb. Header Settings,
-           History's Time and Edit, and Manage Exercises' Edit / up / down all
+           History's Edit gear, and Manage Exercises' Edit / up / down all
            share it. */
         .text-btn,
         .settings-btn {
@@ -401,13 +401,56 @@
             overscroll-behavior: contain;
         }
 
-        /* Inside a card the session is the card, so it drops its own box. */
+        /* Inside a card the session is the card, so it drops its own box. It
+           grows to fill the card (but never shrinks below its rows, so a long
+           day scrolls instead), and its rows share the spare height up to a
+           cap: an 11-exercise day fills a phone, a 3-exercise day sits at the
+           top instead of stretching into three giant rows. */
         .history-card .history-item {
             background: none;
             border: none;
             border-radius: 0;
             padding: 0;
             margin: 0;
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-card .history-exercise {
+            flex: 1 0 auto;
+            max-height: 64px;
+        }
+
+        .history-card .history-exercise-data {
+            text-align: right;
+        }
+
+        /* The exercise's time, under its weight and reps. */
+        .history-exercise-time {
+            margin-top: 2px;
+            font-size: 12px;
+            font-weight: 400;
+            color: #777;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* The total after the day label reads as a figure, not part of the
+           spaced capitals: "ANTERIOR · 58m". */
+        .history-total {
+            text-transform: none;
+            letter-spacing: normal;
+            font-weight: 600;
+        }
+
+        .history-time-note {
+            margin-top: 10px;
+            color: #777;
+            font-size: 12px;
+        }
+
+        .history-edit {
+            flex: none;
         }
 
         .history-card .history-date {

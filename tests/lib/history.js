@@ -14,6 +14,8 @@ const { tap, waitFor } = require('./browser');
 const HISTORY_CARD = ACTIVE + ' .history-card';
 // The session on the shown card, if the date has one.
 const HISTORY_SESSION = HISTORY_CARD + ' .history-item';
+// The session's Edit button: a gear, so it has an aria-label rather than text.
+const HISTORY_EDIT = HISTORY_SESSION + ' [aria-label="Edit workout"]';
 
 // The footer's buttons: 'prev' / 'next' move one day, 'back' / 'forward' are
 // the 7-day jumps. The two jumps share a class, so their text tells them apart.
@@ -100,4 +102,4 @@ async function historyGoTo(page, date) {
     throw new Error('historyGoTo: gave up reaching ' + target);
 }
 
-module.exports = { HISTORY_CARD, HISTORY_SESSION, dateKey, shownDate, footDisabled, historyPress, historyGoTo };
+module.exports = { HISTORY_CARD, HISTORY_SESSION, HISTORY_EDIT, dateKey, shownDate, footDisabled, historyPress, historyGoTo };

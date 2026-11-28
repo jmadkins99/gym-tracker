@@ -39,7 +39,6 @@
             const [editingWorkout, setEditingWorkout] = useState(null);
             // The history entry whose Time button was tapped, or null. Distinct from
             // showDayBreakdown, which is always today's session.
-            const [timingWorkout, setTimingWorkout] = useState(null);
             // The History card on screen, as a YYYY-MM-DD date key. The History
             // tab puts it back on today; see HistoryDeck.
             const [viewingDate, setViewingDate] = useState(() => historyDateKey(new Date()));
@@ -1212,14 +1211,6 @@
                         />
                     )}
 
-                    {timingWorkout && (
-                        <TimeDetailsModal
-                            workout={timingWorkout}
-                            foregroundAt={lastForegroundAt}
-                            onClose={() => setTimingWorkout(null)}
-                        />
-                    )}
-
                     <div className="header">
                         <div className="header-top">
                             <div className="wordmark">
@@ -1260,7 +1251,6 @@
                                 setEditingWorkout(workout);
                                 setShowEditWorkout(true);
                             }}
-                            onViewTiming={setTimingWorkout}
                             foregroundAt={lastForegroundAt}
                         />}
                     </div>

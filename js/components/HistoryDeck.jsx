@@ -5,10 +5,6 @@
         // deck; only horizontal drags move it, and a vertical one scrolls a
         // long card.
 
-        // Time and Edit sit side by side in the card header; the gap keeps the
-        // two 44px targets from touching.
-        const headerBtnsStyle = { display: 'flex', alignItems: 'center', gap: '8px' };
-
         // The "← Week" and "Week →" jump. Seven calendar days, not a Week: the
         // header's "Week N" is a training-week count and does not move.
         const HISTORY_JUMP_DAYS = 7;
@@ -44,34 +40,54 @@
             return new Date(y, m - 1, d);
         }
 
-        function HistorySession({ workout, workoutHistory, exercises, onEditWorkout, onViewTiming, foregroundAt }) {
+        // The session's time on the card: per exercise, and the total at the
+        // gym. Null for anything logged before August 2026, which carries no
+        // per-exercise timestamps, so those cards show no times at all.
+        // While the session is today's and not yet submitted, the total runs
+        // to now and ticks, answering "how long have I been here so far"; it
+        // is recomputed from the clock rather than counted up, so a phone that
+        // slept is right on waking. Once 30 minutes pass with no new log it
+        // reads the last log again (see getSessionTiming).
+        function useHistoryTiming(workout, foregroundAt) {
+            const [now, setNow] = React.useState(() => new Date());
+            const inProgress = !workout.submitted
+                && startOfDate(workout.date).getTime() === startOfDate(now).getTime();
+            React.useEffect(() => {
+                if (!inProgress) return;
+                const id = setInterval(() => setNow(new Date()), 1000);
+                return () => clearInterval(id);
+            }, [inProgress]);
+            return getSessionTiming(workout, foregroundAt, inProgress ? now : null);
+        }
+
+        function HistorySession({ workout, workoutHistory, exercises, onEditWorkout, foregroundAt }) {
             // Current-program workouts render against their own day in the
             // current config; older eras keep their stored layout. See
             // getWorkoutExerciseList in utils.js.
             const allExercises = getWorkoutExerciseList(workout, exercises);
 
-            // Null for anything logged before August 2026, which carries no
-            // per-exercise timestamps — and that is what hides the Time button
-            // on those entries rather than offering an empty modal.
-            const timing = getSessionTiming(workout, foregroundAt);
+            const timing = useHistoryTiming(workout, foregroundAt);
+            const timeById = new Map(timing ? timing.rows.map((r) => [r.id, r]) : []);
+            const hasEstimate = !!timing && timing.rows.some((r) => r.estimated || r.placeholder);
 
             return (
                 <div className="history-item">
                     <div className="history-date">
                         <span className="history-date-text">
                             <span className="history-date-full">{formatHistoryDate(workout.date)}</span>
-                            <span className="history-day-label">{getWorkoutDayLabel(workout)}</span>
+                            <span className="history-day-label">
+                                {getWorkoutDayLabel(workout)}
+                                {timing && (
+                                    <span className="history-total" data-history-total>
+                                        {' · ' + formatDuration(timing.totalSeconds) + (timing.live ? ' so far' : '')}
+                                    </span>
+                                )}
+                            </span>
                         </span>
-                        <span style={headerBtnsStyle}>
-                            {timing && (
-                                <button onClick={() => onViewTiming(workout)} className="text-btn">
-                                    Time
-                                </button>
-                            )}
-                            <button onClick={() => onEditWorkout(workout)} className="text-btn">
-                                Edit
-                            </button>
-                        </span>
+                        <button onClick={() => onEditWorkout(workout)} className="settings-btn history-edit"
+                                aria-label="Edit workout">
+                            <GearIcon />
+                        </button>
                     </div>
                     {allExercises.map((expectedExercise) => {
                         const completedExercise = workout.exercises.find(e => e.id === expectedExercise.id);
@@ -94,6 +110,7 @@
                         const prStreak = isPR && PR_STREAK_TRACKING
                             ? getPRStreakInWorkout(completedExercise, workout, workoutHistory)
                             : 0;
+                        const rowTime = timeById.get(expectedExercise.id);
                         return (
                             <div key={expectedExercise.id} className="history-exercise">
                                 <div className="history-exercise-title">
@@ -104,7 +121,7 @@
                                     ) : null}
                                 </div>
                                 <div className="history-exercise-data">
-                                    {completedExercise ? (
+                                    <div>{completedExercise ? (
                                         completedExercise.type === 'assault-bike'
                                             ? (completedExercise.intensity && completedExercise.intensity !== 'NA' ? `${completedExercise.intensity}${completedExercise.watts ? ` @ ${completedExercise.watts}W` : ''}` : <span style={{ color: '#555' }}>NA</span>)
                                             : completedExercise.type === 'stairmaster'
@@ -114,11 +131,19 @@
                                                 : <span style={{ color: '#555' }}>NA</span>)
                                     ) : (
                                         <span style={{ color: '#555' }}>NA</span>
+                                    )}</div>
+                                    {rowTime && rowTime.seconds !== null && (
+                                        <div className="history-exercise-time" data-history-time={expectedExercise.id}>
+                                            {formatSecondsToTime(rowTime.seconds) + (rowTime.estimated || rowTime.placeholder ? ' *' : '')}
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         );
                     })}
+                    {hasEstimate && (
+                        <div className="history-time-note">* estimated: measured from the previous log</div>
+                    )}
                 </div>
             );
         }
@@ -134,7 +159,7 @@
         // owned by App so the History tab can put it back on today; a key
         // rather than an index, so a new date added at the end leaves you on
         // the card you were reading.
-        function HistoryDeck({ workoutHistory, exercises, onEditWorkout, onViewTiming, foregroundAt,
+        function HistoryDeck({ workoutHistory, exercises, onEditWorkout, foregroundAt,
                                today, viewingDate, setViewingDate }) {
             const todayDate = startOfDate(new Date(today));
 
@@ -170,7 +195,6 @@
                                     workoutHistory={workoutHistory}
                                     exercises={exercises}
                                     onEditWorkout={onEditWorkout}
-                                    onViewTiming={onViewTiming}
                                     foregroundAt={foregroundAt}
                                 />
                             ) : (
