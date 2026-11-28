@@ -153,6 +153,13 @@ async function setVisibility(page, state) {
         // and the footer stays on screen below it.
         const viewport = page.viewport();
         await page.setViewport({ width: 390, height: 420 });
+        // App sizes its shell from visualViewport's resize event, which
+        // arrives after setViewport returns: wait for the nav to sit on the
+        // new bottom edge before measuring.
+        await waitFor(page, 'the shell to fit the 420px screen', () => {
+            const nav = document.querySelector('.bottom-nav');
+            return !!nav && Math.abs(nav.getBoundingClientRect().bottom - window.innerHeight) < 2;
+        });
         const short = await page.evaluate((sel) => {
             const el = document.querySelector(sel);
             el.scrollTop = 40;
@@ -167,6 +174,10 @@ async function setVisibility(page, state) {
             'a card taller than the stage scrolls inside itself above the footer instead of clipping');
         await page.evaluate((sel) => { document.querySelector(sel).scrollTop = 0; }, HISTORY_CARD);
         await page.setViewport(viewport);
+        await waitFor(page, 'the shell to fit the screen again', () => {
+            const nav = document.querySelector('.bottom-nav');
+            return !!nav && Math.abs(nav.getBoundingClientRect().bottom - window.innerHeight) < 2;
+        });
 
         // === (3) 7-day jumps ===============================================
         await historyPress(page, 'back');
